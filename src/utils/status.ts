@@ -95,3 +95,39 @@ export function eventTypeToShipmentStatus(type: TimelineEventType): ShipmentStat
   if (type === "Transfer Unit") return "Dalam Perjalanan";
   return type as ShipmentStatus;
 }
+
+/**
+ * Position of each status in the shipment pipeline. Statuses that can occur
+ * at any point during the active transit phase (Transit, Dalam Perjalanan,
+ * Kendala, Transfer Unit) share a rank so admins can log any of them while
+ * the shipment is en route, but the rank only ever moves forward overall -
+ * an update can never send the pipeline backward.
+ */
+const PIPELINE_RANK: Record<string, number> = {
+  "Dalam Persiapan": 0,
+  "Barang Diterima": 0,
+  "Berangkat": 1,
+  "Transit": 2,
+  "Dalam Perjalanan": 2,
+  "Kendala": 2,
+  "Transfer Unit": 2,
+  "Tiba di Tujuan": 3,
+  "Selesai / Terkirim": 4,
+};
+
+export function getPipelineRank(status: ShipmentStatus | TimelineEventType): number {
+  return PIPELINE_RANK[status] ?? 0;
+}
+
+/**
+ * Timeline event types an admin may add next, given the shipment's current
+ * status. Excludes anything that would move the pipeline backward, and
+ * excludes "Barang Diterima" since that's only ever created automatically
+ * when the shipment is first made.
+ */
+export function getAllowedNextEvents(currentStatus: ShipmentStatus): TimelineEventType[] {
+  const currentRank = getPipelineRank(currentStatus);
+  return TIMELINE_EVENT_OPTIONS.filter(
+    (opt) => opt !== "Barang Diterima" && getPipelineRank(opt) >= currentRank,
+  );
+}

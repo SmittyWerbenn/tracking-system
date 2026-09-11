@@ -6,7 +6,7 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { useShipments } from "../../store/ShipmentContext";
 import type { TimelineEventType, TrackingUpdateFormData } from "../../types";
 import { formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
-import { TIMELINE_EVENT_OPTIONS } from "../../utils/status";
+import { getAllowedNextEvents } from "../../utils/status";
 
 const TRUCK_TYPES = ["Wingbox", "CDD", "Box", "Pickup", "Fuso", "Tronton"];
 
@@ -18,8 +18,9 @@ export default function UpdateTracking() {
   const { getByAwb, addTrackingUpdate } = useShipments();
   const navigate = useNavigate();
   const shipment = getByAwb(awb ?? "");
+  const allowedOptions = shipment ? getAllowedNextEvents(shipment.status) : [];
 
-  const [type, setType] = useState<TimelineEventType>("Transit");
+  const [type, setType] = useState<TimelineEventType>(allowedOptions[0] ?? "Transit");
   const [lokasi, setLokasi] = useState("");
   const [tanggal, setTanggal] = useState(todayISO());
   const [jam, setJam] = useState(nowHHMM());
@@ -121,12 +122,16 @@ export default function UpdateTracking() {
                 value={type}
                 onChange={(e) => setType(e.target.value as TimelineEventType)}
               >
-                {TIMELINE_EVENT_OPTIONS.map((opt) => (
+                {allowedOptions.map((opt) => (
                   <option key={opt} value={opt}>
                     {opt}
                   </option>
                 ))}
               </select>
+              <span className="mt-1.5 block text-[11px] text-slate-400">
+                Hanya status lanjutan dari status saat ini ({shipment.status}) yang bisa dipilih -
+                pipeline tidak bisa dibuat mundur.
+              </span>
             </label>
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi</span>

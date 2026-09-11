@@ -2,7 +2,6 @@ import {
   ArrowRight,
   Building2,
   Camera,
-  CheckCircle2,
   FileText,
   Headset,
   Layers,
@@ -12,13 +11,21 @@ import {
   Sparkles,
   Truck,
 } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { PublicLayout } from "../../components/layout/PublicLayout";
 import { StatCard } from "../../components/StatCard";
-import { useShipments } from "../../store/ShipmentContext";
+import { COMPANY_VALUES } from "../../data/companyValues";
 import { photos } from "../../utils/photos";
 import { useDocumentTitle } from "../../utils/useDocumentTitle";
+
+// Figures provided by the business (includes pre-digitization manual
+// operations, not just what's seeded in this prototype's demo dataset).
+const COMPANY_STATS = {
+  totalPengiriman: "9.355+",
+  kotaTerjangkau: "50+",
+  armadaTruck: "70+",
+};
 
 const SERVICES = [
   {
@@ -74,7 +81,6 @@ export default function Home() {
   useDocumentTitle("Beranda");
   const navigate = useNavigate();
   const location = useLocation();
-  const { shipments } = useShipments();
 
   useEffect(() => {
     const state = location.state as { scrollTo?: string } | null;
@@ -84,18 +90,6 @@ export default function Home() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
-
-  const stats = useMemo(() => {
-    const kota = new Set(shipments.flatMap((s) => [s.kotaAsal, s.kotaTujuan]));
-    const armada = new Set(shipments.map((s) => s.truck.nomorUnit));
-    const selesai = shipments.filter((s) => s.status === "Selesai / Terkirim").length;
-    return {
-      totalPengiriman: shipments.length,
-      kotaTerjangkau: kota.size,
-      armadaTruck: armada.size,
-      selesai,
-    };
-  }, [shipments]);
 
   function scrollTo(id: string) {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -149,7 +143,7 @@ export default function Home() {
               </div>
               <div>
                 <p className="text-xs text-slate-500">Cakupan layanan</p>
-                <p className="text-sm font-semibold text-slate-900">{stats.kotaTerjangkau} kota di Indonesia</p>
+                <p className="text-sm font-semibold text-slate-900">{COMPANY_STATS.kotaTerjangkau} kota di Indonesia</p>
               </div>
             </div>
           </div>
@@ -177,16 +171,23 @@ export default function Home() {
               Operasional kami dijalankan oleh tim internal yang menangani langsung setiap
               pengiriman - mulai dari penerimaan barang, koordinasi armada, hingga serah terima ke
               penerima - didukung sistem digital agar prosesnya konsisten dan terdokumentasi
-              dengan baik.
+              dengan baik. Kami berkomitmen menghadirkan layanan pengiriman yang transparan dan
+              mudah dipantau, sehingga customer tidak perlu lagi menghubungi tim secara manual
+              untuk mengetahui posisi barangnya.
             </p>
-            <button
-              onClick={() => navigate("/tentang")}
-              className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-800 hover:underline"
-            >
-              Selengkapnya tentang kami
-              <ArrowRight size={14} />
-            </button>
           </div>
+        </div>
+
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {COMPANY_VALUES.map((v) => (
+            <div key={v.title} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-800">
+                <v.icon size={18} />
+              </div>
+              <p className="mt-3 text-sm font-semibold text-slate-900">{v.title}</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">{v.desc}</p>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -241,14 +242,13 @@ export default function Home() {
         <div className="text-center">
           <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">Kapasitas Layanan Kami</h2>
           <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500 sm:text-base">
-            Ringkasan operasional yang tercatat dalam sistem kami saat ini.
+            Ringkasan operasional layanan kami hingga saat ini.
           </p>
         </div>
-        <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatCard label="Pengiriman Tercatat" value={stats.totalPengiriman} icon={Package} accent="bg-blue-100 text-blue-700" />
-          <StatCard label="Kota Terjangkau" value={stats.kotaTerjangkau} icon={MapPinned} accent="bg-amber-100 text-amber-700" />
-          <StatCard label="Armada Truck" value={stats.armadaTruck} icon={Truck} accent="bg-violet-100 text-violet-700" />
-          <StatCard label="Selesai Terkirim" value={stats.selesai} icon={CheckCircle2} accent="bg-emerald-100 text-emerald-700" />
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard label="Pengiriman Tercatat" value={COMPANY_STATS.totalPengiriman} icon={Package} accent="bg-blue-100 text-blue-700" />
+          <StatCard label="Kota Terjangkau" value={COMPANY_STATS.kotaTerjangkau} icon={MapPinned} accent="bg-amber-100 text-amber-700" />
+          <StatCard label="Armada Truck" value={COMPANY_STATS.armadaTruck} icon={Truck} accent="bg-violet-100 text-violet-700" />
         </div>
       </section>
 

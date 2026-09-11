@@ -1,0 +1,98 @@
+import { AlertTriangle, Check, ClipboardCheck, Navigation, PackageCheck, Truck } from "lucide-react";
+import type { ShipmentStatus } from "../types";
+
+const STEPS = [
+  { label: "Pesanan Dibuat", icon: ClipboardCheck },
+  { label: "Paket Diterima", icon: PackageCheck },
+  { label: "Dalam Pengiriman", icon: Truck },
+  { label: "Out for Delivery", icon: Navigation },
+  { label: "Terkirim", icon: Check },
+] as const;
+
+function getProgress(status: ShipmentStatus): { index: number; hasKendala: boolean } {
+  switch (status) {
+    case "Dalam Persiapan":
+      return { index: 1, hasKendala: false };
+    case "Berangkat":
+    case "Transit":
+    case "Dalam Perjalanan":
+      return { index: 2, hasKendala: false };
+    case "Kendala":
+      return { index: 2, hasKendala: true };
+    case "Tiba di Tujuan":
+      return { index: 3, hasKendala: false };
+    case "Selesai / Terkirim":
+      return { index: 4, hasKendala: false };
+    default:
+      return { index: 0, hasKendala: false };
+  }
+}
+
+export function StatusStepper({ status }: { status: ShipmentStatus }) {
+  const { index: current, hasKendala } = getProgress(status);
+
+  return (
+    <div>
+      {hasKendala && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700">
+          <AlertTriangle size={16} className="shrink-0" />
+          Ada kendala pada tahap pengiriman saat ini. Lihat detail pada riwayat perjalanan di
+          bawah.
+        </div>
+      )}
+      <ol className="flex items-start">
+        {STEPS.map((step, i) => {
+          const done = i < current;
+          const isCurrent = i === current;
+          const Icon = step.icon;
+          return (
+            <li key={step.label} className="flex flex-1 flex-col items-center last:flex-none">
+              <div className="flex w-full items-center">
+                <span
+                  className={`ml-[50%] h-0.5 flex-1 first:hidden ${
+                    i === 0 ? "invisible" : done || isCurrent ? "bg-blue-800" : "bg-slate-200"
+                  }`}
+                  style={{ marginLeft: i === 0 ? undefined : 0 }}
+                />
+              </div>
+              <div className="relative flex w-full items-center">
+                <div
+                  className={`absolute left-0 top-1/2 h-0.5 w-1/2 -translate-y-1/2 ${
+                    i === 0 ? "invisible" : done ? "bg-blue-800" : isCurrent ? "bg-blue-800" : "bg-slate-200"
+                  }`}
+                />
+                <div
+                  className={`absolute right-0 top-1/2 h-0.5 w-1/2 -translate-y-1/2 ${
+                    i === STEPS.length - 1 ? "invisible" : done ? "bg-blue-800" : "bg-slate-200"
+                  }`}
+                />
+                <span
+                  className={`relative z-10 mx-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-4 ring-white sm:h-10 sm:w-10 ${
+                    isCurrent && hasKendala
+                      ? "bg-red-500 text-white"
+                      : done || isCurrent
+                        ? "bg-blue-800 text-white"
+                        : "bg-slate-100 text-slate-400"
+                  }`}
+                >
+                  {isCurrent && hasKendala ? (
+                    <AlertTriangle size={16} />
+                  ) : (
+                    <Icon size={16} />
+                  )}
+                </span>
+              </div>
+              <p
+                className={`mt-2 max-w-[70px] text-center text-[10px] font-medium leading-tight sm:max-w-none sm:text-xs ${
+                  done || isCurrent ? "text-slate-800" : "text-slate-400"
+                }`}
+              >
+                {step.label}
+              </p>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}

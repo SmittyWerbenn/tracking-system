@@ -1,12 +1,16 @@
 import { ArrowRight, Menu, Truck, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
-const navItems = [
-  { to: "/", label: "Home", end: true },
-  { to: "/tracking", label: "Tracking", end: false },
-  { to: "/tentang", label: "Tentang Kami", end: true },
-  { to: "/kontak", label: "Hubungi Kami", end: true },
+type NavItem =
+  | { kind: "route"; to: string; label: string; end?: boolean }
+  | { kind: "anchor"; sectionId: string; label: string };
+
+const navItems: NavItem[] = [
+  { kind: "route", to: "/", label: "Beranda", end: true },
+  { kind: "anchor", sectionId: "tentang", label: "Tentang Kami" },
+  { kind: "anchor", sectionId: "layanan", label: "Layanan" },
+  { kind: "anchor", sectionId: "keunggulan", label: "Keunggulan" },
 ];
 
 interface PublicLayoutProps {
@@ -17,6 +21,17 @@ interface PublicLayoutProps {
 
 export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  function goToSection(sectionId: string) {
+    setMobileOpen(false);
+    if (location.pathname === "/") {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      navigate("/", { state: { scrollTo: sectionId } });
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
@@ -28,25 +43,35 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
             </div>
             <div className="leading-tight text-white">
               <p className="text-sm font-semibold sm:text-base">PT Gangsar Mitra Sautama</p>
-              <p className="text-[11px] text-blue-200 sm:text-xs">Tracking Pengiriman</p>
+              <p className="text-[11px] text-blue-200 sm:text-xs">Jasa Logistik &amp; Pengiriman</p>
             </div>
           </NavLink>
 
           <nav className="hidden items-center gap-1 md:flex">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive ? "bg-white/15 text-white" : "text-blue-100 hover:bg-white/10 hover:text-white"
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
+            {navItems.map((item) =>
+              item.kind === "route" ? (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    `rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                      isActive ? "bg-white/15 text-white" : "text-blue-100 hover:bg-white/10 hover:text-white"
+                    }`
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              ) : (
+                <button
+                  key={item.sectionId}
+                  onClick={() => goToSection(item.sectionId)}
+                  className="rounded-md px-3 py-2 text-sm font-medium text-blue-100 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  {item.label}
+                </button>
+              ),
+            )}
             <NavLink
               to="/tracking"
               className="ml-2 inline-flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-2 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-50"
@@ -68,21 +93,31 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
 
         {mobileOpen && (
           <nav className="flex flex-col gap-0.5 border-t border-white/10 px-4 py-3 md:hidden">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                onClick={() => setMobileOpen(false)}
-                className={({ isActive }) =>
-                  `rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
-                    isActive ? "bg-white/15 text-white" : "text-blue-100 hover:bg-white/10 hover:text-white"
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
+            {navItems.map((item) =>
+              item.kind === "route" ? (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  onClick={() => setMobileOpen(false)}
+                  className={({ isActive }) =>
+                    `rounded-md px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                      isActive ? "bg-white/15 text-white" : "text-blue-100 hover:bg-white/10 hover:text-white"
+                    }`
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              ) : (
+                <button
+                  key={item.sectionId}
+                  onClick={() => goToSection(item.sectionId)}
+                  className="rounded-md px-3 py-2.5 text-left text-sm font-medium text-blue-100 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  {item.label}
+                </button>
+              ),
+            )}
             <NavLink
               to="/tracking"
               onClick={() => setMobileOpen(false)}
@@ -110,8 +145,8 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
                 <p className="text-sm font-semibold text-slate-900">PT Gangsar Mitra Sautama</p>
               </div>
               <p className="mt-3 max-w-xs text-xs leading-relaxed text-slate-500">
-                Layanan pengiriman barang antar kota dengan resi digital dan tracking real-time,
-                agar setiap perjalanan barang Anda transparan dari awal hingga sampai tujuan.
+                Perusahaan jasa logistik dan pengiriman barang antar kota, didukung sistem digital
+                agar proses layanan lebih transparan dan efisien.
               </p>
             </div>
 
@@ -120,31 +155,31 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
               <ul className="mt-3 flex flex-col gap-2 text-sm text-slate-600">
                 <li>
                   <NavLink to="/" className="hover:text-blue-800">
-                    Home
+                    Beranda
                   </NavLink>
+                </li>
+                <li>
+                  <button onClick={() => goToSection("tentang")} className="text-left hover:text-blue-800">
+                    Tentang Kami
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => goToSection("layanan")} className="text-left hover:text-blue-800">
+                    Layanan
+                  </button>
                 </li>
                 <li>
                   <NavLink to="/tracking" className="hover:text-blue-800">
-                    Lacak Pengiriman
-                  </NavLink>
-                </li>
-                <li>
-                  <NavLink to="/tentang" className="hover:text-blue-800">
-                    Tentang Kami
-                  </NavLink>
-                </li>
-                <li>
-                  <NavLink to="/kontak" className="hover:text-blue-800">
-                    Hubungi Kami
+                    Lacak Paket
                   </NavLink>
                 </li>
               </ul>
             </div>
 
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Info</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Kontak</p>
               <p className="mt-3 text-sm text-slate-600">
-                Butuh bantuan seputar pengiriman? Kunjungi halaman{" "}
+                Butuh bantuan seputar layanan kami? Kunjungi halaman{" "}
                 <NavLink to="/kontak" className="font-medium text-blue-800 hover:underline">
                   Hubungi Kami
                 </NavLink>{" "}

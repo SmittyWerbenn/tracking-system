@@ -3,8 +3,7 @@ import { useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 
 const navItems = [
-  { to: "/", label: "Beranda", end: true },
-  { to: "/tracking", label: "Lacak Kiriman", end: false },
+  { to: "/", label: "Tracking", end: true },
   { to: "/tentang", label: "Tentang Kami", end: true },
   { to: "/kontak", label: "Hubungi Kami", end: true },
 ];

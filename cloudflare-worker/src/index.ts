@@ -8,6 +8,7 @@ export interface Env {
   BREVO_SMTP_KEY: string;
   BREVO_SENDER_EMAIL: string;
   BREVO_SENDER_NAME: string;
+  BREVO_FROM_NAME?: string;
   ALLOWED_ORIGINS: string;
 }
 
@@ -70,7 +71,10 @@ export default {
     }
 
     const recipientRole: EmailRecipientRole = data.recipientRole === "pengirim" ? "pengirim" : "penerima";
+    // senderName brands the email body; fromName is only the SMTP From
+    // mailbox display name, which can be a different verified sender.
     const senderName = env.BREVO_SENDER_NAME || "PT Gangsar Mitra Sautama";
+    const fromName = env.BREVO_FROM_NAME || senderName;
 
     const html = buildEmailHtml({
       toName: data.toName,
@@ -98,7 +102,7 @@ export default {
       });
 
       await mailer.send({
-        from: { name: senderName, email: env.BREVO_SENDER_EMAIL },
+        from: { name: fromName, email: env.BREVO_SENDER_EMAIL },
         to: { name: data.toName, email: data.to },
         subject: emailSubject(data.awb, recipientRole),
         html,

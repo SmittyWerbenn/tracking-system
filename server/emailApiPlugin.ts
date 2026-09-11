@@ -31,7 +31,11 @@ function sendJson(res: ServerResponse, statusCode: number, body: unknown) {
 }
 
 function createHandler(env: Record<string, string>): Connect.NextHandleFunction {
+  // senderName brands the email body (header bar, "Dari" field, footer);
+  // fromName is only the SMTP From mailbox display name shown in the inbox
+  // list, which can be a different, independently-verified sender identity.
   const senderName = env.BREVO_SENDER_NAME || "PT Gangsar Mitra Sautama";
+  const fromName = env.BREVO_FROM_NAME || senderName;
 
   return async (req, res) => {
     if (req.method !== "POST") {
@@ -81,7 +85,7 @@ function createHandler(env: Record<string, string>): Connect.NextHandleFunction 
       });
 
       await transporter.sendMail({
-        from: `"${senderName}" <${env.BREVO_SENDER_EMAIL}>`,
+        from: `"${fromName}" <${env.BREVO_SENDER_EMAIL}>`,
         to: data.toName ? `"${data.toName}" <${data.to}>` : data.to,
         subject: emailSubject(data.awb, recipientRole),
         html,

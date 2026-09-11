@@ -8,8 +8,10 @@ compatibility_flags = ["nodejs_compat"]
 #   BREVO_SMTP_PORT
 #   BREVO_SMTP_LOGIN
 #   BREVO_SMTP_KEY
-#   BREVO_SENDER_EMAIL
-#   BREVO_SENDER_NAME
+#   BREVO_SENDER_EMAIL   - must be a verified sender/domain in Brevo
+#   BREVO_SENDER_NAME    - company name shown in the email body
+#   BREVO_FROM_NAME      - optional; SMTP From mailbox display name
+#                          (defaults to BREVO_SENDER_NAME if unset)
 
 [vars]
 # Origins allowed to call this API (comma-separated), set as a plain var

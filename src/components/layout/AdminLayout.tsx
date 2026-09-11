@@ -4,22 +4,25 @@ import {
   Menu,
   Package,
   PackagePlus,
+  Settings,
   Truck,
   X,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../store/AuthContext";
+import { initials } from "../../utils/initials";
 
 const navItems = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/admin/pengiriman/baru", label: "Buat Pengiriman", icon: PackagePlus, end: true },
   { to: "/admin/pengiriman", label: "Data Pengiriman", icon: Package, end: true },
+  { to: "/admin/pengaturan", label: "Pengaturan Akun", icon: Settings, end: true },
 ];
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { logout } = useAuth();
+  const { logout, profile } = useAuth();
   const navigate = useNavigate();
 
   function handleLogout() {
@@ -50,10 +53,16 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="hidden text-sm text-slate-500 sm:block">Admin - Dewi</span>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-sm font-semibold text-amber-700">
-            AD
-          </div>
+          <NavLink
+            to="/admin/pengaturan"
+            className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-slate-100"
+            title="Pengaturan Akun"
+          >
+            <span className="hidden text-sm text-slate-500 sm:block">{profile.nama}</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-sm font-semibold text-amber-700">
+              {initials(profile.nama)}
+            </div>
+          </NavLink>
           <button
             onClick={handleLogout}
             title="Keluar"

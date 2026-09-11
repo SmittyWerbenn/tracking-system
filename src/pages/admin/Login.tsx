@@ -89,7 +89,8 @@ export default function Login() {
         </form>
 
         <p className="mt-5 rounded-lg bg-slate-50 px-3 py-2 text-center text-xs text-slate-400">
-          Demo prototype - gunakan <span className="font-mono font-medium text-slate-600">admin</span> /{" "}
+          Demo prototype - default username/password:{" "}
+          <span className="font-mono font-medium text-slate-600">admin</span> /{" "}
           <span className="font-mono font-medium text-slate-600">admin</span>
         </p>
       </div>

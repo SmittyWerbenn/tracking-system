@@ -3,6 +3,7 @@ import { RequireAuth } from "./components/RequireAuth";
 import { AuthProvider } from "./store/AuthContext";
 import { ShipmentProvider } from "./store/ShipmentContext";
 
+import AccountSettings from "./pages/admin/AccountSettings";
 import Dashboard from "./pages/admin/Dashboard";
 import CreateShipment from "./pages/admin/CreateShipment";
 import Login from "./pages/admin/Login";
@@ -76,6 +77,14 @@ export default function App() {
               element={
                 <RequireAuth>
                   <UpdateTracking />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin/pengaturan"
+              element={
+                <RequireAuth>
+                  <AccountSettings />
                 </RequireAuth>
               }
             />

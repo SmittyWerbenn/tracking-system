@@ -30,3 +30,7 @@ dist-ssr
 
 # Claude Code runtime state (not part of the app)
 .claude/scheduled_tasks.lock
+
+# Cloudflare Worker local state / secrets
+cloudflare-worker/.wrangler
+cloudflare-worker/.dev.vars

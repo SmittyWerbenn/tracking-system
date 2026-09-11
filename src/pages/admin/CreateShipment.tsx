@@ -80,6 +80,7 @@ export default function CreateShipment() {
   const [form, setForm] = useState<ShipmentFormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<Shipment | null>(null);
+  const [sendCopyToPengirim, setSendCopyToPengirim] = useState(true);
   const [emailSending, setEmailSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -114,13 +115,19 @@ export default function CreateShipment() {
     if (!created) return;
     setEmailSending(true);
     setEmailError(null);
-    const result = await sendTrackingEmail(created, trackingUrl);
+
+    const targets: Array<"penerima" | "pengirim"> = sendCopyToPengirim
+      ? ["penerima", "pengirim"]
+      : ["penerima"];
+    const results = await Promise.all(targets.map((role) => sendTrackingEmail(created, trackingUrl, role)));
     setEmailSending(false);
-    if (result.ok) {
+
+    const failed = results.find((r) => !r.ok);
+    if (!failed) {
       markEmailSent(created.awb);
       setEmailSent(true);
     } else {
-      setEmailError(result.error ?? "Gagal mengirim email.");
+      setEmailError(failed.error ?? "Gagal mengirim email.");
     }
   }
 
@@ -345,10 +352,27 @@ export default function CreateShipment() {
                 </p>
               </div>
 
+              {!emailSent && (
+                <label className="mt-4 flex items-start gap-2.5 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-3 text-xs text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={sendCopyToPengirim}
+                    onChange={(e) => setSendCopyToPengirim(e.target.checked)}
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-slate-300 text-blue-800 focus:ring-blue-500"
+                  />
+                  <span>
+                    Kirim juga salinan resi ke email pengirim{" "}
+                    <span className="font-medium text-slate-800">({created.pengirim.email})</span>
+                  </span>
+                </label>
+              )}
+
               {emailSent && (
                 <div className="mt-4 flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700">
                   <CheckCircle2 size={16} />
-                  Email berhasil dikirim ke {created.penerima.email}
+                  {sendCopyToPengirim
+                    ? `Email berhasil dikirim ke penerima (${created.penerima.email}) dan pengirim (${created.pengirim.email})`
+                    : `Email berhasil dikirim ke ${created.penerima.email}`}
                 </div>
               )}
               {emailError && (

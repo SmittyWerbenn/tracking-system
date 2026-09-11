@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import nodemailer from "nodemailer";
 import type { Connect, Plugin } from "vite";
-import { buildEmailHtml } from "./emailTemplate.ts";
+import { buildEmailHtml, emailSubject, type EmailRecipientRole } from "./emailTemplate.ts";
 
 interface SendEmailBody {
   to?: string;
@@ -12,6 +12,7 @@ interface SendEmailBody {
   status?: string;
   tanggalDibuat?: string;
   trackingUrl?: string;
+  recipientRole?: EmailRecipientRole;
 }
 
 function readBody(req: IncomingMessage): Promise<string> {
@@ -65,6 +66,8 @@ function createHandler(env: Record<string, string>): Connect.NextHandleFunction 
         },
       });
 
+      const recipientRole: EmailRecipientRole = data.recipientRole === "pengirim" ? "pengirim" : "penerima";
+
       const html = buildEmailHtml({
         toName: data.toName,
         awb: data.awb,
@@ -74,12 +77,13 @@ function createHandler(env: Record<string, string>): Connect.NextHandleFunction 
         tanggalDibuat: data.tanggalDibuat ?? new Date().toISOString().slice(0, 10),
         trackingUrl: data.trackingUrl,
         senderName,
+        recipientRole,
       });
 
       await transporter.sendMail({
         from: `"${senderName}" <${env.BREVO_SENDER_EMAIL}>`,
         to: data.toName ? `"${data.toName}" <${data.to}>` : data.to,
-        subject: `Resi Pengiriman Anda - AWB ${data.awb}`,
+        subject: emailSubject(data.awb, recipientRole),
         html,
       });
 

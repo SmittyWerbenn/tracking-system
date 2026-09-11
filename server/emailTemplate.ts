@@ -19,6 +19,8 @@ function formatTanggal(tanggal: string): string {
   return `${d} ${BULAN[m - 1]} ${y}`;
 }
 
+export type EmailRecipientRole = "penerima" | "pengirim";
+
 export interface EmailTemplateData {
   toName?: string;
   awb: string;
@@ -28,10 +30,27 @@ export interface EmailTemplateData {
   tanggalDibuat: string;
   trackingUrl: string;
   senderName: string;
+  recipientRole: EmailRecipientRole;
+}
+
+export function emailSubject(awb: string, recipientRole: EmailRecipientRole): string {
+  return recipientRole === "pengirim"
+    ? `Resi Pengiriman Telah Diterbitkan - AWB ${awb}`
+    : `Resi Pengiriman Anda - AWB ${awb}`;
 }
 
 export function buildEmailHtml(data: EmailTemplateData): string {
-  const { toName, awb, kotaAsal, kotaTujuan, status, tanggalDibuat, trackingUrl, senderName } = data;
+  const { toName, awb, kotaAsal, kotaTujuan, status, tanggalDibuat, trackingUrl, senderName, recipientRole } = data;
+
+  const introText =
+    recipientRole === "pengirim"
+      ? "Terima kasih telah mempercayakan pengiriman barang Anda kepada kami. Resi pengiriman Anda telah berhasil diterbitkan. Berikut detail resi pengiriman Anda:"
+      : "Pengiriman Anda telah berhasil dibuat dan sedang kami proses. Berikut detail resi pengiriman Anda:";
+
+  const footerNote =
+    recipientRole === "pengirim"
+      ? 'Simpan email ini sebagai bukti resi pengiriman barang Anda. Anda dapat memantau perjalanan barang dengan mengklik tombol "Lacak Kiriman" di atas.'
+      : 'Anda dapat memantau posisi barang secara real-time dengan mengklik tombol "Lacak Kiriman" di atas. Simpan email ini sebagai referensi pengiriman Anda.';
 
   return `<!doctype html>
 <html lang="id">
@@ -48,7 +67,7 @@ export function buildEmailHtml(data: EmailTemplateData): string {
             <tr>
               <td style="padding:28px 24px;">
                 <p style="margin:0 0 12px;color:#334155;font-size:14px;">Halo Bapak/Ibu <strong>${toName ?? "Pelanggan"}</strong>,</p>
-                <p style="margin:0 0 20px;color:#334155;font-size:14px;line-height:1.6;">Pengiriman Anda telah berhasil dibuat dan sedang kami proses. Berikut detail resi pengiriman Anda:</p>
+                <p style="margin:0 0 20px;color:#334155;font-size:14px;line-height:1.6;">${introText}</p>
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
                   <tr>
                     <td style="padding:16px;">
@@ -81,7 +100,7 @@ export function buildEmailHtml(data: EmailTemplateData): string {
                 <div style="text-align:center;margin-top:26px;">
                   <a href="${trackingUrl}" style="display:inline-block;background-color:#172554;color:#ffffff;text-decoration:none;font-size:14px;font-weight:bold;padding:12px 28px;border-radius:8px;">Lacak Kiriman</a>
                 </div>
-                <p style="margin:26px 0 0;color:#94a3b8;font-size:12px;line-height:1.6;">Anda dapat memantau posisi barang secara real-time dengan mengklik tombol "Lacak Kiriman" di atas. Simpan email ini sebagai referensi pengiriman Anda.</p>
+                <p style="margin:26px 0 0;color:#94a3b8;font-size:12px;line-height:1.6;">${footerNote}</p>
               </td>
             </tr>
             <tr>

@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, Mail, MapPin, RotateCw, Truck } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, Mail, MapPin, RotateCw, Send, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -16,17 +16,36 @@ export default function EmailPreview() {
   const [sent, setSent] = useState(!!shipment?.emailTerkirim);
   const [error, setError] = useState<string | null>(null);
 
+  const [pengirimSending, setPengirimSending] = useState(false);
+  const [pengirimSent, setPengirimSent] = useState(false);
+  const [pengirimError, setPengirimError] = useState<string | null>(null);
+
+  function trackingUrlFor(current: NonNullable<typeof shipment>) {
+    return `${window.location.origin}${window.location.pathname}#/tracking/${current.awb}`;
+  }
+
   async function handleSend(current: NonNullable<typeof shipment>) {
     setSending(true);
     setError(null);
-    const trackingUrl = `${window.location.origin}${window.location.pathname}#/tracking/${current.awb}`;
-    const result = await sendTrackingEmail(current, trackingUrl);
+    const result = await sendTrackingEmail(current, trackingUrlFor(current), "penerima");
     setSending(false);
     if (result.ok) {
       markEmailSent(current.awb);
       setSent(true);
     } else {
       setError(result.error ?? "Gagal mengirim email.");
+    }
+  }
+
+  async function handleSendToPengirim(current: NonNullable<typeof shipment>) {
+    setPengirimSending(true);
+    setPengirimError(null);
+    const result = await sendTrackingEmail(current, trackingUrlFor(current), "pengirim");
+    setPengirimSending(false);
+    if (result.ok) {
+      setPengirimSent(true);
+    } else {
+      setPengirimError(result.error ?? "Gagal mengirim email.");
     }
   }
 
@@ -99,6 +118,30 @@ export default function EmailPreview() {
             sender email yang sudah diverifikasi di akun Brevo Anda).
           </p>
         </div>
+      )}
+
+      <div className="mx-auto mt-4 flex max-w-xl flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
+        <div className="text-sm text-slate-600">
+          Kirim juga salinan resi ini ke email pengirim{" "}
+          <span className="font-medium text-slate-800">({shipment.pengirim.email})</span>
+        </div>
+        {pengirimSent ? (
+          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+            <CheckCircle2 size={15} /> Terkirim
+          </span>
+        ) : (
+          <button
+            onClick={() => handleSendToPengirim(shipment)}
+            disabled={pengirimSending}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100 disabled:opacity-60"
+          >
+            {pengirimSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            {pengirimError ? "Coba Lagi" : "Kirim ke Pengirim"}
+          </button>
+        )}
+      </div>
+      {pengirimError && (
+        <p className="mx-auto mt-1.5 max-w-xl text-xs font-medium text-red-600">{pengirimError}</p>
       )}
 
       <div className="mx-auto mt-6 max-w-xl">

@@ -116,11 +116,16 @@ export default function Dashboard() {
           <div className="border-b border-slate-100 px-5 py-4">
             <h2 className="text-sm font-semibold text-slate-800">Status Pengiriman</h2>
           </div>
-          <ul className="space-y-3 p-5">
+          <ul className="divide-y divide-slate-100">
             {Object.entries(statusBreakdown).map(([status, count]) => (
-              <li key={status} className="flex items-center justify-between gap-3">
-                <StatusBadge status={status as ShipmentStatus} size="sm" />
-                <span className="text-sm font-semibold text-slate-700">{count}</span>
+              <li key={status}>
+                <Link
+                  to={`/admin/pengiriman?status=${encodeURIComponent(status)}`}
+                  className="flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-slate-50"
+                >
+                  <StatusBadge status={status as ShipmentStatus} size="sm" />
+                  <span className="text-sm font-semibold text-slate-700">{count}</span>
+                </Link>
               </li>
             ))}
           </ul>

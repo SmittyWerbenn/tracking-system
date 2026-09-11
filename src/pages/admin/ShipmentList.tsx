@@ -1,6 +1,6 @@
 import { Eye, FileEdit, MapPin, Printer, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useShipments } from "../../store/ShipmentContext";
@@ -8,11 +8,30 @@ import type { ShipmentStatus } from "../../types";
 import { formatTanggalPendek } from "../../utils/format";
 import { SHIPMENT_STATUS_OPTIONS } from "../../utils/status";
 
+function isShipmentStatus(value: string): value is ShipmentStatus {
+  return (SHIPMENT_STATUS_OPTIONS as string[]).includes(value);
+}
+
 export default function ShipmentList() {
   const { shipments } = useShipments();
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ShipmentStatus | "Semua">("Semua");
+  const [searchParams, setSearchParams] = useSearchParams();
   const [dateFilter, setDateFilter] = useState("");
+
+  const statusParam = searchParams.get("status") ?? "";
+  const statusFilter: ShipmentStatus | "Semua" = isShipmentStatus(statusParam) ? statusParam : "Semua";
+
+  function handleStatusFilterChange(value: ShipmentStatus | "Semua") {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value === "Semua") {
+        next.delete("status");
+      } else {
+        next.set("status", value);
+      }
+      return next;
+    });
+  }
 
   const filtered = useMemo(() => {
     return shipments
@@ -74,7 +93,7 @@ export default function ShipmentList() {
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as ShipmentStatus | "Semua")}
+          onChange={(e) => handleStatusFilterChange(e.target.value as ShipmentStatus | "Semua")}
           className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
         >
           <option value="Semua">Semua Status</option>
@@ -94,7 +113,7 @@ export default function ShipmentList() {
           <button
             onClick={() => {
               setQuery("");
-              setStatusFilter("Semua");
+              handleStatusFilterChange("Semua");
               setDateFilter("");
             }}
             className="text-sm font-medium text-slate-500 hover:text-slate-800"

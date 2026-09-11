@@ -13,10 +13,10 @@ import {
 } from "lucide-react";
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import heroImage from "../../assets/hero-package-handoff.jpg";
 import { PublicLayout } from "../../components/layout/PublicLayout";
 import { StatCard } from "../../components/StatCard";
 import { COMPANY_VALUES } from "../../data/companyValues";
-import { photos } from "../../utils/photos";
 import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
 // Figures provided by the business (includes pre-digitization manual
@@ -132,8 +132,8 @@ export default function Home() {
 
         <div className="relative animate-[fadeIn_0.6s_ease-out]">
           <img
-            src={photos.truckWingboxA}
-            alt="Armada truck pengiriman PT Gangsar Mitra Sautama di jalan raya"
+            src={heroImage}
+            alt="Serah terima paket antara kurir dan penerima"
             className="aspect-[4/3] w-full rounded-2xl border border-slate-200 object-cover shadow-sm"
           />
           <div className="absolute -bottom-5 left-4 right-4 rounded-xl border border-slate-200 bg-white p-4 shadow-md sm:left-6 sm:right-auto sm:w-64">

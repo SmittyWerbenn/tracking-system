@@ -7,12 +7,14 @@ import { StatusStepper } from "../../components/StatusStepper";
 import { TrackingTimeline } from "../../components/TrackingTimeline";
 import { useShipments } from "../../store/ShipmentContext";
 import { formatTanggalPanjang } from "../../utils/format";
+import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
 export default function TrackingResult() {
   const { awb } = useParams<{ awb: string }>();
   const { getByAwb } = useShipments();
   const navigate = useNavigate();
   const shipment = getByAwb(awb ?? "");
+  useDocumentTitle(shipment ? `Tracking ${shipment.awb}` : `AWB ${awb} Tidak Ditemukan`);
 
   const [query, setQuery] = useState("");
   const [notFound, setNotFound] = useState(false);

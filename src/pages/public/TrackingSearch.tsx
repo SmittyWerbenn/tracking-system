@@ -4,8 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { PublicLayout } from "../../components/layout/PublicLayout";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useShipments } from "../../store/ShipmentContext";
+import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
 export default function TrackingSearch() {
+  useDocumentTitle("Lacak Pengiriman");
   const [awb, setAwb] = useState("");
   const [notFound, setNotFound] = useState(false);
   const navigate = useNavigate();

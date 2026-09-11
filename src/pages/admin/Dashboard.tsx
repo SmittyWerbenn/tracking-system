@@ -8,34 +8,11 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useShipments } from "../../store/ShipmentContext";
 import type { ShipmentStatus } from "../../types";
 import { formatTanggalPendek } from "../../utils/format";
-
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: number;
-  icon: typeof Package;
-  accent: string;
-}) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-slate-500">{label}</p>
-        <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${accent}`}>
-          <Icon size={18} />
-        </div>
-      </div>
-      <p className="mt-3 text-3xl font-semibold text-slate-900">{value}</p>
-    </div>
-  );
-}
 
 export default function Dashboard() {
   const { shipments } = useShipments();

@@ -1,5 +1,6 @@
 import { Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { PublicLayout } from "../../components/layout/PublicLayout";
+import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
 const CHANNELS = [
   {
@@ -23,6 +24,7 @@ const CHANNELS = [
 ];
 
 export default function Contact() {
+  useDocumentTitle("Hubungi Kami");
   return (
     <PublicLayout>
       <section className="rounded-2xl bg-white p-6 shadow-sm sm:p-8">

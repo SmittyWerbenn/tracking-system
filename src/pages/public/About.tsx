@@ -1,5 +1,6 @@
 import { Building2, PackageCheck, ShieldCheck, Truck } from "lucide-react";
 import { PublicLayout } from "../../components/layout/PublicLayout";
+import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
 const VALUES = [
   {
@@ -20,6 +21,7 @@ const VALUES = [
 ];
 
 export default function About() {
+  useDocumentTitle("Tentang Kami");
   return (
     <PublicLayout>
       <section className="rounded-2xl bg-white p-6 shadow-sm sm:p-8">

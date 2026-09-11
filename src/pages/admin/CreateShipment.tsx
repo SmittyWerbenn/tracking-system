@@ -16,6 +16,7 @@ import { AdminLayout } from "../../components/layout/AdminLayout";
 import { QRCode } from "../../components/QRCode";
 import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment, ShipmentFormData } from "../../types";
+import { compressImage } from "../../utils/compressImage";
 import { photos } from "../../utils/photos";
 import { sendTrackingEmail } from "../../utils/sendEmail";
 
@@ -78,6 +79,7 @@ export default function CreateShipment() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState<ShipmentFormData>(emptyForm);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<Shipment | null>(null);
   const [sendCopyToPengirim, setSendCopyToPengirim] = useState(true);
@@ -92,9 +94,10 @@ export default function CreateShipment() {
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => update("fotoBarang", reader.result as string);
-    reader.readAsDataURL(file);
+    setPhotoError(null);
+    compressImage(file)
+      .then((dataUrl) => update("fotoBarang", dataUrl))
+      .catch(() => setPhotoError("Gagal memproses foto. Coba foto lain."));
   }
 
   function handleSubmit(e: FormEvent) {
@@ -275,6 +278,7 @@ export default function CreateShipment() {
                 Opsional. Jika tidak diunggah, sistem akan menggunakan foto contoh.
               </p>
             </div>
+            {photoError && <p className="mt-1.5 text-xs font-medium text-red-600">{photoError}</p>}
           </Field>
         </Section>
 

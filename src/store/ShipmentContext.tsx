@@ -35,7 +35,14 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
   const [shipments, setShipments] = useState<Shipment[]>(loadInitial);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(shipments));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(shipments));
+    } catch (err) {
+      // Most likely a quota error from storing many base64 photos - data
+      // stays in memory for this session either way, so don't crash the
+      // app over a failed persist.
+      console.error("[ShipmentContext] gagal menyimpan ke localStorage:", err);
+    }
   }, [shipments]);
 
   const value = useMemo<ShipmentContextValue>(

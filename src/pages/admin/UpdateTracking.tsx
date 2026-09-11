@@ -5,6 +5,7 @@ import { AdminLayout } from "../../components/layout/AdminLayout";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useShipments } from "../../store/ShipmentContext";
 import type { TimelineEventType, TrackingUpdateFormData } from "../../types";
+import { compressImage } from "../../utils/compressImage";
 import { formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
 import { getAllowedNextEvents } from "../../utils/status";
 
@@ -26,6 +27,7 @@ export default function UpdateTracking() {
   const [jam, setJam] = useState(nowHHMM());
   const [keterangan, setKeterangan] = useState("");
   const [foto, setFoto] = useState<string[]>([]);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [nomorUnit, setNomorUnit] = useState(shipment?.truck.nomorUnit ?? "");
   const [jenisTruck, setJenisTruck] = useState(shipment?.truck.jenis ?? "Wingbox");
   const [driver, setDriver] = useState(shipment?.truck.driver ?? "");
@@ -48,10 +50,11 @@ export default function UpdateTracking() {
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
+    setPhotoError(null);
     files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => setFoto((prev) => [...prev, reader.result as string]);
-      reader.readAsDataURL(file);
+      compressImage(file)
+        .then((dataUrl) => setFoto((prev) => [...prev, dataUrl]))
+        .catch(() => setPhotoError("Gagal memproses salah satu foto. Coba lagi."));
     });
   }
 
@@ -202,6 +205,7 @@ export default function UpdateTracking() {
                   </div>
                 ))}
               </div>
+              {photoError && <p className="mt-1.5 text-xs font-medium text-red-600">{photoError}</p>}
             </label>
 
             <div className="sm:col-span-2 border-t border-slate-100 pt-4">

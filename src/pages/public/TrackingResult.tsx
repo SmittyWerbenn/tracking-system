@@ -115,16 +115,29 @@ export default function TrackingResult() {
 
       {/* Summary card */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-5 sm:px-6">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Nomor AWB
-            </p>
-            <p className="font-mono text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-              {shipment.awb}
-            </p>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-5 sm:px-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                Nomor Resi
+              </p>
+              <p className="font-mono text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+                {shipment.awb}
+              </p>
+            </div>
+            <StatusBadge status={shipment.status} />
           </div>
-          <StatusBadge status={shipment.status} />
+          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+            <CalendarClock size={14} className="text-slate-400" />
+            Estimasi Tiba:{" "}
+            <span className="font-medium text-slate-700">
+              {isDelivered
+                ? "Barang telah terkirim"
+                : shipment.estimasiTiba
+                  ? formatTanggalPanjang(shipment.estimasiTiba)
+                  : "Belum tersedia"}
+            </span>
+          </div>
         </div>
         <div className="grid grid-cols-2 divide-x divide-slate-100 border-t border-slate-100 px-5 py-4 sm:px-6">
           <div>
@@ -143,17 +156,6 @@ export default function TrackingResult() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 border-t border-slate-100 px-5 py-3 text-xs text-slate-500 sm:px-6">
-          <CalendarClock size={14} className="text-slate-400" />
-          Estimasi Tiba:{" "}
-          <span className="font-medium text-slate-700">
-            {isDelivered
-              ? "Barang telah terkirim"
-              : shipment.estimasiTiba
-                ? formatTanggalPanjang(shipment.estimasiTiba)
-                : "Belum tersedia"}
-          </span>
-        </div>
       </div>
 
       {/* Progress stepper */}
@@ -165,29 +167,29 @@ export default function TrackingResult() {
       <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <h2 className="mb-3.5 text-sm font-semibold text-slate-800">Detail Pengiriman</h2>
-          <dl className="flex flex-col gap-3">
-            <div className="flex items-center gap-3">
+          <dl className="flex flex-col divide-y divide-slate-100">
+            <div className="flex items-center gap-3 py-2.5 first:pt-0">
               <Hash size={16} className="shrink-0 text-slate-400" />
               <div className="min-w-0">
                 <dt className="text-[11px] text-slate-400">Nomor Resi</dt>
                 <dd className="truncate font-mono text-sm font-medium text-slate-800">{shipment.awb}</dd>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 py-2.5">
               <Truck size={16} className="shrink-0 text-slate-400" />
               <div className="min-w-0">
                 <dt className="text-[11px] text-slate-400">Layanan</dt>
                 <dd className="text-sm font-medium text-slate-800">{shipment.layanan}</dd>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 py-2.5">
               <Weight size={16} className="shrink-0 text-slate-400" />
               <div className="min-w-0">
                 <dt className="text-[11px] text-slate-400">Berat</dt>
                 <dd className="text-sm font-medium text-slate-800">{shipment.beratKg} Kg</dd>
               </div>
             </div>
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-3 py-2.5">
               <Package size={16} className="mt-0.5 shrink-0 text-slate-400" />
               <div className="min-w-0">
                 <dt className="text-[11px] text-slate-400">Isi Paket</dt>
@@ -196,7 +198,7 @@ export default function TrackingResult() {
                 </dd>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 py-2.5 last:pb-0">
               <FileText size={16} className="shrink-0 text-slate-400" />
               <div className="min-w-0">
                 <dt className="text-[11px] text-slate-400">Tanggal Kirim</dt>

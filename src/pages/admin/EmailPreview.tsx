@@ -2,6 +2,7 @@ import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, Mail, MapPin, RotateCw
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { useSettings } from "../../store/SettingsContext";
 import { useShipments } from "../../store/ShipmentContext";
 import { formatTanggalPanjang } from "../../utils/format";
 import { sendTrackingEmail } from "../../utils/sendEmail";
@@ -9,10 +10,11 @@ import { sendTrackingEmail } from "../../utils/sendEmail";
 export default function EmailPreview() {
   const { awb } = useParams<{ awb: string }>();
   const { getByAwb, markEmailSent } = useShipments();
+  const { settings } = useSettings();
   const navigate = useNavigate();
   const shipment = getByAwb(awb ?? "");
 
-  const [sending, setSending] = useState(!shipment?.emailTerkirim);
+  const [sending, setSending] = useState(!shipment?.emailTerkirim && settings.emailSendingEnabled);
   const [sent, setSent] = useState(!!shipment?.emailTerkirim);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,6 +27,11 @@ export default function EmailPreview() {
   }
 
   async function handleSend(current: NonNullable<typeof shipment>) {
+    if (!settings.emailSendingEnabled) {
+      setSending(false);
+      setError("Pengiriman email sedang dinonaktifkan. Aktifkan di Admin > Pengaturan.");
+      return;
+    }
     setSending(true);
     setError(null);
     const result = await sendTrackingEmail(current, trackingUrlFor(current), "penerima");
@@ -38,6 +45,10 @@ export default function EmailPreview() {
   }
 
   async function handleSendToPengirim(current: NonNullable<typeof shipment>) {
+    if (!settings.emailSendingEnabled) {
+      setPengirimError("Pengiriman email sedang dinonaktifkan. Aktifkan di Admin > Pengaturan.");
+      return;
+    }
     setPengirimSending(true);
     setPengirimError(null);
     const result = await sendTrackingEmail(current, trackingUrlFor(current), "pengirim");
@@ -51,9 +62,14 @@ export default function EmailPreview() {
 
   useEffect(() => {
     if (!shipment || shipment.emailTerkirim) return;
+    if (!settings.emailSendingEnabled) {
+      setSending(false);
+      setError("Pengiriman email sedang dinonaktifkan. Aktifkan di Admin > Pengaturan.");
+      return;
+    }
     handleSend(shipment);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shipment?.awb]);
+  }, [shipment?.awb, settings.emailSendingEnabled]);
 
   if (!shipment) {
     return (
@@ -88,6 +104,10 @@ export default function EmailPreview() {
           <div className="inline-flex items-center gap-2 rounded-lg bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700">
             <Loader2 size={15} className="animate-spin" /> Mengirim email...
           </div>
+        ) : !settings.emailSendingEnabled ? (
+          <div className="inline-flex items-center gap-2 rounded-lg bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700">
+            <AlertTriangle size={15} /> Pengiriman email dinonaktifkan
+          </div>
         ) : error ? (
           <div className="flex items-center gap-2">
             <div className="inline-flex items-center gap-2 rounded-lg bg-red-50 px-4 py-2 text-sm font-medium text-red-700">
@@ -109,15 +129,25 @@ export default function EmailPreview() {
         )}
       </div>
 
-      {error && (
-        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <p className="font-medium">Detail error:</p>
-          <p className="mt-0.5 break-words">{error}</p>
-          <p className="mt-2 text-xs text-red-600">
-            Periksa kembali konfigurasi SMTP di file <code className="font-mono">.env</code> (host, login, key, dan
-            sender email yang sudah diverifikasi di akun Brevo Anda).
-          </p>
+      {!settings.emailSendingEnabled ? (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          Pengiriman email real sedang dinonaktifkan untuk menghemat kuota SMTP. Aktifkan kembali di{" "}
+          <Link to="/admin/pengaturan/tracking" className="font-semibold underline">
+            Admin &gt; Pengaturan
+          </Link>{" "}
+          untuk mengirim email ini.
         </div>
+      ) : (
+        error && (
+          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <p className="font-medium">Detail error:</p>
+            <p className="mt-0.5 break-words">{error}</p>
+            <p className="mt-2 text-xs text-red-600">
+              Periksa kembali konfigurasi SMTP di file <code className="font-mono">.env</code> (host, login, key, dan
+              sender email yang sudah diverifikasi di akun Brevo Anda).
+            </p>
+          </div>
+        )
       )}
 
       <div className="mx-auto mt-4 flex max-w-xl flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
@@ -132,7 +162,7 @@ export default function EmailPreview() {
         ) : (
           <button
             onClick={() => handleSendToPengirim(shipment)}
-            disabled={pengirimSending}
+            disabled={pengirimSending || !settings.emailSendingEnabled}
             className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100 disabled:opacity-60"
           >
             {pengirimSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}

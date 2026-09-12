@@ -17,6 +17,7 @@ import { QRCode } from "../../components/QRCode";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { useFleet } from "../../store/FleetContext";
 import { useLocations } from "../../store/LocationContext";
+import { useSettings } from "../../store/SettingsContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment, ShipmentFormData } from "../../types";
 import { compressImage } from "../../utils/compressImage";
@@ -79,6 +80,7 @@ export default function CreateShipment() {
   const { createShipment, markEmailSent } = useShipments();
   const { trucksWithDriver } = useFleet();
   const { activeTitikLokasi } = useLocations();
+  const { settings } = useSettings();
   const navigate = useNavigate();
 
   const [form, setForm] = useState<ShipmentFormData>(emptyForm);
@@ -129,6 +131,10 @@ export default function CreateShipment() {
 
   async function handleSendEmail() {
     if (!created) return;
+    if (!settings.emailSendingEnabled) {
+      setEmailError("Pengiriman email sedang dinonaktifkan. Aktifkan di Admin > Pengaturan.");
+      return;
+    }
     setEmailSending(true);
     setEmailError(null);
 
@@ -420,11 +426,17 @@ export default function CreateShipment() {
                   <p className="mt-1 break-words text-xs text-red-600">{emailError}</p>
                 </div>
               )}
+              {!settings.emailSendingEnabled && !emailSent && (
+                <div className="mt-4 flex items-center gap-2 rounded-lg bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
+                  <AlertTriangle size={16} />
+                  Pengiriman email sedang dinonaktifkan. Aktifkan di Admin &gt; Pengaturan.
+                </div>
+              )}
 
               <div className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 <button
                   onClick={handleSendEmail}
-                  disabled={emailSending || emailSent}
+                  disabled={emailSending || emailSent || !settings.emailSendingEnabled}
                   className="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-800 transition-colors hover:bg-blue-100 disabled:opacity-60"
                 >
                   {emailSending ? (

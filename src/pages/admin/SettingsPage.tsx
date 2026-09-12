@@ -1,10 +1,10 @@
-import { CheckCircle2, Settings as SettingsIcon } from "lucide-react";
+import { CheckCircle2, Mail, Settings as SettingsIcon } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useSettings } from "../../store/SettingsContext";
 
 export default function SettingsPage() {
-  const { settings, setStagnantThresholdDays } = useSettings();
+  const { settings, setStagnantThresholdDays, setEmailSendingEnabled } = useSettings();
   const [days, setDays] = useState(settings.stagnantThresholdDays);
   const [saved, setSaved] = useState(false);
 
@@ -63,6 +63,47 @@ export default function SettingsPage() {
           Simpan Pengaturan
         </button>
       </form>
+
+      <div className="mt-6 max-w-lg rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-4 flex items-center gap-2">
+          <Mail size={17} className="text-blue-900" />
+          <h2 className="text-sm font-semibold text-slate-800">Pengiriman Email</h2>
+        </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-slate-800">Kirim email notifikasi ke customer</p>
+            <p className="mt-1 text-xs text-slate-400">
+              Matikan sementara untuk menghemat kuota SMTP. Saat nonaktif, tombol kirim email
+              (resi baru, kendala, selesai) tidak akan mengirim email sungguhan.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={settings.emailSendingEnabled}
+            onClick={() => setEmailSendingEnabled(!settings.emailSendingEnabled)}
+            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+              settings.emailSendingEnabled ? "bg-blue-900" : "bg-slate-300"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                settings.emailSendingEnabled ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+
+        <div
+          className={`mt-4 flex items-center gap-2 rounded-lg px-3.5 py-2.5 text-sm font-medium ${
+            settings.emailSendingEnabled ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+          }`}
+        >
+          <CheckCircle2 size={15} />
+          {settings.emailSendingEnabled ? "Pengiriman email aktif." : "Pengiriman email dinonaktifkan."}
+        </div>
+      </div>
     </AdminLayout>
   );
 }

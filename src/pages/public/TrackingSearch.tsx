@@ -1,6 +1,7 @@
-import { History, PackageSearch, Search, Trash2, X } from "lucide-react";
+import { History, Search, Trash2, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import heroImage from "../../assets/hero-package-handoff.jpg";
 import { PublicLayout } from "../../components/layout/PublicLayout";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useShipments } from "../../store/ShipmentContext";
@@ -36,46 +37,53 @@ export default function TrackingSearch() {
 
   return (
     <PublicLayout>
-      <div className="flex flex-col items-center py-6 text-center sm:py-10">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-900 text-white">
-          <PackageSearch size={26} />
+      {/* Hero band - full-bleed, breaks out of the centered content container */}
+      <div className="relative left-1/2 right-1/2 -mx-[50vw] -mt-6 w-screen overflow-hidden bg-blue-950">
+        <img
+          src={heroImage}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover opacity-25"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-950/95 via-blue-950/90 to-blue-900/95" />
+        <div className="relative mx-auto max-w-3xl px-4 py-12 text-center sm:px-6 sm:py-16">
+          <h1 className="text-2xl font-bold text-white sm:text-3xl">Lacak Pengiriman Anda</h1>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-blue-100 sm:text-base">
+            Masukkan nomor AWB (resi) yang tertera pada email atau resi fisik Anda untuk melihat
+            status pengiriman secara real-time.
+          </p>
+
+          <form onSubmit={handleSubmit} className="mx-auto mt-6 w-full max-w-md">
+            <div className="flex flex-col gap-2.5 rounded-xl bg-white p-2 shadow-lg sm:flex-row sm:rounded-full">
+              <input
+                value={awb}
+                onChange={(e) => {
+                  setAwb(e.target.value);
+                  setNotFound(false);
+                }}
+                placeholder="Contoh: GMS-20260911-0001"
+                className="w-full rounded-lg border-0 bg-transparent px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none sm:pl-5"
+              />
+              <button
+                type="submit"
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-900 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-800 sm:rounded-full"
+              >
+                <Search size={16} />
+                Lacak Sekarang
+              </button>
+            </div>
+            {notFound && (
+              <p className="mt-2 text-left text-xs font-medium text-red-200">
+                Nomor AWB tidak ditemukan. Periksa kembali nomor resi Anda.
+              </p>
+            )}
+          </form>
         </div>
-        <h1 className="mt-4 text-xl font-semibold text-slate-900 sm:text-2xl">
-          Lacak Pengiriman Anda
-        </h1>
-        <p className="mt-1.5 max-w-sm text-sm text-slate-500">
-          Masukkan nomor AWB (resi) yang tertera pada email atau resi fisik Anda untuk melihat
-          status pengiriman terkini.
-        </p>
+      </div>
 
-        <form onSubmit={handleSubmit} className="mt-6 w-full max-w-md">
-          <div className="flex flex-col gap-2.5 sm:flex-row">
-            <input
-              value={awb}
-              onChange={(e) => {
-                setAwb(e.target.value);
-                setNotFound(false);
-              }}
-              placeholder="Contoh: GMS-20260911-0001"
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            />
-            <button
-              type="submit"
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-900 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-            >
-              <Search size={16} />
-              Lacak
-            </button>
-          </div>
-          {notFound && (
-            <p className="mt-2 text-left text-xs font-medium text-red-600">
-              Nomor AWB tidak ditemukan. Periksa kembali nomor resi Anda.
-            </p>
-          )}
-        </form>
-
+      <div className="flex flex-col items-center pb-6 pt-10 text-center">
         {history.length > 0 && (
-          <div className="mt-10 w-full max-w-md text-left">
+          <div className="w-full max-w-md text-left">
             <div className="mb-2 flex items-center justify-between">
               <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
                 <History size={13} />

@@ -35,15 +35,15 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-blue-900">
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <NavLink to="/" className="flex items-center gap-2.5" onClick={() => setMobileOpen(false)}>
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-900 text-white">
               <Truck size={18} />
             </div>
-            <div className="leading-tight text-white">
-              <p className="text-sm font-semibold sm:text-base">PT Gangsar Mitra Sautama</p>
-              <p className="text-[11px] text-blue-200 sm:text-xs">Jasa Logistik &amp; Pengiriman</p>
+            <div className="leading-tight">
+              <p className="text-sm font-semibold text-slate-900 sm:text-base">PT Gangsar Mitra Sautama</p>
+              <p className="text-[11px] text-slate-500 sm:text-xs">Jasa Logistik &amp; Pengiriman</p>
             </div>
           </NavLink>
 
@@ -56,7 +56,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
                   end={item.end}
                   className={({ isActive }) =>
                     `rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                      isActive ? "bg-white/15 text-white" : "text-blue-100 hover:bg-white/10 hover:text-white"
+                      isActive ? "bg-blue-50 text-blue-900" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     }`
                   }
                 >
@@ -66,7 +66,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
                 <button
                   key={item.sectionId}
                   onClick={() => goToSection(item.sectionId)}
-                  className="rounded-md px-3 py-2 text-sm font-medium text-blue-100 transition-colors hover:bg-white/10 hover:text-white"
+                  className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
                 >
                   {item.label}
                 </button>
@@ -74,7 +74,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
             )}
             <NavLink
               to="/tracking"
-              className="ml-2 inline-flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-2 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-50"
+              className="ml-2 inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800"
             >
               Lacak Paket
               <ArrowRight size={14} />
@@ -82,7 +82,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
           </nav>
 
           <button
-            className="rounded-md p-2 text-white hover:bg-white/10 md:hidden"
+            className="rounded-md p-2 text-slate-700 hover:bg-slate-100 md:hidden"
             onClick={() => setMobileOpen((v) => !v)}
             aria-label={mobileOpen ? "Tutup menu navigasi" : "Buka menu navigasi"}
             aria-expanded={mobileOpen}
@@ -92,7 +92,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
         </div>
 
         {mobileOpen && (
-          <nav className="flex flex-col gap-0.5 border-t border-white/10 px-4 py-3 md:hidden">
+          <nav className="flex flex-col gap-0.5 border-t border-slate-100 px-4 py-3 md:hidden">
             {navItems.map((item) =>
               item.kind === "route" ? (
                 <NavLink
@@ -102,7 +102,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
                   onClick={() => setMobileOpen(false)}
                   className={({ isActive }) =>
                     `rounded-md px-3 py-2.5 text-left text-sm font-medium transition-colors ${
-                      isActive ? "bg-white/15 text-white" : "text-blue-100 hover:bg-white/10 hover:text-white"
+                      isActive ? "bg-blue-50 text-blue-900" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     }`
                   }
                 >
@@ -112,7 +112,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
                 <button
                   key={item.sectionId}
                   onClick={() => goToSection(item.sectionId)}
-                  className="rounded-md px-3 py-2.5 text-left text-sm font-medium text-blue-100 transition-colors hover:bg-white/10 hover:text-white"
+                  className="rounded-md px-3 py-2.5 text-left text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
                 >
                   {item.label}
                 </button>
@@ -121,7 +121,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
             <NavLink
               to="/tracking"
               onClick={() => setMobileOpen(false)}
-              className="mt-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-white px-3.5 py-2.5 text-sm font-semibold text-blue-900"
+              className="mt-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2.5 text-sm font-semibold text-white"
             >
               Lacak Paket
               <ArrowRight size={14} />

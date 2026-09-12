@@ -47,36 +47,32 @@ export function StatusStepper({ status }: { status: ShipmentStatus }) {
           const Icon = step.icon;
           return (
             <li key={step.label} className="flex flex-1 flex-col items-center last:flex-none">
-              <div className="flex w-full items-center">
-                <span
-                  className={`ml-[50%] h-0.5 flex-1 first:hidden ${
-                    i === 0 ? "invisible" : done || isCurrent ? "bg-blue-800" : "bg-slate-200"
-                  }`}
-                  style={{ marginLeft: i === 0 ? undefined : 0 }}
-                />
-              </div>
               <div className="relative flex w-full items-center">
                 <div
                   className={`absolute left-0 top-1/2 h-0.5 w-1/2 -translate-y-1/2 ${
-                    i === 0 ? "invisible" : done ? "bg-blue-800" : isCurrent ? "bg-blue-800" : "bg-slate-200"
+                    i === 0 ? "invisible" : done ? "bg-emerald-500" : isCurrent ? "bg-blue-800" : "bg-slate-200"
                   }`}
                 />
                 <div
                   className={`absolute right-0 top-1/2 h-0.5 w-1/2 -translate-y-1/2 ${
-                    i === STEPS.length - 1 ? "invisible" : done ? "bg-blue-800" : "bg-slate-200"
+                    i === STEPS.length - 1 ? "invisible" : done ? "bg-emerald-500" : "bg-slate-200"
                   }`}
                 />
                 <span
                   className={`relative z-10 mx-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-4 ring-white sm:h-10 sm:w-10 ${
                     isCurrent && hasKendala
                       ? "bg-red-500 text-white"
-                      : done || isCurrent
-                        ? "bg-blue-800 text-white"
-                        : "bg-slate-100 text-slate-400"
+                      : done
+                        ? "bg-emerald-500 text-white"
+                        : isCurrent
+                          ? "bg-blue-800 text-white"
+                          : "bg-slate-100 text-slate-400"
                   }`}
                 >
                   {isCurrent && hasKendala ? (
                     <AlertTriangle size={16} />
+                  ) : done ? (
+                    <Check size={16} />
                   ) : (
                     <Icon size={16} />
                   )}

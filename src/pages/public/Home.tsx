@@ -3,12 +3,18 @@ import {
   Building2,
   Camera,
   FileText,
+  Gauge,
   Headset,
   Layers,
+  LayoutDashboard,
+  Mail,
   MapPinned,
+  Monitor,
   Package,
   ShieldCheck,
+  Smartphone,
   Sparkles,
+  TrendingUp,
   Truck,
 } from "lucide-react";
 import { useEffect } from "react";
@@ -52,6 +58,40 @@ const SERVICES = [
     desc: "Foto barang diterima dan surat jalan yang telah ditandatangani tersimpan digital sebagai bukti serah terima.",
     benefit: "Validitas & kepercayaan terjaga",
   },
+];
+
+const TECHNOLOGY = [
+  {
+    number: "01",
+    icon: Monitor,
+    title: "Website Pelacakan",
+    desc: "Pelanggan dapat melacak status pengiriman kapan saja hanya dengan nomor AWB, tanpa perlu menghubungi tim secara manual.",
+  },
+  {
+    number: "02",
+    icon: LayoutDashboard,
+    title: "Dashboard Admin",
+    desc: "Tim operasional mengelola pengiriman, armada, dan lokasi transit dalam satu panel kerja yang terpusat.",
+  },
+  {
+    number: "03",
+    icon: Smartphone,
+    title: "Akses Mobile",
+    desc: "Tampilan tracking dan panel admin dioptimalkan agar tetap nyaman digunakan dari perangkat mobile.",
+  },
+  {
+    number: "04",
+    icon: Mail,
+    title: "Notifikasi Otomatis",
+    desc: "Pelanggan mendapat notifikasi email saat resi diterbitkan, ada kendala, hingga pengiriman selesai.",
+  },
+];
+
+const TRUST_STRIP = [
+  { icon: ShieldCheck, label: "Keamanan Data Pelanggan" },
+  { icon: Gauge, label: "Proses Pengiriman Efisien" },
+  { icon: Headset, label: "Layanan Pelanggan Responsif" },
+  { icon: TrendingUp, label: "Siap Mendukung Pertumbuhan Bisnis Anda" },
 ];
 
 const WHY_CHOOSE_US = [
@@ -98,14 +138,19 @@ export default function Home() {
   return (
     <PublicLayout wide>
       {/* Hero */}
-      <section className="grid grid-cols-1 items-center gap-8 py-6 sm:py-10 lg:grid-cols-2 lg:gap-12">
+      <section className="relative grid grid-cols-1 items-center gap-8 py-6 sm:py-10 lg:grid-cols-2 lg:gap-12">
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full bg-blue-100/60 blur-3xl" />
+          <div className="absolute -left-20 top-1/3 h-64 w-64 rounded-full bg-blue-50 blur-3xl" />
+        </div>
         <div className="animate-[fadeIn_0.5s_ease-out]">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800 ring-1 ring-inset ring-blue-100">
             <Sparkles size={12} />
             Mitra Logistik Terpadu
           </span>
           <h1 className="mt-4 text-3xl font-bold leading-tight text-slate-900 sm:text-4xl lg:text-[2.75rem]">
-            Solusi Pengiriman Barang yang Rapi, Terkoordinasi, dan Bisa Diandalkan
+            Solusi Pengiriman Barang yang Rapi, Terkoordinasi, dan{" "}
+            <span className="text-blue-700">Bisa Diandalkan</span>
           </h1>
           <p className="mt-4 max-w-lg text-sm leading-relaxed text-slate-600 sm:text-base">
             PT Gangsar Mitra Sautama menghadirkan layanan logistik antar kota yang dikelola secara
@@ -216,6 +261,31 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Solusi & Teknologi */}
+      <section className="mt-16 sm:mt-20">
+        <div className="rounded-2xl bg-blue-50/60 p-6 sm:p-10">
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">Solusi &amp; Teknologi Kami</h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500 sm:text-base">
+              Sistem digital yang menghubungkan pelanggan, tim operasional, dan armada dalam satu
+              alur kerja.
+            </p>
+          </div>
+          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {TECHNOLOGY.map((t) => (
+              <div key={t.title} className="relative rounded-xl bg-white p-5 shadow-sm">
+                <span className="text-[11px] font-bold tracking-wide text-blue-200">{t.number}</span>
+                <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-900 text-white">
+                  <t.icon size={18} />
+                </div>
+                <p className="mt-3.5 text-sm font-semibold text-slate-900">{t.title}</p>
+                <p className="mt-1.5 text-xs leading-relaxed text-slate-500">{t.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Why choose us */}
       <section id="keunggulan" className="mt-16 scroll-mt-20 sm:mt-20">
         <div className="text-center">
@@ -249,6 +319,20 @@ export default function Home() {
           <StatCard label="Pengiriman Tercatat" value={COMPANY_STATS.totalPengiriman} icon={Package} accent="bg-blue-100 text-blue-700" />
           <StatCard label="Kota Terjangkau" value={COMPANY_STATS.kotaTerjangkau} icon={MapPinned} accent="bg-amber-100 text-amber-700" />
           <StatCard label="Armada Truck" value={COMPANY_STATS.armadaTruck} icon={Truck} accent="bg-violet-100 text-violet-700" />
+        </div>
+      </section>
+
+      {/* Trust strip */}
+      <section className="mt-16 sm:mt-20">
+        <div className="grid grid-cols-1 gap-4 border-t border-slate-200 pt-8 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+          {TRUST_STRIP.map((t) => (
+            <div key={t.label} className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-900 text-white">
+                <t.icon size={17} />
+              </div>
+              <p className="text-sm font-medium text-slate-700">{t.label}</p>
+            </div>
+          ))}
         </div>
       </section>
 

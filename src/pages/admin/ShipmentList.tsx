@@ -1,11 +1,12 @@
-import { Eye, FileEdit, MapPin, Printer, Search } from "lucide-react";
+import { Download, Eye, FileEdit, MapPin, Printer, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useShipments } from "../../store/ShipmentContext";
 import type { ShipmentStatus } from "../../types";
-import { formatTanggalPendek } from "../../utils/format";
+import { exportShipmentsCsv } from "../../utils/exportCsv";
+import { formatTanggalPendek, todayISO } from "../../utils/format";
 import { SHIPMENT_STATUS_OPTIONS } from "../../utils/status";
 
 function isShipmentStatus(value: string): value is ShipmentStatus {
@@ -16,7 +17,8 @@ export default function ShipmentList() {
   const { shipments } = useShipments();
   const [query, setQuery] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
-  const [dateFilter, setDateFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const statusParam = searchParams.get("status") ?? "";
   const statusFilter: ShipmentStatus | "Semua" = isShipmentStatus(statusParam) ? statusParam : "Semua";
@@ -37,7 +39,8 @@ export default function ShipmentList() {
     return shipments
       .filter((s) => {
         if (statusFilter !== "Semua" && s.status !== statusFilter) return false;
-        if (dateFilter && s.tanggalDibuat !== dateFilter) return false;
+        if (dateFrom && s.tanggalDibuat < dateFrom) return false;
+        if (dateTo && s.tanggalDibuat > dateTo) return false;
         if (query) {
           const q = query.toLowerCase();
           const haystack = [
@@ -55,7 +58,7 @@ export default function ShipmentList() {
         return true;
       })
       .sort((a, b) => (a.tanggalDibuat + a.jamDibuat < b.tanggalDibuat + b.jamDibuat ? 1 : -1));
-  }, [shipments, query, statusFilter, dateFilter]);
+  }, [shipments, query, statusFilter, dateFrom, dateTo]);
 
   function lastUpdate(awb: string) {
     const s = shipments.find((x) => x.awb === awb);
@@ -103,24 +106,40 @@ export default function ShipmentList() {
             </option>
           ))}
         </select>
-        <input
-          type="date"
-          value={dateFilter}
-          onChange={(e) => setDateFilter(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-        />
-        {(query || statusFilter !== "Semua" || dateFilter) && (
+        <div className="flex items-center gap-1.5">
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+          />
+          <span className="text-xs text-slate-400">s/d</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+          />
+        </div>
+        {(query || statusFilter !== "Semua" || dateFrom || dateTo) && (
           <button
             onClick={() => {
               setQuery("");
               handleStatusFilterChange("Semua");
-              setDateFilter("");
+              setDateFrom("");
+              setDateTo("");
             }}
             className="text-sm font-medium text-slate-500 hover:text-slate-800"
           >
             Reset
           </button>
         )}
+        <button
+          onClick={() => exportShipmentsCsv(filtered, `data-pengiriman-${todayISO()}.csv`)}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          <Download size={15} /> Export CSV
+        </button>
       </div>
 
       <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

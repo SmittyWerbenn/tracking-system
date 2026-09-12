@@ -1,30 +1,56 @@
 import {
   AlertTriangle,
   ArrowRight,
+  Bell,
   CheckCircle2,
+  MessageSquare,
   Package,
   PackagePlus,
+  Route,
+  Star,
   Truck,
 } from "lucide-react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { StagnantShipmentsCard } from "../../components/StagnantShipmentsCard";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useFeedback } from "../../store/FeedbackContext";
+import { useFleet } from "../../store/FleetContext";
+import { useNotifications } from "../../store/NotificationContext";
+import { useSettings } from "../../store/SettingsContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { ShipmentStatus } from "../../types";
 import { formatTanggalPendek } from "../../utils/format";
+import { getStagnantShipments } from "../../utils/stagnant";
 
 export default function Dashboard() {
   const { shipments } = useShipments();
+  const { trucks } = useFleet();
+  const { notifications } = useNotifications();
+  const { feedback } = useFeedback();
+  const { settings } = useSettings();
 
   const total = shipments.length;
+  const dalamPerjalanan = shipments.filter((s) => s.status === "Dalam Perjalanan").length;
+  const transit = shipments.filter((s) => s.status === "Transit").length;
   const selesai = shipments.filter((s) => s.status === "Selesai / Terkirim").length;
   const bermasalah = shipments.filter((s) => s.status === "Kendala").length;
-  const aktif = total - selesai - bermasalah;
+  const truckOnTrip = trucks.filter((t) => t.status === "On Trip").length;
+  const avgRating = feedback.length === 0 ? 0 : feedback.reduce((sum, f) => sum + f.rating, 0) / feedback.length;
+
+  const stagnant = useMemo(
+    () => getStagnantShipments(shipments, settings.stagnantThresholdDays),
+    [shipments, settings.stagnantThresholdDays],
+  );
 
   const recent = [...shipments]
     .sort((a, b) => (a.tanggalDibuat + a.jamDibuat < b.tanggalDibuat + b.jamDibuat ? 1 : -1))
     .slice(0, 5);
+
+  const recentNotifications = notifications.slice(0, 4);
+  const recentFeedback = [...feedback].sort((a, b) => (a.submittedAt < b.submittedAt ? 1 : -1)).slice(0, 4);
 
   const statusBreakdown = shipments.reduce<Record<string, number>>((acc, s) => {
     acc[s.status] = (acc[s.status] ?? 0) + 1;
@@ -49,30 +75,20 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <StatCard label="Total Pengiriman" value={total} icon={Package} accent="bg-blue-100 text-blue-700" />
+        <StatCard label="Dalam Perjalanan" value={dalamPerjalanan} icon={Truck} accent="bg-sky-100 text-sky-700" />
+        <StatCard label="Transit" value={transit} icon={Route} accent="bg-amber-100 text-amber-700" />
+        <StatCard label="Selesai" value={selesai} icon={CheckCircle2} accent="bg-emerald-100 text-emerald-700" />
+        <StatCard label="Kendala" value={bermasalah} icon={AlertTriangle} accent="bg-red-100 text-red-700" />
+        <StatCard label="AWB Macet" value={stagnant.length} icon={AlertTriangle} accent="bg-red-100 text-red-700" />
+        <StatCard label="Total Armada" value={trucks.length} icon={Truck} accent="bg-violet-100 text-violet-700" />
+        <StatCard label="Truck On Trip" value={truckOnTrip} icon={Truck} accent="bg-sky-100 text-sky-700" />
         <StatCard
-          label="Total Pengiriman"
-          value={total}
-          icon={Package}
-          accent="bg-blue-100 text-blue-700"
-        />
-        <StatCard
-          label="Pengiriman Aktif"
-          value={aktif}
-          icon={Truck}
+          label="Avg. Customer Rating"
+          value={avgRating.toFixed(1)}
+          icon={Star}
           accent="bg-amber-100 text-amber-700"
-        />
-        <StatCard
-          label="Selesai"
-          value={selesai}
-          icon={CheckCircle2}
-          accent="bg-emerald-100 text-emerald-700"
-        />
-        <StatCard
-          label="Bermasalah"
-          value={bermasalah}
-          icon={AlertTriangle}
-          accent="bg-red-100 text-red-700"
         />
       </div>
 
@@ -129,6 +145,69 @@ export default function Dashboard() {
               </li>
             ))}
           </ul>
+        </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <StagnantShipmentsCard items={stagnant} />
+
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
+            <Bell size={16} className="text-blue-800" />
+            <h2 className="text-sm font-semibold text-slate-800">Notifikasi Terbaru</h2>
+          </div>
+          {recentNotifications.length === 0 ? (
+            <p className="px-5 py-8 text-center text-sm text-slate-400">Belum ada notifikasi.</p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {recentNotifications.map((n) => (
+                <li key={n.id} className="px-5 py-3">
+                  <p className="text-sm font-medium text-slate-800">{n.subject}</p>
+                  <p className="mt-0.5 font-mono text-xs text-slate-400">{n.awb}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="border-t border-slate-100 px-5 py-3">
+            <Link to="/admin/notifikasi" className="flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline">
+              Lihat semua <ArrowRight size={13} />
+            </Link>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
+            <MessageSquare size={16} className="text-blue-800" />
+            <h2 className="text-sm font-semibold text-slate-800">Feedback Terbaru</h2>
+          </div>
+          {recentFeedback.length === 0 ? (
+            <p className="px-5 py-8 text-center text-sm text-slate-400">Belum ada feedback.</p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {recentFeedback.map((f) => (
+                <li key={f.id} className="px-5 py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-slate-800">{f.customerName}</p>
+                    <div className="flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <Star
+                          key={n}
+                          size={12}
+                          className={n <= f.rating ? "fill-amber-400 text-amber-400" : "text-slate-200"}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  {f.comment && <p className="mt-0.5 truncate text-xs text-slate-500">{f.comment}</p>}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="border-t border-slate-100 px-5 py-3">
+            <Link to="/admin/feedback" className="flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline">
+              Lihat semua <ArrowRight size={13} />
+            </Link>
+          </div>
         </div>
       </div>
     </AdminLayout>

@@ -1,15 +1,18 @@
 import { ArrowLeft, CheckCircle2, ImagePlus, MapPin, Send, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { SearchableSelect } from "../../components/SearchableSelect";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useLocations } from "../../store/LocationContext";
+import { useFleet } from "../../store/FleetContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { TimelineEventType, TrackingUpdateFormData } from "../../types";
 import { compressImage } from "../../utils/compressImage";
 import { formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
 import { getAllowedNextEvents } from "../../utils/status";
 
-const TRUCK_TYPES = ["Wingbox", "CDD", "Box", "Pickup", "Fuso", "Tronton"];
+const CUSTOM_LOKASI_VALUE = "__custom__";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
@@ -17,21 +20,23 @@ const inputClass =
 export default function UpdateTracking() {
   const { awb } = useParams<{ awb: string }>();
   const { getByAwb, addTrackingUpdate } = useShipments();
+  const { trucksWithDriver } = useFleet();
+  const { activeTitikLokasi } = useLocations();
   const navigate = useNavigate();
   const shipment = getByAwb(awb ?? "");
   const allowedOptions = shipment ? getAllowedNextEvents(shipment.status) : [];
 
   const [type, setType] = useState<TimelineEventType>(allowedOptions[0] ?? "Transit");
-  const [lokasi, setLokasi] = useState("");
+  const [titikId, setTitikId] = useState("");
+  const [customLokasi, setCustomLokasi] = useState("");
   const [tanggal, setTanggal] = useState(todayISO());
   const [jam, setJam] = useState(nowHHMM());
   const [keterangan, setKeterangan] = useState("");
   const [foto, setFoto] = useState<string[]>([]);
   const [photoError, setPhotoError] = useState<string | null>(null);
-  const [nomorUnit, setNomorUnit] = useState(shipment?.truck.nomorUnit ?? "");
-  const [jenisTruck, setJenisTruck] = useState(shipment?.truck.jenis ?? "Wingbox");
-  const [driver, setDriver] = useState(shipment?.truck.driver ?? "");
+  const [truckId, setTruckId] = useState(shipment?.truckId ?? "");
   const [submitted, setSubmitted] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   if (!shipment) {
     return (
@@ -47,6 +52,20 @@ export default function UpdateTracking() {
   }
 
   const locked = shipment.status === "Selesai / Terkirim";
+  const lokasiOptions = [
+    ...activeTitikLokasi.map((t) => ({ value: t.id, label: t.namaKota, description: `${t.jenis} - ${t.provinsi}` })),
+    { value: CUSTOM_LOKASI_VALUE, label: "Lainnya (ketik manual)" },
+  ];
+  const truckOptions = trucksWithDriver.map((t) => ({
+    value: t.id,
+    label: `${t.nomorUnit} - ${t.jenis}`,
+    description: t.driver ? `Driver: ${t.driver.nama}` : undefined,
+  }));
+  const selectedTruck = trucksWithDriver.find((t) => t.id === truckId);
+  const resolvedLokasi =
+    titikId === CUSTOM_LOKASI_VALUE
+      ? customLokasi
+      : (activeTitikLokasi.find((t) => t.id === titikId)?.namaKota ?? "");
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -60,17 +79,21 @@ export default function UpdateTracking() {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!resolvedLokasi) {
+      setFormError("Pilih atau isi lokasi terlebih dahulu.");
+      return;
+    }
+    setFormError(null);
     const data: TrackingUpdateFormData = {
       awb: shipment!.awb,
       type,
-      lokasi,
+      lokasi: resolvedLokasi,
+      titikId: titikId === CUSTOM_LOKASI_VALUE ? undefined : titikId || undefined,
       tanggal,
       jam,
       keterangan,
       foto,
-      nomorUnit: nomorUnit || undefined,
-      jenisTruck: nomorUnit ? jenisTruck : undefined,
-      driver: driver || undefined,
+      truckId: truckId || undefined,
     };
     addTrackingUpdate(data);
     setSubmitted(true);
@@ -137,14 +160,23 @@ export default function UpdateTracking() {
               </span>
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi</span>
-              <input
-                required
-                className={inputClass}
-                placeholder="Contoh: Semarang"
-                value={lokasi}
-                onChange={(e) => setLokasi(e.target.value)}
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi / Titik Transit</span>
+              <SearchableSelect
+                options={lokasiOptions}
+                value={titikId}
+                onChange={setTitikId}
+                placeholder="Pilih lokasi"
+                emptyLabel="Lokasi tidak ditemukan."
               />
+              {titikId === CUSTOM_LOKASI_VALUE && (
+                <input
+                  required
+                  className={`${inputClass} mt-2`}
+                  placeholder="Ketik nama lokasi"
+                  value={customLokasi}
+                  onChange={(e) => setCustomLokasi(e.target.value)}
+                />
+              )}
             </label>
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">Tanggal</span>
@@ -213,34 +245,23 @@ export default function UpdateTracking() {
                 Informasi Truck {type === "Transfer Unit" && "(Unit Baru)"}
               </p>
             </div>
-            <label className="block">
-              <span className="mb-1.5 block text-xs font-medium text-slate-600">Nomor Unit Truck</span>
-              <input
-                className={inputClass}
-                placeholder="B 9123 XYZ"
-                value={nomorUnit}
-                onChange={(e) => setNomorUnit(e.target.value)}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-xs font-medium text-slate-600">Jenis Truck</span>
-              <select className={inputClass} value={jenisTruck} onChange={(e) => setJenisTruck(e.target.value)}>
-                {TRUCK_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </label>
             <label className="block sm:col-span-2">
-              <span className="mb-1.5 block text-xs font-medium text-slate-600">Driver</span>
-              <input
-                className={inputClass}
-                placeholder="Nama driver"
-                value={driver}
-                onChange={(e) => setDriver(e.target.value)}
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Pilih Unit Truck</span>
+              <SearchableSelect
+                options={truckOptions}
+                value={truckId}
+                onChange={setTruckId}
+                placeholder="Pilih Unit Truck"
+                emptyLabel="Tidak ada unit truck."
               />
             </label>
+            {selectedTruck && (
+              <div className="sm:col-span-2 flex flex-wrap items-center gap-4 rounded-lg bg-slate-50 px-3.5 py-3 text-sm">
+                <span className="font-medium text-slate-700">{selectedTruck.nomorUnit}</span>
+                <span className="text-slate-500">{selectedTruck.jenis}</span>
+                <span className="text-slate-500">Driver: {selectedTruck.driver?.nama ?? "-"}</span>
+              </div>
+            )}
           </div>
 
           {type === "Transfer Unit" && (
@@ -257,7 +278,8 @@ export default function UpdateTracking() {
             </span>
           </div>
 
-          <div className="mt-5 flex justify-end">
+          <div className="mt-5 flex flex-col items-end gap-2.5">
+            {formError && <p className="text-sm font-medium text-red-600">{formError}</p>}
             <button
               type="submit"
               className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"

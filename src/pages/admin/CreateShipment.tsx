@@ -11,16 +11,17 @@ import {
   X,
 } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { QRCode } from "../../components/QRCode";
+import { SearchableSelect } from "../../components/SearchableSelect";
+import { useFleet } from "../../store/FleetContext";
+import { useLocations } from "../../store/LocationContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment, ShipmentFormData } from "../../types";
 import { compressImage } from "../../utils/compressImage";
 import { photos } from "../../utils/photos";
 import { sendTrackingEmail } from "../../utils/sendEmail";
-
-const TRUCK_TYPES = ["Wingbox", "CDD", "Box", "Pickup", "Fuso", "Tronton"];
 
 const emptyForm: ShipmentFormData = {
   pengirim: { nama: "", telepon: "", email: "" },
@@ -31,7 +32,7 @@ const emptyForm: ShipmentFormData = {
   kotaTujuan: "",
   deskripsiBarang: "",
   fotoBarang: undefined,
-  truck: { nomorUnit: "", jenis: "Wingbox", driver: "" },
+  truckId: "",
 };
 
 function Section({
@@ -76,10 +77,13 @@ const inputClass =
 
 export default function CreateShipment() {
   const { createShipment, markEmailSent } = useShipments();
+  const { trucksWithDriver } = useFleet();
+  const { activeTitikLokasi } = useLocations();
   const navigate = useNavigate();
 
   const [form, setForm] = useState<ShipmentFormData>(emptyForm);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<Shipment | null>(null);
   const [sendCopyToPengirim, setSendCopyToPengirim] = useState(true);
@@ -102,6 +106,15 @@ export default function CreateShipment() {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!form.truckId) {
+      setFormError("Pilih unit truck terlebih dahulu.");
+      return;
+    }
+    if (!form.kotaAsal || !form.kotaTujuan) {
+      setFormError("Pilih kota asal dan kota tujuan terlebih dahulu.");
+      return;
+    }
+    setFormError(null);
     setSubmitting(true);
     // simulate short processing delay for realism
     setTimeout(() => {
@@ -135,6 +148,20 @@ export default function CreateShipment() {
   }
 
   const trackingUrl = created ? `${window.location.origin}${window.location.pathname}#/tracking/${created.awb}` : "";
+
+  const truckOptions = trucksWithDriver
+    .filter((t) => t.status !== "Inactive")
+    .map((t) => ({
+      value: t.id,
+      label: `${t.nomorUnit} - ${t.jenis}`,
+      description: t.driver ? `Driver: ${t.driver.nama}` : undefined,
+    }));
+  const kotaOptions = activeTitikLokasi.map((k) => ({
+    value: k.namaKota,
+    label: k.namaKota,
+    description: `${k.jenis} - ${k.provinsi}`,
+  }));
+  const selectedTruck = trucksWithDriver.find((t) => t.id === form.truckId);
 
   return (
     <AdminLayout>
@@ -210,21 +237,21 @@ export default function CreateShipment() {
 
         <Section title="Pengiriman" icon={MapPin}>
           <Field label="Kota Asal">
-            <input
-              required
-              className={inputClass}
-              placeholder="Jakarta"
+            <SearchableSelect
+              options={kotaOptions}
               value={form.kotaAsal}
-              onChange={(e) => update("kotaAsal", e.target.value)}
+              onChange={(v) => update("kotaAsal", v)}
+              placeholder="Pilih kota asal"
+              emptyLabel="Kota tidak ditemukan."
             />
           </Field>
           <Field label="Kota Tujuan">
-            <input
-              required
-              className={inputClass}
-              placeholder="Surabaya"
+            <SearchableSelect
+              options={kotaOptions}
               value={form.kotaTujuan}
-              onChange={(e) => update("kotaTujuan", e.target.value)}
+              onChange={(v) => update("kotaTujuan", v)}
+              placeholder="Pilih kota tujuan"
+              emptyLabel="Kota tidak ditemukan."
             />
           </Field>
           <Field label="Alamat Asal" full>
@@ -283,40 +310,45 @@ export default function CreateShipment() {
         </Section>
 
         <Section title="Informasi Truck" icon={Truck}>
-          <Field label="Nomor Unit Truck">
-            <input
-              required
-              className={inputClass}
-              placeholder="B 9123 XYZ"
-              value={form.truck.nomorUnit}
-              onChange={(e) => update("truck", { ...form.truck, nomorUnit: e.target.value })}
+          <Field label="Pilih Unit Truck" full>
+            <SearchableSelect
+              options={truckOptions}
+              value={form.truckId}
+              onChange={(v) => update("truckId", v)}
+              placeholder="Pilih Unit Truck"
+              emptyLabel="Tidak ada unit truck yang tersedia."
             />
           </Field>
-          <Field label="Jenis Truck">
-            <select
-              className={inputClass}
-              value={form.truck.jenis}
-              onChange={(e) => update("truck", { ...form.truck, jenis: e.target.value })}
-            >
-              {TRUCK_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Nama Driver" full>
-            <input
-              required
-              className={inputClass}
-              placeholder="Nama driver"
-              value={form.truck.driver}
-              onChange={(e) => update("truck", { ...form.truck, driver: e.target.value })}
-            />
-          </Field>
+          {selectedTruck ? (
+            <div className="sm:col-span-2 flex flex-wrap items-center gap-4 rounded-lg bg-slate-50 px-3.5 py-3 text-sm">
+              <span className="flex items-center gap-1.5 text-slate-700">
+                <Truck size={15} className="text-slate-400" />
+                <span className="font-medium">{selectedTruck.nomorUnit}</span>
+                <span className="text-slate-400">- {selectedTruck.jenis}</span>
+              </span>
+              <span className="flex items-center gap-1.5 text-slate-700">
+                <User size={15} className="text-slate-400" />
+                Driver: <span className="font-medium">{selectedTruck.driver?.nama ?? "-"}</span>
+              </span>
+              <span className="text-xs text-slate-400">{selectedTruck.driver?.telepon}</span>
+            </div>
+          ) : (
+            <p className="sm:col-span-2 text-xs text-slate-400">
+              Belum ada unit dipilih. Kelola daftar armada di{" "}
+              <Link to="/admin/armada" className="text-blue-700 hover:underline">
+                Master Armada
+              </Link>
+              .
+            </p>
+          )}
         </Section>
 
-        <div className="flex justify-end">
+        <div className="flex flex-col items-end gap-2.5">
+          {formError && (
+            <p className="flex items-center gap-1.5 text-sm font-medium text-red-600">
+              <AlertTriangle size={14} /> {formError}
+            </p>
+          )}
           <button
             type="submit"
             disabled={submitting}

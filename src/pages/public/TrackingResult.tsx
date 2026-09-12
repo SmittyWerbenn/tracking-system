@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { FeedbackForm } from "../../components/FeedbackForm";
 import { PublicLayout } from "../../components/layout/PublicLayout";
 import { ProofOfDeliveryCard } from "../../components/ProofOfDeliveryCard";
+import { StatusBadge } from "../../components/StatusBadge";
 import { StatusStepper } from "../../components/StatusStepper";
 import { TrackingTimeline } from "../../components/TrackingTimeline";
 import { useShipments } from "../../store/ShipmentContext";
@@ -102,18 +103,18 @@ export default function TrackingResult() {
 
       {/* Summary card */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="bg-blue-900 px-5 py-5 text-white sm:px-6">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-blue-200">
-            Nomor AWB
-          </p>
-          <p className="font-mono text-xl font-bold tracking-tight sm:text-2xl">{shipment.awb}</p>
-          <div className="mt-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
-              {shipment.status.toUpperCase()}
-            </span>
+        <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-5 sm:px-6">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+              Nomor AWB
+            </p>
+            <p className="font-mono text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+              {shipment.awb}
+            </p>
           </div>
+          <StatusBadge status={shipment.status} />
         </div>
-        <div className="grid grid-cols-2 divide-x divide-slate-100 px-5 py-4 sm:px-6">
+        <div className="grid grid-cols-2 divide-x divide-slate-100 border-t border-slate-100 px-5 py-4 sm:px-6">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Asal</p>
             <p className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold text-slate-800">
@@ -191,7 +192,7 @@ export default function TrackingResult() {
       )}
 
       {/* Timeline */}
-      <div className="mt-6">
+      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
           Perjalanan Pengiriman
         </h2>

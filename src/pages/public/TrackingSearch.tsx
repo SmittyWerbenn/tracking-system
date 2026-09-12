@@ -1,4 +1,4 @@
-import { History, Search, Trash2, X } from "lucide-react";
+import { History, Search, Trash2, Truck, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import heroImage from "../../assets/hero-package-handoff.jpg";
@@ -43,41 +43,52 @@ export default function TrackingSearch() {
           src={heroImage}
           alt=""
           aria-hidden
-          className="absolute inset-0 h-full w-full object-cover opacity-25"
+          className="absolute inset-0 h-full w-full object-cover opacity-20"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-950/95 via-blue-950/90 to-blue-900/95" />
-        <div className="relative mx-auto max-w-3xl px-4 py-12 text-center sm:px-6 sm:py-16">
-          <h1 className="text-2xl font-bold text-white sm:text-3xl">Lacak Pengiriman Anda</h1>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-blue-100 sm:text-base">
-            Masukkan nomor AWB (resi) yang tertera pada email atau resi fisik Anda untuk melihat
-            status pengiriman secara real-time.
-          </p>
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-950 via-blue-950/95 to-blue-900/90" />
+        <div className="relative mx-auto grid max-w-5xl grid-cols-1 items-center gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-5 lg:gap-10">
+          <div className="text-center lg:col-span-3 lg:text-left">
+            <h1 className="text-2xl font-bold text-white sm:text-3xl">Lacak Pengiriman Anda</h1>
+            <p className="mx-auto mt-2 max-w-sm text-sm text-blue-100 sm:text-base lg:mx-0">
+              Masukkan nomor AWB (resi) yang tertera pada email atau resi fisik Anda untuk melihat
+              status pengiriman secara real-time.
+            </p>
 
-          <form onSubmit={handleSubmit} className="mx-auto mt-6 w-full max-w-md">
-            <div className="flex flex-col gap-2.5 rounded-xl bg-white p-2 shadow-lg sm:flex-row sm:rounded-full">
-              <input
-                value={awb}
-                onChange={(e) => {
-                  setAwb(e.target.value);
-                  setNotFound(false);
-                }}
-                placeholder="Contoh: GMS-20260911-0001"
-                className="w-full rounded-lg border-0 bg-transparent px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none sm:pl-5"
-              />
-              <button
-                type="submit"
-                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-900 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-800 sm:rounded-full"
-              >
-                <Search size={16} />
-                Lacak Sekarang
-              </button>
+            <form onSubmit={handleSubmit} className="mx-auto mt-6 w-full max-w-md lg:mx-0">
+              <div className="flex flex-col gap-2.5 rounded-xl bg-white p-2 shadow-lg sm:flex-row sm:rounded-full">
+                <input
+                  value={awb}
+                  onChange={(e) => {
+                    setAwb(e.target.value);
+                    setNotFound(false);
+                  }}
+                  placeholder="Contoh: GMS-20260911-0001"
+                  className="w-full rounded-lg border-0 bg-transparent px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none sm:pl-5"
+                />
+                <button
+                  type="submit"
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-900 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-800 sm:rounded-full"
+                >
+                  <Search size={16} />
+                  Lacak Sekarang
+                </button>
+              </div>
+              {notFound && (
+                <p className="mt-2 text-left text-xs font-medium text-red-200">
+                  Nomor AWB tidak ditemukan. Periksa kembali nomor resi Anda.
+                </p>
+              )}
+            </form>
+          </div>
+
+          <div className="hidden flex-col items-center justify-center gap-3 lg:col-span-2 lg:flex">
+            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/15">
+              <Truck size={44} className="text-white" />
             </div>
-            {notFound && (
-              <p className="mt-2 text-left text-xs font-medium text-red-200">
-                Nomor AWB tidak ditemukan. Periksa kembali nomor resi Anda.
-              </p>
-            )}
-          </form>
+            <p className="max-w-[220px] text-center font-serif text-lg italic text-blue-100">
+              Setiap pengiriman, sampai tujuan.
+            </p>
+          </div>
         </div>
       </div>
 

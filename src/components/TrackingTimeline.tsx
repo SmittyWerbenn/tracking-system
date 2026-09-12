@@ -27,23 +27,21 @@ export function TrackingTimeline({ events }: TrackingTimelineProps) {
           const isLatest = idx === 0;
           const style = getStatusStyle(event.type);
           return (
-            <li key={event.id} className="relative flex gap-4 pb-8 last:pb-0">
+            <li key={event.id} className="relative flex gap-3.5 pb-6 last:pb-0">
               {/* connector line */}
               {idx !== ordered.length - 1 && (
-                <span className="absolute left-[15px] top-8 h-[calc(100%-1rem)] w-px bg-slate-200" />
+                <span className="absolute left-[7px] top-5 h-[calc(100%-0.75rem)] w-px bg-slate-200" />
               )}
-              <div className="relative flex flex-col items-center">
+              <div className="relative flex flex-col items-center pt-1.5">
                 <span
-                  className={`z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-4 ring-slate-50 ${
-                    isLatest ? `${style.dot} text-white` : "bg-white text-slate-400 ring-1 ring-inset ring-slate-300"
+                  className={`z-10 h-3.5 w-3.5 shrink-0 rounded-full ring-4 ring-slate-50 ${
+                    isLatest ? style.dot : "bg-slate-300"
                   }`}
-                >
-                  <span className={`h-2.5 w-2.5 rounded-full ${isLatest ? "bg-white" : style.dot}`} />
-                </span>
+                />
               </div>
 
-              <div className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
                   <p className="text-xs font-medium text-slate-500">
                     {formatTanggalPanjang(event.tanggal)} · {formatJam(event.jam)}
                   </p>
@@ -54,25 +52,24 @@ export function TrackingTimeline({ events }: TrackingTimelineProps) {
                   )}
                 </div>
 
-                <div className="mt-1.5">
+                <div className="mt-1 flex flex-wrap items-center gap-2">
                   <StatusBadge status={event.type} size="sm" />
+                  <span className="flex items-center gap-1 text-sm font-medium text-slate-800">
+                    <MapPin size={13} className="shrink-0 text-slate-400" />
+                    {event.lokasi}
+                  </span>
                 </div>
 
-                <div className="mt-2 flex items-center gap-1.5 text-sm font-medium text-slate-800">
-                  <MapPin size={15} className="shrink-0 text-slate-400" />
-                  {event.lokasi}
-                </div>
-
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">{event.keterangan}</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{event.keterangan}</p>
 
                 {event.foto && event.foto.length > 0 && (
-                  <div className="mt-3 flex gap-2 overflow-x-auto">
+                  <div className="mt-2.5 flex gap-2 overflow-x-auto">
                     {event.foto.map((src, i) => (
                       <PhotoThumb
                         key={i}
                         src={src}
                         alt={`Dokumentasi ${event.type} ${i + 1}`}
-                        className="h-24 w-24 shrink-0 sm:h-28 sm:w-28"
+                        className="h-16 w-16 shrink-0 sm:h-20 sm:w-20"
                         onClick={() =>
                           setLightbox({ src, caption: `${event.type} · ${event.lokasi}` })
                         }
@@ -82,8 +79,8 @@ export function TrackingTimeline({ events }: TrackingTimelineProps) {
                 )}
 
                 {event.type === "Transfer Unit" && event.truckSebelumnya && event.truck ? (
-                  <div className="mt-3 rounded-lg bg-violet-50 p-3">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-violet-700">
+                  <div className="mt-2.5 rounded-lg bg-violet-50 px-3 py-2.5">
+                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-700">
                       Transfer Unit
                     </p>
                     <div className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
@@ -100,7 +97,7 @@ export function TrackingTimeline({ events }: TrackingTimelineProps) {
                     </div>
                   </div>
                 ) : event.truck ? (
-                  <div className="mt-3 flex flex-wrap items-center gap-4 rounded-lg bg-slate-50 px-3 py-2.5">
+                  <div className="mt-2.5 flex flex-wrap items-center gap-4 rounded-lg bg-slate-50 px-3 py-2">
                     <div className="flex items-center gap-1.5 text-sm text-slate-700">
                       <Truck size={15} className="text-slate-400" />
                       <span className="font-medium">{event.truck.nomorUnit}</span>
@@ -114,7 +111,7 @@ export function TrackingTimeline({ events }: TrackingTimelineProps) {
                     )}
                   </div>
                 ) : (
-                  <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-400">
+                  <div className="mt-2.5 flex items-center gap-1.5 text-xs text-slate-400">
                     <Camera size={13} />
                     Belum ada unit truck ditugaskan pada tahap ini.
                   </div>

@@ -1,3 +1,4 @@
+import { initialTitikLokasi, initialTrucks } from "./masterData";
 import { photos } from "../utils/photos";
 import type { PersonInfo, Shipment, ShipmentStatus, TruckInfo } from "../types";
 
@@ -535,7 +536,7 @@ const seeds: ShipmentSeed[] = [
     alamatAsal: "Jl. Cideng Timur No. 8", kotaAsal: "Jakarta",
     alamatTujuan: "Jl. Ijen No. 40", kotaTujuan: "Malang",
     deskripsiBarang: "Peralatan olahraga, 4 koli (total 48kg)",
-    truck: { nomorUnit: "B 8845 BCD", jenis: "Wingbox", driver: "Firman Syah" },
+    truck: { nomorUnit: "L 8877 ABC", jenis: "CDD", driver: "Slamet Riyadi" },
     status: "Dalam Perjalanan",
     kotaTransit: "Semarang",
     estimasiTiba: "2026-09-12",
@@ -654,8 +655,46 @@ const seeds: ShipmentSeed[] = [
     status: "Selesai / Terkirim",
     kotaTransit: "Semarang",
   },
+
+  // --- Dibuat 2026-09-07 ---
+  {
+    awb: "GMS-20260907-0001",
+    tanggalDibuat: "2026-09-07",
+    jamDibuat: "08:00",
+    pengirim: { nama: "Toko Elektronik Jaya", telepon: "021-4471100", email: "tokojaya@example.com" },
+    penerima: { nama: "Siti Nurhaliza", telepon: "0812-7789-3345", email: "siti.nurhaliza@example.com" },
+    alamatAsal: "Jl. Mangga Dua Raya No. 20", kotaAsal: "Jakarta",
+    alamatTujuan: "Jl. Diponegoro No. 15", kotaTujuan: "Bandung",
+    deskripsiBarang: "Peralatan elektronik, 3 dus (total 40kg)",
+    truck: { nomorUnit: "B 4521 DEF", jenis: "Box", driver: "Yanto Prabowo" },
+    status: "Selesai / Terkirim",
+    kotaTransit: "Bekasi",
+  },
 ];
 
 const generatedShipments = seeds.map((seed, i) => buildShipment(seed, i));
 
-export const initialShipments: Shipment[] = [...featuredShipments, ...generatedShipments];
+/**
+ * Links a shipment (and its timeline events) to master Truck/TitikLokasi
+ * records wherever the denormalized nomorUnit/lokasi text matches one, so
+ * Truck History and location-aware features work without hand-editing
+ * every seed. Non-matches are left as plain text, same as before.
+ */
+function linkToMasterData(shipment: Shipment): Shipment {
+  const truckByPlate = new Map(initialTrucks.map((t) => [t.nomorUnit, t.id]));
+  const titikByName = new Map(initialTitikLokasi.map((t) => [t.namaKota, t.id]));
+
+  return {
+    ...shipment,
+    truckId: truckByPlate.get(shipment.truck.nomorUnit),
+    timeline: shipment.timeline.map((event) => ({
+      ...event,
+      truckId: event.truck ? truckByPlate.get(event.truck.nomorUnit) : undefined,
+      titikId: titikByName.get(event.lokasi.replace(/^Gudang /, "")),
+    })),
+  };
+}
+
+export const initialShipments: Shipment[] = [...featuredShipments, ...generatedShipments].map(
+  linkToMasterData,
+);

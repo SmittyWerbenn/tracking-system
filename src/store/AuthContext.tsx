@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
+import type { UserRole } from "../types";
 
 const AUTH_KEY = "gms-admin-authenticated";
 const PROFILE_KEY = "gms-admin-profile";
@@ -6,9 +7,10 @@ const PROFILE_KEY = "gms-admin-profile";
 export interface AdminProfile {
   nama: string;
   password: string;
+  role: UserRole;
 }
 
-const DEFAULT_PROFILE: AdminProfile = { nama: "Admin - Dewi", password: "admin" };
+const DEFAULT_PROFILE: AdminProfile = { nama: "Admin - Dewi", password: "admin", role: "Admin" };
 
 function loadProfile(): AdminProfile {
   try {
@@ -27,15 +29,18 @@ interface AuthContextValue {
   logout: () => void;
   updateProfile: (data: { nama: string }) => void;
   changePassword: (currentPassword: string, newPassword: string) => boolean;
+  /** Demo-only: lets the prototype be presented as either role without a
+   * real second account. Real permission checks still key off `profile.role`. */
+  switchRole: (role: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 /**
  * Mock, client-only auth for the prototype (no backend). Username is fixed
- * ("admin"); password and display name are editable via Account Settings
- * and persisted to localStorage - this only gates navigation in the demo,
- * it is not real security.
+ * ("admin"); password, display name, and role are editable/switchable and
+ * persisted to localStorage - this only gates navigation in the demo, it is
+ * not real security.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem(AUTH_KEY) === "true");
@@ -70,8 +75,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return true;
   }
 
+  function switchRole(role: UserRole) {
+    persist({ ...profile, role });
+  }
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, profile, login, logout, updateProfile, changePassword }}>
+    <AuthContext.Provider
+      value={{ isAuthenticated, profile, login, logout, updateProfile, changePassword, switchRole }}
+    >
       {children}
     </AuthContext.Provider>
   );

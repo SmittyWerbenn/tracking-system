@@ -1,6 +1,6 @@
-import type { ShipmentStatus, TimelineEventType } from "../types";
+import type { ArmadaStatus, ShipmentStatus, TimelineEventType } from "../types";
 
-interface StatusStyle {
+export interface StatusStyle {
   bg: string;
   text: string;
   dot: string;
@@ -131,3 +131,36 @@ export function getAllowedNextEvents(currentStatus: ShipmentStatus): TimelineEve
     (opt) => opt !== "Barang Diterima" && getPipelineRank(opt) >= currentRank,
   );
 }
+
+const ARMADA_STYLES: Record<ArmadaStatus, StatusStyle> = {
+  Available: {
+    bg: "bg-emerald-100",
+    text: "text-emerald-700",
+    dot: "bg-emerald-500",
+    ring: "ring-emerald-200",
+  },
+  "On Trip": {
+    bg: "bg-sky-100",
+    text: "text-sky-700",
+    dot: "bg-sky-500",
+    ring: "ring-sky-200",
+  },
+  Maintenance: {
+    bg: "bg-amber-100",
+    text: "text-amber-700",
+    dot: "bg-amber-500",
+    ring: "ring-amber-200",
+  },
+  Inactive: {
+    bg: "bg-slate-100",
+    text: "text-slate-500",
+    dot: "bg-slate-400",
+    ring: "ring-slate-200",
+  },
+};
+
+export function getArmadaStatusStyle(status: ArmadaStatus): StatusStyle {
+  return ARMADA_STYLES[status];
+}
+
+export const ARMADA_STATUS_OPTIONS: ArmadaStatus[] = ["Available", "On Trip", "Maintenance", "Inactive"];

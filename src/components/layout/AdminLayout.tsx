@@ -1,5 +1,4 @@
 import {
-  Bell,
   History,
   LayoutDashboard,
   LogOut,
@@ -19,6 +18,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../store/AuthContext";
 import type { UserRole } from "../../types";
 import { initials } from "../../utils/initials";
+import { NotificationBell } from "./NotificationBell";
 
 interface NavItem {
   to: string;
@@ -46,10 +46,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
   },
   {
     title: "Layanan",
-    items: [
-      { to: "/admin/notifikasi", label: "Notification Center", icon: Bell, end: true },
-      { to: "/admin/feedback", label: "Feedback Customer", icon: MessageSquare, end: true },
-    ],
+    items: [{ to: "/admin/feedback", label: "Feedback Customer", icon: MessageSquare, end: true }],
   },
   {
     title: "Sistem",
@@ -113,6 +110,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               </button>
             ))}
           </div>
+          <NotificationBell />
           <NavLink
             to="/admin/pengaturan/akun"
             className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-slate-100"

@@ -63,7 +63,7 @@ export default function TrackingSearch() {
                     setNotFound(false);
                   }}
                   placeholder="Contoh: GMS-20260911-0001"
-                  className="w-full rounded-lg border-0 bg-transparent px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none sm:pl-5"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 sm:border-0 sm:bg-transparent sm:pl-5 sm:focus:bg-transparent sm:focus:ring-0"
                 />
                 <button
                   type="submit"

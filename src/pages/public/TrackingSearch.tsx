@@ -1,15 +1,24 @@
-import { PackageSearch, Search } from "lucide-react";
+import { History, PackageSearch, Search, Trash2, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { PublicLayout } from "../../components/layout/PublicLayout";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useShipments } from "../../store/ShipmentContext";
+import type { ShipmentStatus } from "../../types";
+import {
+  clearAwbHistory,
+  formatRelativeView,
+  getAwbHistory,
+  removeAwbHistory,
+  type AwbHistoryEntry,
+} from "../../utils/awbHistory";
 import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
 export default function TrackingSearch() {
   useDocumentTitle("Lacak Pengiriman");
   const [awb, setAwb] = useState("");
   const [notFound, setNotFound] = useState(false);
+  const [history, setHistory] = useState<AwbHistoryEntry[]>(() => getAwbHistory());
   const navigate = useNavigate();
   const { shipments, getByAwb } = useShipments();
 
@@ -64,6 +73,49 @@ export default function TrackingSearch() {
             </p>
           )}
         </form>
+
+        {history.length > 0 && (
+          <div className="mt-10 w-full max-w-md text-left">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                <History size={13} />
+                Riwayat Pencarian
+              </p>
+              <button
+                onClick={() => setHistory(clearAwbHistory())}
+                className="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-red-600"
+              >
+                <Trash2 size={12} /> Hapus Semua
+              </button>
+            </div>
+            <div className="flex flex-col gap-2">
+              {history.map((h) => (
+                <div
+                  key={h.awb}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-50"
+                >
+                  <button
+                    onClick={() => navigate(`/tracking/${h.awb}`)}
+                    className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-mono text-sm font-medium text-slate-800">{h.awb}</p>
+                      <p className="text-xs text-slate-400">Terakhir dilihat: {formatRelativeView(h.lastViewedAt)}</p>
+                    </div>
+                    <StatusBadge status={h.status as ShipmentStatus} size="sm" />
+                  </button>
+                  <button
+                    onClick={() => setHistory(removeAwbHistory(h.awb))}
+                    title="Hapus dari riwayat"
+                    className="shrink-0 rounded-md p-1 text-slate-300 hover:bg-slate-100 hover:text-red-600"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-10 w-full max-w-md text-left">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">

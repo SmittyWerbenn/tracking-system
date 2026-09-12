@@ -1,11 +1,13 @@
 import { ArrowRight, CalendarClock, PackageSearch, Search, Truck, User } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { FeedbackForm } from "../../components/FeedbackForm";
 import { PublicLayout } from "../../components/layout/PublicLayout";
 import { ProofOfDeliveryCard } from "../../components/ProofOfDeliveryCard";
 import { StatusStepper } from "../../components/StatusStepper";
 import { TrackingTimeline } from "../../components/TrackingTimeline";
 import { useShipments } from "../../store/ShipmentContext";
+import { recordAwbView } from "../../utils/awbHistory";
 import { formatTanggalPanjang } from "../../utils/format";
 import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
@@ -15,6 +17,13 @@ export default function TrackingResult() {
   const navigate = useNavigate();
   const shipment = getByAwb(awb ?? "");
   useDocumentTitle(shipment ? `Tracking ${shipment.awb}` : `AWB ${awb} Tidak Ditemukan`);
+
+  useEffect(() => {
+    if (shipment) {
+      recordAwbView(shipment.awb, shipment.status);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shipment?.awb, shipment?.status]);
 
   const [query, setQuery] = useState("");
   const [notFound, setNotFound] = useState(false);
@@ -188,6 +197,12 @@ export default function TrackingResult() {
         </h2>
         <TrackingTimeline events={shipment.timeline} />
       </div>
+
+      {isDelivered && (
+        <div className="mt-6">
+          <FeedbackForm awb={shipment.awb} customerName={shipment.penerima.nama} />
+        </div>
+      )}
 
       <div className="mt-8 rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center text-xs text-slate-400">
         Butuh bantuan? Hubungi tim customer service PT Gangsar Mitra Sautama dengan menyertakan

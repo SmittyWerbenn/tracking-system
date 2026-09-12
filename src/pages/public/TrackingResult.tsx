@@ -1,4 +1,16 @@
-import { ArrowRight, CalendarClock, PackageSearch, Search, Truck, User } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarClock,
+  FileText,
+  Hash,
+  MapPin,
+  Package,
+  PackageSearch,
+  Search,
+  Truck,
+  User,
+  Weight,
+} from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { FeedbackForm } from "../../components/FeedbackForm";
@@ -147,6 +159,68 @@ export default function TrackingResult() {
       {/* Progress stepper */}
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <StatusStepper status={shipment.status} />
+      </div>
+
+      {/* Detail pengiriman & alamat tujuan */}
+      <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <h2 className="mb-3.5 text-sm font-semibold text-slate-800">Detail Pengiriman</h2>
+          <dl className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <Hash size={16} className="shrink-0 text-slate-400" />
+              <div className="min-w-0">
+                <dt className="text-[11px] text-slate-400">Nomor Resi</dt>
+                <dd className="truncate font-mono text-sm font-medium text-slate-800">{shipment.awb}</dd>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Truck size={16} className="shrink-0 text-slate-400" />
+              <div className="min-w-0">
+                <dt className="text-[11px] text-slate-400">Layanan</dt>
+                <dd className="text-sm font-medium text-slate-800">{shipment.layanan}</dd>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Weight size={16} className="shrink-0 text-slate-400" />
+              <div className="min-w-0">
+                <dt className="text-[11px] text-slate-400">Berat</dt>
+                <dd className="text-sm font-medium text-slate-800">{shipment.beratKg} Kg</dd>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <Package size={16} className="mt-0.5 shrink-0 text-slate-400" />
+              <div className="min-w-0">
+                <dt className="text-[11px] text-slate-400">Isi Paket</dt>
+                <dd className="text-sm font-medium leading-relaxed text-slate-800">
+                  {shipment.deskripsiBarang}
+                </dd>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <FileText size={16} className="shrink-0 text-slate-400" />
+              <div className="min-w-0">
+                <dt className="text-[11px] text-slate-400">Tanggal Kirim</dt>
+                <dd className="text-sm font-medium text-slate-800">
+                  {formatTanggalPanjang(shipment.tanggalDibuat)}
+                </dd>
+              </div>
+            </div>
+          </dl>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <h2 className="mb-3.5 text-sm font-semibold text-slate-800">Alamat Tujuan</h2>
+          <div className="flex items-start gap-3">
+            <MapPin size={16} className="mt-0.5 shrink-0 text-slate-400" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900">{shipment.penerima.nama}</p>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                {shipment.alamatTujuan}, {shipment.kotaTujuan}
+              </p>
+              <p className="mt-2 text-xs text-slate-400">{shipment.penerima.telepon}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Current truck summary */}

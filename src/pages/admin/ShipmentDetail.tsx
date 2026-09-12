@@ -114,7 +114,18 @@ export default function ShipmentDetail() {
               </div>
             </div>
 
-            <div className="mt-6 border-t border-slate-100 pt-5">
+            <div className="mt-6 flex flex-wrap gap-6 border-t border-slate-100 pt-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Layanan</p>
+                <p className="text-sm font-medium text-slate-800">{shipment.layanan}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Berat</p>
+                <p className="text-sm font-medium text-slate-800">{shipment.beratKg} Kg</p>
+              </div>
+            </div>
+
+            <div className="mt-5 border-t border-slate-100 pt-5">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
                 <Package size={13} /> Deskripsi Barang
               </p>

@@ -7,6 +7,8 @@ export type ShipmentStatus =
   | "Tiba di Tujuan"
   | "Selesai / Terkirim";
 
+export type LayananPengiriman = "Reguler" | "Express" | "Kargo";
+
 export type TimelineEventType =
   | "Barang Diterima"
   | "Berangkat"
@@ -69,6 +71,8 @@ export interface Shipment {
   alamatTujuan: string;
   kotaTujuan: string;
   deskripsiBarang: string;
+  layanan: LayananPengiriman;
+  beratKg: number;
   fotoBarang?: string;
   truck: TruckInfo;
   truckId?: string; // links to Truck master data
@@ -87,6 +91,8 @@ export interface ShipmentFormData {
   alamatTujuan: string;
   kotaTujuan: string;
   deskripsiBarang: string;
+  layanan: LayananPengiriman;
+  beratKg: number;
   fotoBarang?: string;
   truckId: string;
 }

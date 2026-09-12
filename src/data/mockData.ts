@@ -1,6 +1,18 @@
 import { initialTitikLokasi, initialTrucks } from "./masterData";
 import { photos } from "../utils/photos";
-import type { PersonInfo, Shipment, ShipmentStatus, TruckInfo } from "../types";
+import type { LayananPengiriman, PersonInfo, Shipment, ShipmentStatus, TruckInfo } from "../types";
+
+/** Parses the "(total 85kg)" style weight already embedded in deskripsiBarang. */
+function deriveBeratKg(deskripsiBarang: string): number {
+  const match = deskripsiBarang.match(/(\d+)\s*kg/i);
+  return match ? Number(match[1]) : 10;
+}
+
+function deriveLayanan(beratKg: number): LayananPengiriman {
+  if (beratKg <= 50) return "Express";
+  if (beratKg <= 150) return "Reguler";
+  return "Kargo";
+}
 
 // ---------------------------------------------------------------------------
 // 3 AWB utama (dipakai untuk demo flow detail: transfer unit & POD lengkap)
@@ -27,6 +39,8 @@ const featuredShipments: Shipment[] = [
     alamatTujuan: "Jl. Diponegoro No. 45, Gubeng",
     kotaTujuan: "Surabaya",
     deskripsiBarang: "Spare part mesin industri, 3 dus (total 85kg)",
+    layanan: "Reguler",
+    beratKg: 85,
     fotoBarang: photos.barangDiterima,
     truck: { nomorUnit: "L 8877 ABC", jenis: "CDD", driver: "Slamet Riyadi" },
     emailTerkirim: true,
@@ -116,6 +130,8 @@ const featuredShipments: Shipment[] = [
     alamatTujuan: "Jl. Soekarno Hatta No. 210, Buah Batu",
     kotaTujuan: "Bandung",
     deskripsiBarang: "Dokumen kontrak & sample produk tekstil, 1 box (12kg)",
+    layanan: "Express",
+    beratKg: 12,
     fotoBarang: photos.gudangWorker,
     truck: { nomorUnit: "D 7788 QRS", jenis: "Box", driver: "Andi Firmansyah" },
     emailTerkirim: true,
@@ -178,6 +194,8 @@ const featuredShipments: Shipment[] = [
     alamatTujuan: "Jl. Asia Afrika No. 88, Sumur Bandung",
     kotaTujuan: "Bandung",
     deskripsiBarang: "Peralatan elektronik rumah tangga, 5 dus (total 140kg)",
+    layanan: "Reguler",
+    beratKg: 140,
     fotoBarang: photos.barangDiterima,
     truck: { nomorUnit: "F 5566 LMN", jenis: "Wingbox", driver: "Joko Prasetyo" },
     emailTerkirim: true,
@@ -298,6 +316,8 @@ interface ShipmentSeed {
 }
 
 function buildShipment(seed: ShipmentSeed, photoIndex: number): Shipment {
+  const beratKg = deriveBeratKg(seed.deskripsiBarang);
+  const layanan = deriveLayanan(beratKg);
   const timeline: Shipment["timeline"] = [];
   let cursor = { tanggal: seed.tanggalDibuat, jam: seed.jamDibuat };
   const truckPhotoA = TRUCK_PHOTO_POOL[photoIndex % TRUCK_PHOTO_POOL.length];
@@ -404,6 +424,8 @@ function buildShipment(seed: ShipmentSeed, photoIndex: number): Shipment {
     alamatTujuan: seed.alamatTujuan,
     kotaTujuan: seed.kotaTujuan,
     deskripsiBarang: seed.deskripsiBarang,
+    layanan,
+    beratKg,
     fotoBarang: photos.barangDiterima,
     truck: seed.truck,
     emailTerkirim: true,

@@ -19,7 +19,7 @@ import { useFleet } from "../../store/FleetContext";
 import { useLocations } from "../../store/LocationContext";
 import { useSettings } from "../../store/SettingsContext";
 import { useShipments } from "../../store/ShipmentContext";
-import type { Shipment, ShipmentFormData } from "../../types";
+import type { LayananPengiriman, Shipment, ShipmentFormData } from "../../types";
 import { compressImage } from "../../utils/compressImage";
 import { photos } from "../../utils/photos";
 import { sendTrackingEmail } from "../../utils/sendEmail";
@@ -32,9 +32,13 @@ const emptyForm: ShipmentFormData = {
   alamatTujuan: "",
   kotaTujuan: "",
   deskripsiBarang: "",
+  layanan: "Reguler",
+  beratKg: 0,
   fotoBarang: undefined,
   truckId: "",
 };
+
+const LAYANAN_OPTIONS: LayananPengiriman[] = ["Reguler", "Express", "Kargo"];
 
 function Section({
   title,
@@ -113,6 +117,10 @@ export default function CreateShipment() {
     }
     if (!form.kotaAsal || !form.kotaTujuan) {
       setFormError("Pilih kota asal dan kota tujuan terlebih dahulu.");
+      return;
+    }
+    if (!form.beratKg || form.beratKg <= 0) {
+      setFormError("Masukkan berat paket yang valid.");
       return;
     }
     setFormError(null);
@@ -273,6 +281,31 @@ export default function CreateShipment() {
               placeholder="Jl. Raya ... No. ..."
               value={form.alamatTujuan}
               onChange={(e) => update("alamatTujuan", e.target.value)}
+            />
+          </Field>
+          <Field label="Layanan">
+            <select
+              className={inputClass}
+              value={form.layanan}
+              onChange={(e) => update("layanan", e.target.value as LayananPengiriman)}
+            >
+              {LAYANAN_OPTIONS.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Berat (Kg)">
+            <input
+              required
+              type="number"
+              min={0.1}
+              step={0.1}
+              className={inputClass}
+              placeholder="Contoh: 85"
+              value={form.beratKg || ""}
+              onChange={(e) => update("beratKg", Number(e.target.value))}
             />
           </Field>
           <Field label="Deskripsi Barang" full>

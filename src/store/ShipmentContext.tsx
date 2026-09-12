@@ -59,6 +59,8 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       alamatTujuan: data.alamatTujuan,
       kotaTujuan: data.kotaTujuan,
       deskripsiBarang: data.deskripsiBarang,
+      layanan: data.layanan,
+      beratKg: data.beratKg,
       fotoBarang: data.fotoBarang,
       truck,
       truckId: data.truckId,

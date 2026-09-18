@@ -8,6 +8,13 @@ function deriveBeratKg(deskripsiBarang: string): number {
   return match ? Number(match[1]) : 10;
 }
 
+/** Parses the "3 dus" / "2 palet" / "4 koli" style quantity already embedded
+ * in deskripsiBarang (the count of packages/koli making up the shipment). */
+function deriveJumlahKoli(deskripsiBarang: string): number {
+  const match = deskripsiBarang.match(/,\s*(\d+)\s*(?:dus|box|palet|item|unit|koli|drum)/i);
+  return match ? Number(match[1]) : 1;
+}
+
 function deriveLayanan(beratKg: number): LayananPengiriman {
   if (beratKg <= 50) return "Express";
   if (beratKg <= 150) return "Reguler";
@@ -41,6 +48,7 @@ const featuredShipments: Shipment[] = [
     deskripsiBarang: "Spare part mesin industri, 3 dus (total 85kg)",
     layanan: "Reguler",
     beratKg: 85,
+    jumlahKoli: 3,
     fotoBarang: photos.barangDiterima,
     truck: { nomorUnit: "L 8877 ABC", jenis: "CDD", driver: "Slamet Riyadi" },
     emailTerkirim: true,
@@ -132,6 +140,7 @@ const featuredShipments: Shipment[] = [
     deskripsiBarang: "Dokumen kontrak & sample produk tekstil, 1 box (12kg)",
     layanan: "Express",
     beratKg: 12,
+    jumlahKoli: 1,
     fotoBarang: photos.gudangWorker,
     truck: { nomorUnit: "D 7788 QRS", jenis: "Box", driver: "Andi Firmansyah" },
     emailTerkirim: true,
@@ -196,6 +205,7 @@ const featuredShipments: Shipment[] = [
     deskripsiBarang: "Peralatan elektronik rumah tangga, 5 dus (total 140kg)",
     layanan: "Reguler",
     beratKg: 140,
+    jumlahKoli: 5,
     fotoBarang: photos.barangDiterima,
     truck: { nomorUnit: "F 5566 LMN", jenis: "Wingbox", driver: "Joko Prasetyo" },
     emailTerkirim: true,
@@ -318,6 +328,7 @@ interface ShipmentSeed {
 function buildShipment(seed: ShipmentSeed, photoIndex: number): Shipment {
   const beratKg = deriveBeratKg(seed.deskripsiBarang);
   const layanan = deriveLayanan(beratKg);
+  const jumlahKoli = deriveJumlahKoli(seed.deskripsiBarang);
   const timeline: Shipment["timeline"] = [];
   let cursor = { tanggal: seed.tanggalDibuat, jam: seed.jamDibuat };
   const truckPhotoA = TRUCK_PHOTO_POOL[photoIndex % TRUCK_PHOTO_POOL.length];
@@ -426,6 +437,7 @@ function buildShipment(seed: ShipmentSeed, photoIndex: number): Shipment {
     deskripsiBarang: seed.deskripsiBarang,
     layanan,
     beratKg,
+    jumlahKoli,
     fotoBarang: photos.barangDiterima,
     truck: seed.truck,
     emailTerkirim: true,

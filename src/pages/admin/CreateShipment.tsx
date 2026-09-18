@@ -36,6 +36,7 @@ const emptyForm: ShipmentFormData = {
   deskripsiBarang: "",
   layanan: "Reguler",
   beratKg: 0,
+  jumlahKoli: 1,
   fotoBarang: undefined,
   truckId: "",
 };
@@ -124,6 +125,10 @@ export default function CreateShipment() {
     }
     if (!form.beratKg || form.beratKg <= 0) {
       setFormError("Masukkan berat paket yang valid.");
+      return;
+    }
+    if (!form.jumlahKoli || form.jumlahKoli <= 0) {
+      setFormError("Masukkan jumlah koli yang valid.");
       return;
     }
     setFormError(null);
@@ -342,6 +347,18 @@ export default function CreateShipment() {
               placeholder="Contoh: 85"
               value={form.beratKg || ""}
               onChange={(e) => update("beratKg", Number(e.target.value))}
+            />
+          </Field>
+          <Field label="Jumlah Koli">
+            <input
+              required
+              type="number"
+              min={1}
+              step={1}
+              className={inputClass}
+              placeholder="Contoh: 3"
+              value={form.jumlahKoli || ""}
+              onChange={(e) => update("jumlahKoli", Number(e.target.value))}
             />
           </Field>
           <Field label="Deskripsi Barang" full>

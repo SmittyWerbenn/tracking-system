@@ -123,6 +123,10 @@ export default function ShipmentDetail() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Berat</p>
                 <p className="text-sm font-medium text-slate-800">{shipment.beratKg} Kg</p>
               </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Jumlah Koli</p>
+                <p className="text-sm font-medium text-slate-800">{shipment.jumlahKoli} Koli</p>
+              </div>
             </div>
 
             <div className="mt-5 border-t border-slate-100 pt-5">

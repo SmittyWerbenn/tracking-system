@@ -73,6 +73,7 @@ export interface Shipment {
   deskripsiBarang: string;
   layanan: LayananPengiriman;
   beratKg: number;
+  jumlahKoli: number;
   fotoBarang?: string;
   truck: TruckInfo;
   truckId?: string; // links to Truck master data
@@ -93,6 +94,7 @@ export interface ShipmentFormData {
   deskripsiBarang: string;
   layanan: LayananPengiriman;
   beratKg: number;
+  jumlahKoli: number;
   fotoBarang?: string;
   truckId: string;
 }

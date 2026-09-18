@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  Boxes,
   CalendarClock,
   FileText,
   Hash,
@@ -187,6 +188,13 @@ export default function TrackingResult() {
               <div className="min-w-0">
                 <dt className="text-[11px] text-slate-400">Berat</dt>
                 <dd className="text-sm font-medium text-slate-800">{shipment.beratKg} Kg</dd>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 py-2.5">
+              <Boxes size={16} className="shrink-0 text-slate-400" />
+              <div className="min-w-0">
+                <dt className="text-[11px] text-slate-400">Jumlah Koli</dt>
+                <dd className="text-sm font-medium text-slate-800">{shipment.jumlahKoli} Koli</dd>
               </div>
             </div>
             <div className="flex items-start gap-3 py-2.5">

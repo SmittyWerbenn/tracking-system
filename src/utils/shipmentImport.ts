@@ -13,6 +13,7 @@ export const BULK_TEMPLATE_HEADERS = [
   "Alamat Tujuan",
   "Layanan",
   "Berat (Kg)",
+  "Jumlah Koli",
   "Deskripsi Barang",
   "Nomor Polisi Truck (Opsional)",
 ] as const;
@@ -30,6 +31,7 @@ export interface BulkRowInput {
   alamatTujuan: string;
   layanan: string;
   beratKg: string;
+  jumlahKoli: string;
   deskripsiBarang: string;
   nomorPolisiTruck: string;
 }
@@ -47,6 +49,7 @@ const FIELD_ORDER: (keyof BulkRowInput)[] = [
   "alamatTujuan",
   "layanan",
   "beratKg",
+  "jumlahKoli",
   "deskripsiBarang",
   "nomorPolisiTruck",
 ];
@@ -164,6 +167,7 @@ export function tableToBulkRows(table: unknown[][]): {
       alamatTujuan: record.alamatTujuan ?? "",
       layanan: record.layanan ?? "",
       beratKg: record.beratKg ?? "",
+      jumlahKoli: record.jumlahKoli ?? "",
       deskripsiBarang: record.deskripsiBarang ?? "",
       nomorPolisiTruck: record.nomorPolisiTruck ?? "",
     });
@@ -213,6 +217,7 @@ export function downloadBulkShipmentTemplate() {
       "Jl. Soekarno Hatta No. 210",
       "Reguler",
       "10",
+      "1",
       "Contoh isi paket, 1 dus (10kg)",
       "",
     ],

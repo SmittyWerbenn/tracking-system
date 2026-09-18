@@ -52,6 +52,7 @@ function emptyRow(): BulkRow {
     layanan: "",
     layananValue: "Reguler",
     beratKg: "",
+    jumlahKoli: "",
     deskripsiBarang: "",
     nomorPolisiTruck: "",
   };
@@ -97,6 +98,8 @@ function rowErrors(row: BulkRow, knownKota: string[]): string[] {
   if (!row.deskripsiBarang.trim()) errs.push("Deskripsi barang kosong");
   const berat = Number(row.beratKg);
   if (!row.beratKg || !Number.isFinite(berat) || berat <= 0) errs.push("Berat tidak valid");
+  const koli = Number(row.jumlahKoli);
+  if (!row.jumlahKoli || !Number.isFinite(koli) || koli <= 0) errs.push("Jumlah koli tidak valid");
   return errs;
 }
 
@@ -208,6 +211,7 @@ export function BulkShipmentImport() {
         deskripsiBarang: row.deskripsiBarang,
         layanan: row.layananValue,
         beratKg: Number(row.beratKg),
+        jumlahKoli: Number(row.jumlahKoli),
         fotoBarang: photos.barangDiterima,
         truckId: truck?.id ?? "",
       });
@@ -277,7 +281,7 @@ export function BulkShipmentImport() {
               <th colSpan={3} className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">
                 Penerima
               </th>
-              <th colSpan={7} className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">
+              <th colSpan={8} className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">
                 Detail Pengiriman
               </th>
               <th className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">Armada</th>
@@ -297,6 +301,7 @@ export function BulkShipmentImport() {
               <th className="px-2.5 py-2.5">Alamat Tujuan</th>
               <th className="px-2.5 py-2.5">Layanan</th>
               <th className="px-2.5 py-2.5">Berat (Kg)</th>
+              <th className="px-2.5 py-2.5">Jumlah Koli</th>
               <th className="px-2.5 py-2.5">Deskripsi Barang</th>
               <th className="border-l border-slate-200 px-2.5 py-2.5">Truck (Opsional)</th>
               <th className="px-2.5 py-2.5"></th>
@@ -461,6 +466,17 @@ export function BulkShipmentImport() {
                 </td>
                 <td className="px-2.5 py-2">
                   <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    className={`${cellInputClass} min-w-[80px]`}
+                    value={row.jumlahKoli}
+                    onChange={(e) => updateRow(row.id, "jumlahKoli", e.target.value)}
+                    placeholder="3"
+                  />
+                </td>
+                <td className="px-2.5 py-2">
+                  <input
                     className={`${cellInputClass} min-w-[200px]`}
                     value={row.deskripsiBarang}
                     onChange={(e) => updateRow(row.id, "deskripsiBarang", e.target.value)}
@@ -571,4 +587,5 @@ const FIELDS_TO_CHECK_BLANK: (keyof BulkRowInput)[] = [
   "alamatTujuan",
   "deskripsiBarang",
   "beratKg",
+  "jumlahKoli",
 ];

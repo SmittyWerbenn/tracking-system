@@ -245,22 +245,36 @@ export function BulkShipmentImport() {
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full min-w-[1400px] border-collapse text-xs">
           <thead>
+            <tr className="border-b border-slate-200 bg-slate-100 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-2.5 py-1.5"></th>
+              <th colSpan={3} className="px-2.5 py-1.5 text-blue-800">
+                Pengirim
+              </th>
+              <th colSpan={3} className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">
+                Penerima
+              </th>
+              <th colSpan={7} className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">
+                Detail Pengiriman
+              </th>
+              <th className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">Armada</th>
+              <th></th>
+            </tr>
             <tr className="border-b border-slate-200 bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               <th className="px-2.5 py-2.5">Status</th>
-              <th className="px-2.5 py-2.5">Nama Pengirim</th>
+              <th className="px-2.5 py-2.5">Nama</th>
               <th className="px-2.5 py-2.5">No HP</th>
               <th className="px-2.5 py-2.5">Email</th>
-              <th className="px-2.5 py-2.5">Nama Penerima</th>
+              <th className="border-l border-slate-200 px-2.5 py-2.5">Nama</th>
               <th className="px-2.5 py-2.5">No HP</th>
               <th className="px-2.5 py-2.5">Email</th>
-              <th className="px-2.5 py-2.5">Kota Asal</th>
+              <th className="border-l border-slate-200 px-2.5 py-2.5">Kota Asal</th>
               <th className="px-2.5 py-2.5">Alamat Asal</th>
               <th className="px-2.5 py-2.5">Kota Tujuan</th>
               <th className="px-2.5 py-2.5">Alamat Tujuan</th>
               <th className="px-2.5 py-2.5">Layanan</th>
               <th className="px-2.5 py-2.5">Berat (Kg)</th>
               <th className="px-2.5 py-2.5">Deskripsi Barang</th>
-              <th className="px-2.5 py-2.5">Truck (Opsional)</th>
+              <th className="border-l border-slate-200 px-2.5 py-2.5">Truck (Opsional)</th>
               <th className="px-2.5 py-2.5"></th>
             </tr>
           </thead>
@@ -302,7 +316,7 @@ export function BulkShipmentImport() {
                     placeholder="email@x.com"
                   />
                 </td>
-                <td className="px-2.5 py-2">
+                <td className="border-l border-slate-100 px-2.5 py-2">
                   <input
                     className={cellInputClass}
                     value={row.penerimaNama}
@@ -326,7 +340,7 @@ export function BulkShipmentImport() {
                     placeholder="email@x.com"
                   />
                 </td>
-                <td className="px-2.5 py-2">
+                <td className="border-l border-slate-100 px-2.5 py-2">
                   <select
                     className={cellInputClass}
                     value={row.kotaAsal}
@@ -402,7 +416,7 @@ export function BulkShipmentImport() {
                     placeholder="Isi paket"
                   />
                 </td>
-                <td className="px-2.5 py-2">
+                <td className="border-l border-slate-100 px-2.5 py-2">
                   <select
                     className={cellInputClass}
                     value={

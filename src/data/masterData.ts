@@ -110,6 +110,7 @@ export const initialTitikLokasi: TitikLokasi[] = [
   { id: "loc-sidoarjo", namaKota: "Sidoarjo", kodeKota: "SDA", provinsi: "Jawa Timur", jenis: "Transit", aktif: true },
   { id: "loc-pekanbaru", namaKota: "Pekanbaru", kodeKota: "PKU", provinsi: "Riau", jenis: "Tujuan", aktif: true },
   { id: "loc-manado", namaKota: "Manado", kodeKota: "MND", provinsi: "Sulawesi Utara", jenis: "Tujuan", aktif: true },
+  { id: "loc-bogor", namaKota: "Bogor", kodeKota: "BGR", provinsi: "Jawa Barat", jenis: "Transit", aktif: true },
 ];
 
 // ---------------------------------------------------------------------------

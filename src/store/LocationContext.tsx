@@ -8,7 +8,7 @@ import { useAuth } from "./AuthContext";
 // Bump this suffix whenever initialTitikLokasi in masterData.ts changes
 // meaningfully so browsers with an older cached copy in localStorage pick up
 // the new set instead of silently keeping stale data forever.
-const STORAGE_KEY = "gms-titik-lokasi-v2";
+const STORAGE_KEY = "gms-titik-lokasi-v3";
 
 export interface TitikFormData {
   namaKota: string;

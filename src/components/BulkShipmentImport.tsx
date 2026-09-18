@@ -65,6 +65,19 @@ function fromInput(input: BulkRowInput): BulkRow {
   };
 }
 
+/** Matches an imported city name against master data ignoring case/whitespace
+ * differences, so e.g. "jakarta" or "JAKARTA " still resolves to "Jakarta".
+ * Returns the original (trimmed) text unchanged if nothing matches, so the
+ * dropdown can still show what was actually imported instead of going blank. */
+function resolveKota(value: string, knownKota: string[]): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const exact = knownKota.find((k) => k === trimmed);
+  if (exact) return exact;
+  const loose = trimmed.toLowerCase().replace(/\s+/g, " ");
+  return knownKota.find((k) => k.toLowerCase() === loose) ?? trimmed;
+}
+
 function rowErrors(row: BulkRow, knownKota: string[]): string[] {
   const errs: string[] = [];
   if (!row.pengirimNama.trim()) errs.push("Nama pengirim kosong");
@@ -73,9 +86,13 @@ function rowErrors(row: BulkRow, knownKota: string[]): string[] {
   if (!row.penerimaNama.trim()) errs.push("Nama penerima kosong");
   if (!row.penerimaTelepon.trim()) errs.push("No HP penerima kosong");
   if (!row.penerimaEmail.trim()) errs.push("Email penerima kosong");
-  if (!row.kotaAsal || !knownKota.includes(row.kotaAsal)) errs.push("Kota asal belum dipilih/valid");
+  if (!row.kotaAsal) errs.push("Kota asal belum dipilih");
+  else if (!knownKota.includes(row.kotaAsal))
+    errs.push(`Kota asal "${row.kotaAsal}" tidak ada di master data, pilih dari daftar`);
   if (!row.alamatAsal.trim()) errs.push("Alamat asal kosong");
-  if (!row.kotaTujuan || !knownKota.includes(row.kotaTujuan)) errs.push("Kota tujuan belum dipilih/valid");
+  if (!row.kotaTujuan) errs.push("Kota tujuan belum dipilih");
+  else if (!knownKota.includes(row.kotaTujuan))
+    errs.push(`Kota tujuan "${row.kotaTujuan}" tidak ada di master data, pilih dari daftar`);
   if (!row.alamatTujuan.trim()) errs.push("Alamat tujuan kosong");
   if (!row.deskripsiBarang.trim()) errs.push("Deskripsi barang kosong");
   const berat = Number(row.beratKg);
@@ -147,7 +164,13 @@ export function BulkShipmentImport() {
         return;
       }
 
-      const imported = parsed.map(fromInput);
+      const imported = parsed.map((p) =>
+        fromInput({
+          ...p,
+          kotaAsal: resolveKota(p.kotaAsal, knownKota),
+          kotaTujuan: resolveKota(p.kotaTujuan, knownKota),
+        }),
+      );
       setRows((prev) => {
         const withoutBlanks = prev.filter((r) => !isRowBlank(r));
         return [...withoutBlanks, ...imported];
@@ -364,11 +387,14 @@ export function BulkShipmentImport() {
                 </td>
                 <td className="border-l border-slate-100 px-2.5 py-2">
                   <select
-                    className={cellInputClass}
+                    className={`${cellInputClass} ${row.kotaAsal && !knownKota.includes(row.kotaAsal) ? "border-amber-400 text-amber-700" : ""}`}
                     value={row.kotaAsal}
                     onChange={(e) => updateRow(row.id, "kotaAsal", e.target.value)}
                   >
                     <option value="">Pilih kota</option>
+                    {row.kotaAsal && !knownKota.includes(row.kotaAsal) && (
+                      <option value={row.kotaAsal}>{row.kotaAsal} (tidak dikenal)</option>
+                    )}
                     {knownKota.map((k) => (
                       <option key={k} value={k}>
                         {k}
@@ -386,11 +412,14 @@ export function BulkShipmentImport() {
                 </td>
                 <td className="px-2.5 py-2">
                   <select
-                    className={cellInputClass}
+                    className={`${cellInputClass} ${row.kotaTujuan && !knownKota.includes(row.kotaTujuan) ? "border-amber-400 text-amber-700" : ""}`}
                     value={row.kotaTujuan}
                     onChange={(e) => updateRow(row.id, "kotaTujuan", e.target.value)}
                   >
                     <option value="">Pilih kota</option>
+                    {row.kotaTujuan && !knownKota.includes(row.kotaTujuan) && (
+                      <option value={row.kotaTujuan}>{row.kotaTujuan} (tidak dikenal)</option>
+                    )}
                     {knownKota.map((k) => (
                       <option key={k} value={k}>
                         {k}

@@ -102,6 +102,14 @@ export const initialTitikLokasi: TitikLokasi[] = [
   { id: "loc-balikpapan", namaKota: "Balikpapan", kodeKota: "BPP", provinsi: "Kalimantan Timur", jenis: "Tujuan", aktif: true },
   { id: "loc-solo", namaKota: "Solo", kodeKota: "SLO", provinsi: "Jawa Tengah", jenis: "Tujuan", aktif: true },
   { id: "loc-malang", namaKota: "Malang", kodeKota: "MLG", provinsi: "Jawa Timur", jenis: "Tujuan", aktif: true },
+  { id: "loc-depok", namaKota: "Depok", kodeKota: "DPK", provinsi: "Jawa Barat", jenis: "Transit", aktif: true },
+  { id: "loc-tangerang", namaKota: "Tangerang", kodeKota: "TGR", provinsi: "Banten", jenis: "Transit", aktif: true },
+  { id: "loc-cikarang", namaKota: "Cikarang", kodeKota: "CKR", provinsi: "Jawa Barat", jenis: "Transit", aktif: true },
+  { id: "loc-sukabumi", namaKota: "Sukabumi", kodeKota: "SKB", provinsi: "Jawa Barat", jenis: "Tujuan", aktif: true },
+  { id: "loc-karawang", namaKota: "Karawang", kodeKota: "KRW", provinsi: "Jawa Barat", jenis: "Transit", aktif: true },
+  { id: "loc-sidoarjo", namaKota: "Sidoarjo", kodeKota: "SDA", provinsi: "Jawa Timur", jenis: "Transit", aktif: true },
+  { id: "loc-pekanbaru", namaKota: "Pekanbaru", kodeKota: "PKU", provinsi: "Riau", jenis: "Tujuan", aktif: true },
+  { id: "loc-manado", namaKota: "Manado", kodeKota: "MND", provinsi: "Sulawesi Utara", jenis: "Tujuan", aktif: true },
 ];
 
 // ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@ import type { ShipmentStatus } from "../types";
 
 const STEPS = [
   { label: "Pesanan Dibuat", icon: ClipboardCheck },
-  { label: "Paket Diterima", icon: PackageCheck },
+  { label: "Di Pickup", icon: PackageCheck },
   { label: "Dalam Pengiriman", icon: Truck },
   { label: "Out for Delivery", icon: Navigation },
   { label: "Terkirim", icon: Check },

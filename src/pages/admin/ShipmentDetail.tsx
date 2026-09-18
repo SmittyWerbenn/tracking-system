@@ -45,12 +45,12 @@ export default function ShipmentDetail() {
     <AdminLayout>
       <button
         onClick={() => navigate(-1)}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800"
+        className="no-print mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800"
       >
         <ArrowLeft size={15} /> Kembali
       </button>
 
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4 print:block">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
             Detail Resi / AWB
@@ -88,10 +88,10 @@ export default function ShipmentDetail() {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3 print:mt-4 print:grid-cols-3 print:gap-4">
+        <div className="space-y-6 lg:col-span-2 print:col-span-2 print:space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 print:shadow-none">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 print:grid-cols-2">
               <div>
                 <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
                   <User size={13} /> Pengirim
@@ -138,7 +138,7 @@ export default function ShipmentDetail() {
                 <img
                   src={shipment.fotoBarang}
                   alt="Foto barang"
-                  className="mt-3 h-40 w-40 rounded-lg border border-slate-200 object-cover"
+                  className="mt-3 h-40 w-40 rounded-lg border border-slate-200 object-cover print:h-24 print:w-24"
                 />
               )}
             </div>
@@ -184,7 +184,7 @@ export default function ShipmentDetail() {
         </div>
 
         <div className="space-y-4">
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white p-5 text-center shadow-sm">
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white p-5 text-center shadow-sm print:shadow-none">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
               QR Tracking
             </p>

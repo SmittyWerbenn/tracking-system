@@ -71,9 +71,9 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 print:bg-white">
       {/* Top bar */}
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6">
+      <header className="no-print sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6">
         <div className="flex items-center gap-3">
           <button
             className="rounded-md p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
@@ -134,7 +134,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
       <div className="flex">
         {/* Sidebar */}
         <aside
-          className={`fixed inset-y-0 left-0 top-16 z-20 w-64 transform overflow-y-auto border-r border-slate-200 bg-white transition-transform duration-200 lg:static lg:translate-x-0 ${
+          className={`no-print fixed inset-y-0 left-0 top-16 z-20 w-64 transform overflow-y-auto border-r border-slate-200 bg-white transition-transform duration-200 lg:static lg:translate-x-0 ${
             mobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
@@ -199,12 +199,12 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
         {mobileOpen && (
           <div
-            className="fixed inset-0 z-10 bg-black/30 lg:hidden"
+            className="no-print fixed inset-0 z-10 bg-black/30 lg:hidden"
             onClick={() => setMobileOpen(false)}
           />
         )}
 
-        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8 print:p-0">{children}</main>
       </div>
     </div>
   );

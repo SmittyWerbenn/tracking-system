@@ -6,6 +6,7 @@ import {
   Mail,
   MapPin,
   Package,
+  Table,
   Truck,
   User,
   X,
@@ -13,6 +14,7 @@ import {
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { BulkShipmentImport } from "../../components/BulkShipmentImport";
 import { QRCode } from "../../components/QRCode";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { useFleet } from "../../store/FleetContext";
@@ -87,6 +89,7 @@ export default function CreateShipment() {
   const { settings } = useSettings();
   const navigate = useNavigate();
 
+  const [mode, setMode] = useState<"single" | "bulk">("single");
   const [form, setForm] = useState<ShipmentFormData>(emptyForm);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -176,13 +179,46 @@ export default function CreateShipment() {
 
   return (
     <AdminLayout>
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Buat Pengiriman</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Isi data pengirim, penerima, dan informasi pengiriman untuk menerbitkan resi (AWB) baru.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Buat Pengiriman</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {mode === "single"
+              ? "Isi data pengirim, penerima, dan informasi pengiriman untuk menerbitkan resi (AWB) baru."
+              : "Buat banyak resi sekaligus dengan mengisi tabel atau mengimpor file Excel/CSV."}
+          </p>
+        </div>
+        <div className="inline-flex items-center gap-1 rounded-lg bg-slate-100 p-1">
+          <button
+            type="button"
+            onClick={() => setMode("single")}
+            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+              mode === "single" ? "bg-white text-blue-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <Package size={13} />
+            Satu Pengiriman
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("bulk")}
+            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+              mode === "bulk" ? "bg-white text-blue-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <Table size={13} />
+            Bulk / Import Excel
+          </button>
+        </div>
       </div>
 
+      {mode === "bulk" && (
+        <div className="mt-6">
+          <BulkShipmentImport />
+        </div>
+      )}
+
+      {mode === "single" && (
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
         <Section title="Data Pengirim" icon={User}>
           <Field label="Nama Pengirim">
@@ -395,6 +431,7 @@ export default function CreateShipment() {
           </button>
         </div>
       </form>
+      )}
 
       {/* Success modal */}
       {created && (

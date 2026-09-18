@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
 import { initialShipments } from "../data/mockData";
 import type { Shipment, ShipmentFormData, TrackingUpdateFormData, TruckInfo } from "../types";
 import { generateAWB } from "../utils/awb";
@@ -33,6 +33,15 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
   const { addNotification } = useNotifications();
   const { profile } = useAuth();
 
+  // Mirrors `shipments` synchronously so AWB generation stays correct when
+  // createShipment is called multiple times in the same tick (bulk import) -
+  // the `shipments` state closure only updates on the next render, which
+  // would otherwise hand out the same "next" AWB number to every row.
+  const shipmentsRef = useRef(shipments);
+  useEffect(() => {
+    shipmentsRef.current = shipments;
+  }, [shipments]);
+
   function truckSnapshot(truckId: string | undefined): TruckInfo | undefined {
     if (!truckId) return undefined;
     const t = getTruck(truckId);
@@ -46,7 +55,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
 
   function createShipment(data: ShipmentFormData): Shipment {
     const truck = truckSnapshot(data.truckId) ?? { nomorUnit: "-", jenis: "-" };
-    const awb = generateAWB(shipments.map((s) => s.awb));
+    const awb = generateAWB(shipmentsRef.current.map((s) => s.awb));
     const newShipment: Shipment = {
       awb,
       tanggalDibuat: todayISO(),
@@ -79,6 +88,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         },
       ],
     };
+    shipmentsRef.current = [newShipment, ...shipmentsRef.current];
     setShipments((prev) => [newShipment, ...prev]);
 
     addLog({
@@ -242,6 +252,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
   }
 
   function resetToMockData() {
+    shipmentsRef.current = initialShipments;
     setShipments(initialShipments);
   }
 

@@ -1,12 +1,14 @@
-import { Download, Eye, FileEdit, MapPin, Printer, Search } from "lucide-react";
+import { Download, Eye, FileEdit, MapPin, Printer, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useSettings } from "../../store/SettingsContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { ShipmentStatus } from "../../types";
 import { exportShipmentsCsv } from "../../utils/exportCsv";
 import { formatTanggalPendek, todayISO } from "../../utils/format";
+import { getStagnantShipments } from "../../utils/stagnant";
 import { SHIPMENT_STATUS_OPTIONS } from "../../utils/status";
 
 function isShipmentStatus(value: string): value is ShipmentStatus {
@@ -15,6 +17,7 @@ function isShipmentStatus(value: string): value is ShipmentStatus {
 
 export default function ShipmentList() {
   const { shipments } = useShipments();
+  const { settings } = useSettings();
   const [query, setQuery] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
   const [dateFrom, setDateFrom] = useState("");
@@ -22,6 +25,12 @@ export default function ShipmentList() {
 
   const statusParam = searchParams.get("status") ?? "";
   const statusFilter: ShipmentStatus | "Semua" = isShipmentStatus(statusParam) ? statusParam : "Semua";
+  const macetOnly = searchParams.get("macet") === "1";
+
+  const stagnantAwbs = useMemo(() => {
+    if (!macetOnly) return null;
+    return new Set(getStagnantShipments(shipments, settings.stagnantThresholdDays).map((s) => s.shipment.awb));
+  }, [shipments, settings.stagnantThresholdDays, macetOnly]);
 
   function handleStatusFilterChange(value: ShipmentStatus | "Semua") {
     setSearchParams((prev) => {
@@ -35,10 +44,19 @@ export default function ShipmentList() {
     });
   }
 
+  function clearMacetFilter() {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("macet");
+      return next;
+    });
+  }
+
   const filtered = useMemo(() => {
     return shipments
       .filter((s) => {
         if (statusFilter !== "Semua" && s.status !== statusFilter) return false;
+        if (stagnantAwbs && !stagnantAwbs.has(s.awb)) return false;
         if (dateFrom && s.tanggalDibuat < dateFrom) return false;
         if (dateTo && s.tanggalDibuat > dateTo) return false;
         if (query) {
@@ -58,7 +76,7 @@ export default function ShipmentList() {
         return true;
       })
       .sort((a, b) => (a.tanggalDibuat + a.jamDibuat < b.tanggalDibuat + b.jamDibuat ? 1 : -1));
-  }, [shipments, query, statusFilter, dateFrom, dateTo]);
+  }, [shipments, query, statusFilter, stagnantAwbs, dateFrom, dateTo]);
 
   function lastUpdate(awb: string) {
     const s = shipments.find((x) => x.awb === awb);
@@ -84,7 +102,20 @@ export default function ShipmentList() {
         </Link>
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center">
+      {macetOnly && (
+        <div className="mt-5 flex items-center gap-2 rounded-lg bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-800">
+          Menampilkan hanya AWB macet (tidak ada update terbaru)
+          <button
+            onClick={clearMacetFilter}
+            className="ml-auto inline-flex items-center gap-1 rounded-md p-1 text-amber-700 hover:bg-amber-100"
+            title="Hapus filter"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      <div className={`${macetOnly ? "mt-3" : "mt-5"} flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center`}>
         <div className="relative flex-1">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -121,13 +152,18 @@ export default function ShipmentList() {
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
           />
         </div>
-        {(query || statusFilter !== "Semua" || dateFrom || dateTo) && (
+        {(query || statusFilter !== "Semua" || dateFrom || dateTo || macetOnly) && (
           <button
             onClick={() => {
               setQuery("");
-              handleStatusFilterChange("Semua");
               setDateFrom("");
               setDateTo("");
+              setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                next.delete("status");
+                next.delete("macet");
+                return next;
+              });
             }}
             className="text-sm font-medium text-slate-500 hover:text-slate-800"
           >

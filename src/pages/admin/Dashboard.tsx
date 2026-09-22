@@ -76,19 +76,68 @@ export default function Dashboard() {
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <StatCard label="Total Pengiriman" value={total} icon={Package} accent="bg-blue-100 text-blue-700" />
-        <StatCard label="Dalam Perjalanan" value={dalamPerjalanan} icon={Truck} accent="bg-sky-100 text-sky-700" />
-        <StatCard label="Transit" value={transit} icon={Route} accent="bg-amber-100 text-amber-700" />
-        <StatCard label="Selesai" value={selesai} icon={CheckCircle2} accent="bg-emerald-100 text-emerald-700" />
-        <StatCard label="Kendala" value={bermasalah} icon={AlertTriangle} accent="bg-red-100 text-red-700" />
-        <StatCard label="AWB Macet" value={stagnant.length} icon={AlertTriangle} accent="bg-red-100 text-red-700" />
-        <StatCard label="Total Armada" value={trucks.length} icon={Truck} accent="bg-violet-100 text-violet-700" />
-        <StatCard label="Truck On Trip" value={truckOnTrip} icon={Truck} accent="bg-sky-100 text-sky-700" />
+        <StatCard
+          label="Total Pengiriman"
+          value={total}
+          icon={Package}
+          accent="bg-blue-100 text-blue-700"
+          to="/admin/pengiriman"
+        />
+        <StatCard
+          label="Dalam Perjalanan"
+          value={dalamPerjalanan}
+          icon={Truck}
+          accent="bg-sky-100 text-sky-700"
+          to={`/admin/pengiriman?status=${encodeURIComponent("Dalam Perjalanan")}`}
+        />
+        <StatCard
+          label="Transit"
+          value={transit}
+          icon={Route}
+          accent="bg-amber-100 text-amber-700"
+          to={`/admin/pengiriman?status=${encodeURIComponent("Transit")}`}
+        />
+        <StatCard
+          label="Selesai"
+          value={selesai}
+          icon={CheckCircle2}
+          accent="bg-emerald-100 text-emerald-700"
+          to={`/admin/pengiriman?status=${encodeURIComponent("Selesai / Terkirim")}`}
+        />
+        <StatCard
+          label="Kendala"
+          value={bermasalah}
+          icon={AlertTriangle}
+          accent="bg-red-100 text-red-700"
+          to={`/admin/pengiriman?status=${encodeURIComponent("Kendala")}`}
+        />
+        <StatCard
+          label="AWB Macet"
+          value={stagnant.length}
+          icon={AlertTriangle}
+          accent="bg-red-100 text-red-700"
+          to="/admin/pengiriman?macet=1"
+        />
+        <StatCard
+          label="Total Armada"
+          value={trucks.length}
+          icon={Truck}
+          accent="bg-violet-100 text-violet-700"
+          to="/admin/armada"
+        />
+        <StatCard
+          label="Truck On Trip"
+          value={truckOnTrip}
+          icon={Truck}
+          accent="bg-sky-100 text-sky-700"
+          to={`/admin/armada?status=${encodeURIComponent("On Trip")}`}
+        />
         <StatCard
           label="Avg. Customer Rating"
           value={avgRating.toFixed(1)}
           icon={Star}
           accent="bg-amber-100 text-amber-700"
+          to="/admin/feedback"
         />
       </div>
 

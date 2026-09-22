@@ -1,11 +1,16 @@
 import { Ban, History, Pencil, Plus, RotateCcw, X } from "lucide-react";
-import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { useMemo, useState, type FormEvent } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { ArmadaStatusBadge } from "../../components/ArmadaStatusBadge";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useAuth } from "../../store/AuthContext";
 import { useFleet, type TruckFormData, type TruckWithDriver } from "../../store/FleetContext";
+import type { ArmadaStatus } from "../../types";
 import { ARMADA_STATUS_OPTIONS } from "../../utils/status";
+
+function isArmadaStatus(value: string): value is ArmadaStatus {
+  return (ARMADA_STATUS_OPTIONS as string[]).includes(value);
+}
 
 const TRUCK_TYPES = ["Wingbox", "CDD", "Box", "Pickup", "Fuso", "Tronton"];
 
@@ -30,6 +35,27 @@ export default function FleetList() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<TruckFormData>(emptyForm);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const statusParam = searchParams.get("status") ?? "";
+  const statusFilter: ArmadaStatus | "Semua" = isArmadaStatus(statusParam) ? statusParam : "Semua";
+
+  function handleStatusFilterChange(value: ArmadaStatus | "Semua") {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value === "Semua") {
+        next.delete("status");
+      } else {
+        next.set("status", value);
+      }
+      return next;
+    });
+  }
+
+  const filteredTrucks = useMemo(
+    () => (statusFilter === "Semua" ? trucksWithDriver : trucksWithDriver.filter((t) => t.status === statusFilter)),
+    [trucksWithDriver, statusFilter],
+  );
 
   function openAdd() {
     setEditingId(null);
@@ -78,7 +104,30 @@ export default function FleetList() {
         )}
       </div>
 
-      <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <select
+          value={statusFilter}
+          onChange={(e) => handleStatusFilterChange(e.target.value as ArmadaStatus | "Semua")}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+        >
+          <option value="Semua">Semua Status</option>
+          {ARMADA_STATUS_OPTIONS.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        {statusFilter !== "Semua" && (
+          <button
+            onClick={() => handleStatusFilterChange("Semua")}
+            className="text-sm font-medium text-slate-500 hover:text-slate-800"
+          >
+            Reset
+          </button>
+        )}
+      </div>
+
+      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[960px] text-left text-sm">
             <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -94,7 +143,7 @@ export default function FleetList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {trucksWithDriver.map((t) => (
+              {filteredTrucks.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-50">
                   <td className="whitespace-nowrap px-4 py-3 font-mono font-medium text-slate-900">
                     {t.nomorUnit}
@@ -149,6 +198,13 @@ export default function FleetList() {
                   </td>
                 </tr>
               ))}
+              {filteredTrucks.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-400">
+                    Tidak ada armada yang cocok dengan filter.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

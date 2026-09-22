@@ -199,8 +199,8 @@ export default function ShipmentDetail() {
 
         <div className="space-y-4">
           {shipment.pod && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm print:shadow-none">
-              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm print:shadow-none">
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
                 <CheckCircle2 size={13} /> Bukti Serah Terima
               </p>
               <p className="text-xs text-slate-500">Diterima oleh :</p>

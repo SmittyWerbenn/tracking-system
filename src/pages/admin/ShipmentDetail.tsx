@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  CheckCircle2,
   Download,
   Mail,
   MapPin,
@@ -13,7 +14,7 @@ import { AdminLayout } from "../../components/layout/AdminLayout";
 import { QRCode } from "../../components/QRCode";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useShipments } from "../../store/ShipmentContext";
-import { formatTanggalPanjang } from "../../utils/format";
+import { formatJam, formatTanggalPanjang } from "../../utils/format";
 
 export default function ShipmentDetail() {
   const { awb } = useParams<{ awb: string }>();
@@ -197,6 +198,19 @@ export default function ShipmentDetail() {
         </div>
 
         <div className="space-y-4">
+          {shipment.pod && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm print:shadow-none">
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                <CheckCircle2 size={13} /> Bukti Serah Terima
+              </p>
+              <p className="text-xs text-slate-500">Diterima oleh :</p>
+              <p className="text-sm font-semibold text-slate-900">{shipment.pod.namaPenerima}</p>
+              <p className="mt-2 text-xs text-slate-500">Tanggal &amp; Waktu Diterima :</p>
+              <p className="text-sm font-medium text-slate-800">
+                {formatTanggalPanjang(shipment.pod.tanggal)} · {formatJam(shipment.pod.jam)}
+              </p>
+            </div>
+          )}
           <div className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white p-5 text-center shadow-sm print:shadow-none">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
               QR Tracking

@@ -1,12 +1,21 @@
-import { Building2 } from "lucide-react";
+import { ArrowLeft, Building2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { PublicLayout } from "../../components/layout/PublicLayout";
 import { COMPANY_VALUES } from "../../data/companyValues";
 import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
 export default function About() {
   useDocumentTitle("Tentang Kami");
+  const navigate = useNavigate();
   return (
     <PublicLayout>
+      <button
+        onClick={() => navigate(-1)}
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800"
+      >
+        <ArrowLeft size={15} /> Kembali
+      </button>
+
       <section className="rounded-2xl bg-white p-6 shadow-sm sm:p-8">
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-900 text-white">
           <Building2 size={22} />

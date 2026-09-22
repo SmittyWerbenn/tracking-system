@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   ArrowRight,
   Boxes,
   CalendarClock,
@@ -93,6 +94,13 @@ export default function TrackingResult() {
 
   return (
     <PublicLayout>
+      <button
+        onClick={() => navigate(-1)}
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800"
+      >
+        <ArrowLeft size={15} /> Kembali
+      </button>
+
       {/* quick search */}
       <form onSubmit={handleSearch} className="mb-5 flex gap-2">
         <input

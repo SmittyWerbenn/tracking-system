@@ -1,5 +1,6 @@
-import { AlertTriangle, CheckCircle2, KeyRound, Save, UserCog } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, KeyRound, Save, UserCog } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useAuth } from "../../store/AuthContext";
 import { initials } from "../../utils/initials";
@@ -8,6 +9,7 @@ const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
 
 export default function AccountSettings() {
+  const navigate = useNavigate();
   const { profile, updateProfile, changePassword } = useAuth();
 
   const [nama, setNama] = useState(profile.nama);
@@ -53,6 +55,13 @@ export default function AccountSettings() {
 
   return (
     <AdminLayout>
+      <button
+        onClick={() => navigate(-1)}
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800"
+      >
+        <ArrowLeft size={15} /> Kembali
+      </button>
+
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">Pengaturan Akun</h1>
         <p className="mt-1 text-sm text-slate-500">

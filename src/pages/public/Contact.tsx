@@ -1,4 +1,5 @@
-import { Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
+import { ArrowLeft, Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { PublicLayout } from "../../components/layout/PublicLayout";
 import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
@@ -25,8 +26,16 @@ const CHANNELS = [
 
 export default function Contact() {
   useDocumentTitle("Hubungi Kami");
+  const navigate = useNavigate();
   return (
     <PublicLayout>
+      <button
+        onClick={() => navigate(-1)}
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800"
+      >
+        <ArrowLeft size={15} /> Kembali
+      </button>
+
       <section className="rounded-2xl bg-white p-6 shadow-sm sm:p-8">
         <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Hubungi Kami</h1>
         <p className="mt-2 text-sm text-slate-500">

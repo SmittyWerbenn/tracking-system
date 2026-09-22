@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  ArrowLeft,
   CheckCircle2,
   ImagePlus,
   Loader2,
@@ -184,6 +185,13 @@ export default function CreateShipment() {
 
   return (
     <AdminLayout>
+      <button
+        onClick={() => navigate(-1)}
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800"
+      >
+        <ArrowLeft size={15} /> Kembali
+      </button>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Buat Pengiriman</h1>

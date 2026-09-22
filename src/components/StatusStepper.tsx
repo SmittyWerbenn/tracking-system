@@ -5,7 +5,7 @@ const STEPS = [
   { label: "Pesanan Dibuat", icon: ClipboardCheck },
   { label: "Di Pickup", icon: PackageCheck },
   { label: "Dalam Pengiriman", icon: Truck },
-  { label: "Out for Delivery", icon: Navigation },
+  { label: "Sedang Diantar", icon: Navigation },
   { label: "Terkirim", icon: Check },
 ] as const;
 
@@ -42,8 +42,13 @@ export function StatusStepper({ status }: { status: ShipmentStatus }) {
       )}
       <ol className="flex items-start">
         {STEPS.map((step, i) => {
-          const done = i < current;
-          const isCurrent = i === current;
+          const isLast = i === STEPS.length - 1;
+          // Reaching the final step IS completion, not "in progress toward
+          // it" - treat it as done (emerald + check) rather than the
+          // in-progress blue used for earlier current steps.
+          const isDelivered = i === current && isLast && !hasKendala;
+          const done = i < current || isDelivered;
+          const isCurrent = i === current && !isDelivered;
           const Icon = step.icon;
           return (
             <li key={step.label} className="flex flex-1 flex-col items-center last:flex-none">
@@ -55,27 +60,36 @@ export function StatusStepper({ status }: { status: ShipmentStatus }) {
                 />
                 <div
                   className={`absolute right-0 top-1/2 h-0.5 w-1/2 -translate-y-1/2 ${
-                    i === STEPS.length - 1 ? "invisible" : done ? "bg-emerald-500" : "bg-slate-200"
+                    isLast ? "invisible" : done ? "bg-emerald-500" : "bg-slate-200"
                   }`}
                 />
-                <span
-                  className={`relative z-10 mx-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-4 ring-white sm:h-10 sm:w-10 ${
-                    isCurrent && hasKendala
-                      ? "bg-red-500 text-white"
-                      : done
-                        ? "bg-emerald-500 text-white"
-                        : isCurrent
-                          ? "bg-blue-800 text-white"
-                          : "bg-slate-100 text-slate-400"
-                  }`}
-                >
-                  {isCurrent && hasKendala ? (
-                    <AlertTriangle size={16} />
-                  ) : done ? (
-                    <Check size={16} />
-                  ) : (
-                    <Icon size={16} />
+                <span className="relative z-10 mx-auto flex h-9 w-9 shrink-0 sm:h-10 sm:w-10">
+                  {(isCurrent || isDelivered) && (
+                    <span
+                      className={`absolute inset-0 animate-ping rounded-full opacity-75 ${
+                        hasKendala ? "bg-red-400" : isDelivered ? "bg-emerald-400" : "bg-blue-500"
+                      }`}
+                    />
                   )}
+                  <span
+                    className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-4 ring-white sm:h-10 sm:w-10 ${
+                      isCurrent && hasKendala
+                        ? "bg-red-500 text-white"
+                        : done
+                          ? "bg-emerald-500 text-white"
+                          : isCurrent
+                            ? "bg-blue-800 text-white"
+                            : "bg-slate-100 text-slate-400"
+                    }`}
+                  >
+                    {isCurrent && hasKendala ? (
+                      <AlertTriangle size={16} />
+                    ) : done ? (
+                      <Check size={16} />
+                    ) : (
+                      <Icon size={16} />
+                    )}
+                  </span>
                 </span>
               </div>
               <p

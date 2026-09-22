@@ -11,6 +11,7 @@ const navItems: NavItem[] = [
   { kind: "anchor", sectionId: "tentang", label: "Tentang Kami" },
   { kind: "anchor", sectionId: "layanan", label: "Layanan" },
   { kind: "anchor", sectionId: "keunggulan", label: "Keunggulan" },
+  { kind: "route", to: "/cek-ongkir", label: "Cek Ongkir" },
 ];
 
 interface PublicLayoutProps {
@@ -167,6 +168,11 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
                   <button onClick={() => goToSection("layanan")} className="text-left hover:text-blue-800">
                     Layanan
                   </button>
+                </li>
+                <li>
+                  <NavLink to="/cek-ongkir" className="hover:text-blue-800">
+                    Cek Ongkir
+                  </NavLink>
                 </li>
                 <li>
                   <NavLink to="/tracking" className="hover:text-blue-800">

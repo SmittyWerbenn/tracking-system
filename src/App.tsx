@@ -27,6 +27,7 @@ import TruckHistory from "./pages/admin/TruckHistory";
 import UpdateTracking from "./pages/admin/UpdateTracking";
 import UserManagement from "./pages/admin/UserManagement";
 import About from "./pages/public/About";
+import CekOngkir from "./pages/public/CekOngkir";
 import Contact from "./pages/public/Contact";
 import Home from "./pages/public/Home";
 import TrackingResult from "./pages/public/TrackingResult";
@@ -63,6 +64,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/tentang" element={<About />} />
           <Route path="/kontak" element={<Contact />} />
+          <Route path="/cek-ongkir" element={<CekOngkir />} />
           <Route path="/tracking" element={<TrackingSearch />} />
           <Route path="/tracking/:awb" element={<TrackingResult />} />
 

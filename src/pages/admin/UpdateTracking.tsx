@@ -1,4 +1,15 @@
-import { ArrowLeft, CheckCircle2, ImagePlus, MapPin, Send, X } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ChevronDown,
+  ImagePlus,
+  MapPin,
+  Pencil,
+  Save,
+  Send,
+  User,
+  X,
+} from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { SearchableSelect } from "../../components/SearchableSelect";
@@ -7,9 +18,9 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { useLocations } from "../../store/LocationContext";
 import { useFleet } from "../../store/FleetContext";
 import { useShipments } from "../../store/ShipmentContext";
-import type { TimelineEventType, TrackingUpdateFormData } from "../../types";
+import type { TimelineEventType, TrackingUpdateFormData, UpdateShipmentInfoData } from "../../types";
 import { compressImage } from "../../utils/compressImage";
-import { formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
+import { formatTanggalJam, formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
 import { getAllowedNextEvents } from "../../utils/status";
 
 const CUSTOM_LOKASI_VALUE = "__custom__";
@@ -19,7 +30,7 @@ const inputClass =
 
 export default function UpdateTracking() {
   const { awb } = useParams<{ awb: string }>();
-  const { getByAwb, addTrackingUpdate } = useShipments();
+  const { getByAwb, addTrackingUpdate, updateShipmentInfo, updatePodPhoto } = useShipments();
   const { trucksWithDriver } = useFleet();
   const { activeTitikLokasi } = useLocations();
   const navigate = useNavigate();
@@ -38,6 +49,19 @@ export default function UpdateTracking() {
   const [submitted, setSubmitted] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const [editInfoOpen, setEditInfoOpen] = useState(false);
+  const [editPengirim, setEditPengirim] = useState(shipment?.pengirim ?? { nama: "", telepon: "", email: "" });
+  const [editPenerima, setEditPenerima] = useState(shipment?.penerima ?? { nama: "", telepon: "", email: "" });
+  const [editKotaAsal, setEditKotaAsal] = useState(shipment?.kotaAsal ?? "");
+  const [editAlamatAsal, setEditAlamatAsal] = useState(shipment?.alamatAsal ?? "");
+  const [editKotaTujuan, setEditKotaTujuan] = useState(shipment?.kotaTujuan ?? "");
+  const [editAlamatTujuan, setEditAlamatTujuan] = useState(shipment?.alamatTujuan ?? "");
+  const [editSaved, setEditSaved] = useState(false);
+  const [editFormError, setEditFormError] = useState<string | null>(null);
+
+  const [podPhotoError, setPodPhotoError] = useState<string | null>(null);
+  const [podPhotoSaved, setPodPhotoSaved] = useState(false);
+
   if (!shipment) {
     return (
       <AdminLayout>
@@ -52,6 +76,29 @@ export default function UpdateTracking() {
   }
 
   const locked = shipment.status === "Selesai / Terkirim";
+  const POD_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+  const deliveredEvent = [...shipment.timeline].reverse().find((e) => e.type === "Selesai / Terkirim");
+  const deliveredAtMs = deliveredEvent?.inputAt ? new Date(deliveredEvent.inputAt).getTime() : null;
+  const podEditDeadlineMs = deliveredAtMs !== null ? deliveredAtMs + POD_EDIT_WINDOW_MS : null;
+  const nowMs = new Date().getTime();
+  const canEditPodPhoto = Boolean(shipment.pod && podEditDeadlineMs !== null && nowMs < podEditDeadlineMs);
+  const podEditHoursLeft =
+    podEditDeadlineMs !== null ? Math.max(0, Math.ceil((podEditDeadlineMs - nowMs) / (60 * 60 * 1000))) : 0;
+  const deliveredAtLabel = deliveredEvent ? formatTanggalJam(deliveredEvent.tanggal, deliveredEvent.jam) : null;
+
+  function handlePodPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPodPhotoError(null);
+    setPodPhotoSaved(false);
+    compressImage(file)
+      .then((dataUrl) => {
+        updatePodPhoto(shipment!.awb, dataUrl);
+        setPodPhotoSaved(true);
+        setTimeout(() => setPodPhotoSaved(false), 2500);
+      })
+      .catch(() => setPodPhotoError("Gagal memproses foto. Coba foto lain."));
+  }
   const lokasiOptions = [
     ...activeTitikLokasi.map((t) => ({ value: t.id, label: t.namaKota, description: `${t.jenis} - ${t.provinsi}` })),
     { value: CUSTOM_LOKASI_VALUE, label: "Lainnya (ketik manual)" },
@@ -66,6 +113,31 @@ export default function UpdateTracking() {
     titikId === CUSTOM_LOKASI_VALUE
       ? customLokasi
       : (activeTitikLokasi.find((t) => t.id === titikId)?.namaKota ?? "");
+  const kotaOptions = activeTitikLokasi.map((k) => ({
+    value: k.namaKota,
+    label: k.namaKota,
+    description: `${k.jenis} - ${k.provinsi}`,
+  }));
+
+  function handleSaveInfo(e: FormEvent) {
+    e.preventDefault();
+    if (!editKotaAsal || !editKotaTujuan) {
+      setEditFormError("Pilih kota asal dan kota tujuan terlebih dahulu.");
+      return;
+    }
+    setEditFormError(null);
+    const data: UpdateShipmentInfoData = {
+      pengirim: editPengirim,
+      penerima: editPenerima,
+      alamatAsal: editAlamatAsal,
+      kotaAsal: editKotaAsal,
+      alamatTujuan: editAlamatTujuan,
+      kotaTujuan: editKotaTujuan,
+    };
+    updateShipmentInfo(shipment!.awb, data);
+    setEditSaved(true);
+    setTimeout(() => setEditSaved(false), 2500);
+  }
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -117,21 +189,269 @@ export default function UpdateTracking() {
         <StatusBadge status={shipment.status} />
       </div>
 
-      {locked ? (
-        <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center">
-          <CheckCircle2 className="mx-auto mb-2 text-emerald-600" size={28} />
-          <p className="font-semibold text-emerald-800">Pengiriman ini sudah Selesai/Terkirim</p>
-          <p className="mt-1 text-sm text-emerald-700">
-            Sesuai kebijakan (FR-17), riwayat pengiriman yang sudah closing dikunci dan tidak dapat
-            diubah lagi untuk menjaga validitas data.
-          </p>
-          <Link
-            to={`/tracking/${shipment.awb}`}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+      {!locked && (
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white shadow-sm">
+          <button
+            type="button"
+            onClick={() => setEditInfoOpen((v) => !v)}
+            className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left sm:px-6"
           >
-            <MapPin size={15} /> Lihat Tracking
-          </Link>
+            <span className="flex items-center gap-2">
+              <Pencil size={16} className="text-blue-900" />
+              <span className="text-sm font-semibold text-slate-800">Data Pengiriman</span>
+              <span className="hidden text-xs text-slate-400 sm:inline">(Pengirim, Penerima, Rute)</span>
+            </span>
+            <ChevronDown
+              size={16}
+              className={`shrink-0 text-slate-400 transition-transform ${editInfoOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          {!editInfoOpen && (
+            <div className="grid grid-cols-1 gap-4 border-t border-slate-100 px-5 py-4 text-sm sm:grid-cols-3 sm:px-6">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Pengirim</p>
+                <p className="mt-0.5 font-medium text-slate-800">{shipment.pengirim.nama}</p>
+                <p className="text-xs text-slate-500">{shipment.pengirim.telepon}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Penerima</p>
+                <p className="mt-0.5 font-medium text-slate-800">{shipment.penerima.nama}</p>
+                <p className="text-xs text-slate-500">{shipment.penerima.telepon}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Rute</p>
+                <p className="mt-0.5 font-medium text-slate-800">
+                  {shipment.kotaAsal} &rarr; {shipment.kotaTujuan}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {editInfoOpen && (
+            <form onSubmit={handleSaveInfo} className="border-t border-slate-100 px-5 py-5 sm:px-6">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                  <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    <User size={13} /> Pengirim
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    <input
+                      required
+                      className={inputClass}
+                      placeholder="Nama lengkap"
+                      value={editPengirim.nama}
+                      onChange={(e) => setEditPengirim((p) => ({ ...p, nama: e.target.value }))}
+                    />
+                    <input
+                      required
+                      className={inputClass}
+                      placeholder="08xx-xxxx-xxxx"
+                      value={editPengirim.telepon}
+                      onChange={(e) => setEditPengirim((p) => ({ ...p, telepon: e.target.value }))}
+                    />
+                    <input
+                      required
+                      type="email"
+                      className={inputClass}
+                      placeholder="nama@email.com"
+                      value={editPengirim.email}
+                      onChange={(e) => setEditPengirim((p) => ({ ...p, email: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    <User size={13} /> Penerima
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    <input
+                      required
+                      className={inputClass}
+                      placeholder="Nama lengkap"
+                      value={editPenerima.nama}
+                      onChange={(e) => setEditPenerima((p) => ({ ...p, nama: e.target.value }))}
+                    />
+                    <input
+                      required
+                      className={inputClass}
+                      placeholder="08xx-xxxx-xxxx"
+                      value={editPenerima.telepon}
+                      onChange={(e) => setEditPenerima((p) => ({ ...p, telepon: e.target.value }))}
+                    />
+                    <input
+                      required
+                      type="email"
+                      className={inputClass}
+                      placeholder="nama@email.com"
+                      value={editPenerima.email}
+                      onChange={(e) => setEditPenerima((p) => ({ ...p, email: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 border-t border-slate-100 pt-5">
+                <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  <MapPin size={13} /> Rute
+                </p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota Asal</span>
+                    <SearchableSelect
+                      options={kotaOptions}
+                      value={editKotaAsal}
+                      onChange={setEditKotaAsal}
+                      placeholder="Pilih kota asal"
+                      emptyLabel="Kota tidak ditemukan."
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota Tujuan</span>
+                    <SearchableSelect
+                      options={kotaOptions}
+                      value={editKotaTujuan}
+                      onChange={setEditKotaTujuan}
+                      placeholder="Pilih kota tujuan"
+                      emptyLabel="Kota tidak ditemukan."
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Alamat Asal</span>
+                    <input
+                      required
+                      className={inputClass}
+                      placeholder="Jl. Raya ... No. ..."
+                      value={editAlamatAsal}
+                      onChange={(e) => setEditAlamatAsal(e.target.value)}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Alamat Tujuan</span>
+                    <input
+                      required
+                      className={inputClass}
+                      placeholder="Jl. Raya ... No. ..."
+                      value={editAlamatTujuan}
+                      onChange={(e) => setEditAlamatTujuan(e.target.value)}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {editFormError && (
+                <p className="mt-4 text-sm font-medium text-red-600">{editFormError}</p>
+              )}
+              {editSaved && (
+                <div className="mt-4 flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-sm font-medium text-emerald-700">
+                  <CheckCircle2 size={16} /> Perubahan disimpan.
+                </div>
+              )}
+
+              <div className="mt-5 flex justify-end">
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+                >
+                  <Save size={15} /> Simpan Perubahan
+                </button>
+              </div>
+            </form>
+          )}
         </div>
+      )}
+
+      {locked ? (
+        <>
+          <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center">
+            <CheckCircle2 className="mx-auto mb-2 text-emerald-600" size={28} />
+            <p className="font-semibold text-emerald-800">Pengiriman ini sudah Selesai/Terkirim</p>
+            <p className="mt-1 text-sm text-emerald-700">
+              Sesuai kebijakan (FR-17), riwayat pengiriman yang sudah closing dikunci dan tidak dapat
+              diubah lagi untuk menjaga validitas data.
+            </p>
+            <Link
+              to={`/tracking/${shipment.awb}`}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+            >
+              <MapPin size={15} /> Lihat Tracking
+            </Link>
+          </div>
+
+          {shipment.pod && (
+            <div className="mt-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+                <ImagePlus size={16} className="text-blue-900" /> Foto Barang Diterima
+              </p>
+              {canEditPodPhoto ? (
+                <p className="mb-4 text-xs text-slate-500">
+                  Bisa diganti dalam 1x24 jam sejak pengiriman selesai
+                  {deliveredAtLabel && (
+                    <>
+                      {" "}
+                      (<span className="font-medium text-slate-700">{deliveredAtLabel}</span>)
+                    </>
+                  )}
+                  . Sisa waktu: <span className="font-medium text-slate-700">{podEditHoursLeft} jam</span>.
+                </p>
+              ) : (
+                <p className="mb-4 text-xs text-slate-500">
+                  Batas waktu 1x24 jam untuk mengganti foto sudah lewat
+                  {deliveredAtLabel && (
+                    <>
+                      {" "}
+                      (paket diterima pada{" "}
+                      <span className="font-medium text-slate-700">{deliveredAtLabel}</span>)
+                    </>
+                  )}
+                  .
+                </p>
+              )}
+
+              <div className="flex flex-wrap items-center gap-4">
+                {shipment.pod.fotoBarang ? (
+                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-slate-200">
+                    <img
+                      src={shipment.pod.fotoBarang}
+                      alt="Foto barang diterima"
+                      className="h-full w-full object-cover"
+                    />
+                    {canEditPodPhoto && (
+                      <button
+                        type="button"
+                        onClick={() => updatePodPhoto(shipment!.awb, undefined)}
+                        title="Hapus foto"
+                        className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-dashed border-slate-300 text-center text-[10px] text-slate-400">
+                    Belum ada foto
+                  </div>
+                )}
+                {canEditPodPhoto && (
+                  <label className="flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
+                    <ImagePlus size={18} />
+                    <span className="text-[10px] font-medium">
+                      {shipment.pod.fotoBarang ? "Ganti Foto" : "Tambah Foto"}
+                    </span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handlePodPhotoChange} />
+                  </label>
+                )}
+              </div>
+
+              {podPhotoError && <p className="mt-3 text-xs font-medium text-red-600">{podPhotoError}</p>}
+              {podPhotoSaved && (
+                <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-sm font-medium text-emerald-700">
+                  <CheckCircle2 size={16} /> Foto berhasil diperbarui.
+                </div>
+              )}
+            </div>
+          )}
+        </>
       ) : submitted ? (
         <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center">
           <CheckCircle2 className="mx-auto mb-2 text-emerald-600" size={28} />

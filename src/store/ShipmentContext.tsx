@@ -1,6 +1,12 @@
 import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
 import { initialShipments } from "../data/mockData";
-import type { Shipment, ShipmentFormData, TrackingUpdateFormData, TruckInfo } from "../types";
+import type {
+  Shipment,
+  ShipmentFormData,
+  TrackingUpdateFormData,
+  TruckInfo,
+  UpdateShipmentInfoData,
+} from "../types";
 import { generateAWB } from "../utils/awb";
 import { nowHHMM, nowISO, todayISO } from "../utils/format";
 import { eventTypeToShipmentStatus } from "../utils/status";
@@ -21,6 +27,8 @@ interface ShipmentContextValue {
   createShipment: (data: ShipmentFormData) => Shipment;
   markEmailSent: (awb: string) => void;
   addTrackingUpdate: (data: TrackingUpdateFormData) => void;
+  updateShipmentInfo: (awb: string, data: UpdateShipmentInfoData) => void;
+  updatePodPhoto: (awb: string, fotoBarang: string | undefined) => void;
   resetToMockData: () => void;
 }
 
@@ -126,6 +134,59 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     setShipments((prev) =>
       prev.map((s) => (s.awb === awb ? { ...s, emailTerkirim: true, emailTerkirimAt: nowISO() } : s)),
     );
+  }
+
+  function updateShipmentInfo(awb: string, data: UpdateShipmentInfoData) {
+    const target = shipments.find((s) => s.awb === awb);
+    if (!target) return;
+
+    const changes: string[] = [];
+    if (target.pengirim.nama !== data.pengirim.nama) changes.push("nama pengirim");
+    if (target.pengirim.telepon !== data.pengirim.telepon || target.pengirim.email !== data.pengirim.email) {
+      changes.push("kontak pengirim");
+    }
+    if (target.penerima.nama !== data.penerima.nama) changes.push("nama penerima");
+    if (target.penerima.telepon !== data.penerima.telepon || target.penerima.email !== data.penerima.email) {
+      changes.push("kontak penerima");
+    }
+    if (target.kotaAsal !== data.kotaAsal || target.alamatAsal !== data.alamatAsal) changes.push("alamat asal");
+    if (target.kotaTujuan !== data.kotaTujuan || target.alamatTujuan !== data.alamatTujuan) {
+      changes.push("alamat tujuan");
+    }
+    if (changes.length === 0) return;
+
+    setShipments((prev) => prev.map((s) => (s.awb === awb ? { ...s, ...data } : s)));
+
+    addLog({
+      userName: profile.nama,
+      role: profile.role,
+      action: "UPDATE_SHIPMENT_INFO",
+      actionLabel: "UPDATE SHIPMENT INFO",
+      module: "Shipment",
+      awb,
+      description: `Data pengiriman diperbarui: ${changes.join(", ")}.`,
+    });
+  }
+
+  function updatePodPhoto(awb: string, fotoBarang: string | undefined) {
+    const target = shipments.find((s) => s.awb === awb);
+    if (!target?.pod) return;
+
+    setShipments((prev) =>
+      prev.map((s) => (s.awb === awb && s.pod ? { ...s, pod: { ...s.pod, fotoBarang } } : s)),
+    );
+
+    addLog({
+      userName: profile.nama,
+      role: profile.role,
+      action: "UPDATE_POD_PHOTO",
+      actionLabel: "UPDATE POD PHOTO",
+      module: "Shipment",
+      awb,
+      description: fotoBarang
+        ? "Foto barang diterima (bukti serah terima) diganti."
+        : "Foto barang diterima (bukti serah terima) dihapus.",
+    });
   }
 
   function addTrackingUpdate(data: TrackingUpdateFormData) {
@@ -263,6 +324,8 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     createShipment,
     markEmailSent,
     addTrackingUpdate,
+    updateShipmentInfo,
+    updatePodPhoto,
     resetToMockData,
   };
 

@@ -53,7 +53,7 @@ export interface ProofOfDelivery {
   tanggal: string;
   jam: string;
   lokasi: string;
-  fotoBarang: string;
+  fotoBarang?: string;
   fotoSuratJalan: string;
   namaPenerima: string;
   catatan?: string;
@@ -109,6 +109,15 @@ export interface TrackingUpdateFormData {
   keterangan: string;
   foto?: string[];
   truckId?: string;
+}
+
+export interface UpdateShipmentInfoData {
+  pengirim: PersonInfo;
+  penerima: PersonInfo;
+  alamatAsal: string;
+  kotaAsal: string;
+  alamatTujuan: string;
+  kotaTujuan: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -181,7 +190,9 @@ export type AuditAction =
   | "CREATE_LOCATION"
   | "UPDATE_LOCATION"
   | "CREATE_USER"
-  | "UPDATE_USER";
+  | "UPDATE_USER"
+  | "UPDATE_SHIPMENT_INFO"
+  | "UPDATE_POD_PHOTO";
 
 export interface AuditLogEntry {
   id: string;

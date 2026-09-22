@@ -27,6 +27,8 @@ const ACTION_STYLE: Record<AuditAction, string> = {
   UPDATE_LOCATION: "bg-violet-100 text-violet-700",
   CREATE_USER: "bg-blue-100 text-blue-700",
   UPDATE_USER: "bg-violet-100 text-violet-700",
+  UPDATE_SHIPMENT_INFO: "bg-sky-100 text-sky-700",
+  UPDATE_POD_PHOTO: "bg-teal-100 text-teal-700",
 };
 
 export default function AuditLogPage() {

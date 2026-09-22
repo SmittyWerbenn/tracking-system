@@ -51,12 +51,18 @@ export function ProofOfDeliveryCard({ pod }: { pod: ProofOfDelivery }) {
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div>
             <p className="mb-1.5 text-xs font-medium text-slate-500">Foto Barang Diterima</p>
-            <PhotoThumb
-              src={pod.fotoBarang}
-              alt="Foto barang diterima"
-              className="aspect-square w-full"
-              onClick={() => setLightbox({ src: pod.fotoBarang, caption: "Foto barang diterima" })}
-            />
+            {pod.fotoBarang ? (
+              <PhotoThumb
+                src={pod.fotoBarang}
+                alt="Foto barang diterima"
+                className="aspect-square w-full"
+                onClick={() => setLightbox({ src: pod.fotoBarang!, caption: "Foto barang diterima" })}
+              />
+            ) : (
+              <div className="flex aspect-square w-full items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white text-center text-[11px] text-slate-400">
+                Belum ada foto
+              </div>
+            )}
           </div>
           <div>
             <p className="mb-1.5 text-xs font-medium text-slate-500">Surat Jalan (Ditandatangani)</p>

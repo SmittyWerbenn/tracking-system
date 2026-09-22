@@ -36,8 +36,21 @@ export default function ShipmentDetail() {
 
   const trackingUrl = `${window.location.origin}${window.location.pathname}#/tracking/${shipment.awb}`;
 
-  function handleDownload() {
-    // Prototype: browser "Save as PDF" via print dialog simulates the download.
+  function printResi() {
+    // The browser's print/"Save as PDF" dialog suggests document.title as the
+    // filename - set it just for the print action so downloads are named
+    // consistently, then restore the normal tab title afterwards. The
+    // listener must be attached before print() since print() blocks until
+    // the dialog closes, and "afterprint" can fire as soon as it does.
+    const previousTitle = document.title;
+    window.addEventListener(
+      "afterprint",
+      () => {
+        document.title = previousTitle;
+      },
+      { once: true },
+    );
+    document.title = "Sistem Tracking & Resi Digital - Gmslogistics";
     window.print();
   }
 
@@ -62,13 +75,13 @@ export default function ShipmentDetail() {
         </div>
         <div className="flex flex-wrap gap-2 no-print">
           <button
-            onClick={() => window.print()}
+            onClick={printResi}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             <Printer size={15} /> Cetak Resi
           </button>
           <button
-            onClick={handleDownload}
+            onClick={printResi}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             <Download size={15} /> Download Resi

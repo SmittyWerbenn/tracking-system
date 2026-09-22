@@ -704,6 +704,21 @@ const seeds: ShipmentSeed[] = [
     status: "Selesai / Terkirim",
     kotaTransit: "Bekasi",
   },
+
+  // --- Dibuat 2026-09-20 - sengaja belum ada feedback, untuk demo form rating ---
+  {
+    awb: "GMS-20260920-0001",
+    tanggalDibuat: "2026-09-20",
+    jamDibuat: "09:00",
+    pengirim: { nama: "CV Sumber Rejeki", telepon: "021-8845200", email: "cvsumberrejeki@example.com" },
+    penerima: { nama: "Ahmad Fauzan", telepon: "0857-1122-3344", email: "ahmad.fauzan@example.com" },
+    alamatAsal: "Jl. Gudang Raya No. 12", kotaAsal: "Jakarta",
+    alamatTujuan: "Jl. Margonda Raya No. 88", kotaTujuan: "Depok",
+    deskripsiBarang: "Peralatan rumah tangga, 4 dus (total 55kg)",
+    truck: { nomorUnit: "F 5566 LMN", jenis: "Wingbox", driver: "Joko Prasetyo" },
+    status: "Selesai / Terkirim",
+    kotaTransit: "Bekasi",
+  },
 ];
 
 const generatedShipments = seeds.map((seed, i) => buildShipment(seed, i));

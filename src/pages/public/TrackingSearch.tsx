@@ -1,7 +1,8 @@
-import { History, Search, Trash2, Truck, X } from "lucide-react";
+import { History, QrCode, Search, Trash2, Truck, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import heroImage from "../../assets/hero-package-handoff.jpg";
+import { BarcodeScannerModal } from "../../components/BarcodeScannerModal";
 import { PublicLayout } from "../../components/layout/PublicLayout";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useShipments } from "../../store/ShipmentContext";
@@ -20,6 +21,7 @@ export default function TrackingSearch() {
   const [awb, setAwb] = useState("");
   const [notFound, setNotFound] = useState(false);
   const [history, setHistory] = useState<AwbHistoryEntry[]>(() => getAwbHistory());
+  const [scannerOpen, setScannerOpen] = useState(false);
   const navigate = useNavigate();
   const { shipments, getByAwb } = useShipments();
 
@@ -30,6 +32,17 @@ export default function TrackingSearch() {
     if (getByAwb(trimmed)) {
       setNotFound(false);
       navigate(`/tracking/${trimmed}`);
+    } else {
+      setNotFound(true);
+    }
+  }
+
+  function handleScanned(scannedAwb: string) {
+    setScannerOpen(false);
+    setAwb(scannedAwb);
+    if (getByAwb(scannedAwb)) {
+      setNotFound(false);
+      navigate(`/tracking/${scannedAwb}`);
     } else {
       setNotFound(true);
     }
@@ -79,6 +92,15 @@ export default function TrackingSearch() {
                 </p>
               )}
             </form>
+
+            <button
+              type="button"
+              onClick={() => setScannerOpen(true)}
+              className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition-colors hover:border-white/40 hover:bg-white/20 lg:mx-0"
+            >
+              <QrCode size={18} />
+              Scan Barcode / QR Code
+            </button>
           </div>
 
           <div className="hidden flex-col items-center justify-center gap-3 lg:col-span-2 lg:flex">
@@ -159,6 +181,10 @@ export default function TrackingSearch() {
           </div>
         </div>
       </div>
+
+      {scannerOpen && (
+        <BarcodeScannerModal onClose={() => setScannerOpen(false)} onDetected={handleScanned} />
+      )}
     </PublicLayout>
   );
 }

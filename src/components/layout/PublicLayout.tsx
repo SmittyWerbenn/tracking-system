@@ -147,7 +147,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
         )}
       </header>
 
-      <main className={`mx-auto w-full flex-1 px-4 py-6 sm:px-6 ${wide ? "max-w-6xl" : "max-w-3xl"}`}>
+      <main className={`mx-auto w-full flex-1 overflow-x-hidden px-4 py-6 sm:px-6 ${wide ? "max-w-6xl" : "max-w-3xl"}`}>
         {children}
       </main>
 

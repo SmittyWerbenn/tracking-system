@@ -1,4 +1,4 @@
-import { ArrowRight, Menu, Truck, X } from "lucide-react";
+import { ArrowRight, Calculator, Menu, Truck, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
@@ -11,7 +11,6 @@ const navItems: NavItem[] = [
   { kind: "anchor", sectionId: "tentang", label: "Tentang Kami" },
   { kind: "anchor", sectionId: "layanan", label: "Layanan" },
   { kind: "anchor", sectionId: "keunggulan", label: "Keunggulan" },
-  { kind: "route", to: "/cek-ongkir", label: "Cek Ongkir" },
 ];
 
 interface PublicLayoutProps {
@@ -74,8 +73,15 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
               ),
             )}
             <NavLink
+              to="/cek-ongkir"
+              className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100"
+            >
+              <Calculator size={14} />
+              Cek Ongkir
+            </NavLink>
+            <NavLink
               to="/tracking"
-              className="ml-2 inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800"
             >
               Lacak Paket
               <ArrowRight size={14} />
@@ -119,14 +125,24 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
                 </button>
               ),
             )}
-            <NavLink
-              to="/tracking"
-              onClick={() => setMobileOpen(false)}
-              className="mt-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2.5 text-sm font-semibold text-white"
-            >
-              Lacak Paket
-              <ArrowRight size={14} />
-            </NavLink>
+            <div className="mt-1 flex gap-2">
+              <NavLink
+                to="/cek-ongkir"
+                onClick={() => setMobileOpen(false)}
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2.5 text-sm font-semibold text-blue-900"
+              >
+                <Calculator size={14} />
+                Cek Ongkir
+              </NavLink>
+              <NavLink
+                to="/tracking"
+                onClick={() => setMobileOpen(false)}
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2.5 text-sm font-semibold text-white"
+              >
+                Lacak Paket
+                <ArrowRight size={14} />
+              </NavLink>
+            </div>
           </nav>
         )}
       </header>

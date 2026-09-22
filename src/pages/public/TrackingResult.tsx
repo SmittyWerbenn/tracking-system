@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { FeedbackForm } from "../../components/FeedbackForm";
+import { FeedbackPopup } from "../../components/FeedbackPopup";
 import { PublicLayout } from "../../components/layout/PublicLayout";
 import { ProofOfDeliveryCard } from "../../components/ProofOfDeliveryCard";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -283,11 +283,7 @@ export default function TrackingResult() {
         <TrackingTimeline events={shipment.timeline} />
       </div>
 
-      {isDelivered && (
-        <div className="mt-6">
-          <FeedbackForm awb={shipment.awb} customerName={shipment.penerima.nama} />
-        </div>
-      )}
+      {isDelivered && <FeedbackPopup awb={shipment.awb} customerName={shipment.penerima.nama} />}
 
       <div className="mt-8 rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center text-xs text-slate-400">
         Butuh bantuan? Hubungi tim customer service PT Gangsar Mitra Sautama dengan menyertakan

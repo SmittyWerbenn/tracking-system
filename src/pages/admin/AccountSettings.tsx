@@ -1,8 +1,9 @@
-import { AlertTriangle, ArrowLeft, CheckCircle2, KeyRound, Save, UserCog } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, ImagePlus, KeyRound, Save, UserCog } from "lucide-react";
+import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useAuth } from "../../store/AuthContext";
+import { compressImage } from "../../utils/compressImage";
 import { initials } from "../../utils/initials";
 
 const inputClass =
@@ -13,7 +14,19 @@ export default function AccountSettings() {
   const { profile, updateProfile, changePassword } = useAuth();
 
   const [nama, setNama] = useState(profile.nama);
+  const [email, setEmail] = useState(profile.email);
+  const [foto, setFoto] = useState(profile.foto);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);
+
+  function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoError(null);
+    compressImage(file, 320, 0.8)
+      .then((dataUrl) => setFoto(dataUrl))
+      .catch(() => setPhotoError("Gagal memproses foto. Coba foto lain."));
+  }
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -23,7 +36,7 @@ export default function AccountSettings() {
 
   function handleSaveProfile(e: FormEvent) {
     e.preventDefault();
-    updateProfile({ nama: nama.trim() || "Admin" });
+    updateProfile({ nama: nama.trim() || "Admin", email: email.trim(), foto });
     setProfileSaved(true);
     setTimeout(() => setProfileSaved(false), 2500);
   }
@@ -81,14 +94,19 @@ export default function AccountSettings() {
           </div>
 
           <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-lg font-semibold text-amber-700">
-              {initials(nama)}
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-amber-100 text-lg font-semibold text-amber-700">
+              {foto ? <img src={foto} alt={nama} className="h-full w-full object-cover" /> : initials(nama)}
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-sm font-medium text-slate-800">{profile.nama}</p>
-              <p className="text-xs text-slate-400">Role: Admin</p>
+              <p className="text-xs text-slate-400">Role: {profile.role}</p>
+              <label className="mt-1.5 inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-blue-700 hover:text-blue-900">
+                <ImagePlus size={13} /> Ganti Foto
+                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+              </label>
             </div>
           </div>
+          {photoError && <p className="mb-4 text-xs font-medium text-red-600">{photoError}</p>}
 
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Tampilan</span>
@@ -98,6 +116,18 @@ export default function AccountSettings() {
               value={nama}
               onChange={(e) => setNama(e.target.value)}
               placeholder="Nama Anda"
+            />
+          </label>
+
+          <label className="mt-4 block">
+            <span className="mb-1.5 block text-xs font-medium text-slate-600">Email</span>
+            <input
+              required
+              type="email"
+              className={inputClass}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="nama@gangsarmitrasuatama.co.id"
             />
           </label>
 

@@ -1,5 +1,5 @@
 import { Navigate, Route, HashRouter as Router, Routes } from "react-router-dom";
-import { RequireAdmin, RequireAuth } from "./components/RequireAuth";
+import { RequireAdmin, RequireAuth, RequireSuperadmin, RequireTrackingUpdater } from "./components/RequireAuth";
 import { AuditLogProvider } from "./store/AuditLogContext";
 import { AuthProvider } from "./store/AuthContext";
 import { FeedbackProvider } from "./store/FeedbackContext";
@@ -78,7 +78,14 @@ export default function App() {
           <Route path="/admin/pengiriman/baru" element={<RequireAdmin><CreateShipment /></RequireAdmin>} />
           <Route path="/admin/resi/:awb" element={<RequireAuth><ShipmentDetail /></RequireAuth>} />
           <Route path="/admin/resi/:awb/email" element={<RequireAuth><EmailPreview /></RequireAuth>} />
-          <Route path="/admin/update-tracking/:awb" element={<RequireAdmin><UpdateTracking /></RequireAdmin>} />
+          <Route
+            path="/admin/update-tracking/:awb"
+            element={
+              <RequireTrackingUpdater>
+                <UpdateTracking />
+              </RequireTrackingUpdater>
+            }
+          />
 
           <Route path="/admin/armada" element={<RequireAuth><FleetList /></RequireAuth>} />
           <Route path="/admin/armada/:id" element={<RequireAuth><TruckHistory /></RequireAuth>} />
@@ -86,7 +93,7 @@ export default function App() {
           <Route path="/admin/notifikasi" element={<RequireAuth><NotificationCenter /></RequireAuth>} />
           <Route path="/admin/feedback" element={<RequireAuth><FeedbackAdmin /></RequireAuth>} />
           <Route path="/admin/audit-log" element={<RequireAuth><AuditLogPage /></RequireAuth>} />
-          <Route path="/admin/users" element={<RequireAdmin><UserManagement /></RequireAdmin>} />
+          <Route path="/admin/users" element={<RequireSuperadmin><UserManagement /></RequireSuperadmin>} />
           <Route path="/admin/pengaturan/tracking" element={<RequireAdmin><SettingsPage /></RequireAdmin>} />
           <Route path="/admin/pengaturan/akun" element={<RequireAuth><AccountSettings /></RequireAuth>} />
 

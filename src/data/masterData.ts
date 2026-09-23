@@ -114,7 +114,7 @@ export const initialTitikLokasi: TitikLokasi[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Manajemen User (Admin / Management)
+// Manajemen User (Superadmin / Admin / Driver / Viewer)
 // ---------------------------------------------------------------------------
 
 export const initialUsers: AppUser[] = [
@@ -138,9 +138,17 @@ export const initialUsers: AppUser[] = [
     id: "usr-3",
     nama: "Amir Wijaya",
     email: "amir@gangsarmitrasuatama.co.id",
-    role: "Management",
+    role: "Viewer",
     aktif: true,
     lastLogin: "2026-09-10T09:00:00.000Z",
+  },
+  {
+    id: "usr-4",
+    nama: "Bayu Prasetyo",
+    email: "bayu@gangsarmitrasuatama.co.id",
+    role: "Driver",
+    aktif: true,
+    lastLogin: "2026-09-13T05:30:00.000Z",
   },
 ];
 

@@ -110,8 +110,10 @@ export default function UpdateTracking() {
     description: t.driver ? `Driver: ${t.driver.nama}` : undefined,
   }));
   const selectedTruck = trucksWithDriver.find((t) => t.id === truckId);
-  const resolvedLokasi =
-    titikId === CUSTOM_LOKASI_VALUE
+  const isSelesai = type === "Selesai / Terkirim";
+  const resolvedLokasi = isSelesai
+    ? shipment.kotaTujuan
+    : titikId === CUSTOM_LOKASI_VALUE
       ? customLokasi
       : (activeTitikLokasi.find((t) => t.id === titikId)?.namaKota ?? "");
   const kotaOptions = activeTitikLokasi.map((k) => ({
@@ -152,11 +154,11 @@ export default function UpdateTracking() {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!resolvedLokasi) {
+    if (!isSelesai && !resolvedLokasi) {
       setFormError("Pilih atau isi lokasi terlebih dahulu.");
       return;
     }
-    if (type === "Selesai / Terkirim" && !namaPenerima.trim()) {
+    if (isSelesai && !namaPenerima.trim()) {
       setFormError("Isi nama penerima barang terlebih dahulu.");
       return;
     }
@@ -165,13 +167,13 @@ export default function UpdateTracking() {
       awb: shipment!.awb,
       type,
       lokasi: resolvedLokasi,
-      titikId: titikId === CUSTOM_LOKASI_VALUE ? undefined : titikId || undefined,
+      titikId: isSelesai || titikId === CUSTOM_LOKASI_VALUE ? undefined : titikId || undefined,
       tanggal,
       jam,
       keterangan,
       foto,
       truckId: truckId || undefined,
-      namaPenerima: type === "Selesai / Terkirim" ? namaPenerima.trim() : undefined,
+      namaPenerima: isSelesai ? namaPenerima.trim() : undefined,
     };
     addTrackingUpdate(data);
     setSubmitted(true);
@@ -485,25 +487,35 @@ export default function UpdateTracking() {
                 pipeline tidak bisa dibuat mundur.
               </span>
             </label>
-            <label className="block">
-              <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi / Titik Transit</span>
-              <SearchableSelect
-                options={lokasiOptions}
-                value={titikId}
-                onChange={setTitikId}
-                placeholder="Pilih lokasi"
-                emptyLabel="Lokasi tidak ditemukan."
-              />
-              {titikId === CUSTOM_LOKASI_VALUE && (
-                <input
-                  required
-                  className={`${inputClass} mt-2`}
-                  placeholder="Ketik nama lokasi"
-                  value={customLokasi}
-                  onChange={(e) => setCustomLokasi(e.target.value)}
+            {isSelesai ? (
+              <div className="block">
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi</span>
+                <div className={`${inputClass} bg-slate-50 text-slate-600`}>{shipment.kotaTujuan}</div>
+                <span className="mt-1.5 block text-[11px] text-slate-400">
+                  Otomatis memakai kota tujuan pengiriman, tidak perlu diisi ulang.
+                </span>
+              </div>
+            ) : (
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi / Titik Transit</span>
+                <SearchableSelect
+                  options={lokasiOptions}
+                  value={titikId}
+                  onChange={setTitikId}
+                  placeholder="Pilih lokasi"
+                  emptyLabel="Lokasi tidak ditemukan."
                 />
-              )}
-            </label>
+                {titikId === CUSTOM_LOKASI_VALUE && (
+                  <input
+                    required
+                    className={`${inputClass} mt-2`}
+                    placeholder="Ketik nama lokasi"
+                    value={customLokasi}
+                    onChange={(e) => setCustomLokasi(e.target.value)}
+                  />
+                )}
+              </label>
+            )}
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">Tanggal</span>
               <input
@@ -536,7 +548,7 @@ export default function UpdateTracking() {
               />
             </label>
 
-            {type === "Selesai / Terkirim" && (
+            {isSelesai && (
               <label className="block sm:col-span-2">
                 <span className="mb-1.5 block text-xs font-medium text-slate-600">
                   Nama Penerima (Diterima oleh)

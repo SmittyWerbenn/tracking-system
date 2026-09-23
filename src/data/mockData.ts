@@ -17,7 +17,7 @@ function deriveJumlahKoli(deskripsiBarang: string): number {
 
 function deriveLayanan(beratKg: number): LayananPengiriman {
   if (beratKg <= 50) return "Express";
-  if (beratKg <= 150) return "Reguler";
+  if (beratKg <= 150) return "Regular";
   return "Kargo";
 }
 
@@ -46,7 +46,7 @@ const featuredShipments: Shipment[] = [
     alamatTujuan: "Jl. Diponegoro No. 45, Gubeng",
     kotaTujuan: "Surabaya",
     deskripsiBarang: "Spare part mesin industri, 3 dus (total 85kg)",
-    layanan: "Reguler",
+    layanan: "Regular",
     beratKg: 85,
     jumlahKoli: 3,
     fotoBarang: photos.barangDiterima,
@@ -203,7 +203,7 @@ const featuredShipments: Shipment[] = [
     alamatTujuan: "Jl. Asia Afrika No. 88, Sumur Bandung",
     kotaTujuan: "Bandung",
     deskripsiBarang: "Peralatan elektronik rumah tangga, 5 dus (total 140kg)",
-    layanan: "Reguler",
+    layanan: "Regular",
     beratKg: 140,
     jumlahKoli: 5,
     fotoBarang: photos.barangDiterima,

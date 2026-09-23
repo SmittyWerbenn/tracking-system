@@ -178,9 +178,11 @@ export function tableToBulkRows(table: unknown[][]): {
 
 export function normalizeLayanan(value: string): LayananPengiriman {
   const v = value.trim().toLowerCase();
+  if (v === "darat") return "Darat";
   if (v === "express") return "Express";
-  if (v === "kargo") return "Kargo";
-  return "Reguler";
+  if (v === "kargo" || v === "cargo") return "Kargo";
+  if (v === "charter") return "Charter";
+  return "Regular";
 }
 
 function csvEscape(value: string): string {
@@ -215,7 +217,7 @@ export function downloadBulkShipmentTemplate() {
       "Jl. Raya Cakung No. 88",
       "Bandung",
       "Jl. Soekarno Hatta No. 210",
-      "Reguler",
+      "Regular",
       "10",
       "1",
       "Contoh isi paket, 1 dus (10kg)",

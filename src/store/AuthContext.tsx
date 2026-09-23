@@ -2,15 +2,22 @@ import { createContext, useContext, useState, type ReactNode } from "react";
 import type { UserRole } from "../types";
 
 const AUTH_KEY = "gms-admin-authenticated";
-const PROFILE_KEY = "gms-admin-profile";
+const PROFILE_KEY = "gms-admin-profile-v2";
 
 export interface AdminProfile {
   nama: string;
+  email: string;
   password: string;
   role: UserRole;
+  foto?: string;
 }
 
-const DEFAULT_PROFILE: AdminProfile = { nama: "Admin - Dewi", password: "admin", role: "Admin" };
+const DEFAULT_PROFILE: AdminProfile = {
+  nama: "Admin - Dewi",
+  email: "dewi@gangsarmitrasuatama.co.id",
+  password: "admin",
+  role: "Superadmin",
+};
 
 function loadProfile(): AdminProfile {
   try {
@@ -27,7 +34,7 @@ interface AuthContextValue {
   profile: AdminProfile;
   login: (username: string, password: string) => boolean;
   logout: () => void;
-  updateProfile: (data: { nama: string }) => void;
+  updateProfile: (data: { nama: string; email: string; foto?: string }) => void;
   changePassword: (currentPassword: string, newPassword: string) => boolean;
   /** Demo-only: lets the prototype be presented as either role without a
    * real second account. Real permission checks still key off `profile.role`. */
@@ -65,8 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsAuthenticated(false);
   }
 
-  function updateProfile(data: { nama: string }) {
-    persist({ ...profile, nama: data.nama });
+  function updateProfile(data: { nama: string; email: string; foto?: string }) {
+    persist({ ...profile, nama: data.nama, email: data.email, foto: data.foto });
   }
 
   function changePassword(currentPassword: string, newPassword: string): boolean {

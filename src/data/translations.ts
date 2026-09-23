@@ -392,9 +392,11 @@ const id: Translations = {
     estimatedArrival: "Estimasi Tiba",
     weightKoli: "Berat / Koli",
     serviceOptions: [
-      { label: "Reguler", desc: "Pilihan standar dengan harga paling hemat." },
+      { label: "Darat", desc: "Pengiriman jalur darat, pilihan paling hemat untuk kebutuhan non-mendesak." },
       { label: "Express", desc: "Lebih cepat sampai, biaya sedikit lebih tinggi." },
       { label: "Kargo", desc: "Cocok untuk muatan besar/borongan, tarif per kg lebih hemat." },
+      { label: "Regular", desc: "Pilihan standar dengan waktu tempuh normal." },
+      { label: "Charter", desc: "Sewa unit khusus untuk pengiriman Anda sendiri, tercepat dan eksklusif." },
     ],
   },
   pod: {
@@ -652,9 +654,11 @@ const en: Translations = {
     estimatedArrival: "Estimated Arrival",
     weightKoli: "Weight / Packages",
     serviceOptions: [
-      { label: "Regular", desc: "The standard, most affordable option." },
+      { label: "Ground", desc: "Ground shipping, the most affordable option for non-urgent needs." },
       { label: "Express", desc: "Arrives faster, at a slightly higher cost." },
       { label: "Cargo", desc: "Good for large/bulk loads, cheaper rate per kg." },
+      { label: "Regular", desc: "The standard option with normal transit time." },
+      { label: "Charter", desc: "Charter your own dedicated unit - fastest and exclusive." },
     ],
   },
   pod: {

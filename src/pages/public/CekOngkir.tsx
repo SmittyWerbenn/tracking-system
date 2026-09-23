@@ -12,7 +12,7 @@ import { useDocumentTitle } from "../../utils/useDocumentTitle";
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
 
-const LAYANAN_KEYS: LayananPengiriman[] = ["Reguler", "Express", "Kargo"];
+const LAYANAN_KEYS: LayananPengiriman[] = ["Darat", "Express", "Kargo", "Regular", "Charter"];
 
 export default function CekOngkir() {
   const { t, language } = useLanguage();
@@ -24,7 +24,7 @@ export default function CekOngkir() {
   const [kotaTujuan, setKotaTujuan] = useState("");
   const [beratKg, setBeratKg] = useState("");
   const [jumlahKoli, setJumlahKoli] = useState("1");
-  const [layanan, setLayanan] = useState<LayananPengiriman>("Reguler");
+  const [layanan, setLayanan] = useState<LayananPengiriman>("Regular");
   const [result, setResult] = useState<OngkirEstimate | null>(null);
   const [error, setError] = useState<string | null>(null);
 

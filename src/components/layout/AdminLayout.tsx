@@ -26,7 +26,8 @@ interface NavItem {
   label: string;
   icon: typeof LayoutDashboard;
   end?: boolean;
-  adminOnly?: boolean;
+  /** Roles allowed to see this nav item. Omit to show it to every role. */
+  roles?: UserRole[];
 }
 
 const navGroups: { title: string; items: NavItem[] }[] = [
@@ -34,7 +35,13 @@ const navGroups: { title: string; items: NavItem[] }[] = [
     title: "Operasional",
     items: [
       { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
-      { to: "/admin/pengiriman/baru", label: "Buat Pengiriman", icon: PackagePlus, end: true, adminOnly: true },
+      {
+        to: "/admin/pengiriman/baru",
+        label: "Buat Pengiriman",
+        icon: PackagePlus,
+        end: true,
+        roles: ["Superadmin", "Admin"],
+      },
       { to: "/admin/pengiriman", label: "Data Pengiriman", icon: Package, end: true },
     ],
   },
@@ -52,14 +59,20 @@ const navGroups: { title: string; items: NavItem[] }[] = [
   {
     title: "Sistem",
     items: [
-      { to: "/admin/users", label: "Manajemen User", icon: Users, end: true, adminOnly: true },
+      { to: "/admin/users", label: "Manajemen User", icon: Users, end: true, roles: ["Superadmin"] },
       { to: "/admin/audit-log", label: "Audit Log", icon: History, end: true },
-      { to: "/admin/pengaturan/tracking", label: "Pengaturan", icon: Settings, end: true, adminOnly: true },
+      {
+        to: "/admin/pengaturan/tracking",
+        label: "Pengaturan",
+        icon: Settings,
+        end: true,
+        roles: ["Superadmin", "Admin"],
+      },
     ],
   },
 ];
 
-const ROLE_OPTIONS: UserRole[] = ["Admin", "Management"];
+const ROLE_OPTIONS: UserRole[] = ["Superadmin", "Admin", "Driver", "Viewer"];
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -94,7 +107,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         <div className="flex items-center gap-2 sm:gap-3">
           <div
             className="hidden items-center gap-1 rounded-lg bg-slate-100 p-1 sm:flex"
-            title="Demo: ganti peran untuk melihat tampilan Admin vs Management"
+            title="Demo: ganti peran untuk melihat akses tiap role"
           >
             {ROLE_OPTIONS.map((role) => (
               <button
@@ -116,8 +129,12 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             title="Pengaturan Akun"
           >
             <span className="hidden text-sm text-slate-500 sm:block">{profile.nama}</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-sm font-semibold text-amber-700">
-              {initials(profile.nama)}
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-amber-100 text-sm font-semibold text-amber-700">
+              {profile.foto ? (
+                <img src={profile.foto} alt={profile.nama} className="h-full w-full object-cover" />
+              ) : (
+                initials(profile.nama)
+              )}
             </div>
           </NavLink>
           <button
@@ -139,7 +156,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         >
           <nav className="flex flex-col gap-4 p-4">
             {navGroups.map((group) => {
-              const items = group.items.filter((item) => !item.adminOnly || profile.role === "Admin");
+              const items = group.items.filter((item) => !item.roles || item.roles.includes(profile.role));
               if (items.length === 0) return null;
               return (
                 <div key={group.title}>
@@ -174,12 +191,12 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
               Demo: Peran Aktif
             </p>
-            <div className="flex items-center gap-1 rounded-lg bg-white p-1">
+            <div className="grid grid-cols-2 gap-1 rounded-lg bg-white p-1">
               {ROLE_OPTIONS.map((role) => (
                 <button
                   key={role}
                   onClick={() => switchRole(role)}
-                  className={`flex-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                     profile.role === role ? "bg-blue-900 text-white" : "text-slate-500"
                   }`}
                 >

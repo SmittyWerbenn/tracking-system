@@ -5,12 +5,19 @@ import { usePersistedState } from "../utils/usePersistedState";
 import { useAuditLog } from "./AuditLogContext";
 import { useAuth } from "./AuthContext";
 
-const STORAGE_KEY = "gms-users-v1";
+// Bump this suffix whenever the seed data in masterData.ts changes meaningfully
+// so browsers with an older cached copy in localStorage pick up the new set
+// instead of silently keeping stale data forever.
+const STORAGE_KEY = "gms-users-v2";
 
 export interface UserFormData {
   nama: string;
   email: string;
   role: UserRole;
+  foto?: string;
+  /** Demo-only: set when creating a user or explicitly resetting a password;
+   * omit on a plain profile-field edit to leave the existing password intact. */
+  password?: string;
 }
 
 interface UserManagementContextValue {

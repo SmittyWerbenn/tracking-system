@@ -7,7 +7,7 @@ export type ShipmentStatus =
   | "Tiba di Tujuan"
   | "Selesai / Terkirim";
 
-export type LayananPengiriman = "Reguler" | "Express" | "Kargo";
+export type LayananPengiriman = "Darat" | "Express" | "Kargo" | "Regular" | "Charter";
 
 export type TimelineEventType =
   | "Barang Diterima"
@@ -165,7 +165,16 @@ export interface TitikLokasi {
 // Multi-role user management
 // ---------------------------------------------------------------------------
 
-export type UserRole = "Admin" | "Management";
+/** Superadmin: full access, including managing other users. Admin: can
+ * create/edit shipments, fleet, locations, etc. but not manage users.
+ * Driver: can only open Update Tracking to log an in-transit status or mark
+ * a shipment as delivered - no access to create shipments, fleet/location
+ * master data, settings, or user management. Viewer: read-only everywhere. */
+export type UserRole = "Superadmin" | "Admin" | "Driver" | "Viewer";
+
+/** Roles assignable to OTHER team members via Manajemen User - Superadmin
+ * itself isn't assignable there, it's the single account signed in. */
+export const ASSIGNABLE_USER_ROLES: UserRole[] = ["Admin", "Driver", "Viewer"];
 
 export interface AppUser {
   id: string;
@@ -174,6 +183,11 @@ export interface AppUser {
   role: UserRole;
   aktif: boolean;
   lastLogin?: string;
+  foto?: string;
+  /** Demo-only: this prototype has a single real login session (see
+   * AuthContext); other users' passwords are stored just so Manajemen User
+   * can showcase setting one, they don't power an actual second login. */
+  password?: string;
 }
 
 // ---------------------------------------------------------------------------

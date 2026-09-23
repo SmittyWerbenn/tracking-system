@@ -40,9 +40,11 @@ const TIERS_LUAR_PULAU: OngkirTier[] = [
 ];
 
 const LAYANAN_MULTIPLIER: Record<LayananPengiriman, number> = {
-  Reguler: 1,
+  Darat: 0.85,
+  Regular: 1,
   Express: 1.4,
   Kargo: 0.6,
+  Charter: 2.5,
 };
 
 const MIN_DISTANCE_KM = 20;

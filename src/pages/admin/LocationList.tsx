@@ -23,7 +23,7 @@ const JENIS_STYLE: Record<TitikJenis, string> = {
 export default function LocationList() {
   const { titikLokasi, createTitik, updateTitik } = useLocations();
   const { profile } = useAuth();
-  const canEdit = profile.role === "Admin";
+  const canEdit = profile.role === "Superadmin" || profile.role === "Admin";
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);

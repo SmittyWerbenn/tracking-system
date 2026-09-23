@@ -13,9 +13,9 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-/** For routes only the Admin role may open at all (e.g. Buat Pengiriman,
- * Update Tracking, Manajemen User, Pengaturan). Management is bounced to
- * the Dashboard rather than seeing a page it can't act on. */
+/** For general admin-edit routes (Buat Pengiriman, Pengaturan, Manajemen
+ * Armada/Kota) - only Superadmin and Admin qualify. Driver and Viewer are
+ * both bounced to the Dashboard rather than seeing a page they can't act on. */
 export function RequireAdmin({ children }: { children: ReactNode }) {
   const { isAuthenticated, profile } = useAuth();
   const location = useLocation();
@@ -23,7 +23,40 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace state={{ from: location }} />;
   }
-  if (profile.role !== "Admin") {
+  if (profile.role !== "Superadmin" && profile.role !== "Admin") {
+    return <Navigate to="/admin" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+/** For Update Tracking specifically - Superadmin, Admin, and Driver all
+ * qualify (a Driver's one job is logging status/delivery updates), only
+ * Viewer is bounced to the Dashboard. */
+export function RequireTrackingUpdater({ children }: { children: ReactNode }) {
+  const { isAuthenticated, profile } = useAuth();
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/admin/login" replace state={{ from: location }} />;
+  }
+  if (profile.role === "Viewer") {
+    return <Navigate to="/admin" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+/** For routes only Superadmin may open (Manajemen User) - Admin and Viewer
+ * are both bounced to the Dashboard. */
+export function RequireSuperadmin({ children }: { children: ReactNode }) {
+  const { isAuthenticated, profile } = useAuth();
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/admin/login" replace state={{ from: location }} />;
+  }
+  if (profile.role !== "Superadmin") {
     return <Navigate to="/admin" replace />;
   }
 

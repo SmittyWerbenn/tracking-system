@@ -36,7 +36,7 @@ const COLUMNS = [
   "Service",
   "Total Berat (Kg)",
   "Total Koli",
-  "Nama Penerima",
+  "Diterima Oleh",
   "Tanggal & Waktu Diterima",
   "Keterangan",
   "Status",

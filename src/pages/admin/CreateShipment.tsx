@@ -35,14 +35,14 @@ const emptyForm: ShipmentFormData = {
   alamatTujuan: "",
   kotaTujuan: "",
   deskripsiBarang: "",
-  layanan: "Reguler",
+  layanan: "Regular",
   beratKg: 0,
   jumlahKoli: 1,
   fotoBarang: undefined,
   truckId: "",
 };
 
-const LAYANAN_OPTIONS: LayananPengiriman[] = ["Reguler", "Express", "Kargo"];
+const LAYANAN_OPTIONS: LayananPengiriman[] = ["Darat", "Express", "Kargo", "Regular", "Charter"];
 
 function Section({
   title,

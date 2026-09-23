@@ -30,7 +30,7 @@ const emptyForm: TruckFormData = {
 export default function FleetList() {
   const { trucksWithDriver, createTruck, updateTruck, setTruckStatus } = useFleet();
   const { profile } = useAuth();
-  const canEdit = profile.role === "Admin";
+  const canEdit = profile.role === "Superadmin" || profile.role === "Admin";
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);

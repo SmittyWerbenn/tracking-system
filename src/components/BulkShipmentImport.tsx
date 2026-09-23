@@ -28,7 +28,7 @@ interface BulkRow extends BulkRowInput {
   layananValue: LayananPengiriman;
 }
 
-const LAYANAN_OPTIONS: LayananPengiriman[] = ["Reguler", "Express", "Kargo"];
+const LAYANAN_OPTIONS: LayananPengiriman[] = ["Darat", "Express", "Kargo", "Regular", "Charter"];
 
 let rowSeq = 0;
 function newRowId() {
@@ -50,7 +50,7 @@ function emptyRow(): BulkRow {
     kotaTujuan: "",
     alamatTujuan: "",
     layanan: "",
-    layananValue: "Reguler",
+    layananValue: "Regular",
     beratKg: "",
     jumlahKoli: "",
     deskripsiBarang: "",

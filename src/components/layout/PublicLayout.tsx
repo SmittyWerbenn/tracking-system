@@ -159,7 +159,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-900 text-white">
                   <Truck size={16} />
                 </div>
-                <p className="text-sm font-semibold text-slate-900">PT Gangsar Mitra Suatama</p>
+                <p className="text-sm font-semibold text-slate-900">GMS Logistics</p>
               </div>
               <p className="mt-3 max-w-xs text-xs leading-relaxed text-slate-500">
                 Perusahaan jasa logistik dan pengiriman barang antar kota, didukung sistem digital

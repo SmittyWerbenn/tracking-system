@@ -26,7 +26,7 @@ function deriveLayanan(beratKg: number): LayananPengiriman {
 // ---------------------------------------------------------------------------
 const featuredShipments: Shipment[] = [
   {
-    awb: "GMS-20260911-0001",
+    awb: "GMS260911-001",
     tanggalDibuat: "2026-09-11",
     jamDibuat: "08:30",
     status: "Dalam Perjalanan",
@@ -118,7 +118,7 @@ const featuredShipments: Shipment[] = [
     ],
   },
   {
-    awb: "GMS-20260911-0002",
+    awb: "GMS260911-002",
     tanggalDibuat: "2026-09-11",
     jamDibuat: "09:00",
     status: "Transit",
@@ -184,7 +184,7 @@ const featuredShipments: Shipment[] = [
     ],
   },
   {
-    awb: "GMS-20260911-0003",
+    awb: "GMS260911-003",
     tanggalDibuat: "2026-09-10",
     jamDibuat: "08:00",
     status: "Selesai / Terkirim",
@@ -450,7 +450,7 @@ function buildShipment(seed: ShipmentSeed, photoIndex: number): Shipment {
 const seeds: ShipmentSeed[] = [
   // --- Dibuat 2026-09-11 (hari ini) ---
   {
-    awb: "GMS-20260911-0004",
+    awb: "GMS260911-004",
     tanggalDibuat: "2026-09-11",
     jamDibuat: "07:15",
     pengirim: { nama: "PT Cipta Boga Nusantara", telepon: "021-8801122", email: "logistik@ciptaboga.co.id" },
@@ -463,7 +463,7 @@ const seeds: ShipmentSeed[] = [
     estimasiTiba: "2026-09-13",
   },
   {
-    awb: "GMS-20260911-0005",
+    awb: "GMS260911-005",
     tanggalDibuat: "2026-09-11",
     jamDibuat: "07:40",
     pengirim: { nama: "Yusuf Kartika", telepon: "0813-2210-5544", email: "yusuf.kartika@example.com" },
@@ -476,7 +476,7 @@ const seeds: ShipmentSeed[] = [
     estimasiTiba: "2026-09-15",
   },
   {
-    awb: "GMS-20260911-0006",
+    awb: "GMS260911-006",
     tanggalDibuat: "2026-09-11",
     jamDibuat: "06:50",
     pengirim: { nama: "Dian Permata", telepon: "0857-3321-9900", email: "dian.permata@example.com" },
@@ -491,7 +491,7 @@ const seeds: ShipmentSeed[] = [
 
   // --- Dibuat 2026-09-10 ---
   {
-    awb: "GMS-20260910-0001",
+    awb: "GMS260910-001",
     tanggalDibuat: "2026-09-10",
     jamDibuat: "08:10",
     pengirim: { nama: "CV Anugerah Sentosa", telepon: "021-5567890", email: "admin@anugerahsentosa.co.id" },
@@ -504,7 +504,7 @@ const seeds: ShipmentSeed[] = [
     estimasiTiba: "2026-09-16",
   },
   {
-    awb: "GMS-20260910-0002",
+    awb: "GMS260910-002",
     tanggalDibuat: "2026-09-10",
     jamDibuat: "07:30",
     pengirim: { nama: "Rina Kusuma", telepon: "0812-9987-1122", email: "rina.kusuma@example.com" },
@@ -518,7 +518,7 @@ const seeds: ShipmentSeed[] = [
     estimasiTiba: "2026-09-13",
   },
   {
-    awb: "GMS-20260910-0003",
+    awb: "GMS260910-003",
     tanggalDibuat: "2026-09-10",
     jamDibuat: "09:20",
     pengirim: { nama: "PT Global Elektronik Indonesia", telepon: "021-7712345", email: "cs@globalelektronik.co.id" },
@@ -532,7 +532,7 @@ const seeds: ShipmentSeed[] = [
     estimasiTiba: "2026-09-13",
   },
   {
-    awb: "GMS-20260910-0004",
+    awb: "GMS260910-004",
     tanggalDibuat: "2026-09-10",
     jamDibuat: "06:45",
     pengirim: { nama: "Toko Jaya Makmur", telepon: "024-3345566", email: "tokojayamakmur@example.com" },
@@ -548,7 +548,7 @@ const seeds: ShipmentSeed[] = [
 
   // --- Dibuat 2026-09-09 ---
   {
-    awb: "GMS-20260909-0001",
+    awb: "GMS260909-001",
     tanggalDibuat: "2026-09-09",
     jamDibuat: "07:00",
     pengirim: { nama: "PT Mitra Logistik Utama", telepon: "021-4456778", email: "ops@mitralogistik.co.id" },
@@ -562,7 +562,7 @@ const seeds: ShipmentSeed[] = [
     estimasiTiba: "2026-09-14",
   },
   {
-    awb: "GMS-20260909-0002",
+    awb: "GMS260909-002",
     tanggalDibuat: "2026-09-09",
     jamDibuat: "08:25",
     pengirim: { nama: "Sari Indah", telepon: "0813-7789-1100", email: "sari.indah@example.com" },
@@ -576,7 +576,7 @@ const seeds: ShipmentSeed[] = [
     estimasiTiba: "2026-09-12",
   },
   {
-    awb: "GMS-20260909-0003",
+    awb: "GMS260909-003",
     tanggalDibuat: "2026-09-09",
     jamDibuat: "09:10",
     pengirim: { nama: "CV Rejeki Barokah", telepon: "022-6612233", email: "cv.rejekibarokah@example.com" },
@@ -590,7 +590,7 @@ const seeds: ShipmentSeed[] = [
     estimasiTiba: "2026-09-10",
   },
   {
-    awb: "GMS-20260909-0004",
+    awb: "GMS260909-004",
     tanggalDibuat: "2026-09-09",
     jamDibuat: "06:30",
     pengirim: { nama: "PT Sumber Rejeki Abadi", telepon: "021-5589001", email: "cs@sumberrejeki.co.id" },
@@ -606,7 +606,7 @@ const seeds: ShipmentSeed[] = [
     estimasiTiba: "2026-09-12",
   },
   {
-    awb: "GMS-20260909-0005",
+    awb: "GMS260909-005",
     tanggalDibuat: "2026-09-09",
     jamDibuat: "07:45",
     pengirim: { nama: "Indah Permatasari", telepon: "0812-6612-3390", email: "indah.permatasari@example.com" },
@@ -620,7 +620,7 @@ const seeds: ShipmentSeed[] = [
     estimasiTiba: "2026-09-10",
   },
   {
-    awb: "GMS-20260909-0006",
+    awb: "GMS260909-006",
     tanggalDibuat: "2026-09-09",
     jamDibuat: "08:00",
     pengirim: { nama: "Wulan Sari", telepon: "0813-9091-2244", email: "wulan.sari@example.com" },
@@ -635,7 +635,7 @@ const seeds: ShipmentSeed[] = [
 
   // --- Dibuat 2026-09-08 ---
   {
-    awb: "GMS-20260908-0001",
+    awb: "GMS260908-001",
     tanggalDibuat: "2026-09-08",
     jamDibuat: "07:20",
     pengirim: { nama: "Agus Salim Wijaya", telepon: "0812-4456-9900", email: "agus.salimwijaya@example.com" },
@@ -651,7 +651,7 @@ const seeds: ShipmentSeed[] = [
     estimasiTiba: "2026-09-13",
   },
   {
-    awb: "GMS-20260908-0002",
+    awb: "GMS260908-002",
     tanggalDibuat: "2026-09-08",
     jamDibuat: "08:15",
     pengirim: { nama: "PT Karya Mandiri Sejahtera", telepon: "021-6690012", email: "logistik@karyamandiri.co.id" },
@@ -665,7 +665,7 @@ const seeds: ShipmentSeed[] = [
     estimasiTiba: "2026-09-09",
   },
   {
-    awb: "GMS-20260908-0003",
+    awb: "GMS260908-003",
     tanggalDibuat: "2026-09-08",
     jamDibuat: "09:00",
     pengirim: { nama: "CV Sentosa Jaya", telepon: "021-3345677", email: "cs@sentosajaya.co.id" },
@@ -677,7 +677,7 @@ const seeds: ShipmentSeed[] = [
     status: "Selesai / Terkirim",
   },
   {
-    awb: "GMS-20260908-0004",
+    awb: "GMS260908-004",
     tanggalDibuat: "2026-09-08",
     jamDibuat: "06:40",
     pengirim: { nama: "PT Baja Perkasa Mandiri", telepon: "031-5567890", email: "logistik@bajaperkasa.co.id" },
@@ -692,7 +692,7 @@ const seeds: ShipmentSeed[] = [
 
   // --- Dibuat 2026-09-07 ---
   {
-    awb: "GMS-20260907-0001",
+    awb: "GMS260907-001",
     tanggalDibuat: "2026-09-07",
     jamDibuat: "08:00",
     pengirim: { nama: "Toko Elektronik Jaya", telepon: "021-4471100", email: "tokojaya@example.com" },
@@ -707,7 +707,7 @@ const seeds: ShipmentSeed[] = [
 
   // --- Dibuat 2026-09-20 - sengaja belum ada feedback, untuk demo form rating ---
   {
-    awb: "GMS-20260920-0001",
+    awb: "GMS260920-001",
     tanggalDibuat: "2026-09-20",
     jamDibuat: "09:00",
     pengirim: { nama: "CV Sumber Rejeki", telepon: "021-8845200", email: "cvsumberrejeki@example.com" },

@@ -7,7 +7,7 @@ interface BarcodeScannerModalProps {
   onDetected: (awb: string) => void;
 }
 
-/** Pulls the AWB out of either a bare code ("GMS-20260911-0001") or a full
+/** Pulls the AWB out of either a bare code ("GMS260911-001") or a full
  * tracking URL (e.g. the QR codes this app itself prints encode the URL). */
 function extractAwb(rawText: string): string {
   const urlMatch = rawText.match(/\/tracking\/([^/?#]+)/i);

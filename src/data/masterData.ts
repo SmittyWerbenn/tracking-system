@@ -26,7 +26,7 @@ export const initialTrucks: Truck[] = [
     kapasitas: "8 Ton",
     driverId: "drv-1",
     status: "Available",
-    keterangan: "Baru menyelesaikan pengantaran leg pertama AWB GMS-20260911-0001.",
+    keterangan: "Baru menyelesaikan pengantaran leg pertama AWB GMS260911-001.",
   },
   {
     id: "trk-2",
@@ -157,7 +157,7 @@ export const initialAuditLog: AuditLogEntry[] = [
     action: "CREATE_AWB",
     actionLabel: "CREATE AWB",
     module: "Shipment",
-    awb: "GMS-20260911-0001",
+    awb: "GMS260911-001",
     description: "Resi diterbitkan untuk pengiriman Jakarta -> Surabaya.",
   },
   {
@@ -168,7 +168,7 @@ export const initialAuditLog: AuditLogEntry[] = [
     action: "UPDATE_STATUS",
     actionLabel: "UPDATE STATUS",
     module: "Shipment",
-    awb: "GMS-20260911-0001",
+    awb: "GMS260911-001",
     description: "Status berubah: Dalam Persiapan -> Berangkat.",
   },
   {
@@ -179,7 +179,7 @@ export const initialAuditLog: AuditLogEntry[] = [
     action: "UPDATE_STATUS",
     actionLabel: "UPDATE STATUS",
     module: "Shipment",
-    awb: "GMS-20260911-0001",
+    awb: "GMS260911-001",
     description: "Status berubah: Berangkat -> Transit (Cirebon).",
   },
   {
@@ -190,7 +190,7 @@ export const initialAuditLog: AuditLogEntry[] = [
     action: "TRANSFER_TRUCK",
     actionLabel: "TRANSFER TRUCK",
     module: "Shipment",
-    awb: "GMS-20260911-0001",
+    awb: "GMS260911-001",
     description: "Truck: B 9123 XYZ -> L 8877 ABC di Semarang.",
   },
   {
@@ -201,7 +201,7 @@ export const initialAuditLog: AuditLogEntry[] = [
     action: "UPDATE_STATUS",
     actionLabel: "UPDATE STATUS",
     module: "Shipment",
-    awb: "GMS-20260911-0001",
+    awb: "GMS260911-001",
     description: "Status berubah: Transit -> Dalam Perjalanan.",
   },
   {
@@ -212,7 +212,7 @@ export const initialAuditLog: AuditLogEntry[] = [
     action: "CREATE_AWB",
     actionLabel: "CREATE AWB",
     module: "Shipment",
-    awb: "GMS-20260911-0002",
+    awb: "GMS260911-002",
     description: "Resi diterbitkan untuk pengiriman Jakarta -> Bandung.",
   },
   {
@@ -223,7 +223,7 @@ export const initialAuditLog: AuditLogEntry[] = [
     action: "UPLOAD_POD",
     actionLabel: "UPLOAD POD",
     module: "Shipment",
-    awb: "GMS-20260911-0003",
+    awb: "GMS260911-003",
     description: "Foto barang diterima dan surat jalan diunggah sebagai bukti serah terima.",
   },
   {
@@ -234,7 +234,7 @@ export const initialAuditLog: AuditLogEntry[] = [
     action: "CLOSE_SHIPMENT",
     actionLabel: "CLOSE SHIPMENT",
     module: "Shipment",
-    awb: "GMS-20260911-0003",
+    awb: "GMS260911-003",
     description: "Status berubah: Tiba di Tujuan -> Selesai / Terkirim. Data dikunci.",
   },
   {
@@ -245,7 +245,7 @@ export const initialAuditLog: AuditLogEntry[] = [
     action: "SEND_NOTIFICATION",
     actionLabel: "SEND NOTIFICATION",
     module: "Notification",
-    awb: "GMS-20260911-0003",
+    awb: "GMS260911-003",
     description: "Notifikasi \"Pengiriman Anda Telah Selesai\" dibuat untuk customer.",
   },
   {
@@ -256,7 +256,7 @@ export const initialAuditLog: AuditLogEntry[] = [
     action: "ADD_ISSUE",
     actionLabel: "ADD ISSUE",
     module: "Shipment",
-    awb: "GMS-20260909-0004",
+    awb: "GMS260909-004",
     description: "Kendala dicatat: keterlambatan akibat kendala teknis pada sistem pendingin muatan.",
   },
   {
@@ -267,7 +267,7 @@ export const initialAuditLog: AuditLogEntry[] = [
     action: "SEND_NOTIFICATION",
     actionLabel: "SEND NOTIFICATION",
     module: "Notification",
-    awb: "GMS-20260909-0004",
+    awb: "GMS260909-004",
     description: "Notifikasi \"Update Pengiriman - Terdapat Kendala\" dibuat untuk customer.",
   },
   {
@@ -309,7 +309,7 @@ export const initialAuditLog: AuditLogEntry[] = [
 export const initialFeedback: Feedback[] = [
   {
     id: "fb-1",
-    awb: "GMS-20260911-0003",
+    awb: "GMS260911-003",
     customerName: "Rudi Hartono",
     rating: 5,
     comment: "Pengiriman cepat dan barang sampai dalam kondisi baik. Tracking-nya juga sangat membantu.",
@@ -317,7 +317,7 @@ export const initialFeedback: Feedback[] = [
   },
   {
     id: "fb-2",
-    awb: "GMS-20260909-0006",
+    awb: "GMS260909-006",
     customerName: "Eko Prasetyo",
     rating: 4,
     comment: "Cukup puas, hanya sedikit terlambat dari estimasi.",
@@ -325,14 +325,14 @@ export const initialFeedback: Feedback[] = [
   },
   {
     id: "fb-3",
-    awb: "GMS-20260908-0003",
+    awb: "GMS260908-003",
     customerName: "Rahmat Hidayat",
     rating: 5,
     submittedAt: "2026-09-08T10:00:00.000Z",
   },
   {
     id: "fb-4",
-    awb: "GMS-20260908-0004",
+    awb: "GMS260908-004",
     customerName: "Yuni Lestari",
     rating: 3,
     comment: "Barang sampai dengan selamat namun komunikasi update status agak kurang.",
@@ -340,7 +340,7 @@ export const initialFeedback: Feedback[] = [
   },
   {
     id: "fb-5",
-    awb: "GMS-20260907-0001",
+    awb: "GMS260907-001",
     customerName: "Siti Nurhaliza",
     rating: 5,
     comment: "Layanan sangat memuaskan, akan pakai lagi untuk pengiriman berikutnya.",
@@ -355,9 +355,9 @@ export const initialFeedback: Feedback[] = [
 export const initialNotifications: NotificationItem[] = [
   {
     id: "notif-1",
-    awb: "GMS-20260911-0001",
+    awb: "GMS260911-001",
     trigger: "AWB_CREATED",
-    subject: "Resi Pengiriman Anda - AWB GMS-20260911-0001",
+    subject: "Resi Pengiriman Anda - AWB GMS260911-001",
     toEmail: "siti.rahmawati@example.com",
     toName: "Siti Rahmawati",
     recipientRole: "penerima",
@@ -365,9 +365,9 @@ export const initialNotifications: NotificationItem[] = [
   },
   {
     id: "notif-2",
-    awb: "GMS-20260909-0004",
+    awb: "GMS260909-004",
     trigger: "KENDALA",
-    subject: "Update Pengiriman - Terdapat Kendala (AWB GMS-20260909-0004)",
+    subject: "Update Pengiriman - Terdapat Kendala (AWB GMS260909-004)",
     toEmail: "nurul.aini@example.com",
     toName: "Nurul Aini",
     recipientRole: "penerima",
@@ -375,9 +375,9 @@ export const initialNotifications: NotificationItem[] = [
   },
   {
     id: "notif-3",
-    awb: "GMS-20260911-0003",
+    awb: "GMS260911-003",
     trigger: "SELESAI",
-    subject: "Pengiriman Anda Telah Selesai (AWB GMS-20260911-0003)",
+    subject: "Pengiriman Anda Telah Selesai (AWB GMS260911-003)",
     toEmail: "rudi.hartono@example.com",
     toName: "Rudi Hartono",
     recipientRole: "penerima",

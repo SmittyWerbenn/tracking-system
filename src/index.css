@@ -1,5 +1,34 @@
 @import "tailwindcss";
 
+/* Brand palette derived from the GMS Logistics logo (navy + gold) -
+   overrides Tailwind's default blue and amber scales so every existing
+   utility class using those colors picks up the brand colors automatically. */
+@theme {
+  --color-blue-50: #d6e7fb;
+  --color-blue-100: #b1d0f5;
+  --color-blue-200: #7faee6;
+  --color-blue-300: #4984cc;
+  --color-blue-400: #1b5ead;
+  --color-blue-500: #01428f;
+  --color-blue-600: #013675;
+  --color-blue-700: #012b5e;
+  --color-blue-800: #04244a;
+  --color-blue-900: #061d38;
+  --color-blue-950: #061324;
+
+  --color-amber-50: #faedd6;
+  --color-amber-100: #f0d7aa;
+  --color-amber-200: #deb872;
+  --color-amber-300: #c79840;
+  --color-amber-400: #b27d1a;
+  --color-amber-500: #996505;
+  --color-amber-600: #805404;
+  --color-amber-700: #664403;
+  --color-amber-800: #4f3606;
+  --color-amber-900: #3d2b08;
+  --color-amber-950: #291d07;
+}
+
 :root {
   color-scheme: light;
 }

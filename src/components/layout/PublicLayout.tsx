@@ -1,6 +1,7 @@
-import { ArrowRight, Calculator, Menu, Truck, X } from "lucide-react";
+import { ArrowRight, Calculator, Menu, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import logoIcon from "../../assets/icon-mark.png";
 
 type NavItem =
   | { kind: "route"; to: string; label: string; end?: boolean }
@@ -38,9 +39,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <NavLink to="/" className="flex items-center gap-2.5" onClick={() => setMobileOpen(false)}>
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-900 text-white">
-              <Truck size={18} />
-            </div>
+            <img src={logoIcon} alt="GMS Logistics" className="h-9 w-9 shrink-0 object-contain" />
             <div className="leading-tight">
               <p className="text-sm font-semibold text-slate-900 sm:text-base">GMS Logistics</p>
               <p className="text-[11px] text-slate-500 sm:text-xs">Jasa Logistik &amp; Pengiriman</p>
@@ -81,7 +80,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
             </NavLink>
             <NavLink
               to="/tracking"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800"
+              className="ml-2 inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800"
             >
               Lacak Paket
               <ArrowRight size={14} />
@@ -156,9 +155,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
             <div>
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-900 text-white">
-                  <Truck size={16} />
-                </div>
+                <img src={logoIcon} alt="GMS Logistics" className="h-9 w-9 shrink-0 object-contain" />
                 <p className="text-sm font-semibold text-slate-900">GMS Logistics</p>
               </div>
               <p className="mt-3 max-w-xs text-xs leading-relaxed text-slate-500">

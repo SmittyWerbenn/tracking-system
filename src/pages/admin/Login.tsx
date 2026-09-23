@@ -1,6 +1,7 @@
-import { AlertTriangle, Loader2, Lock, Truck, User } from "lucide-react";
+import { AlertTriangle, Loader2, Lock, User } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate, type Location } from "react-router-dom";
+import logoIcon from "../../assets/icon-mark.png";
 import { useAuth } from "../../store/AuthContext";
 
 export default function Login() {
@@ -34,9 +35,7 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col items-center text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-900 text-white">
-            <Truck size={22} />
-          </div>
+          <img src={logoIcon} alt="GMS Logistics" className="h-14 w-14 object-contain" />
           <h1 className="mt-4 text-lg font-semibold text-slate-900">Portal Admin</h1>
           <p className="mt-1 text-sm text-slate-500">PT Gangsar Mitra Suatama</p>
         </div>

@@ -1,6 +1,7 @@
-import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, Mail, MapPin, RotateCw, Send, Truck } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, Mail, MapPin, RotateCw, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import logoIcon from "../../assets/icon-mark.png";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useSettings } from "../../store/SettingsContext";
 import { useShipments } from "../../store/ShipmentContext";
@@ -194,9 +195,7 @@ export default function EmailPreview() {
           <div className="bg-slate-100 p-4 sm:p-6">
             <div className="overflow-hidden rounded-lg bg-white shadow-sm">
               <div className="bg-blue-900 px-6 py-5 text-center">
-                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-white">
-                  <Truck size={20} />
-                </div>
+                <img src={logoIcon} alt="GMS Logistics" className="mx-auto h-10 w-10 object-contain" />
                 <p className="mt-2 text-sm font-semibold text-white">PT Gangsar Mitra Suatama</p>
               </div>
 

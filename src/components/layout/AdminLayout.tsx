@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import logoIcon from "../../assets/icon-mark.png";
 import { useAuth } from "../../store/AuthContext";
 import type { UserRole } from "../../types";
 import { initials } from "../../utils/initials";
@@ -83,9 +84,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-900 text-white">
-              <Truck size={18} />
-            </div>
+            <img src={logoIcon} alt="GMS Logistics" className="h-9 w-9 shrink-0 object-contain" />
             <div className="leading-tight">
               <p className="text-sm font-semibold text-slate-900">Gangsar Mitra Suatama</p>
               <p className="text-xs text-slate-500">Sistem Tracking &amp; Resi Digital</p>

@@ -49,7 +49,7 @@ export default function TrackingSearch() {
   }
 
   return (
-    <PublicLayout>
+    <PublicLayout wide>
       {/* Hero band - full-bleed, breaks out of the centered content container */}
       <div className="relative left-1/2 right-1/2 -mx-[50vw] -mt-6 w-screen overflow-hidden bg-blue-950">
         <img
@@ -116,7 +116,7 @@ export default function TrackingSearch() {
 
       <div className="flex flex-col items-center pb-6 pt-10 text-center">
         {history.length > 0 && (
-          <div className="w-full max-w-md text-left">
+          <div className="w-full text-left">
             <div className="mb-2 flex items-center justify-between">
               <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
                 <History size={13} />
@@ -129,7 +129,7 @@ export default function TrackingSearch() {
                 <Trash2 size={12} /> Hapus Semua
               </button>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {history.map((h) => (
                 <div
                   key={h.awb}
@@ -158,11 +158,11 @@ export default function TrackingSearch() {
           </div>
         )}
 
-        <div className="mt-10 w-full max-w-md text-left">
+        <div className="mt-10 w-full text-left">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
             Contoh AWB (demo)
           </p>
-          <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {shipments.slice(0, 3).map((s) => (
               <button
                 key={s.awb}

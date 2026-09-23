@@ -47,3 +47,18 @@ export function nowHHMM(): string {
 export function nowISO(): string {
   return new Date().toISOString();
 }
+
+/** deskripsiBarang embeds its koli count/weight for the auto-fill parser
+ * (deriveBeratKg/deriveJumlahKoli in mockData.ts), e.g.
+ * "Spare part mesin industri, 3 dus (total 85kg)". Wherever Berat/Koli
+ * already have their own column (reports, exports), showing that clause
+ * again in Keterangan is redundant - this strips it back down to
+ * "Spare part mesin industri". Falls back to the original string if the
+ * pattern isn't found (free text some shipments may not follow it). */
+export function stripKeteranganMeta(deskripsiBarang: string): string {
+  const stripped = deskripsiBarang.replace(
+    /,\s*\d+\s*(?:dus|box|palet|item|unit|koli|drum)\s*\([^)]*\)\s*$/i,
+    "",
+  );
+  return stripped.trim() || deskripsiBarang;
+}

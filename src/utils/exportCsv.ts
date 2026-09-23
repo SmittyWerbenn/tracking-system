@@ -1,4 +1,5 @@
 import type { Shipment } from "../types";
+import { stripKeteranganMeta } from "./format";
 
 function csvEscape(value: string): string {
   if (/[",\n]/.test(value)) {
@@ -39,7 +40,7 @@ const COLUMNS = [
   "Tanggal & Waktu Diterima",
   "Keterangan",
   "Status",
-  "Current Truck",
+  "Truck",
   "Driver",
   "Last Update",
 ] as const;
@@ -59,7 +60,7 @@ export function exportShipmentsCsv(shipments: Shipment[], filename = "data-pengi
     s.jumlahKoli,
     s.pod?.namaPenerima ?? "-",
     receivedAtText(s),
-    s.deskripsiBarang,
+    stripKeteranganMeta(s.deskripsiBarang),
     s.status,
     s.truck.nomorUnit,
     s.truck.driver ?? "-",

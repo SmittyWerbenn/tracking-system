@@ -7,7 +7,7 @@ import { useSettings } from "../../store/SettingsContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { ShipmentStatus } from "../../types";
 import { exportShipmentsCsv } from "../../utils/exportCsv";
-import { formatTanggalPendek, todayISO } from "../../utils/format";
+import { formatTanggalPendek, stripKeteranganMeta, todayISO } from "../../utils/format";
 import { getStagnantShipments } from "../../utils/stagnant";
 import { SHIPMENT_STATUS_OPTIONS } from "../../utils/status";
 
@@ -226,8 +226,8 @@ export default function ShipmentList() {
                   <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
                     {s.pod ? `${formatTanggalPendek(s.pod.tanggal)}, ${s.pod.jam}` : "-"}
                   </td>
-                  <td className="max-w-[220px] truncate px-4 py-3 text-slate-600" title={s.deskripsiBarang}>
-                    {s.deskripsiBarang}
+                  <td className="max-w-[260px] whitespace-normal break-words px-4 py-3 text-slate-600">
+                    {stripKeteranganMeta(s.deskripsiBarang)}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
                     <StatusBadge status={s.status} size="sm" />

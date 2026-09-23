@@ -93,7 +93,7 @@ export default function TrackingResult() {
   const latestPhotoEvent = [...shipment.timeline].reverse().find((e) => e.truck && e.foto?.length);
 
   return (
-    <PublicLayout>
+    <PublicLayout wide>
       <button
         onClick={() => navigate(-1)}
         className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800"
@@ -172,8 +172,8 @@ export default function TrackingResult() {
         <StatusStepper status={shipment.status} />
       </div>
 
-      {/* Detail pengiriman & alamat tujuan */}
-      <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+      {/* Detail pengiriman, alamat tujuan & unit truck */}
+      <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <h2 className="mb-3.5 text-sm font-semibold text-slate-800">Detail Pengiriman</h2>
           <dl className="flex flex-col divide-y divide-slate-100">
@@ -239,41 +239,41 @@ export default function TrackingResult() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Current truck summary */}
-      <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3 sm:px-6">
-          <Truck size={15} className="text-slate-400" />
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Unit Truck Saat Ini
-          </h2>
-        </div>
-        <div className="flex items-center gap-4 px-5 py-4 sm:px-6">
-          {latestPhotoEvent?.foto?.[0] && (
-            <img
-              src={latestPhotoEvent.foto[0]}
-              alt={`Unit truck ${shipment.truck.nomorUnit}`}
-              className="h-16 w-16 shrink-0 rounded-lg border border-slate-200 object-cover sm:h-20 sm:w-20"
-            />
-          )}
-          <div className="min-w-0">
-            <p className="text-base font-bold text-slate-900">{shipment.truck.nomorUnit}</p>
-            <p className="text-sm text-slate-500">{shipment.truck.jenis}</p>
-            {shipment.truck.driver && (
-              <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
-                <User size={13} className="text-slate-400" />
-                {shipment.truck.driver}
-              </p>
-            )}
+        {/* Current truck summary */}
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:col-span-2 lg:col-span-1">
+          <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3 sm:px-6">
+            <Truck size={15} className="text-slate-400" />
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Unit Truck Saat Ini
+            </h2>
           </div>
+          <div className="flex items-center gap-4 px-5 py-4 sm:px-6">
+            {latestPhotoEvent?.foto?.[0] && (
+              <img
+                src={latestPhotoEvent.foto[0]}
+                alt={`Unit truck ${shipment.truck.nomorUnit}`}
+                className="h-16 w-16 shrink-0 rounded-lg border border-slate-200 object-cover sm:h-20 sm:w-20"
+              />
+            )}
+            <div className="min-w-0">
+              <p className="text-base font-bold text-slate-900">{shipment.truck.nomorUnit}</p>
+              <p className="text-sm text-slate-500">{shipment.truck.jenis}</p>
+              {shipment.truck.driver && (
+                <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+                  <User size={13} className="text-slate-400" />
+                  {shipment.truck.driver}
+                </p>
+              )}
+            </div>
+          </div>
+          {hasTransfer && (
+            <p className="border-t border-slate-100 bg-violet-50 px-5 py-2.5 text-xs text-violet-700 sm:px-6">
+              AWB ini pernah menggunakan unit truck lain di perjalanan. Lihat detail transfer unit
+              pada riwayat perjalanan di bawah.
+            </p>
+          )}
         </div>
-        {hasTransfer && (
-          <p className="border-t border-slate-100 bg-violet-50 px-5 py-2.5 text-xs text-violet-700 sm:px-6">
-            AWB ini pernah menggunakan unit truck lain di perjalanan. Lihat detail transfer unit
-            pada riwayat perjalanan di bawah.
-          </p>
-        )}
       </div>
 
       {/* POD if delivered - shown prominently near top */}

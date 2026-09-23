@@ -120,8 +120,8 @@ export const initialTitikLokasi: TitikLokasi[] = [
 export const initialUsers: AppUser[] = [
   {
     id: "usr-1",
-    nama: "Dewi Anggraini",
-    email: "dewi@gangsarmitrasuatama.co.id",
+    nama: "Siti Rahayu",
+    email: "siti@gangsarmitrasuatama.co.id",
     role: "Admin",
     aktif: true,
     lastLogin: "2026-09-12T07:45:00.000Z",

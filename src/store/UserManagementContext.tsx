@@ -8,7 +8,7 @@ import { useAuth } from "./AuthContext";
 // Bump this suffix whenever the seed data in masterData.ts changes meaningfully
 // so browsers with an older cached copy in localStorage pick up the new set
 // instead of silently keeping stale data forever.
-const STORAGE_KEY = "gms-users-v2";
+const STORAGE_KEY = "gms-users-v3";
 
 export interface UserFormData {
   nama: string;

@@ -3,7 +3,10 @@ import type { Feedback } from "../types";
 import { initialFeedback } from "../data/masterData";
 import { usePersistedState } from "../utils/usePersistedState";
 
-const STORAGE_KEY = "gms-feedback-v1";
+// Bump this suffix whenever initialFeedback in masterData.ts changes
+// meaningfully (e.g. its AWB references) so browsers with an older cached
+// copy in localStorage pick up the new set instead of keeping stale data.
+const STORAGE_KEY = "gms-feedback-v2";
 
 export interface AddFeedbackInput {
   awb: string;

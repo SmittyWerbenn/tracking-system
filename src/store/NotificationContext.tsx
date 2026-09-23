@@ -3,7 +3,10 @@ import type { NotificationItem, NotificationTrigger } from "../types";
 import { initialNotifications } from "../data/masterData";
 import { usePersistedState } from "../utils/usePersistedState";
 
-const STORAGE_KEY = "gms-notifications-v1";
+// Bump this suffix whenever initialNotifications in masterData.ts changes
+// meaningfully (e.g. its AWB references) so browsers with an older cached
+// copy in localStorage pick up the new set instead of keeping stale data.
+const STORAGE_KEY = "gms-notifications-v2";
 
 export interface AddNotificationInput {
   awb: string;

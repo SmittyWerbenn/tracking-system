@@ -3,7 +3,10 @@ import type { AuditAction, AuditLogEntry, UserRole } from "../types";
 import { initialAuditLog } from "../data/masterData";
 import { usePersistedState } from "../utils/usePersistedState";
 
-const STORAGE_KEY = "gms-audit-log-v1";
+// Bump this suffix whenever initialAuditLog in masterData.ts changes
+// meaningfully (e.g. its AWB references) so browsers with an older cached
+// copy in localStorage pick up the new set instead of keeping stale data.
+const STORAGE_KEY = "gms-audit-log-v2";
 
 export interface AddLogInput {
   userName: string;

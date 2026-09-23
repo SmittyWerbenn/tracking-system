@@ -19,7 +19,7 @@ import { useNotifications } from "./NotificationContext";
 // Bump this suffix whenever the seed data in mockData.ts changes meaningfully
 // so browsers with an older cached copy in localStorage pick up the new set
 // instead of silently keeping stale data forever.
-const STORAGE_KEY = "gms-tracking-shipments-v6";
+const STORAGE_KEY = "gms-tracking-shipments-v7";
 
 interface ShipmentContextValue {
   shipments: Shipment[];

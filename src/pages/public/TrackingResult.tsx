@@ -294,7 +294,7 @@ export default function TrackingResult() {
       {isDelivered && <FeedbackPopup awb={shipment.awb} customerName={shipment.penerima.nama} />}
 
       <div className="mt-8 rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center text-xs text-slate-400">
-        Butuh bantuan? Hubungi tim customer service PT Gangsar Mitra Sautama dengan menyertakan
+        Butuh bantuan? Hubungi tim customer service PT Gangsar Mitra Suatama dengan menyertakan
         nomor AWB <span className="font-mono font-medium text-slate-600">{shipment.awb}</span>.
       </div>
     </PublicLayout>

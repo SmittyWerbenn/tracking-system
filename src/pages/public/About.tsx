@@ -22,7 +22,7 @@ export default function About() {
         </div>
         <h1 className="mt-4 text-xl font-bold text-slate-900 sm:text-2xl">Tentang Kami</h1>
         <p className="mt-3 text-sm leading-relaxed text-slate-600">
-          <strong>PT Gangsar Mitra Sautama</strong> adalah perusahaan jasa logistik dan pengiriman
+          <strong>PT Gangsar Mitra Suatama</strong> adalah perusahaan jasa logistik dan pengiriman
           barang yang melayani rute antar kota di Indonesia. Kami berkomitmen menghadirkan layanan
           pengiriman yang transparan dan mudah dipantau, sehingga customer tidak perlu lagi
           menghubungi tim secara manual untuk mengetahui posisi barangnya.

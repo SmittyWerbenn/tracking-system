@@ -87,7 +87,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               <Truck size={18} />
             </div>
             <div className="leading-tight">
-              <p className="text-sm font-semibold text-slate-900">Gangsar Mitra Sautama</p>
+              <p className="text-sm font-semibold text-slate-900">Gangsar Mitra Suatama</p>
               <p className="text-xs text-slate-500">Sistem Tracking &amp; Resi Digital</p>
             </div>
           </div>

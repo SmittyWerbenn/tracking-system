@@ -171,7 +171,7 @@ export default function UserManagement() {
                     required
                     type="email"
                     className={inputClass}
-                    placeholder="nama@gangsarmitrasautama.co.id"
+                    placeholder="nama@gangsarmitrasuatama.co.id"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                   />

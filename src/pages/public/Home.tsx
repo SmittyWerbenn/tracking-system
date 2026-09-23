@@ -154,7 +154,7 @@ export default function Home() {
             <span className="text-blue-700">Bisa Diandalkan</span>
           </h1>
           <p className="mt-4 max-w-lg text-sm leading-relaxed text-slate-600 sm:text-base">
-            PT Gangsar Mitra Sautama menghadirkan layanan logistik antar kota yang dikelola secara
+            PT Gangsar Mitra Suatama menghadirkan layanan logistik antar kota yang dikelola secara
             profesional oleh tim operasional kami sendiri, didukung sistem digital agar setiap
             proses berjalan konsisten dan terdokumentasi.
           </p>
@@ -214,7 +214,7 @@ export default function Home() {
           </div>
           <div className="lg:col-span-2">
             <p className="text-sm leading-relaxed text-slate-600 sm:text-base">
-              <strong className="text-slate-800">PT Gangsar Mitra Sautama</strong> adalah
+              <strong className="text-slate-800">PT Gangsar Mitra Suatama</strong> adalah
               perusahaan jasa logistik dan pengiriman barang yang melayani rute antar kota di
               Indonesia. Kami hadir untuk menjawab kebutuhan bisnis dan individu akan layanan
               pengiriman yang terkoordinasi rapi, dengan proses kerja yang jelas di setiap

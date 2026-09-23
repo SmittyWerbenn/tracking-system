@@ -19,8 +19,8 @@ const CHANNELS = [
   {
     icon: Mail,
     label: "Email",
-    value: "cs@gangsarmitrasautama.co.id",
-    href: "mailto:cs@gangsarmitrasautama.co.id",
+    value: "cs@gangsarmitrasuatama.co.id",
+    href: "mailto:cs@gangsarmitrasuatama.co.id",
   },
 ];
 

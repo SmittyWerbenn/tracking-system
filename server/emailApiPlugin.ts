@@ -34,7 +34,7 @@ function createHandler(env: Record<string, string>): Connect.NextHandleFunction 
   // senderName brands the email body (header bar, "Dari" field, footer);
   // fromName is only the SMTP From mailbox display name shown in the inbox
   // list, which can be a different, independently-verified sender identity.
-  const senderName = env.BREVO_SENDER_NAME || "PT Gangsar Mitra Sautama";
+  const senderName = env.BREVO_SENDER_NAME || "PT Gangsar Mitra Suatama";
   const fromName = env.BREVO_FROM_NAME || senderName;
 
   return async (req, res) => {

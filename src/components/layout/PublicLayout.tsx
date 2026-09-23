@@ -42,7 +42,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
               <Truck size={18} />
             </div>
             <div className="leading-tight">
-              <p className="text-sm font-semibold text-slate-900 sm:text-base">PT Gangsar Mitra Sautama</p>
+              <p className="text-sm font-semibold text-slate-900 sm:text-base">GMS Logistics</p>
               <p className="text-[11px] text-slate-500 sm:text-xs">Jasa Logistik &amp; Pengiriman</p>
             </div>
           </NavLink>
@@ -159,7 +159,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-900 text-white">
                   <Truck size={16} />
                 </div>
-                <p className="text-sm font-semibold text-slate-900">PT Gangsar Mitra Sautama</p>
+                <p className="text-sm font-semibold text-slate-900">PT Gangsar Mitra Suatama</p>
               </div>
               <p className="mt-3 max-w-xs text-xs leading-relaxed text-slate-500">
                 Perusahaan jasa logistik dan pengiriman barang antar kota, didukung sistem digital
@@ -218,7 +218,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
 
           <div className="mt-8 border-t border-slate-100 pt-6 text-center">
             <p className="text-xs text-slate-400">
-              © {new Date().getFullYear()} PT Gangsar Mitra Sautama · Sistem Tracking &amp; Resi Digital
+              © {new Date().getFullYear()} PT Gangsar Mitra Suatama · Sistem Tracking &amp; Resi Digital
             </p>
           </div>
         </div>

@@ -38,7 +38,7 @@ export default function Login() {
             <Truck size={22} />
           </div>
           <h1 className="mt-4 text-lg font-semibold text-slate-900">Portal Admin</h1>
-          <p className="mt-1 text-sm text-slate-500">PT Gangsar Mitra Sautama</p>
+          <p className="mt-1 text-sm text-slate-500">PT Gangsar Mitra Suatama</p>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">

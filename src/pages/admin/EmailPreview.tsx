@@ -197,7 +197,7 @@ export default function EmailPreview() {
                 <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-white">
                   <Truck size={20} />
                 </div>
-                <p className="mt-2 text-sm font-semibold text-white">PT Gangsar Mitra Sautama</p>
+                <p className="mt-2 text-sm font-semibold text-white">PT Gangsar Mitra Suatama</p>
               </div>
 
               <div className="px-6 py-6">
@@ -218,7 +218,7 @@ export default function EmailPreview() {
                   <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-sm">
                     <div>
                       <p className="text-[11px] text-slate-400">Dari</p>
-                      <p className="font-medium text-slate-700">PT Gangsar Mitra Sautama</p>
+                      <p className="font-medium text-slate-700">PT Gangsar Mitra Suatama</p>
                       <p className="text-xs text-slate-500">{shipment.kotaAsal}</p>
                     </div>
                     <div>
@@ -258,7 +258,7 @@ export default function EmailPreview() {
               </div>
 
               <div className="border-t border-slate-100 bg-slate-50 px-6 py-4 text-center text-[11px] text-slate-400">
-                © {new Date().getFullYear()} PT Gangsar Mitra Sautama · Email otomatis, mohon tidak
+                © {new Date().getFullYear()} PT Gangsar Mitra Suatama · Email otomatis, mohon tidak
                 membalas email ini.
               </div>
             </div>

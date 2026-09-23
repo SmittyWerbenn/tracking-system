@@ -121,7 +121,7 @@ export const initialUsers: AppUser[] = [
   {
     id: "usr-1",
     nama: "Dewi Anggraini",
-    email: "dewi@gangsarmitrasautama.co.id",
+    email: "dewi@gangsarmitrasuatama.co.id",
     role: "Admin",
     aktif: true,
     lastLogin: "2026-09-12T07:45:00.000Z",
@@ -129,7 +129,7 @@ export const initialUsers: AppUser[] = [
   {
     id: "usr-2",
     nama: "Rian Saputra",
-    email: "rian@gangsarmitrasautama.co.id",
+    email: "rian@gangsarmitrasuatama.co.id",
     role: "Admin",
     aktif: true,
     lastLogin: "2026-09-11T16:10:00.000Z",
@@ -137,7 +137,7 @@ export const initialUsers: AppUser[] = [
   {
     id: "usr-3",
     nama: "Amir Wijaya",
-    email: "amir@gangsarmitrasautama.co.id",
+    email: "amir@gangsarmitrasuatama.co.id",
     role: "Management",
     aktif: true,
     lastLogin: "2026-09-10T09:00:00.000Z",

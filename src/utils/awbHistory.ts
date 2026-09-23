@@ -1,3 +1,5 @@
+import type { Language } from "../data/translations";
+
 export interface AwbHistoryEntry {
   awb: string;
   status: string;
@@ -51,10 +53,15 @@ export function clearAwbHistory(): AwbHistoryEntry[] {
   return [];
 }
 
-export function formatRelativeView(iso: string): string {
+export function formatRelativeView(iso: string, language: Language = "id"): string {
   const then = new Date(iso);
   const now = new Date();
   const diffDays = Math.floor((now.setHours(0, 0, 0, 0) - new Date(then).setHours(0, 0, 0, 0)) / 86400000);
+  if (language === "en") {
+    if (diffDays <= 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    return `${diffDays} days ago`;
+  }
   if (diffDays <= 0) return "Hari ini";
   if (diffDays === 1) return "Kemarin";
   return `${diffDays} hari lalu`;

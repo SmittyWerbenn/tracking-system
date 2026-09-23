@@ -1,19 +1,21 @@
-import { ArrowRight, Calculator, Check, ChevronDown, Globe, Menu, X } from "lucide-react";
+import { ArrowRight, Calculator, Check, ChevronDown, Menu, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
+import { FlagEN, FlagID } from "../FlagIcon";
 import { useLanguage } from "../../store/LanguageContext";
 import type { Language } from "../../data/translations";
 
-const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
-  { value: "id", label: "Indonesia" },
-  { value: "en", label: "English" },
+const LANGUAGE_OPTIONS: { value: Language; label: string; Flag: typeof FlagID }[] = [
+  { value: "id", label: "Indonesia", Flag: FlagID },
+  { value: "en", label: "English", Flag: FlagEN },
 ];
 
 function LanguageSwitcher() {
   const { language, setLanguage } = useLanguage();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const CurrentFlag = LANGUAGE_OPTIONS.find((opt) => opt.value === language)?.Flag ?? FlagID;
 
   useEffect(() => {
     if (!open) return;
@@ -32,12 +34,12 @@ function LanguageSwitcher() {
         className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
         aria-label="Pilih bahasa / Choose language"
       >
-        <Globe size={15} />
+        <CurrentFlag className="h-3.5 w-5 shrink-0 rounded-[2px]" />
         <span className="uppercase">{language}</span>
         <ChevronDown size={13} />
       </button>
       {open && (
-        <div className="absolute right-0 z-20 mt-1.5 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+        <div className="absolute right-0 z-20 mt-1.5 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
           {LANGUAGE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -46,9 +48,10 @@ function LanguageSwitcher() {
                 setLanguage(opt.value);
                 setOpen(false);
               }}
-              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
             >
-              {opt.label}
+              <opt.Flag className="h-3.5 w-5 shrink-0 rounded-[2px]" />
+              <span className="flex-1">{opt.label}</span>
               {language === opt.value && <Check size={14} className="text-blue-700" />}
             </button>
           ))}

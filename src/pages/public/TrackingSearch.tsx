@@ -18,7 +18,7 @@ import {
 import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
 export default function TrackingSearch() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   useDocumentTitle(t.nav.trackPackage);
   const [awb, setAwb] = useState("");
   const [notFound, setNotFound] = useState(false);
@@ -141,7 +141,7 @@ export default function TrackingSearch() {
                     <div className="min-w-0">
                       <p className="truncate font-mono text-sm font-medium text-slate-800">{h.awb}</p>
                       <p className="text-xs text-slate-400">
-                        {t.trackingSearch.lastViewed}: {formatRelativeView(h.lastViewedAt)}
+                        {t.trackingSearch.lastViewed}: {formatRelativeView(h.lastViewedAt, language)}
                       </p>
                     </div>
                     <StatusBadge status={h.status as ShipmentStatus} size="sm" />

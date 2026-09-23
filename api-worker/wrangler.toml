@@ -1,0 +1,20 @@
+name = "gms-api"
+main = "src/index.ts"
+compatibility_date = "2026-09-11"
+compatibility_flags = ["nodejs_compat"]
+account_id = "aea7460c185f9ed038f60167b730c47b"
+
+# Secrets (never put real values here - set via `wrangler secret put <NAME>`):
+#   MINIO_ACCESS_KEY
+#   MINIO_SECRET_KEY
+
+[vars]
+ALLOWED_ORIGINS = "https://smittywerbenn.github.io,https://temp-gms.frel.cloud,http://localhost:5183"
+MINIO_ENDPOINT = "https://os-api.rextop.id"
+MINIO_BUCKET = "gms"
+SESSION_TTL_HOURS = "24"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "gms-db"
+database_id = "83b936b8-c728-41b4-bca0-5ef5d299b427"

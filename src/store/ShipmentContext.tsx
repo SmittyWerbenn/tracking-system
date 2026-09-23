@@ -231,7 +231,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
                 lokasi: data.lokasi,
                 fotoBarang: data.foto?.[0] ?? s.fotoBarang ?? "",
                 fotoSuratJalan: data.foto?.[1] ?? data.foto?.[0] ?? "",
-                namaPenerima: s.penerima.nama,
+                namaPenerima: data.namaPenerima?.trim() || s.penerima.nama,
                 catatan: data.keterangan,
               }
             : s.pod,

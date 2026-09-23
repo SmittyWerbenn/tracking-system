@@ -109,6 +109,10 @@ export interface TrackingUpdateFormData {
   keterangan: string;
   foto?: string[];
   truckId?: string;
+  /** Who actually signed for/received the package - only captured (and
+   * required) when type is "Selesai / Terkirim"; can differ from the
+   * shipment's named penerima (e.g. a colleague receiving on their behalf). */
+  namaPenerima?: string;
 }
 
 export interface UpdateShipmentInfoData {

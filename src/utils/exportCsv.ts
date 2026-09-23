@@ -7,10 +7,22 @@ function csvEscape(value: string): string {
   return value;
 }
 
+/** tanggal: "2026-09-20" -> "20-09-2026" */
+function formatTanggalDDMMYYYY(tanggal: string): string {
+  const [y, m, d] = tanggal.split("-");
+  if (!y || !m || !d) return tanggal;
+  return `${d}-${m}-${y}`;
+}
+
 function lastUpdateText(s: Shipment): string {
   const last = s.timeline[s.timeline.length - 1];
   if (!last) return "-";
-  return `${last.tanggal} ${last.jam}`;
+  return `${formatTanggalDDMMYYYY(last.tanggal)} ${last.jam}`;
+}
+
+function receivedAtText(s: Shipment): string {
+  if (!s.pod) return "-";
+  return `${formatTanggalDDMMYYYY(s.pod.tanggal)} ${s.pod.jam}:00`;
 }
 
 const COLUMNS = [
@@ -20,6 +32,12 @@ const COLUMNS = [
   "Penerima",
   "Asal",
   "Tujuan",
+  "Service",
+  "Total Berat (Kg)",
+  "Total Koli",
+  "Nama Penerima",
+  "Tanggal & Waktu Diterima",
+  "Keterangan",
   "Status",
   "Current Truck",
   "Driver",
@@ -31,11 +49,17 @@ const COLUMNS = [
 export function exportShipmentsCsv(shipments: Shipment[], filename = "data-pengiriman.csv") {
   const rows = shipments.map((s) => [
     s.awb,
-    s.tanggalDibuat,
+    formatTanggalDDMMYYYY(s.tanggalDibuat),
     s.pengirim.nama,
     s.penerima.nama,
     s.kotaAsal,
     s.kotaTujuan,
+    s.layanan,
+    s.beratKg,
+    s.jumlahKoli,
+    s.pod?.namaPenerima ?? "-",
+    receivedAtText(s),
+    s.deskripsiBarang,
     s.status,
     s.truck.nomorUnit,
     s.truck.driver ?? "-",

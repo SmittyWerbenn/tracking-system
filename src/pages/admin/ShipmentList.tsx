@@ -180,7 +180,7 @@ export default function ShipmentList() {
 
       <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1000px] text-left text-sm">
+          <table className="w-full min-w-[1900px] text-left text-sm">
             <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3 font-medium">AWB</th>
@@ -188,8 +188,15 @@ export default function ShipmentList() {
                 <th className="px-4 py-3 font-medium">Pengirim</th>
                 <th className="px-4 py-3 font-medium">Penerima</th>
                 <th className="px-4 py-3 font-medium">Rute</th>
-                <th className="px-4 py-3 font-medium">Truck</th>
+                <th className="px-4 py-3 font-medium">Service</th>
+                <th className="px-4 py-3 font-medium">Berat (Kg)</th>
+                <th className="px-4 py-3 font-medium">Koli</th>
+                <th className="px-4 py-3 font-medium">Nama Penerima</th>
+                <th className="px-4 py-3 font-medium">Diterima</th>
+                <th className="px-4 py-3 font-medium">Keterangan</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Truck</th>
+                <th className="px-4 py-3 font-medium">Driver</th>
                 <th className="px-4 py-3 font-medium">Last Update</th>
                 <th className="px-4 py-3 font-medium">Aksi</th>
               </tr>
@@ -208,10 +215,21 @@ export default function ShipmentList() {
                   <td className="whitespace-nowrap px-4 py-3 text-slate-600">
                     {s.kotaAsal} → {s.kotaTujuan}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.truck.nomorUnit}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.layanan}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.beratKg}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.jumlahKoli}</td>
+                  <td className="px-4 py-3 text-slate-600">{s.pod?.namaPenerima ?? "-"}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
+                    {s.pod ? `${formatTanggalPendek(s.pod.tanggal)}, ${s.pod.jam}` : "-"}
+                  </td>
+                  <td className="max-w-[220px] truncate px-4 py-3 text-slate-600" title={s.deskripsiBarang}>
+                    {s.deskripsiBarang}
+                  </td>
                   <td className="whitespace-nowrap px-4 py-3">
                     <StatusBadge status={s.status} size="sm" />
                   </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.truck.nomorUnit}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.truck.driver ?? "-"}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
                     {lastUpdate(s.awb)}
                   </td>
@@ -251,7 +269,7 @@ export default function ShipmentList() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-sm text-slate-400">
+                  <td colSpan={16} className="px-4 py-10 text-center text-sm text-slate-400">
                     Tidak ada data pengiriman yang cocok dengan filter.
                   </td>
                 </tr>

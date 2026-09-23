@@ -43,6 +43,7 @@ export default function UpdateTracking() {
   const [tanggal, setTanggal] = useState(todayISO());
   const [jam, setJam] = useState(nowHHMM());
   const [keterangan, setKeterangan] = useState("");
+  const [namaPenerima, setNamaPenerima] = useState(shipment?.penerima.nama ?? "");
   const [foto, setFoto] = useState<string[]>([]);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [truckId, setTruckId] = useState(shipment?.truckId ?? "");
@@ -155,6 +156,10 @@ export default function UpdateTracking() {
       setFormError("Pilih atau isi lokasi terlebih dahulu.");
       return;
     }
+    if (type === "Selesai / Terkirim" && !namaPenerima.trim()) {
+      setFormError("Isi nama penerima barang terlebih dahulu.");
+      return;
+    }
     setFormError(null);
     const data: TrackingUpdateFormData = {
       awb: shipment!.awb,
@@ -166,6 +171,7 @@ export default function UpdateTracking() {
       keterangan,
       foto,
       truckId: truckId || undefined,
+      namaPenerima: type === "Selesai / Terkirim" ? namaPenerima.trim() : undefined,
     };
     addTrackingUpdate(data);
     setSubmitted(true);
@@ -529,6 +535,25 @@ export default function UpdateTracking() {
                 onChange={(e) => setKeterangan(e.target.value)}
               />
             </label>
+
+            {type === "Selesai / Terkirim" && (
+              <label className="block sm:col-span-2">
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                  Nama Penerima (Diterima oleh)
+                </span>
+                <input
+                  required
+                  className={inputClass}
+                  placeholder="Nama orang yang menerima/menandatangani barang"
+                  value={namaPenerima}
+                  onChange={(e) => setNamaPenerima(e.target.value)}
+                />
+                <span className="mt-1.5 block text-[11px] text-slate-400">
+                  Default terisi nama penerima ({shipment.penerima.nama}), ubah jika barang diterima
+                  oleh orang lain (misalnya rekan kerja atau satpam).
+                </span>
+              </label>
+            )}
 
             <label className="block sm:col-span-2">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">Foto</span>

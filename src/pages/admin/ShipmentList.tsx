@@ -179,9 +179,13 @@ export default function ShipmentList() {
       </div>
 
       <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
+        {/* Bounded height (not just overflow-x-auto) so the horizontal
+            scrollbar sits right under the visible rows instead of at the
+            very bottom of a 1900px-wide table the user would have to
+            scroll the whole page down to reach. */}
+        <div className="max-h-[65vh] overflow-auto">
           <table className="w-full min-w-[1900px] text-left text-sm">
-            <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <thead className="sticky top-0 z-10 border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3 font-medium">AWB</th>
                 <th className="px-4 py-3 font-medium">Tanggal</th>

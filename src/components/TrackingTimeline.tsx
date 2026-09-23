@@ -1,5 +1,6 @@
 import { ArrowRight, Camera, MapPin, Truck, User } from "lucide-react";
 import { useState } from "react";
+import { useLanguage } from "../store/LanguageContext";
 import type { TimelineEvent } from "../types";
 import { formatJam, formatTanggalPanjang } from "../utils/format";
 import { getStatusStyle } from "../utils/status";
@@ -11,6 +12,7 @@ interface TrackingTimelineProps {
 }
 
 export function TrackingTimeline({ events }: TrackingTimelineProps) {
+  const { t } = useLanguage();
   const [lightbox, setLightbox] = useState<{ src: string; caption: string } | null>(null);
   // Show most recent first for the reading order, but keep chronological numbering.
   const ordered = [...events].reverse();
@@ -47,7 +49,7 @@ export function TrackingTimeline({ events }: TrackingTimelineProps) {
                   </p>
                   {isLatest && (
                     <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
-                      TERBARU
+                      {t.timeline.latest}
                     </span>
                   )}
                 </div>
@@ -113,7 +115,7 @@ export function TrackingTimeline({ events }: TrackingTimelineProps) {
                 ) : (
                   <div className="mt-2.5 flex items-center gap-1.5 text-xs text-slate-400">
                     <Camera size={13} />
-                    Belum ada unit truck ditugaskan pada tahap ini.
+                    {t.timeline.noTruckAssigned}
                   </div>
                 )}
               </div>

@@ -1,18 +1,62 @@
-import { ArrowRight, Calculator, Menu, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { ArrowRight, Calculator, Check, ChevronDown, Globe, Menu, X } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
+import { useLanguage } from "../../store/LanguageContext";
+import type { Language } from "../../data/translations";
 
-type NavItem =
-  | { kind: "route"; to: string; label: string; end?: boolean }
-  | { kind: "anchor"; sectionId: string; label: string };
-
-const navItems: NavItem[] = [
-  { kind: "route", to: "/", label: "Beranda", end: true },
-  { kind: "anchor", sectionId: "tentang", label: "Tentang Kami" },
-  { kind: "anchor", sectionId: "layanan", label: "Layanan" },
-  { kind: "anchor", sectionId: "keunggulan", label: "Keunggulan" },
+const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
+  { value: "id", label: "Indonesia" },
+  { value: "en", label: "English" },
 ];
+
+function LanguageSwitcher() {
+  const { language, setLanguage } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+        aria-label="Pilih bahasa / Choose language"
+      >
+        <Globe size={15} />
+        <span className="uppercase">{language}</span>
+        <ChevronDown size={13} />
+      </button>
+      {open && (
+        <div className="absolute right-0 z-20 mt-1.5 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+          {LANGUAGE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => {
+                setLanguage(opt.value);
+                setOpen(false);
+              }}
+              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+            >
+              {opt.label}
+              {language === opt.value && <Check size={14} className="text-blue-700" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface PublicLayoutProps {
   children: ReactNode;
@@ -24,6 +68,18 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLanguage();
+
+  type NavItem =
+    | { kind: "route"; to: string; label: string; end?: boolean }
+    | { kind: "anchor"; sectionId: string; label: string };
+
+  const navItems: NavItem[] = [
+    { kind: "route", to: "/", label: t.nav.home, end: true },
+    { kind: "anchor", sectionId: "tentang", label: t.nav.about },
+    { kind: "anchor", sectionId: "layanan", label: t.nav.services },
+    { kind: "anchor", sectionId: "keunggulan", label: t.nav.advantages },
+  ];
 
   function goToSection(sectionId: string) {
     setMobileOpen(false);
@@ -42,7 +98,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
             <img src={logoIcon} alt="GMS Logistics" className="h-9 w-9 shrink-0 object-contain" />
             <div className="leading-tight">
               <p className="text-sm font-semibold text-slate-900 sm:text-base">GMS Logistics</p>
-              <p className="text-[11px] text-slate-500 sm:text-xs">Jasa Logistik &amp; Pengiriman</p>
+              <p className="text-[11px] text-slate-500 sm:text-xs">{t.nav.tagline}</p>
             </div>
           </NavLink>
 
@@ -76,25 +132,31 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
               className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100"
             >
               <Calculator size={14} />
-              Cek Ongkir
+              {t.nav.checkPrice}
             </NavLink>
             <NavLink
               to="/tracking"
               className="ml-2 inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800"
             >
-              Lacak Paket
+              {t.nav.trackPackage}
               <ArrowRight size={14} />
             </NavLink>
+            <div className="ml-2">
+              <LanguageSwitcher />
+            </div>
           </nav>
 
-          <button
-            className="rounded-md p-2 text-slate-700 hover:bg-slate-100 md:hidden"
-            onClick={() => setMobileOpen((v) => !v)}
-            aria-label={mobileOpen ? "Tutup menu navigasi" : "Buka menu navigasi"}
-            aria-expanded={mobileOpen}
-          >
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          <div className="flex items-center gap-1.5 md:hidden">
+            <LanguageSwitcher />
+            <button
+              className="rounded-md p-2 text-slate-700 hover:bg-slate-100"
+              onClick={() => setMobileOpen((v) => !v)}
+              aria-label={mobileOpen ? t.nav.closeMenu : t.nav.openMenu}
+              aria-expanded={mobileOpen}
+            >
+              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
 
         {mobileOpen && (
@@ -131,14 +193,14 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
                 className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2.5 text-sm font-semibold text-blue-900"
               >
                 <Calculator size={14} />
-                Cek Ongkir
+                {t.nav.checkPrice}
               </NavLink>
               <NavLink
                 to="/tracking"
                 onClick={() => setMobileOpen(false)}
                 className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2.5 text-sm font-semibold text-white"
               >
-                Lacak Paket
+                {t.nav.trackPackage}
                 <ArrowRight size={14} />
               </NavLink>
             </div>
@@ -156,66 +218,63 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
             <div>
               <div className="flex items-center gap-2.5">
                 <img src={logoIcon} alt="GMS Logistics" className="h-9 w-9 shrink-0 object-contain" />
-                <p className="text-sm font-semibold text-slate-900">GMS Logistics</p>
+                <p className="text-sm font-semibold text-slate-900">{t.footer.tagline}</p>
               </div>
-              <p className="mt-3 max-w-xs text-xs leading-relaxed text-slate-500">
-                Perusahaan jasa logistik dan pengiriman barang antar kota, didukung sistem digital
-                agar proses layanan lebih transparan dan efisien.
-              </p>
+              <p className="mt-3 max-w-xs text-xs leading-relaxed text-slate-500">{t.footer.description}</p>
             </div>
 
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Navigasi</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t.footer.navHeading}</p>
               <ul className="mt-3 flex flex-col gap-2 text-sm text-slate-600">
                 <li>
                   <NavLink to="/" className="hover:text-blue-800">
-                    Beranda
+                    {t.nav.home}
                   </NavLink>
                 </li>
                 <li>
                   <button onClick={() => goToSection("tentang")} className="text-left hover:text-blue-800">
-                    Tentang Kami
+                    {t.nav.about}
                   </button>
                 </li>
                 <li>
                   <button onClick={() => goToSection("layanan")} className="text-left hover:text-blue-800">
-                    Layanan
+                    {t.nav.services}
                   </button>
                 </li>
                 <li>
                   <NavLink to="/cek-ongkir" className="hover:text-blue-800">
-                    Cek Ongkir
+                    {t.nav.checkPrice}
                   </NavLink>
                 </li>
                 <li>
                   <NavLink to="/tracking" className="hover:text-blue-800">
-                    Lacak Paket
+                    {t.nav.trackPackage}
                   </NavLink>
                 </li>
               </ul>
             </div>
 
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Kontak</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t.footer.contactHeading}</p>
               <p className="mt-3 text-sm text-slate-600">
-                Butuh bantuan seputar layanan kami? Kunjungi halaman{" "}
+                {t.footer.contactText}{" "}
                 <NavLink to="/kontak" className="font-medium text-blue-800 hover:underline">
-                  Hubungi Kami
+                  {t.footer.contactLink}
                 </NavLink>{" "}
-                untuk kontak tim customer service kami.
+                {t.footer.contactTextAfter}
               </p>
               <NavLink
                 to="/admin"
                 className="mt-4 inline-block text-[11px] text-slate-300 hover:text-slate-500"
               >
-                Portal Admin
+                {t.footer.adminPortal}
               </NavLink>
             </div>
           </div>
 
           <div className="mt-8 border-t border-slate-100 pt-6 text-center">
             <p className="text-xs text-slate-400">
-              © {new Date().getFullYear()} PT Gangsar Mitra Suatama · Sistem Tracking &amp; Resi Digital
+              © {new Date().getFullYear()} {t.footer.copyright}
             </p>
           </div>
         </div>

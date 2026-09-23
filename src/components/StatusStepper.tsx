@@ -1,13 +1,8 @@
 import { AlertTriangle, Check, ClipboardCheck, Navigation, PackageCheck, Truck } from "lucide-react";
+import { useLanguage } from "../store/LanguageContext";
 import type { ShipmentStatus } from "../types";
 
-const STEPS = [
-  { label: "Pesanan Dibuat", icon: ClipboardCheck },
-  { label: "Di Pickup", icon: PackageCheck },
-  { label: "Dalam Pengiriman", icon: Truck },
-  { label: "Sedang Diantar", icon: Navigation },
-  { label: "Terkirim", icon: Check },
-] as const;
+const STEP_ICONS = [ClipboardCheck, PackageCheck, Truck, Navigation, Check];
 
 function getProgress(status: ShipmentStatus): { index: number; hasKendala: boolean } {
   switch (status) {
@@ -29,15 +24,22 @@ function getProgress(status: ShipmentStatus): { index: number; hasKendala: boole
 }
 
 export function StatusStepper({ status }: { status: ShipmentStatus }) {
+  const { t } = useLanguage();
   const { index: current, hasKendala } = getProgress(status);
+  const STEPS = [
+    { label: t.stepper.orderCreated, icon: STEP_ICONS[0] },
+    { label: t.stepper.pickedUp, icon: STEP_ICONS[1] },
+    { label: t.stepper.inTransit, icon: STEP_ICONS[2] },
+    { label: t.stepper.outForDelivery, icon: STEP_ICONS[3] },
+    { label: t.stepper.delivered, icon: STEP_ICONS[4] },
+  ];
 
   return (
     <div>
       {hasKendala && (
         <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700">
           <AlertTriangle size={16} className="shrink-0" />
-          Ada kendala pada tahap pengiriman saat ini. Lihat detail pada riwayat perjalanan di
-          bawah.
+          {t.stepper.kendalaWarning}
         </div>
       )}
       <ol className="flex items-start">
@@ -51,7 +53,7 @@ export function StatusStepper({ status }: { status: ShipmentStatus }) {
           const isCurrent = i === current && !isDelivered;
           const Icon = step.icon;
           return (
-            <li key={step.label} className="flex flex-1 flex-col items-center last:flex-none">
+            <li key={i} className="flex flex-1 flex-col items-center last:flex-none">
               <div className="relative flex w-full items-center">
                 <div
                   className={`absolute left-0 top-1/2 h-0.5 w-1/2 -translate-y-1/2 ${

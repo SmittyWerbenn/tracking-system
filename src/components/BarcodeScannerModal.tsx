@@ -1,6 +1,7 @@
 import { AlertTriangle, Loader2, ScanLine, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { IScannerControls } from "@zxing/browser";
+import { useLanguage } from "../store/LanguageContext";
 
 interface BarcodeScannerModalProps {
   onClose: () => void;
@@ -15,6 +16,7 @@ function extractAwb(rawText: string): string {
 }
 
 export function BarcodeScannerModal({ onClose, onDetected }: BarcodeScannerModalProps) {
+  const { t } = useLanguage();
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   const onDetectedRef = useRef(onDetected);
@@ -57,7 +59,7 @@ export function BarcodeScannerModal({ onClose, onDetected }: BarcodeScannerModal
       } catch {
         if (!cancelled) {
           setStatus("error");
-          setError("Tidak dapat mengakses kamera. Pastikan izin kamera diaktifkan dan coba lagi.");
+          setError(t.scanner.cameraError);
         }
       }
     }
@@ -81,12 +83,12 @@ export function BarcodeScannerModal({ onClose, onDetected }: BarcodeScannerModal
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <p className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-            <ScanLine size={17} className="text-blue-900" /> Scan Barcode / QR AWB
+            <ScanLine size={17} className="text-blue-900" /> {t.scanner.title}
           </p>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Tutup"
+            aria-label={t.scanner.close}
             className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
           >
             <X size={16} />
@@ -99,7 +101,7 @@ export function BarcodeScannerModal({ onClose, onDetected }: BarcodeScannerModal
           {status === "loading" && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white">
               <Loader2 size={24} className="animate-spin" />
-              <p className="text-xs">Membuka kamera...</p>
+              <p className="text-xs">{t.scanner.openingCamera}</p>
             </div>
           )}
 
@@ -117,7 +119,7 @@ export function BarcodeScannerModal({ onClose, onDetected }: BarcodeScannerModal
 
         <div className="px-5 py-4">
           <p className="text-center text-xs text-slate-500">
-            Arahkan kamera ke barcode atau QR code pada resi Anda.
+            {t.scanner.instructions}
           </p>
         </div>
       </div>

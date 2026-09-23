@@ -1,6 +1,7 @@
 import { Star, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useFeedback } from "../store/FeedbackContext";
+import { useLanguage } from "../store/LanguageContext";
 import { FeedbackForm } from "./FeedbackForm";
 
 const IDLE_MS = 10_000;
@@ -13,6 +14,7 @@ const ACTIVITY_EVENTS = ["mousemove", "keydown", "scroll", "touchstart", "click"
  * closing it doesn't lose the feature.
  */
 export function FeedbackPopup({ awb, customerName }: { awb: string; customerName: string }) {
+  const { t } = useLanguage();
   const { hasFeedback } = useFeedback();
   const [open, setOpen] = useState(false);
   const [dismissedOnce, setDismissedOnce] = useState(false);
@@ -56,7 +58,7 @@ export function FeedbackPopup({ awb, customerName }: { awb: string; customerName
           className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-blue-900 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-blue-800"
         >
           <Star size={16} className="fill-amber-400 text-amber-400" />
-          Beri Rating
+          {t.feedback.floatingButton}
         </button>
       )}
 
@@ -72,7 +74,7 @@ export function FeedbackPopup({ awb, customerName }: { awb: string; customerName
             <button
               type="button"
               onClick={close}
-              aria-label="Tutup"
+              aria-label={t.feedback.close}
               className="absolute -top-3 -right-3 z-10 rounded-full bg-white p-1.5 text-slate-500 shadow-md hover:text-slate-800"
             >
               <X size={16} />

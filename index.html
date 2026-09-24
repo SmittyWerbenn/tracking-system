@@ -25,6 +25,35 @@
         }
       })(window.location);
     </script>
+    <script type="text/javascript">
+      // GitHub Pages serves index.html with ~10min caching, but every deploy
+      // replaces the content-hashed JS/CSS files entirely - so a tab left
+      // open (or reopened from a recent cache) across a deploy can end up
+      // requesting an asset file that no longer exists, which fails silently
+      // before React (and its ErrorBoundary) ever mounts, leaving a blank
+      // white page. Detect that specific failure and reload once to fetch
+      // the current index.html and its matching assets.
+      (function () {
+        var RELOAD_KEY = "gms-stale-asset-reload";
+        window.addEventListener(
+          "error",
+          function (e) {
+            var target = e.target;
+            if (!target || target === window) return;
+            var tag = target.tagName;
+            if (tag !== "SCRIPT" && tag !== "LINK") return;
+            try {
+              if (sessionStorage.getItem(RELOAD_KEY)) return;
+              sessionStorage.setItem(RELOAD_KEY, "1");
+            } catch (err) {
+              return;
+            }
+            window.location.reload();
+          },
+          true,
+        );
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

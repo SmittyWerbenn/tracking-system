@@ -38,7 +38,6 @@ interface LocationContextValue {
   refresh: () => Promise<void>;
   createTitik: (data: TitikFormData) => Promise<TitikLokasi>;
   updateTitik: (id: string, data: TitikFormData) => Promise<void>;
-  setTitikAktif: (id: string, aktif: boolean) => Promise<void>;
 }
 
 const LocationContext = createContext<LocationContextValue | null>(null);
@@ -87,15 +86,8 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     await refresh();
   }
 
-  async function setTitikAktif(id: string, aktif: boolean) {
-    await api.patch(`/api/locations/${id}`, { aktif });
-    await refresh();
-  }
-
   return (
-    <LocationContext.Provider
-      value={{ titikLokasi, activeTitikLokasi, isLoading, refresh, createTitik, updateTitik, setTitikAktif }}
-    >
+    <LocationContext.Provider value={{ titikLokasi, activeTitikLokasi, isLoading, refresh, createTitik, updateTitik }}>
       {children}
     </LocationContext.Provider>
   );

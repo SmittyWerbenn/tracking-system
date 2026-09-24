@@ -1,4 +1,4 @@
-import { AlertTriangle, Ban, CheckCircle2, MapPinned, Pencil, RotateCcw, Table, Plus, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, MapPinned, Pencil, Table, Plus, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { BulkLocationImport } from "../../components/BulkLocationImport";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -23,7 +23,7 @@ const JENIS_STYLE: Record<TitikJenis, string> = {
 };
 
 export default function LocationList() {
-  const { titikLokasi, createTitik, updateTitik, setTitikAktif } = useLocations();
+  const { titikLokasi, createTitik, updateTitik } = useLocations();
   const { profile } = useAuth();
   const canEdit = profile?.role === "Superadmin" || profile?.role === "Admin";
 
@@ -279,32 +279,13 @@ export default function LocationList() {
                   </td>
                   {canEdit && (
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => openEdit(t)}
-                          title="Edit"
-                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        {t.aktif ? (
-                          <button
-                            onClick={() => setTitikAktif(t.id, false)}
-                            title="Nonaktifkan"
-                            className="rounded-md p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600"
-                          >
-                            <Ban size={16} />
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => setTitikAktif(t.id, true)}
-                            title="Aktifkan"
-                            className="rounded-md p-1.5 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600"
-                          >
-                            <RotateCcw size={16} />
-                          </button>
-                        )}
-                      </div>
+                      <button
+                        onClick={() => openEdit(t)}
+                        title="Edit"
+                        className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
+                      >
+                        <Pencil size={16} />
+                      </button>
                     </td>
                   )}
                 </tr>

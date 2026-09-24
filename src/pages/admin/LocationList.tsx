@@ -26,10 +26,17 @@ export default function LocationList() {
   const { profile } = useAuth();
   const canEdit = profile?.role === "Superadmin" || profile?.role === "Admin";
 
+  const [expanded, setExpanded] = useState(false);
   const [mode, setMode] = useState<"single" | "bulk">("single");
   const [form, setForm] = useState<TitikFormData>(emptyForm);
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState(false);
+
+  function closeInput() {
+    setExpanded(false);
+    setMode("single");
+    setForm(emptyForm);
+  }
 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -63,44 +70,65 @@ export default function LocationList() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Kota &amp; Titik Transit</h1>
           <p className="mt-1 text-sm text-slate-500">
-            {mode === "single"
-              ? "Tambah satu titik lokasi ke master data."
-              : "Tambah banyak titik lokasi sekaligus dengan mengisi tabel atau mengimpor file Excel/CSV."}
+            {!expanded
+              ? "Master data lokasi yang digunakan pada pengiriman dan update tracking."
+              : mode === "single"
+                ? "Tambah satu titik lokasi ke master data."
+                : "Tambah banyak titik lokasi sekaligus dengan mengisi tabel atau mengimpor file Excel/CSV."}
           </p>
         </div>
-        {canEdit && (
-          <div className="inline-flex items-center gap-1 rounded-lg bg-slate-100 p-1">
+        {canEdit && !expanded && (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+          >
+            <Plus size={16} /> Tambah Titik
+          </button>
+        )}
+        {canEdit && expanded && (
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center gap-1 rounded-lg bg-slate-100 p-1">
+              <button
+                type="button"
+                onClick={() => setMode("single")}
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  mode === "single" ? "bg-white text-blue-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                <Plus size={13} />
+                Input 1 Titik
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("bulk")}
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  mode === "bulk" ? "bg-white text-blue-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                <Table size={13} />
+                Bulk / Import Excel
+              </button>
+            </div>
             <button
               type="button"
-              onClick={() => setMode("single")}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
-                mode === "single" ? "bg-white text-blue-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-              }`}
+              onClick={closeInput}
+              title="Tutup"
+              className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-700"
             >
-              <Plus size={13} />
-              Input 1 Titik
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("bulk")}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
-                mode === "bulk" ? "bg-white text-blue-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <Table size={13} />
-              Bulk / Import Excel
+              <X size={16} />
             </button>
           </div>
         )}
       </div>
 
-      {canEdit && mode === "bulk" && (
+      {canEdit && expanded && mode === "bulk" && (
         <div className="mt-6">
           <BulkLocationImport />
         </div>
       )}
 
-      {canEdit && mode === "single" && (
+      {canEdit && expanded && mode === "single" && (
         <form
           onSubmit={handleCreateSubmit}
           className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"

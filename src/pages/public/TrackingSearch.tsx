@@ -6,7 +6,6 @@ import { BarcodeScannerModal } from "../../components/BarcodeScannerModal";
 import { PublicLayout } from "../../components/layout/PublicLayout";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useLanguage } from "../../store/LanguageContext";
-import { useShipments } from "../../store/ShipmentContext";
 import type { ShipmentStatus } from "../../types";
 import {
   clearAwbHistory,
@@ -15,6 +14,7 @@ import {
   removeAwbHistory,
   type AwbHistoryEntry,
 } from "../../utils/awbHistory";
+import { fetchPublicShipment } from "../../utils/publicTracking";
 import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
 export default function TrackingSearch() {
@@ -22,16 +22,16 @@ export default function TrackingSearch() {
   useDocumentTitle(t.nav.trackPackage);
   const [awb, setAwb] = useState("");
   const [notFound, setNotFound] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [history, setHistory] = useState<AwbHistoryEntry[]>(() => getAwbHistory());
   const [scannerOpen, setScannerOpen] = useState(false);
   const navigate = useNavigate();
-  const { shipments, getByAwb } = useShipments();
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    const trimmed = awb.trim();
-    if (!trimmed) return;
-    if (getByAwb(trimmed)) {
+  async function goToAwbIfExists(trimmed: string) {
+    setChecking(true);
+    const result = await fetchPublicShipment(trimmed);
+    setChecking(false);
+    if (result) {
       setNotFound(false);
       navigate(`/tracking/${trimmed}`);
     } else {
@@ -39,15 +39,17 @@ export default function TrackingSearch() {
     }
   }
 
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = awb.trim();
+    if (!trimmed) return;
+    goToAwbIfExists(trimmed);
+  }
+
   function handleScanned(scannedAwb: string) {
     setScannerOpen(false);
     setAwb(scannedAwb);
-    if (getByAwb(scannedAwb)) {
-      setNotFound(false);
-      navigate(`/tracking/${scannedAwb}`);
-    } else {
-      setNotFound(true);
-    }
+    goToAwbIfExists(scannedAwb);
   }
 
   return (
@@ -81,7 +83,8 @@ export default function TrackingSearch() {
                 />
                 <button
                   type="submit"
-                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-900 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-800 sm:rounded-full"
+                  disabled={checking}
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-900 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-800 disabled:opacity-60 sm:rounded-full"
                 >
                   <Search size={16} />
                   {t.trackingSearch.submitButton}
@@ -159,28 +162,6 @@ export default function TrackingSearch() {
           </div>
         )}
 
-        <div className="mt-10 w-full text-left">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-            {t.trackingSearch.exampleTitle}
-          </p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {shipments.slice(0, 3).map((s) => (
-              <button
-                key={s.awb}
-                onClick={() => navigate(`/tracking/${s.awb}`)}
-                className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-50"
-              >
-                <div>
-                  <p className="font-mono text-sm font-medium text-slate-800">{s.awb}</p>
-                  <p className="text-xs text-slate-500">
-                    {s.kotaAsal} → {s.kotaTujuan}
-                  </p>
-                </div>
-                <StatusBadge status={s.status} size="sm" />
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       {scannerOpen && (

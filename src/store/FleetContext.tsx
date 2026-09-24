@@ -1,12 +1,19 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { ArmadaStatus, Driver, Truck } from "../types";
-import { initialDrivers, initialTrucks } from "../data/masterData";
-import { usePersistedState } from "../utils/usePersistedState";
-import { useAuditLog } from "./AuditLogContext";
+import { api } from "../utils/apiClient";
 import { useAuth } from "./AuthContext";
 
-const TRUCK_STORAGE_KEY = "gms-fleet-trucks-v1";
-const DRIVER_STORAGE_KEY = "gms-fleet-drivers-v1";
+interface TruckRow {
+  id: string;
+  nomor_unit: string;
+  jenis: string;
+  kapasitas: string;
+  driver_id: string | null;
+  status: ArmadaStatus;
+  keterangan: string | null;
+  driver_nama: string | null;
+  driver_telepon: string | null;
+}
 
 export interface TruckFormData {
   nomorUnit: string;
@@ -22,115 +29,78 @@ export interface TruckWithDriver extends Truck {
   driver?: Driver;
 }
 
+function toTruckWithDriver(row: TruckRow): TruckWithDriver {
+  return {
+    id: row.id,
+    nomorUnit: row.nomor_unit,
+    jenis: row.jenis,
+    kapasitas: row.kapasitas,
+    driverId: row.driver_id ?? "",
+    status: row.status,
+    keterangan: row.keterangan ?? undefined,
+    driver: row.driver_nama ? { id: row.driver_id ?? "", nama: row.driver_nama, telepon: row.driver_telepon ?? "" } : undefined,
+  };
+}
+
 interface FleetContextValue {
   trucks: Truck[];
-  drivers: Driver[];
   trucksWithDriver: TruckWithDriver[];
+  isLoading: boolean;
+  refresh: () => Promise<void>;
   getTruck: (id: string) => TruckWithDriver | undefined;
-  createTruck: (data: TruckFormData) => Truck;
-  updateTruck: (id: string, data: TruckFormData) => void;
-  setTruckStatus: (id: string, status: ArmadaStatus) => void;
+  createTruck: (data: TruckFormData) => Promise<void>;
+  updateTruck: (id: string, data: TruckFormData) => Promise<void>;
+  setTruckStatus: (id: string, status: ArmadaStatus) => Promise<void>;
 }
 
 const FleetContext = createContext<FleetContextValue | null>(null);
 
 export function FleetProvider({ children }: { children: ReactNode }) {
-  const [trucks, setTrucks] = usePersistedState<Truck[]>(TRUCK_STORAGE_KEY, initialTrucks);
-  const [drivers, setDrivers] = usePersistedState<Driver[]>(DRIVER_STORAGE_KEY, initialDrivers);
-  const { addLog } = useAuditLog();
-  const { profile } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const [trucksWithDriver, setTrucksWithDriver] = useState<TruckWithDriver[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const trucksWithDriver: TruckWithDriver[] = trucks.map((t) => ({
-    ...t,
-    driver: drivers.find((d) => d.id === t.driverId),
-  }));
+  async function refresh() {
+    setIsLoading(true);
+    try {
+      const res = await api.get<{ items: TruckRow[] }>("/api/trucks");
+      setTrucksWithDriver(res.items.map(toTruckWithDriver));
+    } catch {
+      setTrucksWithDriver([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (isAuthenticated) refresh();
+    else setTrucksWithDriver([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   function getTruck(id: string) {
     return trucksWithDriver.find((t) => t.id === id);
   }
 
-  function upsertDriver(nama: string, telepon: string): string {
-    const existing = drivers.find((d) => d.nama.toLowerCase() === nama.toLowerCase());
-    if (existing) {
-      if (existing.telepon !== telepon) {
-        setDrivers((prev) => prev.map((d) => (d.id === existing.id ? { ...d, telepon } : d)));
-      }
-      return existing.id;
-    }
-    const id = `drv-${Date.now()}`;
-    setDrivers((prev) => [...prev, { id, nama, telepon }]);
-    return id;
+  async function createTruck(data: TruckFormData) {
+    await api.post("/api/trucks", data);
+    await refresh();
   }
 
-  function createTruck(data: TruckFormData): Truck {
-    const driverId = upsertDriver(data.driverNama, data.driverTelepon);
-    const truck: Truck = {
-      id: `trk-${Date.now()}`,
-      nomorUnit: data.nomorUnit,
-      jenis: data.jenis,
-      kapasitas: data.kapasitas,
-      driverId,
-      status: data.status,
-      keterangan: data.keterangan,
-    };
-    setTrucks((prev) => [truck, ...prev]);
-    addLog({
-      userName: profile.nama,
-      role: profile.role,
-      action: "CREATE_TRUCK",
-      actionLabel: "CREATE TRUCK",
-      module: "Master Armada",
-      description: `Unit truck ${truck.nomorUnit} ditambahkan ke master armada.`,
-    });
-    return truck;
+  async function updateTruck(id: string, data: TruckFormData) {
+    await api.patch(`/api/trucks/${id}`, data);
+    await refresh();
   }
 
-  function updateTruck(id: string, data: TruckFormData) {
-    const driverId = upsertDriver(data.driverNama, data.driverTelepon);
-    setTrucks((prev) =>
-      prev.map((t) =>
-        t.id === id
-          ? {
-              ...t,
-              nomorUnit: data.nomorUnit,
-              jenis: data.jenis,
-              kapasitas: data.kapasitas,
-              driverId,
-              status: data.status,
-              keterangan: data.keterangan,
-            }
-          : t,
-      ),
-    );
-    addLog({
-      userName: profile.nama,
-      role: profile.role,
-      action: "UPDATE_TRUCK_MASTER",
-      actionLabel: "UPDATE TRUCK",
-      module: "Master Armada",
-      description: `Data unit truck ${data.nomorUnit} diperbarui.`,
-    });
+  async function setTruckStatus(id: string, status: ArmadaStatus) {
+    await api.patch(`/api/trucks/${id}`, { status });
+    await refresh();
   }
 
-  function setTruckStatus(id: string, status: ArmadaStatus) {
-    const truck = trucks.find((t) => t.id === id);
-    setTrucks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
-    if (truck) {
-      addLog({
-        userName: profile.nama,
-        role: profile.role,
-        action: "UPDATE_TRUCK_MASTER",
-        actionLabel: "UPDATE TRUCK",
-        module: "Master Armada",
-        description: `Status unit truck ${truck.nomorUnit} diubah: ${truck.status} -> ${status}.`,
-      });
-    }
-  }
+  const trucks: Truck[] = trucksWithDriver.map(({ driver: _driver, ...t }) => t);
 
   return (
-    <FleetContext.Provider
-      value={{ trucks, drivers, trucksWithDriver, getTruck, createTruck, updateTruck, setTruckStatus }}
-    >
+    <FleetContext.Provider value={{ trucks, trucksWithDriver, isLoading, refresh, getTruck, createTruck, updateTruck, setTruckStatus }}>
       {children}
     </FleetContext.Provider>
   );

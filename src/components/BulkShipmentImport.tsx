@@ -13,8 +13,13 @@ import { Link } from "react-router-dom";
 import { useFleet } from "../store/FleetContext";
 import { useLocations } from "../store/LocationContext";
 import { useShipments } from "../store/ShipmentContext";
-import type { LayananPengiriman, Shipment } from "../types";
-import { photos } from "../utils/photos";
+import type { LayananPengiriman } from "../types";
+
+interface CreatedShipmentSummary {
+  awb: string;
+  kotaAsal: string;
+  kotaTujuan: string;
+}
 import {
   downloadBulkShipmentTemplate,
   normalizeLayanan,
@@ -116,7 +121,7 @@ export function BulkShipmentImport() {
   const [importError, setImportError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{ created: Shipment[]; skipped: number } | null>(null);
+  const [result, setResult] = useState<{ created: CreatedShipmentSummary[]; skipped: number } | null>(null);
   const [hoveredStatusRowId, setHoveredStatusRowId] = useState<string | null>(null);
 
   const knownKota = activeTitikLokasi.map((k) => k.namaKota);
@@ -196,12 +201,12 @@ export function BulkShipmentImport() {
     if (validRows.length === 0) return;
 
     setSubmitting(true);
-    const created: Shipment[] = [];
+    const created: CreatedShipmentSummary[] = [];
     for (const row of validRows) {
       const truck = truckOptions.find(
         (t) => t.nomorUnit.replace(/\s+/g, "").toLowerCase() === row.nomorPolisiTruck.replace(/\s+/g, "").toLowerCase(),
       );
-      const shipment = createShipment({
+      const { awb } = await createShipment({
         pengirim: { nama: row.pengirimNama, telepon: row.pengirimTelepon, email: row.pengirimEmail },
         penerima: { nama: row.penerimaNama, telepon: row.penerimaTelepon, email: row.penerimaEmail },
         alamatAsal: row.alamatAsal,
@@ -212,10 +217,9 @@ export function BulkShipmentImport() {
         layanan: row.layananValue,
         beratKg: Number(row.beratKg),
         jumlahKoli: Number(row.jumlahKoli),
-        fotoBarang: photos.barangDiterima,
         truckId: truck?.id ?? "",
       });
-      created.push(shipment);
+      created.push({ awb, kotaAsal: row.kotaAsal, kotaTujuan: row.kotaTujuan });
     }
     setResult({ created, skipped });
     setRows([emptyRow(), emptyRow(), emptyRow()]);

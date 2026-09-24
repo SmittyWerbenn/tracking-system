@@ -82,10 +82,10 @@ function estimasiHariLabel(tier: OngkirTier, layanan: LayananPengiriman, languag
   return min === max ? `${min} ${unit}` : `${min}-${max} ${unit}`;
 }
 
-/** Mock "cek ongkir" estimator - berat (weight) and jarak (distance, via the
+/** "Cek ongkir" estimator - berat (weight) and jarak (distance, via the
  * JARAK_DARI_JAKARTA_KM proxy, combined with same-island vs. cross-island
- * tiering via PULAU_KOTA) both drive the price; this is a dummy/prototype
- * calculation, not a real courier tariff. */
+ * tiering via PULAU_KOTA) both drive the price; this is a simplified
+ * estimate formula, not the company's real courier tariff table. */
 export function estimateOngkir(
   kotaAsal: string,
   kotaTujuan: string,

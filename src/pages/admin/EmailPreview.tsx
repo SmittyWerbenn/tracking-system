@@ -5,6 +5,7 @@ import logoIcon from "../../assets/icon-mark.png";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useSettings } from "../../store/SettingsContext";
 import { useShipments } from "../../store/ShipmentContext";
+import type { Shipment } from "../../types";
 import { formatTanggalPanjang } from "../../utils/format";
 import { sendTrackingEmail } from "../../utils/sendEmail";
 
@@ -13,10 +14,12 @@ export default function EmailPreview() {
   const { getByAwb, markEmailSent } = useShipments();
   const { settings } = useSettings();
   const navigate = useNavigate();
-  const shipment = getByAwb(awb ?? "");
 
-  const [sending, setSending] = useState(!shipment?.emailTerkirim && settings.emailSendingEnabled);
-  const [sent, setSent] = useState(!!shipment?.emailTerkirim);
+  const [shipment, setShipment] = useState<Shipment | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [pengirimSending, setPengirimSending] = useState(false);
@@ -62,6 +65,21 @@ export default function EmailPreview() {
   }
 
   useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    getByAwb(awb ?? "").then((s) => {
+      if (cancelled) return;
+      setShipment(s);
+      setSent(!!s?.emailTerkirim);
+      setIsLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awb]);
+
+  useEffect(() => {
     if (!shipment || shipment.emailTerkirim) return;
     if (!settings.emailSendingEnabled) {
       setSending(false);
@@ -71,6 +89,16 @@ export default function EmailPreview() {
     handleSend(shipment);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shipment?.awb, settings.emailSendingEnabled]);
+
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex justify-center py-16">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-blue-900" />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   if (!shipment) {
     return (

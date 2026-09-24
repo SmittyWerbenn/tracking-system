@@ -22,39 +22,65 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { StatusStepper } from "../../components/StatusStepper";
 import { TrackingTimeline } from "../../components/TrackingTimeline";
 import { useLanguage } from "../../store/LanguageContext";
-import { useShipments } from "../../store/ShipmentContext";
+import type { Shipment } from "../../types";
 import { recordAwbView } from "../../utils/awbHistory";
 import { formatTanggalPanjang } from "../../utils/format";
+import { fetchPublicShipment } from "../../utils/publicTracking";
 import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
 export default function TrackingResult() {
   const { t } = useLanguage();
   const { awb } = useParams<{ awb: string }>();
-  const { getByAwb } = useShipments();
   const navigate = useNavigate();
-  const shipment = getByAwb(awb ?? "");
-  useDocumentTitle(shipment ? `Tracking ${shipment.awb}` : `AWB ${awb} ${t.trackingResult.notFoundTitle}`);
+
+  const [shipment, setShipment] = useState<Shipment | null>(null);
+  const [hasFeedback, setHasFeedback] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (shipment) {
-      recordAwbView(shipment.awb, shipment.status);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shipment?.awb, shipment?.status]);
+    let cancelled = false;
+    setIsLoading(true);
+    fetchPublicShipment(awb ?? "").then((result) => {
+      if (cancelled) return;
+      setShipment(result?.shipment ?? null);
+      setHasFeedback(result?.hasFeedback ?? false);
+      setIsLoading(false);
+      if (result?.shipment) recordAwbView(result.shipment.awb, result.shipment.status);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [awb]);
+
+  useDocumentTitle(shipment ? `Tracking ${shipment.awb}` : `AWB ${awb} ${t.trackingResult.notFoundTitle}`);
 
   const [query, setQuery] = useState("");
   const [notFound, setNotFound] = useState(false);
+  const [checking, setChecking] = useState(false);
 
-  function handleSearch(e: FormEvent) {
+  async function handleSearch(e: FormEvent) {
     e.preventDefault();
     const trimmed = query.trim();
     if (!trimmed) return;
-    if (getByAwb(trimmed)) {
+    setChecking(true);
+    const result = await fetchPublicShipment(trimmed);
+    setChecking(false);
+    if (result) {
       setNotFound(false);
       navigate(`/tracking/${trimmed}`);
     } else {
       setNotFound(true);
     }
+  }
+
+  if (isLoading) {
+    return (
+      <PublicLayout>
+        <div className="flex justify-center py-16">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-blue-900" />
+        </div>
+      </PublicLayout>
+    );
   }
 
   if (!shipment) {
@@ -75,7 +101,8 @@ export default function TrackingResult() {
             />
             <button
               type="submit"
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"
+              disabled={checking}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60"
             >
               <Search size={15} /> {t.trackingSearch.submitButton}
             </button>
@@ -112,7 +139,8 @@ export default function TrackingResult() {
         />
         <button
           type="submit"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          disabled={checking}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
         >
           <Search size={15} />
         </button>
@@ -291,7 +319,9 @@ export default function TrackingResult() {
         <TrackingTimeline events={shipment.timeline} />
       </div>
 
-      {isDelivered && <FeedbackPopup awb={shipment.awb} customerName={shipment.penerima.nama} />}
+      {isDelivered && (
+        <FeedbackPopup awb={shipment.awb} customerName={shipment.penerima.nama} alreadyRated={hasFeedback} />
+      )}
 
       <div className="mt-8 rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center text-xs text-slate-400">
         {t.trackingResult.helpText}{" "}

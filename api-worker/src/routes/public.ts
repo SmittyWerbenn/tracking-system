@@ -21,6 +21,8 @@ function shipmentSummary(row: Record<string, unknown>) {
     jumlahKoli: row.jumlah_koli,
     deskripsiBarang: row.deskripsi_barang,
     truckNomorUnit: row.truck_nomor_unit ?? null,
+    truckJenis: row.truck_jenis ?? null,
+    truckDriverNama: row.truck_driver_nama ?? null,
     estimasiTiba: row.estimasi_tiba,
   };
 }
@@ -30,14 +32,20 @@ export function registerPublicRoutes(router: Router) {
   // shown on the public tracking page (never internal notes/pengirim contact).
   router.get("/api/public/shipments/:awb", async (ctx: Ctx, params) => {
     const row = await ctx.env.DB.prepare(
-      `SELECT s.*, t.nomor_unit as truck_nomor_unit FROM shipments s LEFT JOIN trucks t ON t.id = s.truck_id WHERE s.awb = ?`,
+      `SELECT s.*, t.nomor_unit as truck_nomor_unit, t.jenis as truck_jenis, d.nama as truck_driver_nama
+       FROM shipments s LEFT JOIN trucks t ON t.id = s.truck_id LEFT JOIN drivers d ON d.id = t.driver_id
+       WHERE s.awb = ?`,
     )
       .bind(params.awb)
       .first();
     if (!row) throw Errors.notFound("AWB tidak ditemukan.");
 
     const timeline = await ctx.env.DB.prepare(
-      `SELECT type, lokasi, tanggal, jam, keterangan, truck_id FROM shipment_timeline_events WHERE awb = ? ORDER BY seq ASC`,
+      `SELECT e.id, e.type, e.lokasi, e.tanggal, e.jam, e.keterangan, t.nomor_unit as truck_nomor_unit, d.nama as truck_driver_nama
+       FROM shipment_timeline_events e
+       LEFT JOIN trucks t ON t.id = e.truck_id
+       LEFT JOIN drivers d ON d.id = t.driver_id
+       WHERE e.awb = ? ORDER BY e.seq ASC`,
     )
       .bind(params.awb)
       .all();
@@ -48,7 +56,23 @@ export function registerPublicRoutes(router: Router) {
       .bind(params.awb)
       .first();
 
-    return ok({ shipment: shipmentSummary(row), timeline: timeline.results, pod: pod ?? null });
+    const feedbackExists = await ctx.env.DB.prepare(`SELECT id FROM feedback WHERE awb = ?`).bind(params.awb).first();
+
+    const files = await ctx.env.DB.prepare(
+      `SELECT id, entity_type, entity_id FROM files WHERE (entity_type IN ('shipment_photo','pod_barang','pod_surat_jalan') AND entity_id = ?)
+         OR (entity_type = 'timeline_photo' AND entity_id IN (SELECT id FROM shipment_timeline_events WHERE awb = ?))
+         ORDER BY created_at DESC`,
+    )
+      .bind(params.awb, params.awb)
+      .all<{ id: string; entity_type: string; entity_id: string }>();
+
+    return ok({
+      shipment: shipmentSummary(row),
+      timeline: timeline.results,
+      pod: pod ?? null,
+      files: files.results ?? [],
+      hasFeedback: !!feedbackExists,
+    });
   });
 
   router.get("/api/public/locations", async (ctx: Ctx) => {

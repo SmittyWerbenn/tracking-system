@@ -1,4 +1,17 @@
-import type { Shipment } from "../types";
+import type { PersonInfo, Shipment } from "../types";
+
+/** The subset of a Shipment this module actually needs - lets callers pass
+ * a freshly-created shipment before its full server-hydrated record (with
+ * timeline, truck snapshot, etc.) has been fetched back. */
+export interface EmailableShipment {
+  awb: string;
+  kotaAsal: string;
+  kotaTujuan: string;
+  status: Shipment["status"];
+  tanggalDibuat: string;
+  pengirim: PersonInfo;
+  penerima: PersonInfo;
+}
 
 export interface SendEmailResult {
   ok: boolean;
@@ -34,7 +47,7 @@ function emailEndpoint(): string {
  * it goes to the penerima (default) or the pengirim.
  */
 export async function sendTrackingEmail(
-  shipment: Shipment,
+  shipment: EmailableShipment,
   trackingUrl: string,
   recipient: EmailRecipientRole = "penerima",
 ): Promise<SendEmailResult> {

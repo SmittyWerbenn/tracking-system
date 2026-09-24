@@ -10,15 +10,6 @@ import { generateAwb } from "../awb";
 import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, type TimelineEventType } from "../status";
 
 const LAYANAN = ["Darat", "Express", "Kargo", "Regular", "Charter"] as const;
-const STATUSES = [
-  "Dalam Persiapan",
-  "Berangkat",
-  "Transit",
-  "Dalam Perjalanan",
-  "Kendala",
-  "Tiba di Tujuan",
-  "Selesai / Terkirim",
-] as const;
 
 const POD_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -40,11 +31,16 @@ function shipmentSummary(row: Record<string, unknown>) {
     jumlahKoli: row.jumlah_koli,
     truckId: row.truck_id,
     truckNomorUnit: row.truck_nomor_unit ?? null,
+    truckJenis: row.truck_jenis ?? null,
     truckDriverNama: row.truck_driver_nama ?? null,
     emailTerkirim: !!row.email_terkirim,
     emailTerkirimAt: row.email_terkirim_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    pod: row.pod_tanggal
+      ? { tanggal: row.pod_tanggal, jam: row.pod_jam, namaPenerima: row.pod_nama_penerima }
+      : null,
+    lastUpdate: row.last_tanggal ? { tanggal: row.last_tanggal, jam: row.last_jam } : null,
   };
 }
 
@@ -71,10 +67,17 @@ export function registerShipmentRoutes(router: Router) {
       .first<{ c: number }>();
 
     const rows = await ctx.env.DB.prepare(
-      `SELECT s.*, t.nomor_unit as truck_nomor_unit, d.nama as truck_driver_nama
+      `SELECT s.*, t.nomor_unit as truck_nomor_unit, d.nama as truck_driver_nama,
+              p.tanggal as pod_tanggal, p.jam as pod_jam, p.nama_penerima as pod_nama_penerima,
+              le.tanggal as last_tanggal, le.jam as last_jam
        FROM shipments s
        LEFT JOIN trucks t ON t.id = s.truck_id
        LEFT JOIN drivers d ON d.id = t.driver_id
+       LEFT JOIN shipment_pod p ON p.awb = s.awb
+       LEFT JOIN (
+         SELECT e1.awb, e1.tanggal, e1.jam FROM shipment_timeline_events e1
+         WHERE e1.seq = (SELECT MAX(e2.seq) FROM shipment_timeline_events e2 WHERE e2.awb = e1.awb)
+       ) le ON le.awb = s.awb
        ${whereSql}
        ORDER BY s.tanggal_dibuat DESC, s.jam_dibuat DESC
        LIMIT ? OFFSET ?`,
@@ -182,7 +185,15 @@ export function registerShipmentRoutes(router: Router) {
 
     const pod = await ctx.env.DB.prepare(`SELECT * FROM shipment_pod WHERE awb = ?`).bind(params.awb).first();
 
-    return ok({ shipment: shipmentSummary(row), timeline: timeline.results, pod: pod ?? null });
+    const files = await ctx.env.DB.prepare(
+      `SELECT id, entity_type, entity_id FROM files WHERE (entity_type IN ('shipment_photo','pod_barang','pod_surat_jalan') AND entity_id = ?)
+         OR (entity_type = 'timeline_photo' AND entity_id IN (SELECT id FROM shipment_timeline_events WHERE awb = ?))
+         ORDER BY created_at DESC`,
+    )
+      .bind(params.awb, params.awb)
+      .all();
+
+    return ok({ shipment: shipmentSummary(row), timeline: timeline.results, pod: pod ?? null, files: files.results ?? [] });
   });
 
   router.patch("/api/shipments/:awb", async (ctx: Ctx, params) => {
@@ -267,12 +278,13 @@ export function registerShipmentRoutes(router: Router) {
     const seq = seqRow?.next ?? 1;
     const isTransfer = type === "Transfer Unit";
     const previousTruckId = isTransfer ? (shipment.truck_id as string | null) : null;
+    const eventId = newId();
 
     await ctx.env.DB.prepare(
       `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, titik_id, tanggal, jam, keterangan, truck_id, truck_sebelumnya_id, input_by_user_id, input_by_name, input_at, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-      .bind(newId(), params.awb, seq, type, lokasi, titikId ?? null, tanggal, jam, keterangan, truckId ?? shipment.truck_id ?? null, previousTruckId, actor.id, actor.nama, nowIso, nowIso)
+      .bind(eventId, params.awb, seq, type, lokasi, titikId ?? null, tanggal, jam, keterangan, truckId ?? shipment.truck_id ?? null, previousTruckId, actor.id, actor.nama, nowIso, nowIso)
       .run();
 
     await ctx.env.DB.prepare(`UPDATE shipments SET status = ?, truck_id = COALESCE(?, truck_id), updated_at = ?, updated_by = ? WHERE awb = ?`)
@@ -321,7 +333,7 @@ export function registerShipmentRoutes(router: Router) {
       });
     }
 
-    return ok({ updated: true, status: newStatus }, {}, 201);
+    return ok({ updated: true, status: newStatus, eventId }, {}, 201);
   });
 
   router.patch("/api/shipments/:awb/pod-photo", async (ctx: Ctx, params) => {

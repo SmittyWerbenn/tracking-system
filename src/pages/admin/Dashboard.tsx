@@ -10,35 +10,57 @@ import {
   Star,
   Truck,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { StagnantShipmentsCard } from "../../components/StagnantShipmentsCard";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useAuth } from "../../store/AuthContext";
 import { useFeedback } from "../../store/FeedbackContext";
-import { useFleet } from "../../store/FleetContext";
 import { useNotifications } from "../../store/NotificationContext";
 import { useSettings } from "../../store/SettingsContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { ShipmentStatus } from "../../types";
+import { api } from "../../utils/apiClient";
 import { formatTanggalPendek } from "../../utils/format";
 import { getStagnantShipments } from "../../utils/stagnant";
 
+interface DashboardStats {
+  totalShipments: number;
+  statusCounts: Record<string, number>;
+  stagnantCount: number;
+  totalTrucks: number;
+  truckOnTrip: number;
+  avgRating: number | null;
+}
+
 export default function Dashboard() {
   const { shipments } = useShipments();
-  const { trucks } = useFleet();
+  const { profile } = useAuth();
+  const canCreateShipment = profile?.role === "Superadmin" || profile?.role === "Admin";
   const { notifications } = useNotifications();
   const { feedback } = useFeedback();
   const { settings } = useSettings();
 
-  const total = shipments.length;
-  const dalamPerjalanan = shipments.filter((s) => s.status === "Dalam Perjalanan").length;
-  const transit = shipments.filter((s) => s.status === "Transit").length;
-  const selesai = shipments.filter((s) => s.status === "Selesai / Terkirim").length;
-  const bermasalah = shipments.filter((s) => s.status === "Kendala").length;
-  const truckOnTrip = trucks.filter((t) => t.status === "On Trip").length;
-  const avgRating = feedback.length === 0 ? 0 : feedback.reduce((sum, f) => sum + f.rating, 0) / feedback.length;
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+
+  useEffect(() => {
+    api
+      .get<DashboardStats>(`/api/dashboard/stats?stagnantDays=${settings.stagnantThresholdDays}`)
+      .then(setStats)
+      .catch(() => setStats(null));
+  }, [settings.stagnantThresholdDays]);
+
+  const total = stats?.totalShipments ?? 0;
+  const dalamPerjalanan = stats?.statusCounts["Dalam Perjalanan"] ?? 0;
+  const transit = stats?.statusCounts["Transit"] ?? 0;
+  const selesai = stats?.statusCounts["Selesai / Terkirim"] ?? 0;
+  const bermasalah = stats?.statusCounts["Kendala"] ?? 0;
+  const truckOnTrip = stats?.truckOnTrip ?? 0;
+  const totalTrucks = stats?.totalTrucks ?? 0;
+  const avgRating = stats?.avgRating ?? 0;
+  const stagnantCount = stats?.stagnantCount ?? 0;
 
   const stagnant = useMemo(
     () => getStagnantShipments(shipments, settings.stagnantThresholdDays),
@@ -52,10 +74,7 @@ export default function Dashboard() {
   const recentNotifications = notifications.slice(0, 4);
   const recentFeedback = [...feedback].sort((a, b) => (a.submittedAt < b.submittedAt ? 1 : -1)).slice(0, 4);
 
-  const statusBreakdown = shipments.reduce<Record<string, number>>((acc, s) => {
-    acc[s.status] = (acc[s.status] ?? 0) + 1;
-    return acc;
-  }, {});
+  const statusBreakdown = stats?.statusCounts ?? {};
 
   return (
     <AdminLayout>
@@ -66,13 +85,15 @@ export default function Dashboard() {
             Ringkasan operasional pengiriman PT Gangsar Mitra Suatama.
           </p>
         </div>
-        <Link
-          to="/admin/pengiriman/baru"
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800"
-        >
-          <PackagePlus size={17} />
-          Buat Pengiriman
-        </Link>
+        {canCreateShipment && (
+          <Link
+            to="/admin/pengiriman/baru"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800"
+          >
+            <PackagePlus size={17} />
+            Buat Pengiriman
+          </Link>
+        )}
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
@@ -113,14 +134,14 @@ export default function Dashboard() {
         />
         <StatCard
           label="AWB Macet"
-          value={stagnant.length}
+          value={stagnantCount}
           icon={AlertTriangle}
           accent="bg-red-100 text-red-700"
           to="/admin/pengiriman?macet=1"
         />
         <StatCard
           label="Total Armada"
-          value={trucks.length}
+          value={totalTrucks}
           icon={Truck}
           accent="bg-violet-100 text-violet-700"
           to="/admin/armada"

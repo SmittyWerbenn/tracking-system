@@ -10,7 +10,7 @@ import {
   User,
   X,
 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -18,7 +18,7 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { useLocations } from "../../store/LocationContext";
 import { useFleet } from "../../store/FleetContext";
 import { useShipments } from "../../store/ShipmentContext";
-import type { TimelineEventType, TrackingUpdateFormData, UpdateShipmentInfoData } from "../../types";
+import type { Shipment, TimelineEventType, TrackingUpdateFormData, UpdateShipmentInfoData } from "../../types";
 import { compressImage } from "../../utils/compressImage";
 import { formatTanggalJam, formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
 import { getAllowedNextEvents } from "../../utils/status";
@@ -34,34 +34,74 @@ export default function UpdateTracking() {
   const { trucksWithDriver } = useFleet();
   const { activeTitikLokasi } = useLocations();
   const navigate = useNavigate();
-  const shipment = getByAwb(awb ?? "");
-  const allowedOptions = shipment ? getAllowedNextEvents(shipment.status) : [];
 
-  const [type, setType] = useState<TimelineEventType>(allowedOptions[0] ?? "Transit");
+  const [shipment, setShipment] = useState<Shipment | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const initializedFor = useRef<string | null>(null);
+
+  const [type, setType] = useState<TimelineEventType>("Transit");
   const [titikId, setTitikId] = useState("");
   const [customLokasi, setCustomLokasi] = useState("");
   const [tanggal, setTanggal] = useState(todayISO());
   const [jam, setJam] = useState(nowHHMM());
   const [keterangan, setKeterangan] = useState("");
-  const [namaPenerima, setNamaPenerima] = useState(shipment?.penerima.nama ?? "");
+  const [namaPenerima, setNamaPenerima] = useState("");
   const [foto, setFoto] = useState<string[]>([]);
   const [photoError, setPhotoError] = useState<string | null>(null);
-  const [truckId, setTruckId] = useState(shipment?.truckId ?? "");
+  const [truckId, setTruckId] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const [editInfoOpen, setEditInfoOpen] = useState(false);
-  const [editPengirim, setEditPengirim] = useState(shipment?.pengirim ?? { nama: "", telepon: "", email: "" });
-  const [editPenerima, setEditPenerima] = useState(shipment?.penerima ?? { nama: "", telepon: "", email: "" });
-  const [editKotaAsal, setEditKotaAsal] = useState(shipment?.kotaAsal ?? "");
-  const [editAlamatAsal, setEditAlamatAsal] = useState(shipment?.alamatAsal ?? "");
-  const [editKotaTujuan, setEditKotaTujuan] = useState(shipment?.kotaTujuan ?? "");
-  const [editAlamatTujuan, setEditAlamatTujuan] = useState(shipment?.alamatTujuan ?? "");
+  const [editPengirim, setEditPengirim] = useState({ nama: "", telepon: "", email: "" });
+  const [editPenerima, setEditPenerima] = useState({ nama: "", telepon: "", email: "" });
+  const [editKotaAsal, setEditKotaAsal] = useState("");
+  const [editAlamatAsal, setEditAlamatAsal] = useState("");
+  const [editKotaTujuan, setEditKotaTujuan] = useState("");
+  const [editAlamatTujuan, setEditAlamatTujuan] = useState("");
   const [editSaved, setEditSaved] = useState(false);
   const [editFormError, setEditFormError] = useState<string | null>(null);
 
   const [podPhotoError, setPodPhotoError] = useState<string | null>(null);
   const [podPhotoSaved, setPodPhotoSaved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    getByAwb(awb ?? "").then((s) => {
+      if (cancelled) return;
+      setShipment(s);
+      setIsLoading(false);
+      if (s && initializedFor.current !== s.awb) {
+        initializedFor.current = s.awb;
+        const allowedOptions = getAllowedNextEvents(s.status);
+        setType(allowedOptions[0] ?? "Transit");
+        setNamaPenerima(s.penerima.nama);
+        setTruckId(s.truckId ?? "");
+        setEditPengirim(s.pengirim);
+        setEditPenerima(s.penerima);
+        setEditKotaAsal(s.kotaAsal);
+        setEditAlamatAsal(s.alamatAsal);
+        setEditKotaTujuan(s.kotaTujuan);
+        setEditAlamatTujuan(s.alamatTujuan);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awb]);
+
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex justify-center py-16">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-blue-900" />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   if (!shipment) {
     return (
@@ -76,6 +116,7 @@ export default function UpdateTracking() {
     );
   }
 
+  const allowedOptions = getAllowedNextEvents(shipment.status);
   const locked = shipment.status === "Selesai / Terkirim";
   const POD_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
   const deliveredEvent = [...shipment.timeline].reverse().find((e) => e.type === "Selesai / Terkirim");
@@ -93,8 +134,8 @@ export default function UpdateTracking() {
     setPodPhotoError(null);
     setPodPhotoSaved(false);
     compressImage(file)
-      .then((dataUrl) => {
-        updatePodPhoto(shipment!.awb, dataUrl);
+      .then(async (dataUrl) => {
+        await updatePodPhoto(shipment!.awb, dataUrl);
         setPodPhotoSaved(true);
         setTimeout(() => setPodPhotoSaved(false), 2500);
       })
@@ -122,7 +163,7 @@ export default function UpdateTracking() {
     description: `${k.jenis} - ${k.provinsi}`,
   }));
 
-  function handleSaveInfo(e: FormEvent) {
+  async function handleSaveInfo(e: FormEvent) {
     e.preventDefault();
     if (!editKotaAsal || !editKotaTujuan) {
       setEditFormError("Pilih kota asal dan kota tujuan terlebih dahulu.");
@@ -137,9 +178,13 @@ export default function UpdateTracking() {
       alamatTujuan: editAlamatTujuan,
       kotaTujuan: editKotaTujuan,
     };
-    updateShipmentInfo(shipment!.awb, data);
-    setEditSaved(true);
-    setTimeout(() => setEditSaved(false), 2500);
+    const result = await updateShipmentInfo(shipment!.awb, data);
+    if (result.ok) {
+      setEditSaved(true);
+      setTimeout(() => setEditSaved(false), 2500);
+    } else {
+      setEditFormError(result.error);
+    }
   }
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -152,7 +197,7 @@ export default function UpdateTracking() {
     });
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!isSelesai && !resolvedLokasi) {
       setFormError("Pilih atau isi lokasi terlebih dahulu.");
@@ -163,6 +208,7 @@ export default function UpdateTracking() {
       return;
     }
     setFormError(null);
+    setSubmitting(true);
     const data: TrackingUpdateFormData = {
       awb: shipment!.awb,
       type,
@@ -175,9 +221,14 @@ export default function UpdateTracking() {
       truckId: truckId || undefined,
       namaPenerima: isSelesai ? namaPenerima.trim() : undefined,
     };
-    addTrackingUpdate(data);
-    setSubmitted(true);
-    setTimeout(() => navigate(`/tracking/${shipment!.awb}`), 1100);
+    const result = await addTrackingUpdate(data);
+    setSubmitting(false);
+    if (result.ok) {
+      setSubmitted(true);
+      setTimeout(() => navigate(`/tracking/${shipment!.awb}`), 1100);
+    } else {
+      setFormError(result.error);
+    }
   }
 
   return (
@@ -639,7 +690,8 @@ export default function UpdateTracking() {
             {formError && <p className="text-sm font-medium text-red-600">{formError}</p>}
             <button
               type="submit"
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+              disabled={submitting}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
             >
               <Send size={15} /> Simpan Update
             </button>

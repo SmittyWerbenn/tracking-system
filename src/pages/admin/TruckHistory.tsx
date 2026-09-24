@@ -1,43 +1,57 @@
 import { ArrowLeft, MapPin, Phone, Truck as TruckIcon, User } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArmadaStatusBadge } from "../../components/ArmadaStatusBadge";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useFleet } from "../../store/FleetContext";
-import { useShipments } from "../../store/ShipmentContext";
-import type { Shipment } from "../../types";
+import type { ShipmentStatus } from "../../types";
+import { api } from "../../utils/apiClient";
 import { formatTanggalPendek } from "../../utils/format";
 
 type FilterMode = "Semua" | "Sedang Dibawa" | "Selesai";
 
+interface HistoryRow {
+  awb: string;
+  status: ShipmentStatus;
+  kota_asal: string;
+  kota_tujuan: string;
+  tanggal_dibuat: string;
+  truck_id: string | null;
+}
+
 export default function TruckHistory() {
   const { id } = useParams<{ id: string }>();
   const { getTruck } = useFleet();
-  const { shipments } = useShipments();
   const navigate = useNavigate();
 
   const [filter, setFilter] = useState<FilterMode>("Semua");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [rows, setRows] = useState<HistoryRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const truck = getTruck(id ?? "");
 
-  function statusForTruck(s: Shipment): FilterMode {
-    if (s.truckId === id && s.status !== "Selesai / Terkirim") return "Sedang Dibawa";
+  useEffect(() => {
+    if (!id) return;
+    setIsLoading(true);
+    const search = new URLSearchParams({ limit: "100" });
+    if (dateFrom) search.set("from", dateFrom);
+    if (dateTo) search.set("to", dateTo);
+    api
+      .get<{ items: HistoryRow[] }>(`/api/trucks/${id}/history?${search.toString()}`)
+      .then((res) => setRows(res.items))
+      .catch(() => setRows([]))
+      .finally(() => setIsLoading(false));
+  }, [id, dateFrom, dateTo]);
+
+  function statusForTruck(s: HistoryRow): FilterMode {
+    if (s.truck_id === id && s.status !== "Selesai / Terkirim") return "Sedang Dibawa";
     return "Selesai";
   }
 
-  const relevantShipments = useMemo(() => {
-    if (!id) return [];
-    return shipments
-      .filter((s) => s.truckId === id || s.timeline.some((e) => e.truckId === id))
-      .filter((s) => filter === "Semua" || statusForTruck(s) === filter)
-      .filter((s) => !dateFrom || s.tanggalDibuat >= dateFrom)
-      .filter((s) => !dateTo || s.tanggalDibuat <= dateTo)
-      .sort((a, b) => (a.tanggalDibuat + a.jamDibuat < b.tanggalDibuat + b.jamDibuat ? 1 : -1));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shipments, id, filter, dateFrom, dateTo]);
+  const relevantShipments = rows.filter((s) => filter === "Semua" || statusForTruck(s) === filter);
 
   if (!truck) {
     return (
@@ -153,12 +167,12 @@ export default function TruckHistory() {
                       </Link>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-slate-600">
-                      {formatTanggalPendek(s.tanggalDibuat)}
+                      {formatTanggalPendek(s.tanggal_dibuat)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-slate-600">
                       <span className="inline-flex items-center gap-1">
                         <MapPin size={13} className="text-slate-400" />
-                        {s.kotaTujuan}
+                        {s.kota_tujuan}
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">
@@ -169,7 +183,7 @@ export default function TruckHistory() {
                     </td>
                   </tr>
                 ))}
-                {relevantShipments.length === 0 && (
+                {!isLoading && relevantShipments.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-400">
                       Belum ada riwayat untuk unit ini.

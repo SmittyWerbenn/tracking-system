@@ -1,76 +1,221 @@
-import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
-import { initialShipments } from "../data/mockData";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type {
   Shipment,
   ShipmentFormData,
+  ShipmentStatus,
+  TimelineEvent,
+  TimelineEventType,
   TrackingUpdateFormData,
-  TruckInfo,
   UpdateShipmentInfoData,
 } from "../types";
-import { generateAWB } from "../utils/awb";
-import { nowHHMM, nowISO, todayISO } from "../utils/format";
-import { eventTypeToShipmentStatus } from "../utils/status";
-import { usePersistedState } from "../utils/usePersistedState";
-import { useAuditLog } from "./AuditLogContext";
+import { api, ApiError, uploadFile } from "../utils/apiClient";
+import { resolveFileUrls, type FileRef } from "../utils/resolveFiles";
 import { useAuth } from "./AuthContext";
-import { useFleet } from "./FleetContext";
-import { useNotifications } from "./NotificationContext";
 
-// Bump this suffix whenever the seed data in mockData.ts changes meaningfully
-// so browsers with an older cached copy in localStorage pick up the new set
-// instead of silently keeping stale data forever.
-const STORAGE_KEY = "gms-tracking-shipments-v8";
+interface RawShipmentSummary {
+  awb: string;
+  tanggalDibuat: string;
+  jamDibuat: string;
+  status: ShipmentStatus;
+  pengirim: { nama: string; telepon: string; email: string };
+  penerima: { nama: string; telepon: string; email: string };
+  alamatAsal: string;
+  kotaAsal: string;
+  alamatTujuan: string;
+  kotaTujuan: string;
+  deskripsiBarang: string;
+  layanan: Shipment["layanan"];
+  beratKg: number;
+  jumlahKoli: number;
+  truckId: string | null;
+  truckNomorUnit: string | null;
+  truckJenis: string | null;
+  truckDriverNama: string | null;
+  emailTerkirim: boolean;
+  emailTerkirimAt: string | null;
+  pod: { tanggal: string; jam: string; namaPenerima: string } | null;
+  lastUpdate: { tanggal: string; jam: string } | null;
+}
+
+interface RawTimelineRow {
+  id: string;
+  type: TimelineEventType;
+  lokasi: string;
+  titik_id: string | null;
+  tanggal: string;
+  jam: string;
+  keterangan: string;
+  truck_id: string | null;
+  truck_nomor_unit: string | null;
+  truck_driver_nama: string | null;
+  truck_sebelumnya_nomor_unit: string | null;
+  input_by_name: string | null;
+  input_at: string;
+}
+
+interface RawPodRow {
+  tanggal: string;
+  jam: string;
+  lokasi: string;
+  nama_penerima: string;
+  catatan: string | null;
+}
+
+function toShipment(row: RawShipmentSummary): Shipment {
+  return {
+    awb: row.awb,
+    tanggalDibuat: row.tanggalDibuat,
+    jamDibuat: row.jamDibuat,
+    status: row.status,
+    pengirim: row.pengirim,
+    penerima: row.penerima,
+    alamatAsal: row.alamatAsal,
+    kotaAsal: row.kotaAsal,
+    alamatTujuan: row.alamatTujuan,
+    kotaTujuan: row.kotaTujuan,
+    deskripsiBarang: row.deskripsiBarang,
+    layanan: row.layanan,
+    beratKg: row.beratKg,
+    jumlahKoli: row.jumlahKoli,
+    truck: {
+      nomorUnit: row.truckNomorUnit ?? "-",
+      jenis: row.truckJenis ?? "-",
+      driver: row.truckDriverNama ?? undefined,
+    },
+    truckId: row.truckId ?? undefined,
+    timeline: row.lastUpdate
+      ? [{ id: "last", type: row.status as TimelineEventType, lokasi: "", tanggal: row.lastUpdate.tanggal, jam: row.lastUpdate.jam, keterangan: "" }]
+      : [],
+    pod: row.pod
+      ? { tanggal: row.pod.tanggal, jam: row.pod.jam, namaPenerima: row.pod.namaPenerima, lokasi: "", fotoSuratJalan: "" }
+      : undefined,
+    emailTerkirim: row.emailTerkirim,
+    emailTerkirimAt: row.emailTerkirimAt ?? undefined,
+  };
+}
+
+function toTimelineEvent(row: RawTimelineRow, fotoUrls: string[]): TimelineEvent {
+  return {
+    id: row.id,
+    type: row.type,
+    lokasi: row.lokasi,
+    titikId: row.titik_id ?? undefined,
+    tanggal: row.tanggal,
+    jam: row.jam,
+    keterangan: row.keterangan,
+    foto: fotoUrls.length > 0 ? fotoUrls : undefined,
+    truck: row.truck_nomor_unit ? { nomorUnit: row.truck_nomor_unit, jenis: "-", driver: row.truck_driver_nama ?? undefined } : undefined,
+    truckId: row.truck_id ?? undefined,
+    truckSebelumnya: row.truck_sebelumnya_nomor_unit ? { nomorUnit: row.truck_sebelumnya_nomor_unit, jenis: "-" } : undefined,
+    inputBy: row.input_by_name ?? undefined,
+    inputAt: row.input_at,
+  };
+}
+
+interface ShipmentDetailResponse {
+  shipment: RawShipmentSummary;
+  timeline: RawTimelineRow[];
+  pod: RawPodRow | null;
+  files: FileRef[];
+}
+
+interface ShipmentListResponse {
+  items: RawShipmentSummary[];
+  meta: { page: number; limit: number; total: number; totalPages: number };
+}
+
+export interface ShipmentListParams {
+  status?: string;
+  q?: string;
+  page?: number;
+  limit?: number;
+}
 
 interface ShipmentContextValue {
   shipments: Shipment[];
-  getByAwb: (awb: string) => Shipment | undefined;
-  createShipment: (data: ShipmentFormData) => Shipment;
+  isLoading: boolean;
+  listMeta: { total: number; totalPages: number; page: number };
+  refresh: (params?: ShipmentListParams) => Promise<void>;
+  getByAwb: (awb: string) => Promise<Shipment | null>;
+  createShipment: (data: ShipmentFormData) => Promise<{ awb: string }>;
   markEmailSent: (awb: string) => void;
-  addTrackingUpdate: (data: TrackingUpdateFormData) => void;
-  updateShipmentInfo: (awb: string, data: UpdateShipmentInfoData) => void;
-  updatePodPhoto: (awb: string, fotoBarang: string | undefined) => void;
-  resetToMockData: () => void;
+  addTrackingUpdate: (data: TrackingUpdateFormData) => Promise<{ ok: true } | { ok: false; error: string }>;
+  updateShipmentInfo: (awb: string, data: UpdateShipmentInfoData) => Promise<{ ok: true } | { ok: false; error: string }>;
+  updatePodPhoto: (awb: string, fotoDataUrl: string | undefined) => Promise<void>;
 }
 
 const ShipmentContext = createContext<ShipmentContextValue | null>(null);
 
 export function ShipmentProvider({ children }: { children: ReactNode }) {
-  const [shipments, setShipments] = usePersistedState<Shipment[]>(STORAGE_KEY, initialShipments);
-  const { getTruck } = useFleet();
-  const { addLog } = useAuditLog();
-  const { addNotification } = useNotifications();
-  const { profile } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [listMeta, setListMeta] = useState({ total: 0, totalPages: 1, page: 1 });
 
-  // Mirrors `shipments` synchronously so AWB generation stays correct when
-  // createShipment is called multiple times in the same tick (bulk import) -
-  // the `shipments` state closure only updates on the next render, which
-  // would otherwise hand out the same "next" AWB number to every row.
-  const shipmentsRef = useRef(shipments);
+  async function refresh(params: ShipmentListParams = {}) {
+    setIsLoading(true);
+    try {
+      const search = new URLSearchParams();
+      search.set("limit", String(params.limit ?? 100));
+      search.set("page", String(params.page ?? 1));
+      if (params.status) search.set("status", params.status);
+      if (params.q) search.set("q", params.q);
+
+      const res = await api.get<ShipmentListResponse>(`/api/shipments?${search.toString()}`);
+      setShipments(res.items.map(toShipment));
+      setListMeta({ total: res.meta.total, totalPages: res.meta.totalPages, page: res.meta.page });
+    } catch {
+      setShipments([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   useEffect(() => {
-    shipmentsRef.current = shipments;
-  }, [shipments]);
+    if (isAuthenticated) refresh();
+    else setShipments([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
-  function truckSnapshot(truckId: string | undefined): TruckInfo | undefined {
-    if (!truckId) return undefined;
-    const t = getTruck(truckId);
-    if (!t) return undefined;
-    return { nomorUnit: t.nomorUnit, jenis: t.jenis, driver: t.driver?.nama };
+  async function getByAwb(awb: string): Promise<Shipment | null> {
+    try {
+      const res = await api.get<ShipmentDetailResponse>(`/api/shipments/${encodeURIComponent(awb)}`);
+      const urlMap = await resolveFileUrls(res.files);
+      const fotoBarangUrls = urlMap.get(`shipment_photo:${res.shipment.awb}`) ?? [];
+      const podBarangUrls = urlMap.get(`pod_barang:${res.shipment.awb}`) ?? [];
+      const podSuratJalanUrls = urlMap.get(`pod_surat_jalan:${res.shipment.awb}`) ?? [];
+
+      const timeline = res.timeline.map((row) => toTimelineEvent(row, urlMap.get(`timeline_photo:${row.id}`) ?? []));
+
+      return {
+        ...toShipment(res.shipment),
+        fotoBarang: fotoBarangUrls[0],
+        timeline,
+        pod: res.pod
+          ? {
+              tanggal: res.pod.tanggal,
+              jam: res.pod.jam,
+              lokasi: res.pod.lokasi,
+              namaPenerima: res.pod.nama_penerima,
+              catatan: res.pod.catatan ?? undefined,
+              fotoBarang: podBarangUrls[0],
+              fotoSuratJalan: podSuratJalanUrls[0] ?? "",
+            }
+          : undefined,
+      };
+    } catch {
+      return null;
+    }
   }
 
-  function getByAwb(awb: string) {
-    return shipments.find((s) => s.awb.toLowerCase() === awb.trim().toLowerCase());
-  }
-
-  function createShipment(data: ShipmentFormData): Shipment {
-    const truck = truckSnapshot(data.truckId) ?? { nomorUnit: "-", jenis: "-" };
-    const awb = generateAWB(shipmentsRef.current.map((s) => s.awb));
-    const newShipment: Shipment = {
-      awb,
-      tanggalDibuat: todayISO(),
-      jamDibuat: nowHHMM(),
-      status: "Dalam Persiapan",
-      pengirim: data.pengirim,
-      penerima: data.penerima,
+  async function createShipment(data: ShipmentFormData): Promise<{ awb: string }> {
+    const res = await api.post<{ awb: string }>("/api/shipments", {
+      pengirimNama: data.pengirim.nama,
+      pengirimTelepon: data.pengirim.telepon,
+      pengirimEmail: data.pengirim.email,
+      penerimaNama: data.penerima.nama,
+      penerimaTelepon: data.penerima.telepon,
+      penerimaEmail: data.penerima.email,
       alamatAsal: data.alamatAsal,
       kotaAsal: data.kotaAsal,
       alamatTujuan: data.alamatTujuan,
@@ -79,257 +224,85 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       layanan: data.layanan,
       beratKg: data.beratKg,
       jumlahKoli: data.jumlahKoli,
-      fotoBarang: data.fotoBarang,
-      truck,
-      truckId: data.truckId,
-      emailTerkirim: false,
-      timeline: [
-        {
-          id: `${awb}-t1`,
-          type: "Barang Diterima",
-          lokasi: `Gudang ${data.kotaAsal}`,
-          tanggal: todayISO(),
-          jam: nowHHMM(),
-          keterangan: "Barang diterima dan siap dikirim.",
-          foto: data.fotoBarang ? [data.fotoBarang] : undefined,
-          inputBy: profile.nama,
-          inputAt: nowISO(),
-        },
-      ],
-    };
-    shipmentsRef.current = [newShipment, ...shipmentsRef.current];
-    setShipments((prev) => [newShipment, ...prev]);
-
-    addLog({
-      userName: profile.nama,
-      role: profile.role,
-      action: "CREATE_AWB",
-      actionLabel: "CREATE AWB",
-      module: "Shipment",
-      awb,
-      description: `Resi diterbitkan untuk pengiriman ${data.kotaAsal} -> ${data.kotaTujuan}.`,
-    });
-    const notif = addNotification({
-      awb,
-      trigger: "AWB_CREATED",
-      subject: `Resi Pengiriman Anda - AWB ${awb}`,
-      toEmail: data.penerima.email,
-      toName: data.penerima.nama,
-      recipientRole: "penerima",
-    });
-    addLog({
-      userName: "System",
-      role: profile.role,
-      action: "SEND_NOTIFICATION",
-      actionLabel: "SEND NOTIFICATION",
-      module: "Notification",
-      awb,
-      description: `Notifikasi "${notif.subject}" dibuat untuk customer.`,
+      truckId: data.truckId || undefined,
     });
 
-    return newShipment;
+    if (data.fotoBarang) {
+      await uploadFile(data.fotoBarang, "shipment_photo", res.awb).catch(() => {});
+    }
+
+    await refresh();
+    return res;
   }
 
   function markEmailSent(awb: string) {
-    setShipments((prev) =>
-      prev.map((s) => (s.awb === awb ? { ...s, emailTerkirim: true, emailTerkirimAt: nowISO() } : s)),
-    );
+    setShipments((prev) => prev.map((s) => (s.awb === awb ? { ...s, emailTerkirim: true, emailTerkirimAt: new Date().toISOString() } : s)));
   }
 
-  function updateShipmentInfo(awb: string, data: UpdateShipmentInfoData) {
-    const target = shipments.find((s) => s.awb === awb);
-    if (!target) return;
-
-    const changes: string[] = [];
-    if (target.pengirim.nama !== data.pengirim.nama) changes.push("nama pengirim");
-    if (target.pengirim.telepon !== data.pengirim.telepon || target.pengirim.email !== data.pengirim.email) {
-      changes.push("kontak pengirim");
-    }
-    if (target.penerima.nama !== data.penerima.nama) changes.push("nama penerima");
-    if (target.penerima.telepon !== data.penerima.telepon || target.penerima.email !== data.penerima.email) {
-      changes.push("kontak penerima");
-    }
-    if (target.kotaAsal !== data.kotaAsal || target.alamatAsal !== data.alamatAsal) changes.push("alamat asal");
-    if (target.kotaTujuan !== data.kotaTujuan || target.alamatTujuan !== data.alamatTujuan) {
-      changes.push("alamat tujuan");
-    }
-    if (changes.length === 0) return;
-
-    setShipments((prev) => prev.map((s) => (s.awb === awb ? { ...s, ...data } : s)));
-
-    addLog({
-      userName: profile.nama,
-      role: profile.role,
-      action: "UPDATE_SHIPMENT_INFO",
-      actionLabel: "UPDATE SHIPMENT INFO",
-      module: "Shipment",
-      awb,
-      description: `Data pengiriman diperbarui: ${changes.join(", ")}.`,
-    });
-  }
-
-  function updatePodPhoto(awb: string, fotoBarang: string | undefined) {
-    const target = shipments.find((s) => s.awb === awb);
-    if (!target?.pod) return;
-
-    setShipments((prev) =>
-      prev.map((s) => (s.awb === awb && s.pod ? { ...s, pod: { ...s.pod, fotoBarang } } : s)),
-    );
-
-    addLog({
-      userName: profile.nama,
-      role: profile.role,
-      action: "UPDATE_POD_PHOTO",
-      actionLabel: "UPDATE POD PHOTO",
-      module: "Shipment",
-      awb,
-      description: fotoBarang
-        ? "Foto barang diterima (bukti serah terima) diganti."
-        : "Foto barang diterima (bukti serah terima) dihapus.",
-    });
-  }
-
-  function addTrackingUpdate(data: TrackingUpdateFormData) {
-    const target = shipments.find((s) => s.awb === data.awb);
-    if (!target) return;
-
-    const truck = truckSnapshot(data.truckId);
-    const isTransfer = data.type === "Transfer Unit";
-    const isKendala = data.type === "Kendala";
-    const isSelesai = data.type === "Selesai / Terkirim";
-    const newStatus = eventTypeToShipmentStatus(data.type);
-
-    const newEvent = {
-      id: `${data.awb}-t${target.timeline.length + 1}-${Date.now()}`,
-      type: data.type,
-      lokasi: data.lokasi,
-      titikId: data.titikId,
-      tanggal: data.tanggal,
-      jam: data.jam,
-      keterangan: data.keterangan,
-      foto: data.foto && data.foto.length > 0 ? data.foto : undefined,
-      truck,
-      truckId: data.truckId,
-      truckSebelumnya: isTransfer ? target.truck : undefined,
-      inputBy: profile.nama,
-      inputAt: nowISO(),
-    };
-
-    setShipments((prev) =>
-      prev.map((s) => {
-        if (s.awb !== data.awb) return s;
-        return {
-          ...s,
-          status: newStatus,
-          truck: truck ?? s.truck,
-          truckId: data.truckId ?? s.truckId,
-          timeline: [...s.timeline, newEvent],
-          pod: isSelesai
-            ? {
-                tanggal: data.tanggal,
-                jam: data.jam,
-                lokasi: data.lokasi,
-                fotoBarang: data.foto?.[0] ?? s.fotoBarang ?? "",
-                fotoSuratJalan: data.foto?.[1] ?? data.foto?.[0] ?? "",
-                namaPenerima: data.namaPenerima?.trim() || s.penerima.nama,
-                catatan: data.keterangan,
-              }
-            : s.pod,
-        };
-      }),
-    );
-
-    if (isTransfer) {
-      addLog({
-        userName: profile.nama,
-        role: profile.role,
-        action: "TRANSFER_TRUCK",
-        actionLabel: "TRANSFER TRUCK",
-        module: "Shipment",
-        awb: data.awb,
-        description: `Truck: ${target.truck.nomorUnit} -> ${truck?.nomorUnit ?? "-"} di ${data.lokasi}.`,
+  async function addTrackingUpdate(data: TrackingUpdateFormData) {
+    try {
+      const isSelesai = data.type === "Selesai / Terkirim";
+      const res = await api.post<{ eventId: string }>(`/api/shipments/${encodeURIComponent(data.awb)}/timeline`, {
+        type: data.type,
+        lokasi: data.lokasi,
+        titikId: data.titikId,
+        tanggal: data.tanggal,
+        jam: data.jam,
+        keterangan: data.keterangan,
+        truckId: data.truckId,
+        namaPenerima: data.namaPenerima,
       });
-    } else if (isKendala) {
-      addLog({
-        userName: profile.nama,
-        role: profile.role,
-        action: "ADD_ISSUE",
-        actionLabel: "ADD ISSUE",
-        module: "Shipment",
-        awb: data.awb,
-        description: `Kendala dicatat: ${data.keterangan}`,
-      });
-    } else if (isSelesai) {
-      addLog({
-        userName: profile.nama,
-        role: profile.role,
-        action: "UPLOAD_POD",
-        actionLabel: "UPLOAD POD",
-        module: "Shipment",
-        awb: data.awb,
-        description: "Foto barang diterima dan surat jalan diunggah sebagai bukti serah terima.",
-      });
-      addLog({
-        userName: profile.nama,
-        role: profile.role,
-        action: "CLOSE_SHIPMENT",
-        actionLabel: "CLOSE SHIPMENT",
-        module: "Shipment",
-        awb: data.awb,
-        description: `Status berubah: ${target.status} -> Selesai / Terkirim. Data dikunci.`,
-      });
-    } else {
-      addLog({
-        userName: profile.nama,
-        role: profile.role,
-        action: "UPDATE_STATUS",
-        actionLabel: "UPDATE STATUS",
-        module: "Shipment",
-        awb: data.awb,
-        description: `Status berubah: ${target.status} -> ${newStatus} (${data.lokasi}).`,
-      });
-    }
 
-    if (isKendala || isSelesai) {
-      const notif = addNotification({
-        awb: data.awb,
-        trigger: isKendala ? "KENDALA" : "SELESAI",
-        subject: isKendala
-          ? `Update Pengiriman - Terdapat Kendala (AWB ${data.awb})`
-          : `Pengiriman Anda Telah Selesai (AWB ${data.awb})`,
-        toEmail: target.penerima.email,
-        toName: target.penerima.nama,
-        recipientRole: "penerima",
-      });
-      addLog({
-        userName: "System",
-        role: profile.role,
-        action: "SEND_NOTIFICATION",
-        actionLabel: "SEND NOTIFICATION",
-        module: "Notification",
-        awb: data.awb,
-        description: `Notifikasi "${notif.subject}" dibuat untuk customer.`,
-      });
+      if (data.foto && data.foto.length > 0) {
+        if (isSelesai) {
+          await uploadFile(data.foto[0], "pod_barang", data.awb).catch(() => {});
+          await uploadFile(data.foto[1] ?? data.foto[0], "pod_surat_jalan", data.awb).catch(() => {});
+        } else {
+          await Promise.all(data.foto.map((f) => uploadFile(f, "timeline_photo", res.eventId).catch(() => {})));
+        }
+      }
+
+      await refresh();
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal menyimpan update tracking." };
     }
   }
 
-  function resetToMockData() {
-    shipmentsRef.current = initialShipments;
-    setShipments(initialShipments);
+  async function updateShipmentInfo(awb: string, data: UpdateShipmentInfoData) {
+    try {
+      await api.patch(`/api/shipments/${encodeURIComponent(awb)}`, {
+        pengirimNama: data.pengirim.nama,
+        pengirimTelepon: data.pengirim.telepon,
+        pengirimEmail: data.pengirim.email,
+        penerimaNama: data.penerima.nama,
+        penerimaTelepon: data.penerima.telepon,
+        penerimaEmail: data.penerima.email,
+        alamatAsal: data.alamatAsal,
+        kotaAsal: data.kotaAsal,
+        alamatTujuan: data.alamatTujuan,
+        kotaTujuan: data.kotaTujuan,
+      });
+      await refresh();
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal menyimpan perubahan." };
+    }
   }
 
-  const value: ShipmentContextValue = {
-    shipments,
-    getByAwb,
-    createShipment,
-    markEmailSent,
-    addTrackingUpdate,
-    updateShipmentInfo,
-    updatePodPhoto,
-    resetToMockData,
-  };
+  async function updatePodPhoto(awb: string, fotoDataUrl: string | undefined) {
+    if (!fotoDataUrl) return;
+    const uploaded = await uploadFile(fotoDataUrl, "pod_barang", awb);
+    await api.patch(`/api/shipments/${encodeURIComponent(awb)}/pod-photo`, { fotoFileId: uploaded.id });
+  }
 
-  return <ShipmentContext.Provider value={value}>{children}</ShipmentContext.Provider>;
+  return (
+    <ShipmentContext.Provider
+      value={{ shipments, isLoading, listMeta, refresh, getByAwb, createShipment, markEmailSent, addTrackingUpdate, updateShipmentInfo, updatePodPhoto }}
+    >
+      {children}
+    </ShipmentContext.Provider>
+  );
 }
 
 export function useShipments() {

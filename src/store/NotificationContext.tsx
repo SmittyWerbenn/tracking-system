@@ -1,47 +1,68 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { NotificationItem, NotificationTrigger } from "../types";
-import { initialNotifications } from "../data/masterData";
-import { usePersistedState } from "../utils/usePersistedState";
+import { api } from "../utils/apiClient";
+import { useAuth } from "./AuthContext";
 
-// Bump this suffix whenever initialNotifications in masterData.ts changes
-// meaningfully (e.g. its AWB references) so browsers with an older cached
-// copy in localStorage pick up the new set instead of keeping stale data.
-const STORAGE_KEY = "gms-notifications-v2";
-
-export interface AddNotificationInput {
+interface NotificationRow {
+  id: string;
   awb: string;
-  trigger: NotificationTrigger;
+  trigger_type: NotificationTrigger;
   subject: string;
-  toEmail: string;
-  toName: string;
-  recipientRole: "penerima" | "pengirim";
+  to_email: string;
+  to_name: string;
+  recipient_role: "penerima" | "pengirim";
+  created_at: string;
+}
+
+function toItem(row: NotificationRow): NotificationItem {
+  return {
+    id: row.id,
+    awb: row.awb,
+    trigger: row.trigger_type,
+    subject: row.subject,
+    toEmail: row.to_email,
+    toName: row.to_name,
+    recipientRole: row.recipient_role,
+    createdAt: row.created_at,
+  };
 }
 
 interface NotificationContextValue {
   notifications: NotificationItem[];
-  addNotification: (input: AddNotificationInput) => NotificationItem;
+  isLoading: boolean;
+  refresh: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
 
+/** Notifications are created server-side (see api-worker/src/routes/shipments.ts)
+ * whenever a shipment is created or reaches Kendala/Selesai - this context
+ * only ever reads the feed, it never creates entries itself. */
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const [notifications, setNotifications] = usePersistedState<NotificationItem[]>(
-    STORAGE_KEY,
-    initialNotifications,
-  );
+  const { isAuthenticated } = useAuth();
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  function addNotification(input: AddNotificationInput): NotificationItem {
-    const item: NotificationItem = {
-      id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      createdAt: new Date().toISOString(),
-      ...input,
-    };
-    setNotifications((prev) => [item, ...prev]);
-    return item;
+  async function refresh() {
+    setIsLoading(true);
+    try {
+      const res = await api.get<{ items: NotificationRow[] }>("/api/notifications?limit=100");
+      setNotifications(res.items.map(toItem));
+    } catch {
+      setNotifications([]);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
+  useEffect(() => {
+    if (isAuthenticated) refresh();
+    else setNotifications([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
   return (
-    <NotificationContext.Provider value={{ notifications, addNotification }}>
+    <NotificationContext.Provider value={{ notifications, isLoading, refresh }}>
       {children}
     </NotificationContext.Provider>
   );

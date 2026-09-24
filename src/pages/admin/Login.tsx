@@ -1,4 +1,4 @@
-import { AlertTriangle, Loader2, Lock, User } from "lucide-react";
+import { AlertTriangle, Loader2, Lock, Mail } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate, type Location } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
@@ -9,26 +9,24 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const from = (location.state as { from?: Location } | null)?.from?.pathname ?? "/admin";
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
-    setTimeout(() => {
-      const ok = login(username, password);
-      setSubmitting(false);
-      if (ok) {
-        navigate(from, { replace: true });
-      } else {
-        setError("Username atau password salah.");
-      }
-    }, 350);
+    const result = await login(email, password);
+    setSubmitting(false);
+    if (result.ok) {
+      navigate(from, { replace: true });
+    } else {
+      setError(result.error);
+    }
   }
 
   return (
@@ -42,16 +40,17 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           <label className="block">
-            <span className="mb-1.5 block text-xs font-medium text-slate-600">Username</span>
+            <span className="mb-1.5 block text-xs font-medium text-slate-600">Email</span>
             <div className="relative">
-              <User size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Mail size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 required
                 autoFocus
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                placeholder="admin"
+                placeholder="nama@gangsarmitrasuatama.co.id"
               />
             </div>
           </label>
@@ -86,12 +85,6 @@ export default function Login() {
             Masuk
           </button>
         </form>
-
-        <p className="mt-5 rounded-lg bg-slate-50 px-3 py-2 text-center text-xs text-slate-400">
-          Demo prototype - default username/password:{" "}
-          <span className="font-mono font-medium text-slate-600">admin</span> /{" "}
-          <span className="font-mono font-medium text-slate-600">admin</span>
-        </p>
       </div>
     </div>
   );

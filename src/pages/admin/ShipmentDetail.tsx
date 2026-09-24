@@ -9,18 +9,48 @@ import {
   Truck,
   User,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { QRCode } from "../../components/QRCode";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useAuth } from "../../store/AuthContext";
 import { useShipments } from "../../store/ShipmentContext";
+import type { Shipment } from "../../types";
 import { formatJam, formatTanggalPanjang } from "../../utils/format";
 
 export default function ShipmentDetail() {
   const { awb } = useParams<{ awb: string }>();
   const { getByAwb } = useShipments();
+  const { profile } = useAuth();
   const navigate = useNavigate();
-  const shipment = getByAwb(awb ?? "");
+  const [shipment, setShipment] = useState<Shipment | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    getByAwb(awb ?? "").then((s) => {
+      if (!cancelled) {
+        setShipment(s);
+        setIsLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awb]);
+
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex justify-center py-16">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-blue-900" />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   if (!shipment) {
     return (
@@ -221,12 +251,14 @@ export default function ShipmentDetail() {
               Scan QR untuk membuka halaman tracking publik AWB ini.
             </p>
           </div>
-          <Link
-            to={`/admin/update-tracking/${shipment.awb}`}
-            className="block rounded-xl border border-dashed border-blue-300 bg-blue-50 p-4 text-center text-sm font-semibold text-blue-800 hover:bg-blue-100 no-print"
-          >
-            + Tambah Update Tracking
-          </Link>
+          {profile?.role !== "Viewer" && (
+            <Link
+              to={`/admin/update-tracking/${shipment.awb}`}
+              className="block rounded-xl border border-dashed border-blue-300 bg-blue-50 p-4 text-center text-sm font-semibold text-blue-800 hover:bg-blue-100 no-print"
+            >
+              + Tambah Update Tracking
+            </Link>
+          )}
         </div>
       </div>
     </AdminLayout>

@@ -1,94 +1,108 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { UserRole } from "../types";
-
-const AUTH_KEY = "gms-admin-authenticated";
-const PROFILE_KEY = "gms-admin-profile-v2";
+import { api, ApiError, getToken, setToken } from "../utils/apiClient";
 
 export interface AdminProfile {
+  id: string;
   nama: string;
   email: string;
-  password: string;
   role: UserRole;
-  foto?: string;
+  fotoFileId?: string;
 }
 
-const DEFAULT_PROFILE: AdminProfile = {
-  nama: "Admin - Dewi",
-  email: "dewi@gangsarmitrasuatama.co.id",
-  password: "admin",
-  role: "Superadmin",
-};
+interface MeResponse {
+  id: string;
+  nama: string;
+  email: string;
+  role: UserRole;
+  aktif: number;
+  foto_file_id: string | null;
+}
 
-function loadProfile(): AdminProfile {
-  try {
-    const raw = localStorage.getItem(PROFILE_KEY);
-    if (raw) return { ...DEFAULT_PROFILE, ...(JSON.parse(raw) as Partial<AdminProfile>) };
-  } catch {
-    // ignore corrupted storage, fall back to default profile
-  }
-  return DEFAULT_PROFILE;
+interface LoginResponse {
+  token: string;
+  expiresAt: string;
+  user: { id: string; nama: string; email: string; role: UserRole };
 }
 
 interface AuthContextValue {
   isAuthenticated: boolean;
-  profile: AdminProfile;
-  login: (username: string, password: string) => boolean;
+  isLoading: boolean;
+  profile: AdminProfile | null;
+  login: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   logout: () => void;
-  updateProfile: (data: { nama: string; email: string; foto?: string }) => void;
-  changePassword: (currentPassword: string, newPassword: string) => boolean;
-  /** Demo-only: lets the prototype be presented as either role without a
-   * real second account. Real permission checks still key off `profile.role`. */
-  switchRole: (role: UserRole) => void;
+  updateProfile: (data: { nama: string; email: string; fotoFileId?: string }) => Promise<{ ok: true } | { ok: false; error: string }>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function toProfile(me: MeResponse): AdminProfile {
+  return { id: me.id, nama: me.nama, email: me.email, role: me.role, fotoFileId: me.foto_file_id ?? undefined };
+}
+
 /**
- * Mock, client-only auth for the prototype (no backend). Username is fixed
- * ("admin"); password, display name, and role are editable/switchable and
- * persisted to localStorage - this only gates navigation in the demo, it is
- * not real security.
+ * Real authentication against the production API (see api-worker/) - the
+ * session token lives only in sessionStorage (cleared when the tab
+ * closes); the server is the source of truth for role/permissions, this
+ * context just mirrors the signed-in profile for the UI.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem(AUTH_KEY) === "true");
-  const [profile, setProfile] = useState<AdminProfile>(loadProfile);
+  const [profile, setProfile] = useState<AdminProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  function persist(next: AdminProfile) {
-    setProfile(next);
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
-  }
-
-  function login(username: string, password: string): boolean {
-    const ok = username.trim() === "admin" && password === profile.password;
-    if (ok) {
-      sessionStorage.setItem(AUTH_KEY, "true");
-      setIsAuthenticated(true);
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      setIsLoading(false);
+      return;
     }
-    return ok;
+    api
+      .get<MeResponse>("/api/auth/me")
+      .then((me) => setProfile(toProfile(me)))
+      .catch(() => setToken(null))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  async function login(email: string, password: string) {
+    try {
+      const res = await api.post<LoginResponse>("/api/auth/login", { email, password }, { auth: false });
+      setToken(res.token);
+      setProfile({ ...res.user });
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal login." };
+    }
   }
 
   function logout() {
-    sessionStorage.removeItem(AUTH_KEY);
-    setIsAuthenticated(false);
+    api.post("/api/auth/logout").catch(() => {});
+    setToken(null);
+    setProfile(null);
   }
 
-  function updateProfile(data: { nama: string; email: string; foto?: string }) {
-    persist({ ...profile, nama: data.nama, email: data.email, foto: data.foto });
+  async function updateProfile(data: { nama: string; email: string; fotoFileId?: string }) {
+    try {
+      await api.patch("/api/auth/me", data);
+      setProfile((p) => (p ? { ...p, nama: data.nama, email: data.email, fotoFileId: data.fotoFileId ?? p.fotoFileId } : p));
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal menyimpan profil." };
+    }
   }
 
-  function changePassword(currentPassword: string, newPassword: string): boolean {
-    if (currentPassword !== profile.password) return false;
-    persist({ ...profile, password: newPassword });
-    return true;
-  }
-
-  function switchRole(role: UserRole) {
-    persist({ ...profile, role });
+  async function changePassword(currentPassword: string, newPassword: string) {
+    try {
+      await api.post("/api/auth/change-password", { currentPassword, newPassword });
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err instanceof ApiError ? err.message : "Gagal mengganti password." };
+    }
   }
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, profile, login, logout, updateProfile, changePassword, switchRole }}
+      value={{ isAuthenticated: !!profile, isLoading, profile, login, logout, updateProfile, changePassword }}
     >
       {children}
     </AuthContext.Provider>

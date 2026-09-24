@@ -1,14 +1,27 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { TitikJenis, TitikLokasi } from "../types";
-import { initialTitikLokasi } from "../data/masterData";
-import { usePersistedState } from "../utils/usePersistedState";
-import { useAuditLog } from "./AuditLogContext";
+import { api } from "../utils/apiClient";
 import { useAuth } from "./AuthContext";
 
-// Bump this suffix whenever initialTitikLokasi in masterData.ts changes
-// meaningfully so browsers with an older cached copy in localStorage pick up
-// the new set instead of silently keeping stale data forever.
-const STORAGE_KEY = "gms-titik-lokasi-v3";
+interface LocationRow {
+  id: string;
+  nama_kota: string;
+  kode_kota: string;
+  provinsi: string;
+  jenis: TitikJenis;
+  aktif?: number;
+}
+
+function toTitik(row: LocationRow): TitikLokasi {
+  return {
+    id: row.id,
+    namaKota: row.nama_kota,
+    kodeKota: row.kode_kota,
+    provinsi: row.provinsi,
+    jenis: row.jenis,
+    aktif: row.aktif === undefined ? true : row.aktif === 1,
+  };
+}
 
 export interface TitikFormData {
   namaKota: string;
@@ -21,47 +34,60 @@ export interface TitikFormData {
 interface LocationContextValue {
   titikLokasi: TitikLokasi[];
   activeTitikLokasi: TitikLokasi[];
-  createTitik: (data: TitikFormData) => TitikLokasi;
-  updateTitik: (id: string, data: TitikFormData) => void;
+  isLoading: boolean;
+  refresh: () => Promise<void>;
+  createTitik: (data: TitikFormData) => Promise<TitikLokasi>;
+  updateTitik: (id: string, data: TitikFormData) => Promise<void>;
 }
 
 const LocationContext = createContext<LocationContextValue | null>(null);
 
 export function LocationProvider({ children }: { children: ReactNode }) {
-  const [titikLokasi, setTitikLokasi] = usePersistedState<TitikLokasi[]>(STORAGE_KEY, initialTitikLokasi);
-  const { addLog } = useAuditLog();
-  const { profile } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const [activeTitikLokasi, setActiveTitikLokasi] = useState<TitikLokasi[]>([]);
+  const [titikLokasi, setTitikLokasi] = useState<TitikLokasi[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const activeTitikLokasi = titikLokasi.filter((t) => t.aktif);
+  async function refresh() {
+    setIsLoading(true);
+    try {
+      // Public, active-only list - works for both anonymous visitors
+      // (Cek Ongkir) and signed-in admins picking a route/transit point.
+      const publicRes = await api.get<{ items: LocationRow[] }>("/api/public/locations", { auth: false });
+      setActiveTitikLokasi(publicRes.items.map(toTitik));
 
-  function createTitik(data: TitikFormData): TitikLokasi {
-    const titik: TitikLokasi = { id: `loc-${Date.now()}`, ...data };
-    setTitikLokasi((prev) => [...prev, titik]);
-    addLog({
-      userName: profile.nama,
-      role: profile.role,
-      action: "CREATE_LOCATION",
-      actionLabel: "CREATE LOCATION",
-      module: "Master Kota",
-      description: `Titik ${data.jenis.toLowerCase()} "${data.namaKota}" ditambahkan ke master kota.`,
-    });
-    return titik;
+      if (isAuthenticated) {
+        const adminRes = await api.get<{ items: LocationRow[] }>("/api/locations");
+        setTitikLokasi(adminRes.items.map(toTitik));
+      } else {
+        setTitikLokasi([]);
+      }
+    } catch {
+      setActiveTitikLokasi([]);
+      setTitikLokasi([]);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
-  function updateTitik(id: string, data: TitikFormData) {
-    setTitikLokasi((prev) => prev.map((t) => (t.id === id ? { ...t, ...data } : t)));
-    addLog({
-      userName: profile.nama,
-      role: profile.role,
-      action: "UPDATE_LOCATION",
-      actionLabel: "UPDATE LOCATION",
-      module: "Master Kota",
-      description: `Data titik "${data.namaKota}" diperbarui.`,
-    });
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
+  async function createTitik(data: TitikFormData): Promise<TitikLokasi> {
+    const res = await api.post<{ id: string }>("/api/locations", data);
+    await refresh();
+    return { id: res.id, ...data };
+  }
+
+  async function updateTitik(id: string, data: TitikFormData) {
+    await api.patch(`/api/locations/${id}`, data);
+    await refresh();
   }
 
   return (
-    <LocationContext.Provider value={{ titikLokasi, activeTitikLokasi, createTitik, updateTitik }}>
+    <LocationContext.Provider value={{ titikLokasi, activeTitikLokasi, isLoading, refresh, createTitik, updateTitik }}>
       {children}
     </LocationContext.Provider>
   );

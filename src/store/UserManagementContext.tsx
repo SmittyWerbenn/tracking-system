@@ -1,82 +1,112 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { AppUser, UserRole } from "../types";
-import { initialUsers } from "../data/masterData";
-import { usePersistedState } from "../utils/usePersistedState";
-import { useAuditLog } from "./AuditLogContext";
+import { api, uploadFile } from "../utils/apiClient";
 import { useAuth } from "./AuthContext";
 
-// Bump this suffix whenever the seed data in masterData.ts changes meaningfully
-// so browsers with an older cached copy in localStorage pick up the new set
-// instead of silently keeping stale data forever.
-const STORAGE_KEY = "gms-users-v3";
+interface UserRow {
+  id: string;
+  nama: string;
+  email: string;
+  role: UserRole;
+  aktif: number;
+  foto_file_id: string | null;
+  last_login_at: string | null;
+}
+
+function toAppUser(row: UserRow): AppUser {
+  return {
+    id: row.id,
+    nama: row.nama,
+    email: row.email,
+    role: row.role,
+    aktif: row.aktif === 1,
+    lastLogin: row.last_login_at ?? undefined,
+    foto: row.foto_file_id ?? undefined,
+  };
+}
 
 export interface UserFormData {
   nama: string;
   email: string;
   role: UserRole;
-  foto?: string;
-  /** Demo-only: set when creating a user or explicitly resetting a password;
-   * omit on a plain profile-field edit to leave the existing password intact. */
+  /** A freshly-picked photo as a data URL (from compressImage); uploaded
+   * to storage before the user record is written. Leave unset to keep the
+   * existing photo on an edit. */
+  fotoDataUrl?: string;
+  /** Set only when creating a user, or when explicitly resetting one's
+   * password - omit on a plain profile edit to leave it unchanged. */
   password?: string;
 }
 
 interface UserManagementContextValue {
   users: AppUser[];
-  createUser: (data: UserFormData) => AppUser;
-  updateUser: (id: string, data: UserFormData) => void;
-  setUserActive: (id: string, aktif: boolean) => void;
+  isLoading: boolean;
+  refresh: () => Promise<void>;
+  createUser: (data: UserFormData) => Promise<void>;
+  updateUser: (id: string, data: UserFormData) => Promise<void>;
+  setUserActive: (id: string, aktif: boolean) => Promise<void>;
 }
 
 const UserManagementContext = createContext<UserManagementContextValue | null>(null);
 
 export function UserManagementProvider({ children }: { children: ReactNode }) {
-  const [users, setUsers] = usePersistedState<AppUser[]>(STORAGE_KEY, initialUsers);
-  const { addLog } = useAuditLog();
-  const { profile } = useAuth();
+  const { isAuthenticated, profile } = useAuth();
+  const [users, setUsers] = useState<AppUser[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  function createUser(data: UserFormData): AppUser {
-    const user: AppUser = { id: `usr-${Date.now()}`, aktif: true, ...data };
-    setUsers((prev) => [...prev, user]);
-    addLog({
-      userName: profile.nama,
-      role: profile.role,
-      action: "CREATE_USER",
-      actionLabel: "CREATE USER",
-      module: "User",
-      description: `User "${data.nama}" (${data.role}) ditambahkan.`,
-    });
-    return user;
-  }
-
-  function updateUser(id: string, data: UserFormData) {
-    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...data } : u)));
-    addLog({
-      userName: profile.nama,
-      role: profile.role,
-      action: "UPDATE_USER",
-      actionLabel: "UPDATE USER",
-      module: "User",
-      description: `Data user "${data.nama}" diperbarui.`,
-    });
-  }
-
-  function setUserActive(id: string, aktif: boolean) {
-    const user = users.find((u) => u.id === id);
-    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, aktif } : u)));
-    if (user) {
-      addLog({
-        userName: profile.nama,
-        role: profile.role,
-        action: "UPDATE_USER",
-        actionLabel: "UPDATE USER",
-        module: "User",
-        description: `User "${user.nama}" ${aktif ? "diaktifkan" : "dinonaktifkan"}.`,
-      });
+  async function refresh() {
+    if (profile?.role !== "Superadmin") return;
+    setIsLoading(true);
+    try {
+      const res = await api.get<{ items: UserRow[] }>("/api/users?limit=100");
+      setUsers(res.items.map(toAppUser));
+    } catch {
+      setUsers([]);
+    } finally {
+      setIsLoading(false);
     }
   }
 
+  useEffect(() => {
+    if (isAuthenticated && profile?.role === "Superadmin") refresh();
+    else setUsers([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, profile?.role]);
+
+  async function createUser(data: UserFormData) {
+    let fotoFileId: string | undefined;
+    const tempId = crypto.randomUUID();
+    if (data.fotoDataUrl) {
+      const uploaded = await uploadFile(data.fotoDataUrl, "user_avatar", tempId);
+      fotoFileId = uploaded.id;
+    }
+    await api.post("/api/users", { nama: data.nama, email: data.email, role: data.role, password: data.password, fotoFileId });
+    await refresh();
+  }
+
+  async function updateUser(id: string, data: UserFormData) {
+    let fotoFileId: string | undefined;
+    if (data.fotoDataUrl) {
+      const uploaded = await uploadFile(data.fotoDataUrl, "user_avatar", id);
+      fotoFileId = uploaded.id;
+    }
+    await api.patch(`/api/users/${id}`, {
+      nama: data.nama,
+      email: data.email,
+      role: data.role,
+      password: data.password || undefined,
+      fotoFileId,
+    });
+    await refresh();
+  }
+
+  async function setUserActive(id: string, aktif: boolean) {
+    await api.patch(`/api/users/${id}`, { aktif });
+    await refresh();
+  }
+
   return (
-    <UserManagementContext.Provider value={{ users, createUser, updateUser, setUserActive }}>
+    <UserManagementContext.Provider value={{ users, isLoading, refresh, createUser, updateUser, setUserActive }}>
       {children}
     </UserManagementContext.Provider>
   );

@@ -1,8 +1,9 @@
 import { Download, Eye, FileEdit, MapPin, Printer, Search, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useAuth } from "../../store/AuthContext";
 import { useSettings } from "../../store/SettingsContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { ShipmentStatus } from "../../types";
@@ -15,10 +16,17 @@ function isShipmentStatus(value: string): value is ShipmentStatus {
   return (SHIPMENT_STATUS_OPTIONS as string[]).includes(value);
 }
 
+/** Server-side search/status filtering (debounced) via ShipmentContext.refresh,
+ * matching this app's actual scale (up to the API's page cap). Date range
+ * and the "macet" quick-filter refine client-side over that already-
+ * filtered, already-bounded batch rather than the whole table. */
 export default function ShipmentList() {
-  const { shipments } = useShipments();
+  const { shipments, isLoading, refresh } = useShipments();
   const { settings } = useSettings();
+  const { profile } = useAuth();
+  const canCreateShipment = profile?.role === "Superadmin" || profile?.role === "Admin";
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -26,6 +34,16 @@ export default function ShipmentList() {
   const statusParam = searchParams.get("status") ?? "";
   const statusFilter: ShipmentStatus | "Semua" = isShipmentStatus(statusParam) ? statusParam : "Semua";
   const macetOnly = searchParams.get("macet") === "1";
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  useEffect(() => {
+    refresh({ status: statusFilter === "Semua" ? undefined : statusFilter, q: debouncedQuery || undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, debouncedQuery]);
 
   const stagnantAwbs = useMemo(() => {
     if (!macetOnly) return null;
@@ -55,28 +73,13 @@ export default function ShipmentList() {
   const filtered = useMemo(() => {
     return shipments
       .filter((s) => {
-        if (statusFilter !== "Semua" && s.status !== statusFilter) return false;
         if (stagnantAwbs && !stagnantAwbs.has(s.awb)) return false;
         if (dateFrom && s.tanggalDibuat < dateFrom) return false;
         if (dateTo && s.tanggalDibuat > dateTo) return false;
-        if (query) {
-          const q = query.toLowerCase();
-          const haystack = [
-            s.awb,
-            s.pengirim.nama,
-            s.penerima.nama,
-            s.kotaAsal,
-            s.kotaTujuan,
-            s.truck.nomorUnit,
-          ]
-            .join(" ")
-            .toLowerCase();
-          if (!haystack.includes(q)) return false;
-        }
         return true;
       })
       .sort((a, b) => (a.tanggalDibuat + a.jamDibuat < b.tanggalDibuat + b.jamDibuat ? 1 : -1));
-  }, [shipments, query, statusFilter, stagnantAwbs, dateFrom, dateTo]);
+  }, [shipments, stagnantAwbs, dateFrom, dateTo]);
 
   function lastUpdate(awb: string) {
     const s = shipments.find((x) => x.awb === awb);
@@ -94,12 +97,14 @@ export default function ShipmentList() {
             Daftar seluruh resi (AWB) yang tercatat dalam sistem.
           </p>
         </div>
-        <Link
-          to="/admin/pengiriman/baru"
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-        >
-          Buat Pengiriman
-        </Link>
+        {canCreateShipment && (
+          <Link
+            to="/admin/pengiriman/baru"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+          >
+            Buat Pengiriman
+          </Link>
+        )}
       </div>
 
       {macetOnly && (
@@ -253,13 +258,15 @@ export default function ShipmentList() {
                       >
                         <MapPin size={16} />
                       </Link>
-                      <Link
-                        to={`/admin/update-tracking/${s.awb}`}
-                        title="Update"
-                        className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
-                      >
-                        <FileEdit size={16} />
-                      </Link>
+                      {profile?.role !== "Viewer" && (
+                        <Link
+                          to={`/admin/update-tracking/${s.awb}`}
+                          title="Update"
+                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
+                        >
+                          <FileEdit size={16} />
+                        </Link>
+                      )}
                       <Link
                         to={`/admin/resi/${s.awb}`}
                         title="Cetak Resi"
@@ -271,7 +278,14 @@ export default function ShipmentList() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {isLoading && (
+                <tr>
+                  <td colSpan={16} className="px-4 py-10 text-center">
+                    <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-blue-900" />
+                  </td>
+                </tr>
+              )}
+              {!isLoading && filtered.length === 0 && (
                 <tr>
                   <td colSpan={16} className="px-4 py-10 text-center text-sm text-slate-400">
                     Tidak ada data pengiriman yang cocok dengan filter.

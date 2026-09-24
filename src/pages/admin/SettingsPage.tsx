@@ -1,5 +1,5 @@
 import { CheckCircle2, Mail, Settings as SettingsIcon } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useSettings } from "../../store/SettingsContext";
 
@@ -7,6 +7,10 @@ export default function SettingsPage() {
   const { settings, setStagnantThresholdDays, setEmailSendingEnabled } = useSettings();
   const [days, setDays] = useState(settings.stagnantThresholdDays);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setDays(settings.stagnantThresholdDays);
+  }, [settings.stagnantThresholdDays]);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();

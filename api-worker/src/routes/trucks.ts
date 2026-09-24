@@ -121,15 +121,26 @@ export function registerTruckRoutes(router: Router) {
     requirePermission(ctx, "fleet.view");
     const url = new URL(ctx.request.url);
     const { page, limit, offset } = parsePagination(url);
+    const from = url.searchParams.get("from");
+    const to = url.searchParams.get("to");
 
-    const total = await ctx.env.DB.prepare(`SELECT COUNT(*) as c FROM shipments WHERE truck_id = ?`)
-      .bind(params.id)
+    // Matches shipments currently assigned to this truck, plus ones that
+    // used it at some earlier point in their timeline (e.g. before a
+    // Transfer Unit moved them to a different truck).
+    const matchClause = `(s.truck_id = ? OR EXISTS (SELECT 1 FROM shipment_timeline_events e WHERE e.awb = s.awb AND e.truck_id = ?))`;
+    const params_: unknown[] = [params.id, params.id];
+    let dateClause = "";
+    if (from) { dateClause += " AND s.tanggal_dibuat >= ?"; params_.push(from); }
+    if (to) { dateClause += " AND s.tanggal_dibuat <= ?"; params_.push(to); }
+
+    const total = await ctx.env.DB.prepare(`SELECT COUNT(*) as c FROM shipments s WHERE ${matchClause}${dateClause}`)
+      .bind(...params_)
       .first<{ c: number }>();
     const rows = await ctx.env.DB.prepare(
-      `SELECT awb, status, kota_asal, kota_tujuan, tanggal_dibuat FROM shipments
-       WHERE truck_id = ? ORDER BY tanggal_dibuat DESC LIMIT ? OFFSET ?`,
+      `SELECT s.awb, s.status, s.kota_asal, s.kota_tujuan, s.tanggal_dibuat, s.truck_id FROM shipments s
+       WHERE ${matchClause}${dateClause} ORDER BY s.tanggal_dibuat DESC LIMIT ? OFFSET ?`,
     )
-      .bind(params.id, limit, offset)
+      .bind(...params_, limit, offset)
       .all();
 
     return ok({ items: rows.results, meta: pageMeta(page, limit, total?.c ?? 0) });

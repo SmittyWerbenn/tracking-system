@@ -1,7 +1,6 @@
-import { createContext, useContext, type ReactNode } from "react";
-import { usePersistedState } from "../utils/usePersistedState";
-
-const STORAGE_KEY = "gms-settings-v1";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { api } from "../utils/apiClient";
+import { useAuth } from "./AuthContext";
 
 interface Settings {
   stagnantThresholdDays: number;
@@ -12,28 +11,40 @@ const DEFAULT_SETTINGS: Settings = { stagnantThresholdDays: 3, emailSendingEnabl
 
 interface SettingsContextValue {
   settings: Settings;
-  setStagnantThresholdDays: (days: number) => void;
-  setEmailSendingEnabled: (enabled: boolean) => void;
+  isLoading: boolean;
+  setStagnantThresholdDays: (days: number) => Promise<void>;
+  setEmailSendingEnabled: (enabled: boolean) => Promise<void>;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  // Stored settings may predate a field added later (e.g. emailSendingEnabled) -
-  // merge over the defaults so older localStorage values still get it.
-  const [storedSettings, setSettings] = usePersistedState<Partial<Settings>>(STORAGE_KEY, DEFAULT_SETTINGS);
-  const settings: Settings = { ...DEFAULT_SETTINGS, ...storedSettings };
+  const { isAuthenticated } = useAuth();
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [isLoading, setIsLoading] = useState(false);
 
-  function setStagnantThresholdDays(days: number) {
-    setSettings({ ...settings, stagnantThresholdDays: days });
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    setIsLoading(true);
+    api
+      .get<Settings>("/api/settings")
+      .then(setSettings)
+      .catch(() => setSettings(DEFAULT_SETTINGS))
+      .finally(() => setIsLoading(false));
+  }, [isAuthenticated]);
+
+  async function setStagnantThresholdDays(days: number) {
+    await api.patch("/api/settings", { stagnantThresholdDays: days });
+    setSettings((s) => ({ ...s, stagnantThresholdDays: days }));
   }
 
-  function setEmailSendingEnabled(enabled: boolean) {
-    setSettings({ ...settings, emailSendingEnabled: enabled });
+  async function setEmailSendingEnabled(enabled: boolean) {
+    await api.patch("/api/settings", { emailSendingEnabled: enabled });
+    setSettings((s) => ({ ...s, emailSendingEnabled: enabled }));
   }
 
   return (
-    <SettingsContext.Provider value={{ settings, setStagnantThresholdDays, setEmailSendingEnabled }}>
+    <SettingsContext.Provider value={{ settings, isLoading, setStagnantThresholdDays, setEmailSendingEnabled }}>
       {children}
     </SettingsContext.Provider>
   );

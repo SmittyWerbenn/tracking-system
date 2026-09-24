@@ -6,11 +6,21 @@ import { ASSIGNABLE_USER_ROLES, type AppUser, type UserRole } from "../../types"
 import { compressImage } from "../../utils/compressImage";
 import { formatTanggalPanjang } from "../../utils/format";
 import { initials } from "../../utils/initials";
+import { useFileUrl } from "../../utils/useFileUrl";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
 
-const emptyForm: UserFormData = { nama: "", email: "", role: "Admin", foto: undefined, password: "" };
+const emptyForm: UserFormData = { nama: "", email: "", role: "Admin", fotoDataUrl: undefined, password: "" };
+
+function UserRowAvatar({ fileId, nama }: { fileId?: string; nama: string }) {
+  const url = useFileUrl(fileId);
+  return (
+    <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
+      {url ? <img src={url} alt={nama} className="h-full w-full object-cover" /> : initials(nama)}
+    </div>
+  );
+}
 
 const ROLE_BADGE_STYLE: Record<UserRole, string> = {
   Superadmin: "bg-rose-100 text-rose-700",
@@ -50,7 +60,7 @@ export default function UserManagement() {
 
   function openEdit(u: AppUser) {
     setEditingId(u.id);
-    setForm({ nama: u.nama, email: u.email, role: u.role, foto: u.foto, password: "" });
+    setForm({ nama: u.nama, email: u.email, role: u.role, fotoDataUrl: undefined, password: "" });
     setPhotoError(null);
     setModalOpen(true);
   }
@@ -60,23 +70,23 @@ export default function UserManagement() {
     if (!file) return;
     setPhotoError(null);
     compressImage(file, 320, 0.8)
-      .then((dataUrl) => setForm((f) => ({ ...f, foto: dataUrl })))
+      .then((dataUrl) => setForm((f) => ({ ...f, fotoDataUrl: dataUrl })))
       .catch(() => setPhotoError("Gagal memproses foto. Coba foto lain."));
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const data: UserFormData = {
       nama: form.nama,
       email: form.email,
       role: form.role,
-      foto: form.foto,
+      fotoDataUrl: form.fotoDataUrl,
       ...(form.password ? { password: form.password } : {}),
     };
     if (editingId) {
-      updateUser(editingId, data);
+      await updateUser(editingId, data);
     } else {
-      createUser(data);
+      await createUser(data);
     }
     setModalOpen(false);
   }
@@ -116,13 +126,7 @@ export default function UserManagement() {
                 <tr key={u.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
-                        {u.foto ? (
-                          <img src={u.foto} alt={u.nama} className="h-full w-full object-cover" />
-                        ) : (
-                          initials(u.nama)
-                        )}
-                      </div>
+                      <UserRowAvatar fileId={u.foto} nama={u.nama} />
                       <span className="font-medium text-slate-900">{u.nama}</span>
                     </div>
                   </td>
@@ -196,8 +200,8 @@ export default function UserManagement() {
                   <span className="mb-1.5 block text-xs font-medium text-slate-600">Foto</span>
                   <div className="flex items-center gap-3">
                     <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
-                      {form.foto ? (
-                        <img src={form.foto} alt="Foto user" className="h-full w-full object-cover" />
+                      {form.fotoDataUrl ? (
+                        <img src={form.fotoDataUrl} alt="Foto user" className="h-full w-full object-cover" />
                       ) : (
                         initials(form.nama || "?")
                       )}

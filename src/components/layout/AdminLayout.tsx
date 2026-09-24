@@ -8,7 +8,6 @@ import {
   Package,
   PackagePlus,
   Settings,
-  Shield,
   Truck,
   Users,
   X,
@@ -19,6 +18,7 @@ import logoIcon from "../../assets/icon-mark.png";
 import { useAuth } from "../../store/AuthContext";
 import type { UserRole } from "../../types";
 import { initials } from "../../utils/initials";
+import { useFileUrl } from "../../utils/useFileUrl";
 import { NotificationBell } from "./NotificationBell";
 
 interface NavItem {
@@ -72,12 +72,13 @@ const navGroups: { title: string; items: NavItem[] }[] = [
   },
 ];
 
-const ROLE_OPTIONS: UserRole[] = ["Superadmin", "Admin", "Driver", "Viewer"];
-
 export function AdminLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { logout, profile, switchRole } = useAuth();
+  const { logout, profile } = useAuth();
+  const avatarUrl = useFileUrl(profile?.fotoFileId);
   const navigate = useNavigate();
+
+  if (!profile) return null;
 
   function handleLogout() {
     logout();
@@ -105,23 +106,6 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
-          <div
-            className="hidden items-center gap-1 rounded-lg bg-slate-100 p-1 sm:flex"
-            title="Demo: ganti peran untuk melihat akses tiap role"
-          >
-            {ROLE_OPTIONS.map((role) => (
-              <button
-                key={role}
-                onClick={() => switchRole(role)}
-                className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  profile.role === role ? "bg-white text-blue-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                <Shield size={12} />
-                {role}
-              </button>
-            ))}
-          </div>
           <NotificationBell />
           <NavLink
             to="/admin/pengaturan/akun"
@@ -130,8 +114,8 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           >
             <span className="hidden text-sm text-slate-500 sm:block">{profile.nama}</span>
             <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-amber-100 text-sm font-semibold text-amber-700">
-              {profile.foto ? (
-                <img src={profile.foto} alt={profile.nama} className="h-full w-full object-cover" />
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={profile.nama} className="h-full w-full object-cover" />
               ) : (
                 initials(profile.nama)
               )}
@@ -187,29 +171,9 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               );
             })}
           </nav>
-          <div className="mx-4 mt-2 rounded-lg bg-slate-50 p-3 sm:hidden">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-              Demo: Peran Aktif
-            </p>
-            <div className="grid grid-cols-2 gap-1 rounded-lg bg-white p-1">
-              {ROLE_OPTIONS.map((role) => (
-                <button
-                  key={role}
-                  onClick={() => switchRole(role)}
-                  className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                    profile.role === role ? "bg-blue-900 text-white" : "text-slate-500"
-                  }`}
-                >
-                  {role}
-                </button>
-              ))}
-            </div>
-          </div>
           <div className="mx-4 mt-2 rounded-lg bg-slate-50 p-4 text-xs text-slate-500">
-            <p className="font-medium text-slate-700">Fase 1 - Prototype</p>
-            <p className="mt-1">
-              Modul tracking &amp; resi digital. Data ditampilkan menggunakan mock data lokal.
-            </p>
+            <p className="font-medium text-slate-700">{profile.role}</p>
+            <p className="mt-1">Sistem Tracking &amp; Resi Digital &mdash; PT Gangsar Mitra Suatama.</p>
           </div>
         </aside>
 

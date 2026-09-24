@@ -29,7 +29,7 @@ import { useLanguage } from "../../store/LanguageContext";
 import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
 // Figures provided by the business (includes pre-digitization manual
-// operations, not just what's seeded in this prototype's demo dataset).
+// operations, not just what's recorded in the tracking system).
 const COMPANY_STATS = {
   totalPengiriman: "9.355+",
   kotaTerjangkau: "50+",

@@ -183,11 +183,9 @@ export interface AppUser {
   role: UserRole;
   aktif: boolean;
   lastLogin?: string;
+  /** File id of the user's avatar (see api-worker's `files` table) -
+   * resolve to a viewable URL with `useFileUrl`, never a raw image itself. */
   foto?: string;
-  /** Demo-only: this prototype has a single real login session (see
-   * AuthContext); other users' passwords are stored just so Manajemen User
-   * can showcase setting one, they don't power an actual second login. */
-  password?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -210,7 +208,12 @@ export type AuditAction =
   | "CREATE_USER"
   | "UPDATE_USER"
   | "UPDATE_SHIPMENT_INFO"
-  | "UPDATE_POD_PHOTO";
+  | "UPDATE_POD_PHOTO"
+  | "LOGIN_SUCCESS"
+  | "LOGIN_FAILED"
+  | "PASSWORD_CHANGED"
+  | "FILE_UPLOADED"
+  | "FILE_DELETED";
 
 export interface AuditLogEntry {
   id: string;

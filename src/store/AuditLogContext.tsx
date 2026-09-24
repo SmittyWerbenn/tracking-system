@@ -1,43 +1,76 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { AuditAction, AuditLogEntry, UserRole } from "../types";
-import { initialAuditLog } from "../data/masterData";
-import { usePersistedState } from "../utils/usePersistedState";
+import { api } from "../utils/apiClient";
+import { useAuth } from "./AuthContext";
 
-// Bump this suffix whenever initialAuditLog in masterData.ts changes
-// meaningfully (e.g. its AWB references) so browsers with an older cached
-// copy in localStorage pick up the new set instead of keeping stale data.
-const STORAGE_KEY = "gms-audit-log-v2";
-
-export interface AddLogInput {
-  userName: string;
+interface AuditLogRow {
+  id: string;
+  timestamp: string;
+  user_name: string;
   role: UserRole;
   action: AuditAction;
-  actionLabel: string;
+  action_label: string;
   module: string;
-  awb?: string;
+  awb: string | null;
   description: string;
+}
+
+function toEntry(row: AuditLogRow): AuditLogEntry {
+  return {
+    id: row.id,
+    timestamp: row.timestamp,
+    userName: row.user_name,
+    role: row.role,
+    action: row.action,
+    actionLabel: row.action_label,
+    module: row.module,
+    awb: row.awb ?? undefined,
+    description: row.description,
+  };
+}
+
+interface AuditLogFilters {
+  action?: string;
+  module?: string;
+  awb?: string;
+  user?: string;
 }
 
 interface AuditLogContextValue {
   entries: AuditLogEntry[];
-  addLog: (input: AddLogInput) => void;
+  isLoading: boolean;
+  refresh: (filters?: AuditLogFilters) => Promise<void>;
 }
 
 const AuditLogContext = createContext<AuditLogContextValue | null>(null);
 
+/** Every entry here is written server-side by api-worker as each action
+ * happens - this context only ever reads, it never writes. */
 export function AuditLogProvider({ children }: { children: ReactNode }) {
-  const [entries, setEntries] = usePersistedState<AuditLogEntry[]>(STORAGE_KEY, initialAuditLog);
+  const { isAuthenticated } = useAuth();
+  const [entries, setEntries] = useState<AuditLogEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  function addLog(input: AddLogInput) {
-    const entry: AuditLogEntry = {
-      id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      timestamp: new Date().toISOString(),
-      ...input,
-    };
-    setEntries((prev) => [entry, ...prev]);
+  async function refresh(filters: AuditLogFilters = {}) {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams({ limit: "100", ...filters } as Record<string, string>);
+      const res = await api.get<{ items: AuditLogRow[] }>(`/api/audit-logs?${params.toString()}`);
+      setEntries(res.items.map(toEntry));
+    } catch {
+      setEntries([]);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
-  return <AuditLogContext.Provider value={{ entries, addLog }}>{children}</AuditLogContext.Provider>;
+  useEffect(() => {
+    if (isAuthenticated) refresh();
+    else setEntries([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
+  return <AuditLogContext.Provider value={{ entries, isLoading, refresh }}>{children}</AuditLogContext.Provider>;
 }
 
 export function useAuditLog() {

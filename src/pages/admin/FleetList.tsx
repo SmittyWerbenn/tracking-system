@@ -30,7 +30,7 @@ const emptyForm: TruckFormData = {
 export default function FleetList() {
   const { trucksWithDriver, createTruck, updateTruck, setTruckStatus } = useFleet();
   const { profile } = useAuth();
-  const canEdit = profile.role === "Superadmin" || profile.role === "Admin";
+  const canEdit = profile?.role === "Superadmin" || profile?.role === "Admin";
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -77,12 +77,12 @@ export default function FleetList() {
     setModalOpen(true);
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (editingId) {
-      updateTruck(editingId, form);
+      await updateTruck(editingId, form);
     } else {
-      createTruck(form);
+      await createTruck(form);
     }
     setModalOpen(false);
   }

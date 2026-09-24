@@ -23,7 +23,7 @@ const JENIS_STYLE: Record<TitikJenis, string> = {
 export default function LocationList() {
   const { titikLokasi, createTitik, updateTitik } = useLocations();
   const { profile } = useAuth();
-  const canEdit = profile.role === "Superadmin" || profile.role === "Admin";
+  const canEdit = profile?.role === "Superadmin" || profile?.role === "Admin";
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -41,12 +41,12 @@ export default function LocationList() {
     setModalOpen(true);
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (editingId) {
-      updateTitik(editingId, form);
+      await updateTitik(editingId, form);
     } else {
-      createTitik(form);
+      await createTitik(form);
     }
     setModalOpen(false);
   }

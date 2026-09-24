@@ -1,6 +1,5 @@
 import { Star, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useFeedback } from "../store/FeedbackContext";
 import { useLanguage } from "../store/LanguageContext";
 import { FeedbackForm } from "./FeedbackForm";
 
@@ -13,14 +12,19 @@ const ACTIVITY_EVENTS = ["mousemove", "keydown", "scroll", "touchstart", "click"
  * activity, and stays reachable afterwards via a small floating button so
  * closing it doesn't lose the feature.
  */
-export function FeedbackPopup({ awb, customerName }: { awb: string; customerName: string }) {
+export function FeedbackPopup({
+  awb,
+  customerName,
+  alreadyRated,
+}: {
+  awb: string;
+  customerName: string;
+  alreadyRated: boolean;
+}) {
   const { t } = useLanguage();
-  const { hasFeedback } = useFeedback();
   const [open, setOpen] = useState(false);
   const [dismissedOnce, setDismissedOnce] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const alreadyRated = hasFeedback(awb);
 
   useEffect(() => {
     if (alreadyRated || dismissedOnce || open) return;

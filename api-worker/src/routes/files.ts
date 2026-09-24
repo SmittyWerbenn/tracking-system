@@ -3,7 +3,7 @@ import type { Ctx } from "../types";
 import { ok, Errors } from "../http";
 import { requirePermission, requireAuth } from "../authMiddleware";
 import { newId } from "../crypto";
-import { putObject, presignGet, validateUpload } from "../storage";
+import { putObject, presignGet, validateUpload, deleteObject } from "../storage";
 import { writeAuditLog } from "../audit";
 
 const ALLOWED_ENTITY_TYPES = new Set([
@@ -70,5 +70,25 @@ export function registerFileRoutes(router: Router) {
     if (!row) throw Errors.notFound("File tidak ditemukan.");
     const url = await presignGet(ctx.env, row.object_key);
     return ok({ url });
+  });
+
+  router.delete("/api/files/:id", async (ctx: Ctx, params) => {
+    const actor = requirePermission(ctx, "files.upload");
+    const row = await ctx.env.DB.prepare(`SELECT object_key FROM files WHERE id = ?`).bind(params.id).first<{
+      object_key: string;
+    }>();
+    if (!row) throw Errors.notFound("File tidak ditemukan.");
+
+    await deleteObject(ctx.env, row.object_key);
+    await ctx.env.DB.prepare(`DELETE FROM files WHERE id = ?`).bind(params.id).run();
+
+    await writeAuditLog(ctx.env, actor, {
+      action: "FILE_DELETED",
+      actionLabel: "FILE DELETED",
+      module: "Files",
+      description: `File (${params.id}) dihapus.`,
+    });
+
+    return ok({ deleted: true });
   });
 }

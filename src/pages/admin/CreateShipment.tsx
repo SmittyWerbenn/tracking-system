@@ -22,10 +22,10 @@ import { useFleet } from "../../store/FleetContext";
 import { useLocations } from "../../store/LocationContext";
 import { useSettings } from "../../store/SettingsContext";
 import { useShipments } from "../../store/ShipmentContext";
-import type { LayananPengiriman, Shipment, ShipmentFormData } from "../../types";
+import type { LayananPengiriman, ShipmentFormData } from "../../types";
 import { compressImage } from "../../utils/compressImage";
-import { photos } from "../../utils/photos";
-import { sendTrackingEmail } from "../../utils/sendEmail";
+import { todayISO } from "../../utils/format";
+import { sendTrackingEmail, type EmailableShipment } from "../../utils/sendEmail";
 
 const emptyForm: ShipmentFormData = {
   pengirim: { nama: "", telepon: "", email: "" },
@@ -96,7 +96,7 @@ export default function CreateShipment() {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [created, setCreated] = useState<Shipment | null>(null);
+  const [created, setCreated] = useState<EmailableShipment | null>(null);
   const [emailSending, setEmailSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -114,7 +114,7 @@ export default function CreateShipment() {
       .catch(() => setPhotoError("Gagal memproses foto. Coba foto lain."));
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!form.truckId) {
       setFormError("Pilih unit truck terlebih dahulu.");
@@ -134,15 +134,22 @@ export default function CreateShipment() {
     }
     setFormError(null);
     setSubmitting(true);
-    // simulate short processing delay for realism
-    setTimeout(() => {
-      const shipment = createShipment({
-        ...form,
-        fotoBarang: form.fotoBarang ?? photos.barangDiterima,
+    try {
+      const { awb } = await createShipment(form);
+      setCreated({
+        awb,
+        kotaAsal: form.kotaAsal,
+        kotaTujuan: form.kotaTujuan,
+        status: "Dalam Persiapan",
+        tanggalDibuat: todayISO(),
+        pengirim: form.pengirim,
+        penerima: form.penerima,
       });
-      setCreated(shipment);
+    } catch {
+      setFormError("Gagal membuat pengiriman. Silakan coba lagi.");
+    } finally {
       setSubmitting(false);
-    }, 500);
+    }
   }
 
   async function handleSendEmail() {

@@ -3,8 +3,10 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useAuth } from "../../store/AuthContext";
+import { uploadFile } from "../../utils/apiClient";
 import { compressImage } from "../../utils/compressImage";
 import { initials } from "../../utils/initials";
+import { useFileUrl } from "../../utils/useFileUrl";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
@@ -12,19 +14,22 @@ const inputClass =
 export default function AccountSettings() {
   const navigate = useNavigate();
   const { profile, updateProfile, changePassword } = useAuth();
+  const existingAvatarUrl = useFileUrl(profile?.fotoFileId);
 
-  const [nama, setNama] = useState(profile.nama);
-  const [email, setEmail] = useState(profile.email);
-  const [foto, setFoto] = useState(profile.foto);
+  const [nama, setNama] = useState(profile?.nama ?? "");
+  const [email, setEmail] = useState(profile?.email ?? "");
+  const [newFotoDataUrl, setNewFotoDataUrl] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
 
   function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setPhotoError(null);
     compressImage(file, 320, 0.8)
-      .then((dataUrl) => setFoto(dataUrl))
+      .then((dataUrl) => setNewFotoDataUrl(dataUrl))
       .catch(() => setPhotoError("Gagal memproses foto. Coba foto lain."));
   }
 
@@ -33,30 +38,48 @@ export default function AccountSettings() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSaved, setPasswordSaved] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
-  function handleSaveProfile(e: FormEvent) {
+  if (!profile) return null;
+
+  async function handleSaveProfile(e: FormEvent) {
     e.preventDefault();
-    updateProfile({ nama: nama.trim() || "Admin", email: email.trim(), foto });
-    setProfileSaved(true);
-    setTimeout(() => setProfileSaved(false), 2500);
+    setSavingProfile(true);
+    setProfileError(null);
+    let fotoFileId: string | undefined;
+    if (newFotoDataUrl) {
+      const uploaded = await uploadFile(newFotoDataUrl, "user_avatar", profile!.id).catch(() => null);
+      fotoFileId = uploaded?.id;
+    }
+    const result = await updateProfile({ nama: nama.trim() || profile!.nama, email: email.trim(), fotoFileId });
+    setSavingProfile(false);
+    if (result.ok) {
+      setNewFotoDataUrl(null);
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 2500);
+    } else {
+      setProfileError(result.error);
+    }
   }
 
-  function handleChangePassword(e: FormEvent) {
+  async function handleChangePassword(e: FormEvent) {
     e.preventDefault();
     setPasswordError(null);
     setPasswordSaved(false);
 
-    if (newPassword.length < 4) {
-      setPasswordError("Password baru minimal 4 karakter.");
+    if (newPassword.length < 8) {
+      setPasswordError("Password baru minimal 8 karakter.");
       return;
     }
     if (newPassword !== confirmPassword) {
       setPasswordError("Konfirmasi password baru tidak cocok.");
       return;
     }
-    const ok = changePassword(currentPassword, newPassword);
-    if (!ok) {
-      setPasswordError("Password saat ini salah.");
+    setChangingPassword(true);
+    const result = await changePassword(currentPassword, newPassword);
+    setChangingPassword(false);
+    if (!result.ok) {
+      setPasswordError(result.error ?? "Gagal mengganti password.");
       return;
     }
     setCurrentPassword("");
@@ -65,6 +88,8 @@ export default function AccountSettings() {
     setPasswordSaved(true);
     setTimeout(() => setPasswordSaved(false), 2500);
   }
+
+  const avatarPreview = newFotoDataUrl ?? existingAvatarUrl;
 
   return (
     <AdminLayout>
@@ -77,9 +102,7 @@ export default function AccountSettings() {
 
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">Pengaturan Akun</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Kelola profil dan keamanan akun Admin Anda.
-        </p>
+        <p className="mt-1 text-sm text-slate-500">Kelola profil dan keamanan akun Anda.</p>
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -95,7 +118,11 @@ export default function AccountSettings() {
 
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-amber-100 text-lg font-semibold text-amber-700">
-              {foto ? <img src={foto} alt={nama} className="h-full w-full object-cover" /> : initials(nama)}
+              {avatarPreview ? (
+                <img src={avatarPreview} alt={nama} className="h-full w-full object-cover" />
+              ) : (
+                initials(nama)
+              )}
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-slate-800">{profile.nama}</p>
@@ -131,11 +158,12 @@ export default function AccountSettings() {
             />
           </label>
 
-          <label className="mt-4 block">
-            <span className="mb-1.5 block text-xs font-medium text-slate-600">Username</span>
-            <input disabled value="admin" className={`${inputClass} bg-slate-50 text-slate-400`} />
-          </label>
-
+          {profileError && (
+            <div className="mt-4 flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700">
+              <AlertTriangle size={15} />
+              {profileError}
+            </div>
+          )}
           {profileSaved && (
             <div className="mt-4 flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-sm font-medium text-emerald-700">
               <CheckCircle2 size={15} />
@@ -145,7 +173,8 @@ export default function AccountSettings() {
 
           <button
             type="submit"
-            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800"
+            disabled={savingProfile}
+            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800 disabled:opacity-60"
           >
             <Save size={15} />
             Simpan Perubahan
@@ -212,15 +241,12 @@ export default function AccountSettings() {
 
           <button
             type="submit"
-            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800"
+            disabled={changingPassword}
+            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800 disabled:opacity-60"
           >
             <KeyRound size={15} />
             Ubah Password
           </button>
-
-          <p className="mt-4 rounded-lg bg-slate-50 px-3.5 py-2.5 text-xs text-slate-500">
-            Demo prototype - password tersimpan di browser Anda (localStorage), bukan di server.
-          </p>
         </form>
       </div>
     </AdminLayout>

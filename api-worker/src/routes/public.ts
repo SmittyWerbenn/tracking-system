@@ -5,7 +5,13 @@ import { parseJsonBody, reqString, reqNumber, optString } from "../validate";
 import { newId } from "../crypto";
 import { presignGet } from "../storage";
 
-const PUBLIC_ENTITY_TYPES = new Set(["shipment_photo", "timeline_photo", "pod_barang", "pod_surat_jalan"]);
+const PUBLIC_ENTITY_TYPES = new Set([
+  "shipment_photo",
+  "shipment_surat_jalan",
+  "timeline_photo",
+  "pod_barang",
+  "pod_surat_jalan",
+]);
 
 function shipmentSummary(row: Record<string, unknown>) {
   return {
@@ -59,7 +65,7 @@ export function registerPublicRoutes(router: Router) {
     const feedbackExists = await ctx.env.DB.prepare(`SELECT id FROM feedback WHERE awb = ?`).bind(params.awb).first();
 
     const files = await ctx.env.DB.prepare(
-      `SELECT id, entity_type, entity_id FROM files WHERE (entity_type IN ('shipment_photo','pod_barang','pod_surat_jalan') AND entity_id = ?)
+      `SELECT id, entity_type, entity_id FROM files WHERE (entity_type IN ('shipment_photo','shipment_surat_jalan','pod_barang','pod_surat_jalan') AND entity_id = ?)
          OR (entity_type = 'timeline_photo' AND entity_id IN (SELECT id FROM shipment_timeline_events WHERE awb = ?))
          ORDER BY created_at DESC`,
     )

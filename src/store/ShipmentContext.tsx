@@ -141,7 +141,7 @@ interface ShipmentContextValue {
   markEmailSent: (awb: string) => void;
   addTrackingUpdate: (data: TrackingUpdateFormData) => Promise<{ ok: true } | { ok: false; error: string }>;
   updateShipmentInfo: (awb: string, data: UpdateShipmentInfoData) => Promise<{ ok: true } | { ok: false; error: string }>;
-  updatePodPhoto: (awb: string, fotoDataUrl: string | undefined) => Promise<void>;
+  updatePodPhoto: (awb: string, slot: "barang" | "suratJalan", fotoDataUrl: string | undefined) => Promise<void>;
 }
 
 const ShipmentContext = createContext<ShipmentContextValue | null>(null);
@@ -182,6 +182,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       const res = await api.get<ShipmentDetailResponse>(`/api/shipments/${encodeURIComponent(awb)}`);
       const urlMap = await resolveFileUrls(res.files);
       const fotoBarangUrls = urlMap.get(`shipment_photo:${res.shipment.awb}`) ?? [];
+      const fotoSuratJalanUrls = urlMap.get(`shipment_surat_jalan:${res.shipment.awb}`) ?? [];
       const podBarangUrls = urlMap.get(`pod_barang:${res.shipment.awb}`) ?? [];
       const podSuratJalanUrls = urlMap.get(`pod_surat_jalan:${res.shipment.awb}`) ?? [];
 
@@ -190,6 +191,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       return {
         ...toShipment(res.shipment),
         fotoBarang: fotoBarangUrls[0],
+        fotoSuratJalan: fotoSuratJalanUrls[0],
         timeline,
         pod: res.pod
           ? {
@@ -229,6 +231,9 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
 
     if (data.fotoBarang) {
       await uploadFile(data.fotoBarang, "shipment_photo", res.awb).catch(() => {});
+    }
+    if (data.fotoSuratJalan) {
+      await uploadFile(data.fotoSuratJalan, "shipment_surat_jalan", res.awb).catch(() => {});
     }
 
     await refresh();
@@ -290,10 +295,11 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function updatePodPhoto(awb: string, fotoDataUrl: string | undefined) {
+  async function updatePodPhoto(awb: string, slot: "barang" | "suratJalan", fotoDataUrl: string | undefined) {
     if (!fotoDataUrl) return;
-    const uploaded = await uploadFile(fotoDataUrl, "pod_barang", awb);
-    await api.patch(`/api/shipments/${encodeURIComponent(awb)}/pod-photo`, { fotoFileId: uploaded.id });
+    const entityType = slot === "suratJalan" ? "pod_surat_jalan" : "pod_barang";
+    const uploaded = await uploadFile(fotoDataUrl, entityType, awb);
+    await api.patch(`/api/shipments/${encodeURIComponent(awb)}/pod-photo`, { fotoFileId: uploaded.id, slot });
   }
 
   return (

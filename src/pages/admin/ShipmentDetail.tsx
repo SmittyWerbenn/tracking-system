@@ -178,13 +178,28 @@ export default function ShipmentDetail() {
                 <Package size={13} /> Deskripsi Barang
               </p>
               <p className="text-sm text-slate-700">{shipment.deskripsiBarang}</p>
-              {shipment.fotoBarang && (
-                <img
-                  src={shipment.fotoBarang}
-                  alt="Foto barang"
-                  className="mt-3 h-40 w-40 rounded-lg border border-slate-200 object-cover print:h-24 print:w-24"
-                />
-              )}
+              <div className="mt-3 flex flex-wrap gap-4">
+                {shipment.fotoBarang && (
+                  <div>
+                    <p className="mb-1 text-[11px] font-medium text-slate-400">Foto Barang</p>
+                    <img
+                      src={shipment.fotoBarang}
+                      alt="Foto barang"
+                      className="h-40 w-40 rounded-lg border border-slate-200 object-cover print:h-24 print:w-24"
+                    />
+                  </div>
+                )}
+                {shipment.fotoSuratJalan && (
+                  <div>
+                    <p className="mb-1 text-[11px] font-medium text-slate-400">Foto Surat Jalan</p>
+                    <img
+                      src={shipment.fotoSuratJalan}
+                      alt="Foto surat jalan"
+                      className="h-40 w-40 rounded-lg border border-slate-200 object-cover print:h-24 print:w-24"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="mt-6 border-t border-slate-100 pt-5">

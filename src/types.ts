@@ -75,6 +75,7 @@ export interface Shipment {
   beratKg: number;
   jumlahKoli: number;
   fotoBarang?: string;
+  fotoSuratJalan?: string;
   truck: TruckInfo;
   truckId?: string; // links to Truck master data
   timeline: TimelineEvent[];
@@ -96,6 +97,7 @@ export interface ShipmentFormData {
   beratKg: number;
   jumlahKoli: number;
   fotoBarang?: string;
+  fotoSuratJalan?: string;
   truckId: string;
 }
 

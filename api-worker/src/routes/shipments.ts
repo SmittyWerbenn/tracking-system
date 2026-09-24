@@ -186,7 +186,7 @@ export function registerShipmentRoutes(router: Router) {
     const pod = await ctx.env.DB.prepare(`SELECT * FROM shipment_pod WHERE awb = ?`).bind(params.awb).first();
 
     const files = await ctx.env.DB.prepare(
-      `SELECT id, entity_type, entity_id FROM files WHERE (entity_type IN ('shipment_photo','pod_barang','pod_surat_jalan') AND entity_id = ?)
+      `SELECT id, entity_type, entity_id FROM files WHERE (entity_type IN ('shipment_photo','shipment_surat_jalan','pod_barang','pod_surat_jalan') AND entity_id = ?)
          OR (entity_type = 'timeline_photo' AND entity_id IN (SELECT id FROM shipment_timeline_events WHERE awb = ?))
          ORDER BY created_at DESC`,
     )
@@ -350,6 +350,8 @@ export function registerShipmentRoutes(router: Router) {
 
     const body = await parseJsonBody(ctx.request);
     const fotoFileId = optString(body, "fotoFileId");
+    const slot = optString(body, "slot");
+    const isSuratJalan = slot === "suratJalan";
 
     await ctx.env.DB.prepare(`UPDATE shipment_pod SET updated_at = ? WHERE awb = ?`)
       .bind(new Date().toISOString(), params.awb)
@@ -364,7 +366,9 @@ export function registerShipmentRoutes(router: Router) {
       actionLabel: "UPDATE POD PHOTO",
       module: "Shipment",
       awb: params.awb,
-      description: "Foto barang diterima (bukti serah terima) diganti.",
+      description: isSuratJalan
+        ? "Foto surat jalan (bukti serah terima) diganti."
+        : "Foto barang diterima (bukti serah terima) diganti.",
     });
 
     return ok({ updated: true });

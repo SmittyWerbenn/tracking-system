@@ -9,6 +9,7 @@ import { writeAuditLog } from "../audit";
 const ALLOWED_ENTITY_TYPES = new Set([
   "user_avatar",
   "shipment_photo",
+  "shipment_surat_jalan",
   "timeline_photo",
   "pod_barang",
   "pod_surat_jalan",

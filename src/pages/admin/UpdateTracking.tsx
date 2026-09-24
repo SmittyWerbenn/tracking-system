@@ -65,8 +65,10 @@ export default function UpdateTracking() {
   const [editSaved, setEditSaved] = useState(false);
   const [editFormError, setEditFormError] = useState<string | null>(null);
 
-  const [podPhotoError, setPodPhotoError] = useState<string | null>(null);
-  const [podPhotoSaved, setPodPhotoSaved] = useState(false);
+  const [podBarangError, setPodBarangError] = useState<string | null>(null);
+  const [podBarangSaved, setPodBarangSaved] = useState(false);
+  const [podSuratJalanError, setPodSuratJalanError] = useState<string | null>(null);
+  const [podSuratJalanSaved, setPodSuratJalanSaved] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,18 +132,24 @@ export default function UpdateTracking() {
     podEditDeadlineMs !== null ? Math.max(0, Math.ceil((podEditDeadlineMs - nowMs) / (24 * 60 * 60 * 1000))) : 0;
   const deliveredAtLabel = deliveredEvent ? formatTanggalJam(deliveredEvent.tanggal, deliveredEvent.jam) : null;
 
-  function handlePodPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setPodPhotoError(null);
-    setPodPhotoSaved(false);
-    compressImage(file)
-      .then(async (dataUrl) => {
-        await updatePodPhoto(shipment!.awb, dataUrl);
-        setPodPhotoSaved(true);
-        setTimeout(() => setPodPhotoSaved(false), 2500);
-      })
-      .catch(() => setPodPhotoError("Gagal memproses foto. Coba foto lain."));
+  function handlePodPhotoChange(slot: "barang" | "suratJalan") {
+    const setError = slot === "barang" ? setPodBarangError : setPodSuratJalanError;
+    const setSaved = slot === "barang" ? setPodBarangSaved : setPodSuratJalanSaved;
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setError(null);
+      setSaved(false);
+      compressImage(file)
+        .then(async (dataUrl) => {
+          await updatePodPhoto(shipment!.awb, slot, dataUrl);
+          const refreshed = await getByAwb(shipment!.awb);
+          if (refreshed) setShipment(refreshed);
+          setSaved(true);
+          setTimeout(() => setSaved(false), 2500);
+        })
+        .catch(() => setError("Gagal memproses foto. Coba foto lain."));
+    };
   }
   const lokasiOptions = [
     ...activeTitikLokasi.map((t) => ({ value: t.id, label: t.namaKota, description: `${t.jenis} - ${t.provinsi}` })),
@@ -465,7 +473,7 @@ export default function UpdateTracking() {
           {shipment.pod && (
             <div className="mt-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-slate-800">
-                <ImagePlus size={16} className="text-blue-900" /> Foto Barang Diterima
+                <ImagePlus size={16} className="text-blue-900" /> Foto Bukti Serah Terima
               </p>
               {canEditPodPhoto ? (
                 <p className="mb-4 text-xs text-slate-500">
@@ -492,47 +500,85 @@ export default function UpdateTracking() {
                 </p>
               )}
 
-              <div className="flex flex-wrap items-center gap-4">
-                {shipment.pod.fotoBarang ? (
-                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-slate-200">
-                    <img
-                      src={shipment.pod.fotoBarang}
-                      alt="Foto barang diterima"
-                      className="h-full w-full object-cover"
-                    />
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                  <p className="mb-2 text-xs font-semibold text-slate-600">Foto Barang Diterima</p>
+                  <div className="flex flex-wrap items-center gap-4">
+                    {shipment.pod.fotoBarang ? (
+                      <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-slate-200">
+                        <img
+                          src={shipment.pod.fotoBarang}
+                          alt="Foto barang diterima"
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-dashed border-slate-300 text-center text-[10px] text-slate-400">
+                        Belum ada foto
+                      </div>
+                    )}
                     {canEditPodPhoto && (
-                      <button
-                        type="button"
-                        onClick={() => updatePodPhoto(shipment!.awb, undefined)}
-                        title="Hapus foto"
-                        className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"
-                      >
-                        <X size={13} />
-                      </button>
+                      <label className="flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
+                        <ImagePlus size={18} />
+                        <span className="text-[10px] font-medium">
+                          {shipment.pod.fotoBarang ? "Ganti Foto" : "Tambah Foto"}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handlePodPhotoChange("barang")}
+                        />
+                      </label>
                     )}
                   </div>
-                ) : (
-                  <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-dashed border-slate-300 text-center text-[10px] text-slate-400">
-                    Belum ada foto
-                  </div>
-                )}
-                {canEditPodPhoto && (
-                  <label className="flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
-                    <ImagePlus size={18} />
-                    <span className="text-[10px] font-medium">
-                      {shipment.pod.fotoBarang ? "Ganti Foto" : "Tambah Foto"}
-                    </span>
-                    <input type="file" accept="image/*" className="hidden" onChange={handlePodPhotoChange} />
-                  </label>
-                )}
-              </div>
-
-              {podPhotoError && <p className="mt-3 text-xs font-medium text-red-600">{podPhotoError}</p>}
-              {podPhotoSaved && (
-                <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-sm font-medium text-emerald-700">
-                  <CheckCircle2 size={16} /> Foto berhasil diperbarui.
+                  {podBarangError && <p className="mt-3 text-xs font-medium text-red-600">{podBarangError}</p>}
+                  {podBarangSaved && (
+                    <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-sm font-medium text-emerald-700">
+                      <CheckCircle2 size={16} /> Foto berhasil diperbarui.
+                    </div>
+                  )}
                 </div>
-              )}
+
+                <div>
+                  <p className="mb-2 text-xs font-semibold text-slate-600">Foto Surat Jalan</p>
+                  <div className="flex flex-wrap items-center gap-4">
+                    {shipment.pod.fotoSuratJalan ? (
+                      <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-slate-200">
+                        <img
+                          src={shipment.pod.fotoSuratJalan}
+                          alt="Foto surat jalan"
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-dashed border-slate-300 text-center text-[10px] text-slate-400">
+                        Belum ada foto
+                      </div>
+                    )}
+                    {canEditPodPhoto && (
+                      <label className="flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
+                        <ImagePlus size={18} />
+                        <span className="text-[10px] font-medium">
+                          {shipment.pod.fotoSuratJalan ? "Ganti Foto" : "Tambah Foto"}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handlePodPhotoChange("suratJalan")}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  {podSuratJalanError && <p className="mt-3 text-xs font-medium text-red-600">{podSuratJalanError}</p>}
+                  {podSuratJalanSaved && (
+                    <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-sm font-medium text-emerald-700">
+                      <CheckCircle2 size={16} /> Foto berhasil diperbarui.
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </>

@@ -39,6 +39,7 @@ const emptyForm: ShipmentFormData = {
   beratKg: 0,
   jumlahKoli: 1,
   fotoBarang: undefined,
+  fotoSuratJalan: undefined,
   truckId: "",
 };
 
@@ -94,6 +95,7 @@ export default function CreateShipment() {
   const [mode, setMode] = useState<"single" | "bulk">("single");
   const [form, setForm] = useState<ShipmentFormData>(emptyForm);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoSuratJalanError, setPhotoSuratJalanError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<EmailableShipment | null>(null);
@@ -112,6 +114,15 @@ export default function CreateShipment() {
     compressImage(file)
       .then((dataUrl) => update("fotoBarang", dataUrl))
       .catch(() => setPhotoError("Gagal memproses foto. Coba foto lain."));
+  }
+
+  function handleFotoSuratJalanChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoSuratJalanError(null);
+    compressImage(file)
+      .then((dataUrl) => update("fotoSuratJalan", dataUrl))
+      .catch(() => setPhotoSuratJalanError("Gagal memproses foto. Coba foto lain."));
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -406,10 +417,36 @@ export default function CreateShipment() {
                 </div>
               )}
               <p className="text-xs text-slate-400">
-                Opsional. Jika tidak diunggah, sistem akan menggunakan foto contoh.
+                Opsional. Foto kondisi fisik barang yang dikirim. Jika tidak diunggah, sistem akan menggunakan foto
+                contoh.
               </p>
             </div>
             {photoError && <p className="mt-1.5 text-xs font-medium text-red-600">{photoError}</p>}
+          </Field>
+          <Field label="Foto Surat Jalan" full>
+            <div className="flex items-center gap-3">
+              <label className="flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
+                <ImagePlus size={20} />
+                <span className="text-[10px] font-medium">Unggah Foto</span>
+                <input type="file" accept="image/*" className="hidden" onChange={handleFotoSuratJalanChange} />
+              </label>
+              {form.fotoSuratJalan && (
+                <div className="relative h-24 w-24 overflow-hidden rounded-lg border border-slate-200">
+                  <img src={form.fotoSuratJalan} alt="Preview surat jalan" className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => update("fotoSuratJalan", undefined)}
+                    className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+              <p className="text-xs text-slate-400">
+                Opsional. Foto dokumen surat jalan/pengantar yang menyertai barang saat berangkat.
+              </p>
+            </div>
+            {photoSuratJalanError && <p className="mt-1.5 text-xs font-medium text-red-600">{photoSuratJalanError}</p>}
           </Field>
         </Section>
 

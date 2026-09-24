@@ -84,7 +84,7 @@ function resolveKota(value: string, knownKota: string[]): string {
   return knownKota.find((k) => k.toLowerCase() === loose) ?? trimmed;
 }
 
-function rowErrors(row: BulkRow, knownKota: string[]): string[] {
+function rowErrors(row: BulkRow): string[] {
   const errs: string[] = [];
   if (!row.pengirimNama.trim()) errs.push("Nama pengirim kosong");
   if (!row.pengirimTelepon.trim()) errs.push("No HP pengirim kosong");
@@ -92,13 +92,9 @@ function rowErrors(row: BulkRow, knownKota: string[]): string[] {
   if (!row.penerimaNama.trim()) errs.push("Nama penerima kosong");
   if (!row.penerimaTelepon.trim()) errs.push("No HP penerima kosong");
   if (!row.penerimaEmail.trim()) errs.push("Email penerima kosong");
-  if (!row.kotaAsal) errs.push("Kota asal belum dipilih");
-  else if (!knownKota.includes(row.kotaAsal))
-    errs.push(`Kota asal "${row.kotaAsal}" tidak ada di master data, pilih dari daftar`);
+  if (!row.kotaAsal.trim()) errs.push("Kota asal kosong");
   if (!row.alamatAsal.trim()) errs.push("Alamat asal kosong");
-  if (!row.kotaTujuan) errs.push("Kota tujuan belum dipilih");
-  else if (!knownKota.includes(row.kotaTujuan))
-    errs.push(`Kota tujuan "${row.kotaTujuan}" tidak ada di master data, pilih dari daftar`);
+  if (!row.kotaTujuan.trim()) errs.push("Kota tujuan kosong");
   if (!row.alamatTujuan.trim()) errs.push("Alamat tujuan kosong");
   if (!row.deskripsiBarang.trim()) errs.push("Deskripsi barang kosong");
   const berat = Number(row.beratKg);
@@ -187,7 +183,7 @@ export function BulkShipmentImport() {
   }
 
   async function handleSubmitAll() {
-    const withErrors = rows.map((r) => ({ row: r, errors: rowErrors(r, knownKota) }));
+    const withErrors = rows.map((r) => ({ row: r, errors: rowErrors(r) }));
     const validRows = withErrors.filter((r) => r.errors.length === 0).map((r) => r.row);
     const skipped = rows.length - validRows.length;
     if (validRows.length === 0) return;
@@ -218,7 +214,7 @@ export function BulkShipmentImport() {
     setSubmitting(false);
   }
 
-  const rowsWithErrors = rows.map((r) => ({ row: r, errors: rowErrors(r, knownKota) }));
+  const rowsWithErrors = rows.map((r) => ({ row: r, errors: rowErrors(r) }));
   const validCount = rowsWithErrors.filter((r) => r.errors.length === 0).length;
 
   return (
@@ -265,6 +261,12 @@ export function BulkShipmentImport() {
           </div>
         )}
       </div>
+
+      <datalist id="bulk-kota-suggestions">
+        {knownKota.map((k) => (
+          <option key={k} value={k} />
+        ))}
+      </datalist>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full min-w-[1400px] border-collapse text-xs">
@@ -387,21 +389,14 @@ export function BulkShipmentImport() {
                   />
                 </td>
                 <td className="border-l border-slate-100 px-2.5 py-2">
-                  <select
-                    className={`${cellInputClass} ${row.kotaAsal && !knownKota.includes(row.kotaAsal) ? "border-amber-400 text-amber-700" : ""}`}
+                  <input
+                    list="bulk-kota-suggestions"
+                    className={cellInputClass}
                     value={row.kotaAsal}
                     onChange={(e) => updateRow(row.id, "kotaAsal", e.target.value)}
-                  >
-                    <option value="">Pilih kota</option>
-                    {row.kotaAsal && !knownKota.includes(row.kotaAsal) && (
-                      <option value={row.kotaAsal}>{row.kotaAsal} (tidak dikenal)</option>
-                    )}
-                    {knownKota.map((k) => (
-                      <option key={k} value={k}>
-                        {k}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Ketik kota"
+                    autoComplete="off"
+                  />
                 </td>
                 <td className="px-2.5 py-2">
                   <input
@@ -412,21 +407,14 @@ export function BulkShipmentImport() {
                   />
                 </td>
                 <td className="px-2.5 py-2">
-                  <select
-                    className={`${cellInputClass} ${row.kotaTujuan && !knownKota.includes(row.kotaTujuan) ? "border-amber-400 text-amber-700" : ""}`}
+                  <input
+                    list="bulk-kota-suggestions"
+                    className={cellInputClass}
                     value={row.kotaTujuan}
                     onChange={(e) => updateRow(row.id, "kotaTujuan", e.target.value)}
-                  >
-                    <option value="">Pilih kota</option>
-                    {row.kotaTujuan && !knownKota.includes(row.kotaTujuan) && (
-                      <option value={row.kotaTujuan}>{row.kotaTujuan} (tidak dikenal)</option>
-                    )}
-                    {knownKota.map((k) => (
-                      <option key={k} value={k}>
-                        {k}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Ketik kota"
+                    autoComplete="off"
+                  />
                 </td>
                 <td className="px-2.5 py-2">
                   <input

@@ -411,7 +411,7 @@ const id: Translations = {
   },
   stepper: {
     orderCreated: "Pesanan Dibuat",
-    pickedUp: "Di Pickup",
+    pickedUp: "Berangkat",
     inTransit: "Dalam Pengiriman",
     outForDelivery: "Sedang Diantar",
     delivered: "Terkirim",

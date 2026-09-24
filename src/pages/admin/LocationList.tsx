@@ -1,5 +1,6 @@
-import { MapPinned, Pencil, Plus, X } from "lucide-react";
+import { FileSpreadsheet, MapPinned, Pencil, Plus, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { BulkLocationImport } from "../../components/BulkLocationImport";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useAuth } from "../../store/AuthContext";
 import { useLocations, type TitikFormData } from "../../store/LocationContext";
@@ -26,6 +27,7 @@ export default function LocationList() {
   const canEdit = profile?.role === "Superadmin" || profile?.role === "Admin";
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<TitikFormData>(emptyForm);
 
@@ -61,12 +63,20 @@ export default function LocationList() {
           </p>
         </div>
         {canEdit && (
-          <button
-            onClick={openAdd}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-          >
-            <Plus size={16} /> Tambah Titik
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setBulkImportOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              <FileSpreadsheet size={16} /> Import CSV/Excel
+            </button>
+            <button
+              onClick={openAdd}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+            >
+              <Plus size={16} /> Tambah Titik
+            </button>
+          </div>
         )}
       </div>
 
@@ -218,6 +228,8 @@ export default function LocationList() {
           </div>
         </div>
       )}
+
+      {bulkImportOpen && <BulkLocationImport onClose={() => setBulkImportOpen(false)} />}
     </AdminLayout>
   );
 }

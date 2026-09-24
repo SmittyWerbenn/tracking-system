@@ -20,10 +20,10 @@ interface CreatedShipmentSummary {
   kotaAsal: string;
   kotaTujuan: string;
 }
+import { readTableFromFile } from "../utils/csv";
 import {
   downloadBulkShipmentTemplate,
   normalizeLayanan,
-  parseCsvText,
   tableToBulkRows,
   type BulkRowInput,
 } from "../utils/shipmentImport";
@@ -152,15 +152,7 @@ export function BulkShipmentImport() {
     setImporting(true);
     setResult(null);
     try {
-      const isCsv = file.name.toLowerCase().endsWith(".csv") || file.type === "text/csv";
-      let table: unknown[][];
-      if (isCsv) {
-        const text = await file.text();
-        table = parseCsvText(text);
-      } else {
-        const { readSheet } = await import("read-excel-file/browser");
-        table = await readSheet(file);
-      }
+      const table = await readTableFromFile(file);
 
       const { rows: parsed, headerError } = tableToBulkRows(table);
       if (headerError) {

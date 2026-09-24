@@ -1,4 +1,4 @@
-import { Ban, FileSpreadsheet, History, Pencil, Plus, RotateCcw, X } from "lucide-react";
+import { Ban, CheckCircle2, History, Pencil, Plus, RotateCcw, Table, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArmadaStatusBadge } from "../../components/ArmadaStatusBadge";
@@ -33,11 +33,15 @@ export default function FleetList() {
   const { profile } = useAuth();
   const canEdit = profile?.role === "Superadmin" || profile?.role === "Admin";
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [bulkImportOpen, setBulkImportOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [mode, setMode] = useState<"single" | "bulk">("single");
   const [form, setForm] = useState<TruckFormData>(emptyForm);
+  const [creating, setCreating] = useState(false);
+  const [created, setCreated] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<TruckFormData>(emptyForm);
 
   const statusParam = searchParams.get("status") ?? "";
   const statusFilter: ArmadaStatus | "Semua" = isArmadaStatus(statusParam) ? statusParam : "Semua";
@@ -59,15 +63,19 @@ export default function FleetList() {
     [trucksWithDriver, statusFilter],
   );
 
-  function openAdd() {
-    setEditingId(null);
+  async function handleCreateSubmit(e: FormEvent) {
+    e.preventDefault();
+    setCreating(true);
+    await createTruck(form);
     setForm(emptyForm);
-    setModalOpen(true);
+    setCreating(false);
+    setCreated(true);
+    setTimeout(() => setCreated(false), 2000);
   }
 
   function openEdit(t: TruckWithDriver) {
     setEditingId(t.id);
-    setForm({
+    setEditForm({
       nomorUnit: t.nomorUnit,
       jenis: t.jenis,
       kapasitas: t.kapasitas,
@@ -76,17 +84,13 @@ export default function FleetList() {
       status: t.status,
       keterangan: t.keterangan ?? "",
     });
-    setModalOpen(true);
+    setEditModalOpen(true);
   }
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleEditSubmit(e: FormEvent) {
     e.preventDefault();
-    if (editingId) {
-      await updateTruck(editingId, form);
-    } else {
-      await createTruck(form);
-    }
-    setModalOpen(false);
+    if (editingId) await updateTruck(editingId, editForm);
+    setEditModalOpen(false);
   }
 
   return (
@@ -94,27 +98,149 @@ export default function FleetList() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Master Armada</h1>
-          <p className="mt-1 text-sm text-slate-500">Kelola data unit truck dan driver.</p>
+          <p className="mt-1 text-sm text-slate-500">
+            {mode === "single"
+              ? "Tambah satu unit truck ke master armada."
+              : "Tambah banyak unit truck sekaligus dengan mengisi tabel atau mengimpor file Excel/CSV."}
+          </p>
         </div>
         {canEdit && (
-          <div className="flex flex-wrap gap-2">
+          <div className="inline-flex items-center gap-1 rounded-lg bg-slate-100 p-1">
             <button
-              onClick={() => setBulkImportOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+              type="button"
+              onClick={() => setMode("single")}
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                mode === "single" ? "bg-white text-blue-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
             >
-              <FileSpreadsheet size={16} /> Import CSV/Excel
+              <Plus size={13} />
+              Input 1 Truck
             </button>
             <button
-              onClick={openAdd}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+              type="button"
+              onClick={() => setMode("bulk")}
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                mode === "bulk" ? "bg-white text-blue-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
             >
-              <Plus size={16} /> Tambah Truck
+              <Table size={13} />
+              Bulk / Import Excel
             </button>
           </div>
         )}
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      {canEdit && mode === "bulk" && (
+        <div className="mt-6">
+          <BulkFleetImport />
+        </div>
+      )}
+
+      {canEdit && mode === "single" && (
+        <form
+          onSubmit={handleCreateSubmit}
+          className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+        >
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Nomor Unit / Polisi</span>
+              <input
+                required
+                className={inputClass}
+                placeholder="B 9123 XYZ"
+                value={form.nomorUnit}
+                onChange={(e) => setForm({ ...form, nomorUnit: e.target.value })}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Jenis Truck</span>
+              <select
+                className={inputClass}
+                value={form.jenis}
+                onChange={(e) => setForm({ ...form, jenis: e.target.value })}
+              >
+                {TRUCK_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Kapasitas</span>
+              <input
+                required
+                className={inputClass}
+                placeholder="8 Ton"
+                value={form.kapasitas}
+                onChange={(e) => setForm({ ...form, kapasitas: e.target.value })}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Status Armada</span>
+              <select
+                className={inputClass}
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value as TruckFormData["status"] })}
+              >
+                {ARMADA_STATUS_OPTIONS.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Driver</span>
+              <input
+                required
+                className={inputClass}
+                placeholder="Nama driver"
+                value={form.driverNama}
+                onChange={(e) => setForm({ ...form, driverNama: e.target.value })}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">No. HP Driver</span>
+              <input
+                required
+                className={inputClass}
+                placeholder="0812-0000-0000"
+                value={form.driverTelepon}
+                onChange={(e) => setForm({ ...form, driverTelepon: e.target.value })}
+              />
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan</span>
+              <textarea
+                rows={2}
+                className={inputClass}
+                placeholder="Opsional"
+                value={form.keterangan}
+                onChange={(e) => setForm({ ...form, keterangan: e.target.value })}
+              />
+            </label>
+          </div>
+
+          {created && (
+            <div className="mt-4 flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-sm font-medium text-emerald-700">
+              <CheckCircle2 size={15} /> Unit truck berhasil ditambahkan.
+            </div>
+          )}
+
+          <div className="mt-5 flex justify-end">
+            <button
+              type="submit"
+              disabled={creating}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
+            >
+              <Plus size={15} /> Simpan Truck
+            </button>
+          </div>
+        </form>
+      )}
+
+      <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <select
           value={statusFilter}
           onChange={(e) => handleStatusFilterChange(e.target.value as ArmadaStatus | "Semua")}
@@ -220,17 +346,15 @@ export default function FleetList() {
         </div>
       </div>
 
-      {modalOpen && (
+      {editModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl">
-            <form onSubmit={handleSubmit} className="p-6">
+            <form onSubmit={handleEditSubmit} className="p-6">
               <div className="mb-5 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-900">
-                  {editingId ? "Edit Truck" : "Tambah Truck"}
-                </h2>
+                <h2 className="text-lg font-semibold text-slate-900">Edit Truck</h2>
                 <button
                   type="button"
-                  onClick={() => setModalOpen(false)}
+                  onClick={() => setEditModalOpen(false)}
                   className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                 >
                   <X size={18} />
@@ -244,16 +368,16 @@ export default function FleetList() {
                     required
                     className={inputClass}
                     placeholder="B 9123 XYZ"
-                    value={form.nomorUnit}
-                    onChange={(e) => setForm({ ...form, nomorUnit: e.target.value })}
+                    value={editForm.nomorUnit}
+                    onChange={(e) => setEditForm({ ...editForm, nomorUnit: e.target.value })}
                   />
                 </label>
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-slate-600">Jenis Truck</span>
                   <select
                     className={inputClass}
-                    value={form.jenis}
-                    onChange={(e) => setForm({ ...form, jenis: e.target.value })}
+                    value={editForm.jenis}
+                    onChange={(e) => setEditForm({ ...editForm, jenis: e.target.value })}
                   >
                     {TRUCK_TYPES.map((t) => (
                       <option key={t} value={t}>
@@ -268,16 +392,16 @@ export default function FleetList() {
                     required
                     className={inputClass}
                     placeholder="8 Ton"
-                    value={form.kapasitas}
-                    onChange={(e) => setForm({ ...form, kapasitas: e.target.value })}
+                    value={editForm.kapasitas}
+                    onChange={(e) => setEditForm({ ...editForm, kapasitas: e.target.value })}
                   />
                 </label>
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-slate-600">Status Armada</span>
                   <select
                     className={inputClass}
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value as TruckFormData["status"] })}
+                    value={editForm.status}
+                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value as TruckFormData["status"] })}
                   >
                     {ARMADA_STATUS_OPTIONS.map((s) => (
                       <option key={s} value={s}>
@@ -292,8 +416,8 @@ export default function FleetList() {
                     required
                     className={inputClass}
                     placeholder="Nama driver"
-                    value={form.driverNama}
-                    onChange={(e) => setForm({ ...form, driverNama: e.target.value })}
+                    value={editForm.driverNama}
+                    onChange={(e) => setEditForm({ ...editForm, driverNama: e.target.value })}
                   />
                 </label>
                 <label className="block">
@@ -302,8 +426,8 @@ export default function FleetList() {
                     required
                     className={inputClass}
                     placeholder="0812-0000-0000"
-                    value={form.driverTelepon}
-                    onChange={(e) => setForm({ ...form, driverTelepon: e.target.value })}
+                    value={editForm.driverTelepon}
+                    onChange={(e) => setEditForm({ ...editForm, driverTelepon: e.target.value })}
                   />
                 </label>
                 <label className="block sm:col-span-2">
@@ -312,8 +436,8 @@ export default function FleetList() {
                     rows={2}
                     className={inputClass}
                     placeholder="Opsional"
-                    value={form.keterangan}
-                    onChange={(e) => setForm({ ...form, keterangan: e.target.value })}
+                    value={editForm.keterangan}
+                    onChange={(e) => setEditForm({ ...editForm, keterangan: e.target.value })}
                   />
                 </label>
               </div>
@@ -321,7 +445,7 @@ export default function FleetList() {
               <div className="mt-6 flex justify-end gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setModalOpen(false)}
+                  onClick={() => setEditModalOpen(false)}
                   className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
                 >
                   Batal
@@ -337,8 +461,6 @@ export default function FleetList() {
           </div>
         </div>
       )}
-
-      {bulkImportOpen && <BulkFleetImport onClose={() => setBulkImportOpen(false)} />}
     </AdminLayout>
   );
 }

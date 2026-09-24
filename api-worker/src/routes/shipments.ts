@@ -324,7 +324,7 @@ export function registerShipmentRoutes(router: Router) {
       )
         .bind(newId(), params.awb, trigger, subject, shipment.penerima_email, shipment.penerima_nama, nowIso)
         .run();
-      await writeAuditLog(ctx.env, { id: "system", nama: "System", email: "", role: "Superadmin", aktif: 1 }, {
+      await writeAuditLog(ctx.env, null, {
         action: "SEND_NOTIFICATION",
         actionLabel: "SEND NOTIFICATION",
         module: "Notification",

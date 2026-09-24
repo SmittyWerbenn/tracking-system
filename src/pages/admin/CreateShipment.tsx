@@ -194,11 +194,7 @@ export default function CreateShipment() {
       label: `${t.nomorUnit} - ${t.jenis}`,
       description: t.driver ? `Driver: ${t.driver.nama}` : undefined,
     }));
-  const kotaOptions = activeTitikLokasi.map((k) => ({
-    value: k.namaKota,
-    label: k.namaKota,
-    description: `${k.jenis} - ${k.provinsi}`,
-  }));
+  const kotaSuggestions = Array.from(new Set(activeTitikLokasi.map((k) => k.namaKota))).sort();
   const selectedTruck = trucksWithDriver.find((t) => t.id === form.truckId);
 
   return (
@@ -315,22 +311,36 @@ export default function CreateShipment() {
 
         <Section title="Pengiriman" icon={MapPin}>
           <Field label="Kota Asal">
-            <SearchableSelect
-              options={kotaOptions}
+            <input
+              required
+              list="kota-asal-suggestions"
+              className={inputClass}
+              placeholder="Ketik nama kota asal"
               value={form.kotaAsal}
-              onChange={(v) => update("kotaAsal", v)}
-              placeholder="Pilih kota asal"
-              emptyLabel="Kota tidak ditemukan."
+              onChange={(e) => update("kotaAsal", e.target.value)}
+              autoComplete="off"
             />
+            <datalist id="kota-asal-suggestions">
+              {kotaSuggestions.map((k) => (
+                <option key={k} value={k} />
+              ))}
+            </datalist>
           </Field>
           <Field label="Kota Tujuan">
-            <SearchableSelect
-              options={kotaOptions}
+            <input
+              required
+              list="kota-tujuan-suggestions"
+              className={inputClass}
+              placeholder="Ketik nama kota tujuan"
               value={form.kotaTujuan}
-              onChange={(v) => update("kotaTujuan", v)}
-              placeholder="Pilih kota tujuan"
-              emptyLabel="Kota tidak ditemukan."
+              onChange={(e) => update("kotaTujuan", e.target.value)}
+              autoComplete="off"
             />
+            <datalist id="kota-tujuan-suggestions">
+              {kotaSuggestions.map((k) => (
+                <option key={k} value={k} />
+              ))}
+            </datalist>
           </Field>
           <Field label="Alamat Asal" full>
             <input

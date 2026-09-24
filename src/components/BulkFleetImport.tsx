@@ -63,19 +63,32 @@ function isRowBlank(row: BulkFleetRow): boolean {
   return !row.nomorUnit.trim() && !row.kapasitas.trim() && !row.driverNama.trim();
 }
 
-function rowErrors(row: BulkFleetRow): string[] {
+function normalizeNomorUnit(value: string): string {
+  return value.trim().replace(/\s+/g, "").toLowerCase();
+}
+
+function rowErrors(row: BulkFleetRow, existingNomorUnit: string[], allRows: BulkFleetRow[]): string[] {
   const errs: string[] = [];
   if (!row.nomorUnit.trim()) errs.push("Nomor unit kosong");
   if (!row.kapasitas.trim()) errs.push("Kapasitas kosong");
   if (!row.driverNama.trim()) errs.push("Nama driver kosong");
   if (!row.driverTelepon.trim()) errs.push("No HP driver kosong");
+
+  const normalized = normalizeNomorUnit(row.nomorUnit);
+  if (normalized) {
+    if (existingNomorUnit.includes(normalized)) {
+      errs.push(`"${row.nomorUnit.trim()}" sudah ada di master data`);
+    } else if (allRows.some((r) => r.id !== row.id && normalizeNomorUnit(r.nomorUnit) === normalized)) {
+      errs.push(`"${row.nomorUnit.trim()}" duplikat di baris lain pada tabel ini`);
+    }
+  }
   return errs;
 }
 
 const cellInputClass =
   "w-full min-w-[140px] rounded-md border border-slate-300 px-2 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-100";
 
-export function BulkFleetImport() {
+export function BulkFleetImport({ existingNomorUnit = [] }: { existingNomorUnit?: string[] }) {
   const { createTruck } = useFleet();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -134,31 +147,36 @@ export function BulkFleetImport() {
   }
 
   async function handleSubmitAll() {
-    const withErrors = rows.map((r) => ({ row: r, errors: rowErrors(r) }));
+    const withErrors = rows.map((r) => ({ row: r, errors: rowErrors(r, existingNomorUnit, rows) }));
     const validRows = withErrors.filter((r) => r.errors.length === 0).map((r) => r.row);
-    const skipped = rows.length - validRows.length;
+    let skipped = rows.length - validRows.length;
     if (validRows.length === 0) return;
 
     setSubmitting(true);
+    setImportError(null);
     const created: string[] = [];
     for (const row of validRows) {
-      await createTruck({
-        nomorUnit: row.nomorUnit.trim(),
-        jenis: row.jenisValue,
-        kapasitas: row.kapasitas.trim(),
-        driverNama: row.driverNama.trim(),
-        driverTelepon: row.driverTelepon.trim(),
-        status: row.statusValue,
-        keterangan: row.keterangan.trim() || undefined,
-      });
-      created.push(row.nomorUnit.trim());
+      try {
+        await createTruck({
+          nomorUnit: row.nomorUnit.trim(),
+          jenis: row.jenisValue,
+          kapasitas: row.kapasitas.trim(),
+          driverNama: row.driverNama.trim(),
+          driverTelepon: row.driverTelepon.trim(),
+          status: row.statusValue,
+          keterangan: row.keterangan.trim() || undefined,
+        });
+        created.push(row.nomorUnit.trim());
+      } catch {
+        skipped += 1;
+      }
     }
     setResult({ created, skipped });
     setRows([emptyRow(), emptyRow(), emptyRow()]);
     setSubmitting(false);
   }
 
-  const rowsWithErrors = rows.map((r) => ({ row: r, errors: rowErrors(r) }));
+  const rowsWithErrors = rows.map((r) => ({ row: r, errors: rowErrors(r, existingNomorUnit, rows) }));
   const validCount = rowsWithErrors.filter((r) => r.errors.length === 0).length;
 
   return (

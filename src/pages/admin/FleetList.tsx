@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, History, Pencil, Plus, RotateCcw, Table, X } from "lucide-react";
+import { AlertTriangle, Ban, CheckCircle2, History, Pencil, Plus, RotateCcw, Table, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArmadaStatusBadge } from "../../components/ArmadaStatusBadge";
@@ -7,6 +7,7 @@ import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useAuth } from "../../store/AuthContext";
 import { useFleet, type TruckFormData, type TruckWithDriver } from "../../store/FleetContext";
 import type { ArmadaStatus } from "../../types";
+import { ApiError } from "../../utils/apiClient";
 import { ARMADA_STATUS_OPTIONS } from "../../utils/status";
 
 function isArmadaStatus(value: string): value is ArmadaStatus {
@@ -38,17 +39,27 @@ export default function FleetList() {
   const [form, setForm] = useState<TruckFormData>(emptyForm);
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   function closeInput() {
     setExpanded(false);
     setMode("single");
     setForm(emptyForm);
+    setCreateError(null);
   }
 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<TruckFormData>(emptyForm);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const existingNomorUnit = useMemo(
+    () => trucksWithDriver.map((t) => t.nomorUnit.replace(/\s+/g, "").toLowerCase()),
+    [trucksWithDriver],
+  );
+  const isDuplicateNomorUnit =
+    form.nomorUnit.trim() !== "" && existingNomorUnit.includes(form.nomorUnit.replace(/\s+/g, "").toLowerCase());
 
   const statusParam = searchParams.get("status") ?? "";
   const statusFilter: ArmadaStatus | "Semua" = isArmadaStatus(statusParam) ? statusParam : "Semua";
@@ -72,12 +83,19 @@ export default function FleetList() {
 
   async function handleCreateSubmit(e: FormEvent) {
     e.preventDefault();
+    if (isDuplicateNomorUnit) return;
     setCreating(true);
-    await createTruck(form);
-    setForm(emptyForm);
-    setCreating(false);
-    setCreated(true);
-    setTimeout(() => setCreated(false), 2000);
+    setCreateError(null);
+    try {
+      await createTruck(form);
+      setForm(emptyForm);
+      setCreated(true);
+      setTimeout(() => setCreated(false), 2000);
+    } catch (err) {
+      setCreateError(err instanceof ApiError ? err.message : "Gagal menyimpan unit truck. Coba lagi.");
+    } finally {
+      setCreating(false);
+    }
   }
 
   function openEdit(t: TruckWithDriver) {
@@ -91,13 +109,20 @@ export default function FleetList() {
       status: t.status,
       keterangan: t.keterangan ?? "",
     });
+    setEditError(null);
     setEditModalOpen(true);
   }
 
   async function handleEditSubmit(e: FormEvent) {
     e.preventDefault();
-    if (editingId) await updateTruck(editingId, editForm);
-    setEditModalOpen(false);
+    if (!editingId) return;
+    setEditError(null);
+    try {
+      await updateTruck(editingId, editForm);
+      setEditModalOpen(false);
+    } catch (err) {
+      setEditError(err instanceof ApiError ? err.message : "Gagal menyimpan perubahan. Coba lagi.");
+    }
   }
 
   return (
@@ -160,7 +185,7 @@ export default function FleetList() {
 
       {canEdit && expanded && mode === "bulk" && (
         <div className="mt-6">
-          <BulkFleetImport />
+          <BulkFleetImport existingNomorUnit={existingNomorUnit} />
         </div>
       )}
 
@@ -174,11 +199,16 @@ export default function FleetList() {
               <span className="mb-1.5 block text-xs font-medium text-slate-600">Nomor Unit / Polisi</span>
               <input
                 required
-                className={inputClass}
+                className={`${inputClass} ${isDuplicateNomorUnit ? "border-amber-400 focus:border-amber-500 focus:ring-amber-100" : ""}`}
                 placeholder="B 9123 XYZ"
                 value={form.nomorUnit}
                 onChange={(e) => setForm({ ...form, nomorUnit: e.target.value })}
               />
+              {isDuplicateNomorUnit && (
+                <span className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-amber-700">
+                  <AlertTriangle size={13} /> "{form.nomorUnit.trim()}" sudah ada di master data, tidak bisa dobel.
+                </span>
+              )}
             </label>
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">Jenis Truck</span>
@@ -250,6 +280,11 @@ export default function FleetList() {
             </label>
           </div>
 
+          {createError && (
+            <div className="mt-4 flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700">
+              <AlertTriangle size={15} /> {createError}
+            </div>
+          )}
           {created && (
             <div className="mt-4 flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-sm font-medium text-emerald-700">
               <CheckCircle2 size={15} /> Unit truck berhasil ditambahkan.
@@ -259,7 +294,7 @@ export default function FleetList() {
           <div className="mt-5 flex justify-end">
             <button
               type="submit"
-              disabled={creating}
+              disabled={creating || isDuplicateNomorUnit}
               className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
             >
               <Plus size={15} /> Simpan Truck
@@ -268,6 +303,8 @@ export default function FleetList() {
         </form>
       )}
 
+      {!expanded && (
+      <>
       <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <select
           value={statusFilter}
@@ -373,6 +410,8 @@ export default function FleetList() {
           </table>
         </div>
       </div>
+      </>
+      )}
 
       {editModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -469,6 +508,12 @@ export default function FleetList() {
                   />
                 </label>
               </div>
+
+              {editError && (
+                <div className="mt-4 flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700">
+                  <AlertTriangle size={15} /> {editError}
+                </div>
+              )}
 
               <div className="mt-6 flex justify-end gap-2.5">
                 <button

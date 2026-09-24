@@ -60,18 +60,27 @@ function isRowBlank(row: BulkLocationRow): boolean {
   return !row.namaKota.trim() && !row.kodeKota.trim() && !row.provinsi.trim();
 }
 
-function rowErrors(row: BulkLocationRow): string[] {
+function rowErrors(row: BulkLocationRow, existingKota: string[], allRows: BulkLocationRow[]): string[] {
   const errs: string[] = [];
   if (!row.namaKota.trim()) errs.push("Nama kota kosong");
   if (!row.kodeKota.trim()) errs.push("Kode kota kosong");
   if (!row.provinsi.trim()) errs.push("Provinsi kosong");
+
+  const normalized = row.namaKota.trim().toLowerCase();
+  if (normalized) {
+    if (existingKota.includes(normalized)) {
+      errs.push(`"${row.namaKota.trim()}" sudah ada di master data`);
+    } else if (allRows.some((r) => r.id !== row.id && r.namaKota.trim().toLowerCase() === normalized)) {
+      errs.push(`"${row.namaKota.trim()}" duplikat di baris lain pada tabel ini`);
+    }
+  }
   return errs;
 }
 
 const cellInputClass =
   "w-full min-w-[140px] rounded-md border border-slate-300 px-2 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-100";
 
-export function BulkLocationImport() {
+export function BulkLocationImport({ existingKota = [] }: { existingKota?: string[] }) {
   const { createTitik } = useLocations();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -130,29 +139,34 @@ export function BulkLocationImport() {
   }
 
   async function handleSubmitAll() {
-    const withErrors = rows.map((r) => ({ row: r, errors: rowErrors(r) }));
+    const withErrors = rows.map((r) => ({ row: r, errors: rowErrors(r, existingKota, rows) }));
     const validRows = withErrors.filter((r) => r.errors.length === 0).map((r) => r.row);
-    const skipped = rows.length - validRows.length;
+    let skipped = rows.length - validRows.length;
     if (validRows.length === 0) return;
 
     setSubmitting(true);
+    setImportError(null);
     const created: string[] = [];
     for (const row of validRows) {
-      await createTitik({
-        namaKota: row.namaKota.trim(),
-        kodeKota: row.kodeKota.trim().toUpperCase(),
-        provinsi: row.provinsi.trim(),
-        jenis: row.jenisValue,
-        aktif: row.aktifValue,
-      });
-      created.push(row.namaKota.trim());
+      try {
+        await createTitik({
+          namaKota: row.namaKota.trim(),
+          kodeKota: row.kodeKota.trim().toUpperCase(),
+          provinsi: row.provinsi.trim(),
+          jenis: row.jenisValue,
+          aktif: row.aktifValue,
+        });
+        created.push(row.namaKota.trim());
+      } catch {
+        skipped += 1;
+      }
     }
     setResult({ created, skipped });
     setRows([emptyRow(), emptyRow(), emptyRow()]);
     setSubmitting(false);
   }
 
-  const rowsWithErrors = rows.map((r) => ({ row: r, errors: rowErrors(r) }));
+  const rowsWithErrors = rows.map((r) => ({ row: r, errors: rowErrors(r, existingKota, rows) }));
   const validCount = rowsWithErrors.filter((r) => r.errors.length === 0).length;
 
   return (

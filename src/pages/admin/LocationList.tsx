@@ -1,9 +1,10 @@
-import { CheckCircle2, MapPinned, Pencil, Table, Plus, X } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { AlertTriangle, CheckCircle2, MapPinned, Pencil, Table, Plus, X } from "lucide-react";
+import { useMemo, useState, type FormEvent } from "react";
 import { BulkLocationImport } from "../../components/BulkLocationImport";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useAuth } from "../../store/AuthContext";
 import { useLocations, type TitikFormData } from "../../store/LocationContext";
+import { ApiError } from "../../utils/apiClient";
 import type { TitikJenis, TitikLokasi } from "../../types";
 
 const inputClass =
@@ -31,37 +32,57 @@ export default function LocationList() {
   const [form, setForm] = useState<TitikFormData>(emptyForm);
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   function closeInput() {
     setExpanded(false);
     setMode("single");
     setForm(emptyForm);
+    setCreateError(null);
   }
 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<TitikFormData>(emptyForm);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const existingKotaNames = useMemo(() => titikLokasi.map((t) => t.namaKota.trim().toLowerCase()), [titikLokasi]);
+  const isDuplicateKota = form.namaKota.trim() !== "" && existingKotaNames.includes(form.namaKota.trim().toLowerCase());
 
   async function handleCreateSubmit(e: FormEvent) {
     e.preventDefault();
+    if (isDuplicateKota) return;
     setCreating(true);
-    await createTitik(form);
-    setForm(emptyForm);
-    setCreating(false);
-    setCreated(true);
-    setTimeout(() => setCreated(false), 2000);
+    setCreateError(null);
+    try {
+      await createTitik(form);
+      setForm(emptyForm);
+      setCreated(true);
+      setTimeout(() => setCreated(false), 2000);
+    } catch (err) {
+      setCreateError(err instanceof ApiError ? err.message : "Gagal menyimpan titik lokasi. Coba lagi.");
+    } finally {
+      setCreating(false);
+    }
   }
 
   function openEdit(t: TitikLokasi) {
     setEditingId(t.id);
     setEditForm({ namaKota: t.namaKota, kodeKota: t.kodeKota, provinsi: t.provinsi, jenis: t.jenis, aktif: t.aktif });
+    setEditError(null);
     setEditModalOpen(true);
   }
 
   async function handleEditSubmit(e: FormEvent) {
     e.preventDefault();
-    if (editingId) await updateTitik(editingId, editForm);
-    setEditModalOpen(false);
+    if (!editingId) return;
+    setEditError(null);
+    try {
+      await updateTitik(editingId, editForm);
+      setEditModalOpen(false);
+    } catch (err) {
+      setEditError(err instanceof ApiError ? err.message : "Gagal menyimpan perubahan. Coba lagi.");
+    }
   }
 
   return (
@@ -124,7 +145,7 @@ export default function LocationList() {
 
       {canEdit && expanded && mode === "bulk" && (
         <div className="mt-6">
-          <BulkLocationImport />
+          <BulkLocationImport existingKota={existingKotaNames} />
         </div>
       )}
 
@@ -138,11 +159,16 @@ export default function LocationList() {
               <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Kota</span>
               <input
                 required
-                className={inputClass}
+                className={`${inputClass} ${isDuplicateKota ? "border-amber-400 focus:border-amber-500 focus:ring-amber-100" : ""}`}
                 placeholder="Jakarta"
                 value={form.namaKota}
                 onChange={(e) => setForm({ ...form, namaKota: e.target.value })}
               />
+              {isDuplicateKota && (
+                <span className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-amber-700">
+                  <AlertTriangle size={13} /> "{form.namaKota.trim()}" sudah ada di master data, tidak bisa dobel.
+                </span>
+              )}
             </label>
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">Kode Kota</span>
@@ -189,6 +215,11 @@ export default function LocationList() {
             </label>
           </div>
 
+          {createError && (
+            <div className="mt-4 flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700">
+              <AlertTriangle size={15} /> {createError}
+            </div>
+          )}
           {created && (
             <div className="mt-4 flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-sm font-medium text-emerald-700">
               <CheckCircle2 size={15} /> Titik lokasi berhasil ditambahkan.
@@ -198,7 +229,7 @@ export default function LocationList() {
           <div className="mt-5 flex justify-end">
             <button
               type="submit"
-              disabled={creating}
+              disabled={creating || isDuplicateKota}
               className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
             >
               <Plus size={15} /> Simpan Titik
@@ -207,6 +238,7 @@ export default function LocationList() {
         </form>
       )}
 
+      {!expanded && (
       <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-left text-sm">
@@ -262,6 +294,7 @@ export default function LocationList() {
           </table>
         </div>
       </div>
+      )}
 
       {editModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -333,6 +366,12 @@ export default function LocationList() {
                   <span className="text-sm text-slate-700">Aktif (tampil di dropdown lokasi)</span>
                 </label>
               </div>
+
+              {editError && (
+                <div className="mt-4 flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700">
+                  <AlertTriangle size={15} /> {editError}
+                </div>
+              )}
 
               <div className="mt-6 flex justify-end gap-2.5">
                 <button

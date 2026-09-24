@@ -47,6 +47,8 @@ export default function UpdateTracking() {
   const [keterangan, setKeterangan] = useState("");
   const [namaPenerima, setNamaPenerima] = useState("");
   const [foto, setFoto] = useState<string[]>([]);
+  const [fotoBarangDiterima, setFotoBarangDiterima] = useState<string | null>(null);
+  const [fotoSuratJalan, setFotoSuratJalan] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [truckId, setTruckId] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -197,6 +199,24 @@ export default function UpdateTracking() {
     });
   }
 
+  function handleFotoBarangDiterimaChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoError(null);
+    compressImage(file)
+      .then(setFotoBarangDiterima)
+      .catch(() => setPhotoError("Gagal memproses foto barang diterima. Coba lagi."));
+  }
+
+  function handleFotoSuratJalanChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoError(null);
+    compressImage(file)
+      .then(setFotoSuratJalan)
+      .catch(() => setPhotoError("Gagal memproses foto surat jalan. Coba lagi."));
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!isSelesai && !resolvedLokasi) {
@@ -217,7 +237,12 @@ export default function UpdateTracking() {
       tanggal,
       jam,
       keterangan,
-      foto,
+      // Order matters here: addTrackingUpdate takes foto[0] as bukti barang
+      // diterima and foto[1] (falling back to foto[0]) as bukti surat
+      // jalan - keep these two labeled uploads in that exact order.
+      foto: isSelesai
+        ? [fotoBarangDiterima, fotoSuratJalan].filter((f): f is string => !!f)
+        : foto,
       truckId: truckId || undefined,
       namaPenerima: isSelesai ? namaPenerima.trim() : undefined,
     };
@@ -618,35 +643,90 @@ export default function UpdateTracking() {
               </label>
             )}
 
-            <label className="block sm:col-span-2">
-              <span className="mb-1.5 block text-xs font-medium text-slate-600">Foto</span>
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="flex h-20 w-20 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
-                  <ImagePlus size={18} />
-                  <span className="text-[10px] font-medium">Unggah</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={handlePhotoChange}
-                  />
+            {isSelesai ? (
+              <div className="grid grid-cols-1 gap-4 sm:col-span-2 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Foto Barang Diterima</span>
+                  <span className="mb-1.5 block text-[11px] text-slate-400">
+                    Kondisi barang saat diterima di lokasi tujuan.
+                  </span>
+                  {fotoBarangDiterima ? (
+                    <div className="relative h-24 w-24 overflow-hidden rounded-lg border border-slate-200">
+                      <img src={fotoBarangDiterima} alt="Foto barang diterima" className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setFotoBarangDiterima(null)}
+                        className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white"
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
+                      <ImagePlus size={18} />
+                      <span className="text-[10px] font-medium">Unggah</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleFotoBarangDiterimaChange} />
+                    </label>
+                  )}
                 </label>
-                {foto.map((src, i) => (
-                  <div key={i} className="relative h-20 w-20 overflow-hidden rounded-lg border border-slate-200">
-                    <img src={src} alt={`Foto ${i + 1}`} className="h-full w-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => setFoto((prev) => prev.filter((_, idx) => idx !== i))}
-                      className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white"
-                    >
-                      <X size={11} />
-                    </button>
-                  </div>
-                ))}
+
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Foto Surat Jalan</span>
+                  <span className="mb-1.5 block text-[11px] text-slate-400">
+                    Surat jalan yang ditandatangani/dicap penerima.
+                  </span>
+                  {fotoSuratJalan ? (
+                    <div className="relative h-24 w-24 overflow-hidden rounded-lg border border-slate-200">
+                      <img src={fotoSuratJalan} alt="Foto surat jalan" className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setFotoSuratJalan(null)}
+                        className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white"
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
+                      <ImagePlus size={18} />
+                      <span className="text-[10px] font-medium">Unggah</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleFotoSuratJalanChange} />
+                    </label>
+                  )}
+                </label>
+                {photoError && <p className="text-xs font-medium text-red-600 sm:col-span-2">{photoError}</p>}
               </div>
-              {photoError && <p className="mt-1.5 text-xs font-medium text-red-600">{photoError}</p>}
-            </label>
+            ) : (
+              <label className="block sm:col-span-2">
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">Foto</span>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex h-20 w-20 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
+                    <ImagePlus size={18} />
+                    <span className="text-[10px] font-medium">Unggah</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handlePhotoChange}
+                    />
+                  </label>
+                  {foto.map((src, i) => (
+                    <div key={i} className="relative h-20 w-20 overflow-hidden rounded-lg border border-slate-200">
+                      <img src={src} alt={`Foto ${i + 1}`} className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setFoto((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white"
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {photoError && <p className="mt-1.5 text-xs font-medium text-red-600">{photoError}</p>}
+              </label>
+            )}
 
             <div className="sm:col-span-2 border-t border-slate-100 pt-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">

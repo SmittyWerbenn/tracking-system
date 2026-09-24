@@ -1,7 +1,8 @@
-import { Ban, History, Pencil, Plus, RotateCcw, X } from "lucide-react";
+import { Ban, FileSpreadsheet, History, Pencil, Plus, RotateCcw, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArmadaStatusBadge } from "../../components/ArmadaStatusBadge";
+import { BulkFleetImport } from "../../components/BulkFleetImport";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useAuth } from "../../store/AuthContext";
 import { useFleet, type TruckFormData, type TruckWithDriver } from "../../store/FleetContext";
@@ -33,6 +34,7 @@ export default function FleetList() {
   const canEdit = profile?.role === "Superadmin" || profile?.role === "Admin";
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<TruckFormData>(emptyForm);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -95,12 +97,20 @@ export default function FleetList() {
           <p className="mt-1 text-sm text-slate-500">Kelola data unit truck dan driver.</p>
         </div>
         {canEdit && (
-          <button
-            onClick={openAdd}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-          >
-            <Plus size={16} /> Tambah Truck
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setBulkImportOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              <FileSpreadsheet size={16} /> Import CSV/Excel
+            </button>
+            <button
+              onClick={openAdd}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+            >
+              <Plus size={16} /> Tambah Truck
+            </button>
+          </div>
         )}
       </div>
 
@@ -327,6 +337,8 @@ export default function FleetList() {
           </div>
         </div>
       )}
+
+      {bulkImportOpen && <BulkFleetImport onClose={() => setBulkImportOpen(false)} />}
     </AdminLayout>
   );
 }

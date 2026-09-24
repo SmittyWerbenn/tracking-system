@@ -1,4 +1,4 @@
-import { Navigate, Route, HashRouter as Router, Routes } from "react-router-dom";
+import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-dom";
 import { RequireAdmin, RequireAuth, RequireSuperadmin, RequireTrackingUpdater } from "./components/RequireAuth";
 import { AuditLogProvider } from "./store/AuditLogContext";
 import { AuthProvider } from "./store/AuthContext";

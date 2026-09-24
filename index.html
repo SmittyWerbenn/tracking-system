@@ -9,6 +9,22 @@
       content="PT Gangsar Mitra Suatama menyediakan layanan pengiriman barang antar kota dengan resi digital (AWB) dan tracking real-time, sehingga status dan lokasi pengiriman Anda selalu transparan."
     />
     <title>Sistem Tracking &amp; Resi Digital - Gmslogistics</title>
+    <script type="text/javascript">
+      // Unpacks the path that 404.html redirected here as a query string
+      // (see public/404.html), restoring the real URL before the app boots.
+      (function (l) {
+        if (l.search[1] === "/") {
+          var decoded = l.search
+            .slice(1)
+            .split("&")
+            .map(function (s) {
+              return s.replace(/~and~/g, "&");
+            })
+            .join("?");
+          window.history.replaceState(null, null, l.pathname.slice(0, -1) + decoded + l.hash);
+        }
+      })(window.location);
+    </script>
   </head>
   <body>
     <div id="root"></div>

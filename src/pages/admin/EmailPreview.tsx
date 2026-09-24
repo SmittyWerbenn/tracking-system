@@ -27,7 +27,7 @@ export default function EmailPreview() {
   const [pengirimError, setPengirimError] = useState<string | null>(null);
 
   function trackingUrlFor(current: NonNullable<typeof shipment>) {
-    return `${window.location.origin}${window.location.pathname}#/tracking/${current.awb}`;
+    return `${window.location.origin}/tracking/${current.awb}`;
   }
 
   async function handleSend(current: NonNullable<typeof shipment>) {

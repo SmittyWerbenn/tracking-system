@@ -65,7 +65,7 @@ export default function ShipmentDetail() {
     );
   }
 
-  const trackingUrl = `${window.location.origin}${window.location.pathname}#/tracking/${shipment.awb}`;
+  const trackingUrl = `${window.location.origin}/tracking/${shipment.awb}`;
 
   function printResi() {
     // The browser's print/"Save as PDF" dialog suggests document.title as the

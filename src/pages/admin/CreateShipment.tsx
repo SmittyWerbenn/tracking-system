@@ -185,7 +185,7 @@ export default function CreateShipment() {
     }
   }
 
-  const trackingUrl = created ? `${window.location.origin}${window.location.pathname}#/tracking/${created.awb}` : "";
+  const trackingUrl = created ? `${window.location.origin}/tracking/${created.awb}` : "";
 
   const truckOptions = trucksWithDriver
     .filter((t) => t.status !== "Inactive")

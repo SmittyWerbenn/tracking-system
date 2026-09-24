@@ -92,7 +92,7 @@ export default function App() {
           <Route path="/admin/kota" element={<RequireAuth><LocationList /></RequireAuth>} />
           <Route path="/admin/notifikasi" element={<RequireAuth><NotificationCenter /></RequireAuth>} />
           <Route path="/admin/feedback" element={<RequireAuth><FeedbackAdmin /></RequireAuth>} />
-          <Route path="/admin/audit-log" element={<RequireAuth><AuditLogPage /></RequireAuth>} />
+          <Route path="/admin/audit-log" element={<RequireAdmin><AuditLogPage /></RequireAdmin>} />
           <Route path="/admin/users" element={<RequireSuperadmin><UserManagement /></RequireSuperadmin>} />
           <Route path="/admin/pengaturan/tracking" element={<RequireAdmin><SettingsPage /></RequireAdmin>} />
           <Route path="/admin/pengaturan/akun" element={<RequireAuth><AccountSettings /></RequireAuth>} />

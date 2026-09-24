@@ -60,7 +60,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
     title: "Sistem",
     items: [
       { to: "/admin/users", label: "Manajemen User", icon: Users, end: true, roles: ["Superadmin"] },
-      { to: "/admin/audit-log", label: "Audit Log", icon: History, end: true },
+      { to: "/admin/audit-log", label: "Audit Log", icon: History, end: true, roles: ["Superadmin", "Admin"] },
       {
         to: "/admin/pengaturan/tracking",
         label: "Pengaturan",

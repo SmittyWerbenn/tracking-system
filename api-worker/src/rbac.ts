@@ -60,7 +60,6 @@ const ROLE_PERMISSIONS: Record<Role, Set<Permission>> = {
     "locations.view",
     "feedback.view",
     "notifications.view",
-    "audit.view",
     "files.upload",
   ]),
   Viewer: new Set([
@@ -69,7 +68,6 @@ const ROLE_PERMISSIONS: Record<Role, Set<Permission>> = {
     "locations.view",
     "feedback.view",
     "notifications.view",
-    "audit.view",
     "settings.view",
   ]),
 };

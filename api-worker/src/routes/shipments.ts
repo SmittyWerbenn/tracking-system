@@ -11,7 +11,7 @@ import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, t
 
 const LAYANAN = ["Darat", "Express", "Kargo", "Regular", "Charter"] as const;
 
-const POD_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+const POD_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 function shipmentSummary(row: Record<string, unknown>) {
   return {
@@ -345,7 +345,7 @@ export function registerShipmentRoutes(router: Router) {
 
     const deliveredAtMs = new Date(pod.delivered_at).getTime();
     if (Date.now() - deliveredAtMs > POD_EDIT_WINDOW_MS) {
-      throw Errors.unprocessable("Batas waktu 1x24 jam untuk mengganti foto POD sudah lewat.");
+      throw Errors.unprocessable("Batas waktu 30 hari untuk mengganti foto POD sudah lewat.");
     }
 
     const body = await parseJsonBody(ctx.request);

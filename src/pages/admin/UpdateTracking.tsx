@@ -118,14 +118,14 @@ export default function UpdateTracking() {
 
   const allowedOptions = getAllowedNextEvents(shipment.status);
   const locked = shipment.status === "Selesai / Terkirim";
-  const POD_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+  const POD_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   const deliveredEvent = [...shipment.timeline].reverse().find((e) => e.type === "Selesai / Terkirim");
   const deliveredAtMs = deliveredEvent?.inputAt ? new Date(deliveredEvent.inputAt).getTime() : null;
   const podEditDeadlineMs = deliveredAtMs !== null ? deliveredAtMs + POD_EDIT_WINDOW_MS : null;
   const nowMs = new Date().getTime();
   const canEditPodPhoto = Boolean(shipment.pod && podEditDeadlineMs !== null && nowMs < podEditDeadlineMs);
-  const podEditHoursLeft =
-    podEditDeadlineMs !== null ? Math.max(0, Math.ceil((podEditDeadlineMs - nowMs) / (60 * 60 * 1000))) : 0;
+  const podEditDaysLeft =
+    podEditDeadlineMs !== null ? Math.max(0, Math.ceil((podEditDeadlineMs - nowMs) / (24 * 60 * 60 * 1000))) : 0;
   const deliveredAtLabel = deliveredEvent ? formatTanggalJam(deliveredEvent.tanggal, deliveredEvent.jam) : null;
 
   function handlePodPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -444,18 +444,18 @@ export default function UpdateTracking() {
               </p>
               {canEditPodPhoto ? (
                 <p className="mb-4 text-xs text-slate-500">
-                  Bisa diganti dalam 1x24 jam sejak pengiriman selesai
+                  Bisa diganti dalam 30 hari sejak pengiriman selesai
                   {deliveredAtLabel && (
                     <>
                       {" "}
                       (<span className="font-medium text-slate-700">{deliveredAtLabel}</span>)
                     </>
                   )}
-                  . Sisa waktu: <span className="font-medium text-slate-700">{podEditHoursLeft} jam</span>.
+                  . Sisa waktu: <span className="font-medium text-slate-700">{podEditDaysLeft} hari</span>.
                 </p>
               ) : (
                 <p className="mb-4 text-xs text-slate-500">
-                  Batas waktu 1x24 jam untuk mengganti foto sudah lewat
+                  Batas waktu 30 hari untuk mengganti foto sudah lewat
                   {deliveredAtLabel && (
                     <>
                       {" "}

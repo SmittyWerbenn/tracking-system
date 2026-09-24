@@ -81,4 +81,23 @@ export function registerLocationRoutes(router: Router) {
 
     return ok({ updated: true });
   });
+
+  router.delete("/api/locations/:id", async (ctx: Ctx, params) => {
+    const actor = requirePermission(ctx, "locations.manage");
+    const existing = await ctx.env.DB.prepare(`SELECT id, nama_kota FROM locations WHERE id = ?`)
+      .bind(params.id)
+      .first<{ id: string; nama_kota: string }>();
+    if (!existing) throw Errors.notFound("Lokasi tidak ditemukan.");
+
+    await ctx.env.DB.prepare(`DELETE FROM locations WHERE id = ?`).bind(params.id).run();
+
+    await writeAuditLog(ctx.env, actor, {
+      action: "DELETE_LOCATION",
+      actionLabel: "DELETE LOCATION",
+      module: "Master Kota",
+      description: `Titik lokasi "${existing.nama_kota}" (${params.id}) dihapus.`,
+    });
+
+    return ok({ deleted: true });
+  });
 }

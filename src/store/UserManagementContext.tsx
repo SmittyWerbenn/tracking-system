@@ -13,6 +13,35 @@ interface UserRow {
   last_login_at: string | null;
 }
 
+interface DriverRow {
+  id: string;
+  nama: string;
+  telepon: string;
+  user_id: string | null;
+  linked_user_nama: string | null;
+  nomor_unit: string | null;
+}
+
+export interface DriverOption {
+  id: string;
+  nama: string;
+  telepon: string;
+  linkedUserId: string | null;
+  linkedUserNama: string | null;
+  nomorUnit: string | null;
+}
+
+function toDriverOption(row: DriverRow): DriverOption {
+  return {
+    id: row.id,
+    nama: row.nama,
+    telepon: row.telepon,
+    linkedUserId: row.user_id,
+    linkedUserNama: row.linked_user_nama,
+    nomorUnit: row.nomor_unit,
+  };
+}
+
 function toAppUser(row: UserRow): AppUser {
   return {
     id: row.id,
@@ -36,10 +65,16 @@ export interface UserFormData {
   /** Set only when creating a user, or when explicitly resetting one's
    * password - omit on a plain profile edit to leave it unchanged. */
   password?: string;
+  /** Links this account to a drivers-table record (id from `drivers`,
+   * see DriverOption) so the driver portal knows which shipments belong
+   * to it. Only meaningful when role is "Driver". Pass null to unlink,
+   * omit to leave the current link untouched on an edit. */
+  driverId?: string | null;
 }
 
 interface UserManagementContextValue {
   users: AppUser[];
+  drivers: DriverOption[];
   isLoading: boolean;
   refresh: () => Promise<void>;
   createUser: (data: UserFormData) => Promise<void>;
@@ -52,16 +87,22 @@ const UserManagementContext = createContext<UserManagementContextValue | null>(n
 export function UserManagementProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, profile } = useAuth();
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [drivers, setDrivers] = useState<DriverOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   async function refresh() {
     if (profile?.role !== "Superadmin") return;
     setIsLoading(true);
     try {
-      const res = await api.get<{ items: UserRow[] }>("/api/users?limit=100");
-      setUsers(res.items.map(toAppUser));
+      const [usersRes, driversRes] = await Promise.all([
+        api.get<{ items: UserRow[] }>("/api/users?limit=100"),
+        api.get<{ items: DriverRow[] }>("/api/drivers"),
+      ]);
+      setUsers(usersRes.items.map(toAppUser));
+      setDrivers(driversRes.items.map(toDriverOption));
     } catch {
       setUsers([]);
+      setDrivers([]);
     } finally {
       setIsLoading(false);
     }
@@ -80,7 +121,14 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
       const uploaded = await uploadFile(data.fotoDataUrl, "user_avatar", tempId);
       fotoFileId = uploaded.id;
     }
-    await api.post("/api/users", { nama: data.nama, email: data.email, role: data.role, password: data.password, fotoFileId });
+    await api.post("/api/users", {
+      nama: data.nama,
+      email: data.email,
+      role: data.role,
+      password: data.password,
+      fotoFileId,
+      ...(data.driverId ? { driverId: data.driverId } : {}),
+    });
     await refresh();
   }
 
@@ -96,6 +144,7 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
       role: data.role,
       password: data.password || undefined,
       fotoFileId,
+      ...(data.driverId !== undefined ? { driverId: data.driverId } : {}),
     });
     await refresh();
   }
@@ -106,7 +155,9 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <UserManagementContext.Provider value={{ users, isLoading, refresh, createUser, updateUser, setUserActive }}>
+    <UserManagementContext.Provider
+      value={{ users, drivers, isLoading, refresh, createUser, updateUser, setUserActive }}
+    >
       {children}
     </UserManagementContext.Provider>
   );

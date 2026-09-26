@@ -11,7 +11,14 @@ import { useFileUrl } from "../../utils/useFileUrl";
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
 
-const emptyForm: UserFormData = { nama: "", email: "", role: "Admin", fotoDataUrl: undefined, password: "" };
+const emptyForm: UserFormData = {
+  nama: "",
+  email: "",
+  role: "Admin",
+  fotoDataUrl: undefined,
+  password: "",
+  driverId: null,
+};
 
 function UserRowAvatar({ fileId, nama }: { fileId?: string; nama: string }) {
   const url = useFileUrl(fileId);
@@ -44,26 +51,42 @@ function formatLastLogin(iso?: string): string {
 }
 
 export default function UserManagement() {
-  const { users, createUser, updateUser, setUserActive } = useUserManagement();
+  const { users, drivers, createUser, updateUser, setUserActive } = useUserManagement();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<UserFormData>(emptyForm);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   function openAdd() {
     setEditingId(null);
     setForm(emptyForm);
     setPhotoError(null);
+    setSubmitError(null);
     setModalOpen(true);
   }
 
   function openEdit(u: AppUser) {
     setEditingId(u.id);
-    setForm({ nama: u.nama, email: u.email, role: u.role, fotoDataUrl: undefined, password: "" });
+    const linkedDriver = drivers.find((d) => d.linkedUserId === u.id);
+    setForm({
+      nama: u.nama,
+      email: u.email,
+      role: u.role,
+      fotoDataUrl: undefined,
+      password: "",
+      driverId: linkedDriver?.id ?? null,
+    });
     setPhotoError(null);
+    setSubmitError(null);
     setModalOpen(true);
   }
+
+  // Drivers selectable for this account: not yet linked to anyone, or
+  // already linked to the account being edited (so its current pick stays
+  // in the list instead of disappearing).
+  const selectableDrivers = drivers.filter((d) => !d.linkedUserId || d.linkedUserId === editingId);
 
   function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -81,19 +104,25 @@ export default function UserManagement() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    setSubmitError(null);
     const data: UserFormData = {
       nama: form.nama,
       email: form.email,
       role: form.role,
       fotoDataUrl: form.fotoDataUrl,
+      driverId: form.role === "Driver" ? form.driverId ?? null : null,
       ...(form.password ? { password: form.password } : {}),
     };
-    if (editingId) {
-      await updateUser(editingId, data);
-    } else {
-      await createUser(data);
+    try {
+      if (editingId) {
+        await updateUser(editingId, data);
+      } else {
+        await createUser(data);
+      }
+      setModalOpen(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Gagal menyimpan user.");
     }
-    setModalOpen(false);
   }
 
   return (
@@ -280,7 +309,37 @@ export default function UserManagement() {
                   </select>
                   <span className="mt-1.5 block text-[11px] text-slate-400">{ROLE_DESCRIPTION[form.role]}</span>
                 </label>
+
+                {form.role === "Driver" && (
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                      Data Driver (Truck &amp; Nomor HP)
+                    </span>
+                    <select
+                      className={inputClass}
+                      value={form.driverId ?? ""}
+                      onChange={(e) => setForm({ ...form, driverId: e.target.value || null })}
+                    >
+                      <option value="">- Belum ditautkan -</option>
+                      {selectableDrivers.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.nama} - {d.telepon}
+                          {d.nomorUnit ? ` (${d.nomorUnit})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="mt-1.5 block text-[11px] text-slate-400">
+                      Menautkan akun ini ke data driver di Master Armada, supaya pengiriman yang
+                      ditugaskan ke truck-nya muncul di dashboard Portal Driver. Kalau belum
+                      ditautkan, dashboard driver akan kosong.
+                    </span>
+                  </label>
+                )}
               </div>
+
+              {submitError && (
+                <p className="mt-4 text-sm font-medium text-red-600">{submitError}</p>
+              )}
 
               <div className="mt-6 flex justify-end gap-2.5">
                 <button

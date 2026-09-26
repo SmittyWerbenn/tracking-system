@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft, CheckCircle2, ImagePlus, KeyRound, Save, UserCog } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Camera, CheckCircle2, KeyRound, Save, Upload, UserCog } from "lucide-react";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -127,16 +127,16 @@ export default function AccountSettings() {
             <div className="flex-1">
               <p className="text-sm font-medium text-slate-800">{profile.nama}</p>
               <p className="text-xs text-slate-400">Role: {profile.role}</p>
-              <label className="mt-1.5 inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-blue-700 hover:text-blue-900">
-                <ImagePlus size={13} /> Ganti Foto
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="user"
-                  className="hidden"
-                  onChange={handlePhotoChange}
-                />
-              </label>
+              <div className="mt-1.5 flex items-center gap-3">
+                <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-blue-700 hover:text-blue-900">
+                  <Camera size={13} /> Kamera
+                  <input type="file" accept="image/*" capture="user" className="hidden" onChange={handlePhotoChange} />
+                </label>
+                <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-blue-700 hover:text-blue-900">
+                  <Upload size={13} /> File
+                  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                </label>
+              </div>
             </div>
           </div>
           {photoError && <p className="mb-4 text-xs font-medium text-red-600">{photoError}</p>}

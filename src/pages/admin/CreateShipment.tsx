@@ -2,7 +2,6 @@ import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
-  ImagePlus,
   Loader2,
   Mail,
   MapPin,
@@ -16,6 +15,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { BulkShipmentImport } from "../../components/BulkShipmentImport";
+import { PhotoPickerBox } from "../../components/PhotoPickerBox";
 import { QRCode } from "../../components/QRCode";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { useFleet } from "../../store/FleetContext";
@@ -409,17 +409,7 @@ export default function CreateShipment() {
           </Field>
           <Field label="Foto Barang" full>
             <div className="flex items-center gap-3">
-              <label className="flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
-                <ImagePlus size={20} />
-                <span className="text-[10px] font-medium">Unggah Foto</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={handlePhotoChange}
-                />
-              </label>
+              <PhotoPickerBox onChange={handlePhotoChange} />
               {form.fotoBarang && (
                 <div className="relative h-24 w-24 overflow-hidden rounded-lg border border-slate-200">
                   <img src={form.fotoBarang} alt="Preview barang" className="h-full w-full object-cover" />
@@ -441,17 +431,7 @@ export default function CreateShipment() {
           </Field>
           <Field label="Foto Surat Jalan" full>
             <div className="flex items-center gap-3">
-              <label className="flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
-                <ImagePlus size={20} />
-                <span className="text-[10px] font-medium">Unggah Foto</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={handleFotoSuratJalanChange}
-                />
-              </label>
+              <PhotoPickerBox onChange={handleFotoSuratJalanChange} />
               {form.fotoSuratJalan && (
                 <div className="relative h-24 w-24 overflow-hidden rounded-lg border border-slate-200">
                   <img src={form.fotoSuratJalan} alt="Preview surat jalan" className="h-full w-full object-cover" />

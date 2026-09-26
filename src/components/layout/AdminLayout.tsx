@@ -89,19 +89,19 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-slate-50 print:bg-white">
       {/* Top bar */}
       <header className="no-print sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <button
-            className="rounded-md p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
+            className="shrink-0 rounded-md p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
             onClick={() => setMobileOpen((v) => !v)}
             aria-label="Buka menu"
           >
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <div className="flex items-center gap-2.5">
+          <div className="flex min-w-0 items-center gap-2.5">
             <img src={logoIcon} alt="GMS Logistics" className="h-9 w-9 shrink-0 object-contain" />
-            <div className="leading-tight">
-              <p className="text-sm font-semibold text-slate-900">Gangsar Mitra Suatama</p>
-              <p className="text-xs text-slate-500">Sistem Tracking &amp; Resi Digital</p>
+            <div className="min-w-0 leading-tight">
+              <p className="truncate text-sm font-semibold text-slate-900">Gangsar Mitra Suatama</p>
+              <p className="hidden truncate text-xs text-slate-500 sm:block">Sistem Tracking &amp; Resi Digital</p>
             </div>
           </div>
         </div>

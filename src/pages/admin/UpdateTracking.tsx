@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { PhotoPickerBox } from "../../components/PhotoPickerBox";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -517,21 +518,7 @@ export default function UpdateTracking() {
                         Belum ada foto
                       </div>
                     )}
-                    {canEditPodPhoto && (
-                      <label className="flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
-                        <ImagePlus size={18} />
-                        <span className="text-[10px] font-medium">
-                          {shipment.pod.fotoBarang ? "Ganti Foto" : "Tambah Foto"}
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          className="hidden"
-                          onChange={handlePodPhotoChange("barang")}
-                        />
-                      </label>
-                    )}
+                    {canEditPodPhoto && <PhotoPickerBox onChange={handlePodPhotoChange("barang")} />}
                   </div>
                   {podBarangError && <p className="mt-3 text-xs font-medium text-red-600">{podBarangError}</p>}
                   {podBarangSaved && (
@@ -557,21 +544,7 @@ export default function UpdateTracking() {
                         Belum ada foto
                       </div>
                     )}
-                    {canEditPodPhoto && (
-                      <label className="flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
-                        <ImagePlus size={18} />
-                        <span className="text-[10px] font-medium">
-                          {shipment.pod.fotoSuratJalan ? "Ganti Foto" : "Tambah Foto"}
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          className="hidden"
-                          onChange={handlePodPhotoChange("suratJalan")}
-                        />
-                      </label>
-                    )}
+                    {canEditPodPhoto && <PhotoPickerBox onChange={handlePodPhotoChange("suratJalan")} />}
                   </div>
                   {podSuratJalanError && <p className="mt-3 text-xs font-medium text-red-600">{podSuratJalanError}</p>}
                   {podSuratJalanSaved && (
@@ -710,17 +683,7 @@ export default function UpdateTracking() {
                       </button>
                     </div>
                   ) : (
-                    <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
-                      <ImagePlus size={18} />
-                      <span className="text-[10px] font-medium">Unggah</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        className="hidden"
-                        onChange={handleFotoBarangDiterimaChange}
-                      />
-                    </label>
+                    <PhotoPickerBox onChange={handleFotoBarangDiterimaChange} />
                   )}
                 </label>
 
@@ -741,17 +704,7 @@ export default function UpdateTracking() {
                       </button>
                     </div>
                   ) : (
-                    <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
-                      <ImagePlus size={18} />
-                      <span className="text-[10px] font-medium">Unggah</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        className="hidden"
-                        onChange={handleFotoSuratJalanChange}
-                      />
-                    </label>
+                    <PhotoPickerBox onChange={handleFotoSuratJalanChange} />
                   )}
                 </label>
                 {photoError && <p className="text-xs font-medium text-red-600 sm:col-span-2">{photoError}</p>}
@@ -760,18 +713,7 @@ export default function UpdateTracking() {
               <label className="block sm:col-span-2">
                 <span className="mb-1.5 block text-xs font-medium text-slate-600">Foto</span>
                 <div className="flex flex-wrap items-center gap-3">
-                  <label className="flex h-20 w-20 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
-                    <ImagePlus size={18} />
-                    <span className="text-[10px] font-medium">Unggah</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      multiple
-                      className="hidden"
-                      onChange={handlePhotoChange}
-                    />
-                  </label>
+                  <PhotoPickerBox onChange={handlePhotoChange} size="sm" multiple />
                   {foto.map((src, i) => (
                     <div key={i} className="relative h-20 w-20 overflow-hidden rounded-lg border border-slate-200">
                       <img src={src} alt={`Foto ${i + 1}`} className="h-full w-full object-cover" />

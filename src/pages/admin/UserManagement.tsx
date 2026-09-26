@@ -1,4 +1,4 @@
-import { ImagePlus, Pencil, Plus, Power, Shield, X } from "lucide-react";
+import { Camera, Pencil, Plus, Power, Shield, Upload, X } from "lucide-react";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useUserManagement, type UserFormData } from "../../store/UserManagementContext";
@@ -206,16 +206,22 @@ export default function UserManagement() {
                         initials(form.nama || "?")
                       )}
                     </div>
-                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 hover:border-blue-400 hover:text-blue-700">
-                      <ImagePlus size={14} /> Unggah Foto
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="user"
-                        className="hidden"
-                        onChange={handlePhotoChange}
-                      />
-                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 hover:border-blue-400 hover:text-blue-700">
+                        <Camera size={14} /> Kamera
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="user"
+                          className="hidden"
+                          onChange={handlePhotoChange}
+                        />
+                      </label>
+                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 hover:border-blue-400 hover:text-blue-700">
+                        <Upload size={14} /> File
+                        <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                      </label>
+                    </div>
                   </div>
                   {photoError && <p className="mt-1.5 text-xs font-medium text-red-600">{photoError}</p>}
                 </label>

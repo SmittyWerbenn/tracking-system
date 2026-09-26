@@ -20,7 +20,7 @@ import { useLocations } from "../../store/LocationContext";
 import { useFleet } from "../../store/FleetContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment, TimelineEventType, TrackingUpdateFormData, UpdateShipmentInfoData } from "../../types";
-import { compressImage } from "../../utils/compressImage";
+import { checkPhotoSize, compressImage } from "../../utils/compressImage";
 import { formatTanggalJam, formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
 import { getAllowedNextEvents } from "../../utils/status";
 
@@ -139,6 +139,11 @@ export default function UpdateTracking() {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      const sizeError = checkPhotoSize(file);
+      if (sizeError) {
+        setError(sizeError);
+        return;
+      }
       setError(null);
       setSaved(false);
       compressImage(file)
@@ -202,6 +207,11 @@ export default function UpdateTracking() {
     const files = Array.from(e.target.files ?? []);
     setPhotoError(null);
     files.forEach((file) => {
+      const sizeError = checkPhotoSize(file);
+      if (sizeError) {
+        setPhotoError(sizeError);
+        return;
+      }
       compressImage(file)
         .then((dataUrl) => setFoto((prev) => [...prev, dataUrl]))
         .catch(() => setPhotoError("Gagal memproses salah satu foto. Coba lagi."));
@@ -211,6 +221,11 @@ export default function UpdateTracking() {
   function handleFotoBarangDiterimaChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const sizeError = checkPhotoSize(file);
+    if (sizeError) {
+      setPhotoError(sizeError);
+      return;
+    }
     setPhotoError(null);
     compressImage(file)
       .then(setFotoBarangDiterima)
@@ -220,6 +235,11 @@ export default function UpdateTracking() {
   function handleFotoSuratJalanChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const sizeError = checkPhotoSize(file);
+    if (sizeError) {
+      setPhotoError(sizeError);
+      return;
+    }
     setPhotoError(null);
     compressImage(file)
       .then(setFotoSuratJalan)

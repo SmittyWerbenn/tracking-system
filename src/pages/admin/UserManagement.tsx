@@ -3,7 +3,7 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useUserManagement, type UserFormData } from "../../store/UserManagementContext";
 import { ASSIGNABLE_USER_ROLES, type AppUser, type UserRole } from "../../types";
-import { compressImage } from "../../utils/compressImage";
+import { checkPhotoSize, compressImage, MAX_PHOTO_SIZE_MB } from "../../utils/compressImage";
 import { formatTanggalPanjang } from "../../utils/format";
 import { initials } from "../../utils/initials";
 import { useFileUrl } from "../../utils/useFileUrl";
@@ -68,6 +68,11 @@ export default function UserManagement() {
   function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const sizeError = checkPhotoSize(file);
+    if (sizeError) {
+      setPhotoError(sizeError);
+      return;
+    }
     setPhotoError(null);
     compressImage(file, 320, 0.8)
       .then((dataUrl) => setForm((f) => ({ ...f, fotoDataUrl: dataUrl })))
@@ -218,11 +223,12 @@ export default function UserManagement() {
                         />
                       </label>
                       <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 hover:border-blue-400 hover:text-blue-700">
-                        <Upload size={14} /> File
+                        <Upload size={14} /> Upload Foto
                         <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
                       </label>
                     </div>
                   </div>
+                  <p className="mt-1.5 text-[11px] text-slate-400">Maks {MAX_PHOTO_SIZE_MB}MB</p>
                   {photoError && <p className="mt-1.5 text-xs font-medium text-red-600">{photoError}</p>}
                 </label>
                 <label className="block">

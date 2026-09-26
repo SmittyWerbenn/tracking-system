@@ -23,7 +23,7 @@ import { useLocations } from "../../store/LocationContext";
 import { useSettings } from "../../store/SettingsContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { LayananPengiriman, ShipmentFormData } from "../../types";
-import { compressImage } from "../../utils/compressImage";
+import { checkPhotoSize, compressImage } from "../../utils/compressImage";
 import { todayISO } from "../../utils/format";
 import { sendTrackingEmail, type EmailableShipment } from "../../utils/sendEmail";
 
@@ -110,6 +110,11 @@ export default function CreateShipment() {
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const sizeError = checkPhotoSize(file);
+    if (sizeError) {
+      setPhotoError(sizeError);
+      return;
+    }
     setPhotoError(null);
     compressImage(file)
       .then((dataUrl) => update("fotoBarang", dataUrl))
@@ -119,6 +124,11 @@ export default function CreateShipment() {
   function handleFotoSuratJalanChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const sizeError = checkPhotoSize(file);
+    if (sizeError) {
+      setPhotoSuratJalanError(sizeError);
+      return;
+    }
     setPhotoSuratJalanError(null);
     compressImage(file)
       .then((dataUrl) => update("fotoSuratJalan", dataUrl))

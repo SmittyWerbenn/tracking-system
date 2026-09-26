@@ -1,3 +1,20 @@
+/** Max raw file size accepted before client-side compression runs. Generous
+ * enough for a full-resolution phone camera photo (typically 3-8MB), while
+ * still rejecting pathological cases (wrong file picked, RAW/video export)
+ * before they hang the compression step on slower devices. */
+export const MAX_PHOTO_SIZE_MB = 10;
+const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_MB * 1024 * 1024;
+
+/** Returns an error message if `file` exceeds the upload size limit, or null
+ * if it's fine. Call this before compressImage so oversized files get a
+ * clear, specific message instead of failing partway through compression. */
+export function checkPhotoSize(file: File): string | null {
+  if (file.size > MAX_PHOTO_SIZE_BYTES) {
+    return `Ukuran foto maksimal ${MAX_PHOTO_SIZE_MB}MB (file ini ${(file.size / 1024 / 1024).toFixed(1)}MB).`;
+  }
+  return null;
+}
+
 /**
  * Reads an image file and returns a compressed JPEG data URL, downscaled so
  * its longest side is at most `maxDimension`. Uploaded photos (e.g. straight

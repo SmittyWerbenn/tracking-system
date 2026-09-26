@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useAuth } from "../../store/AuthContext";
 import { uploadFile } from "../../utils/apiClient";
-import { compressImage } from "../../utils/compressImage";
+import { checkPhotoSize, compressImage, MAX_PHOTO_SIZE_MB } from "../../utils/compressImage";
 import { initials } from "../../utils/initials";
 import { useFileUrl } from "../../utils/useFileUrl";
 
@@ -27,6 +27,11 @@ export default function AccountSettings() {
   function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const sizeError = checkPhotoSize(file);
+    if (sizeError) {
+      setPhotoError(sizeError);
+      return;
+    }
     setPhotoError(null);
     compressImage(file, 320, 0.8)
       .then((dataUrl) => setNewFotoDataUrl(dataUrl))
@@ -133,10 +138,11 @@ export default function AccountSettings() {
                   <input type="file" accept="image/*" capture="user" className="hidden" onChange={handlePhotoChange} />
                 </label>
                 <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-blue-700 hover:text-blue-900">
-                  <Upload size={13} /> File
+                  <Upload size={13} /> Upload Foto
                   <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
                 </label>
               </div>
+              <p className="mt-1 text-[11px] text-slate-400">Maks {MAX_PHOTO_SIZE_MB}MB</p>
             </div>
           </div>
           {photoError && <p className="mb-4 text-xs font-medium text-red-600">{photoError}</p>}

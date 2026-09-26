@@ -266,12 +266,6 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
                 </NavLink>{" "}
                 {t.footer.contactTextAfter}
               </p>
-              <NavLink
-                to="/admin"
-                className="mt-4 inline-block text-[11px] text-slate-300 hover:text-slate-500"
-              >
-                {t.footer.adminPortal}
-              </NavLink>
             </div>
           </div>
 

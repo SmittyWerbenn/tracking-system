@@ -40,9 +40,15 @@ export async function deleteObject(env: Env, objectKey: string): Promise<void> {
   await client(env).fetch(url, { method: "DELETE" });
 }
 
-/** Short-lived presigned GET so private objects can be shown in <img> tags
- * without making the bucket public. */
-export async function presignGet(env: Env, objectKey: string, expiresSeconds = 900): Promise<string> {
+/** Presigned GET so private objects can be shown in <img> tags without
+ * making the bucket public. 24h expiry - a 15min default caused a real bug:
+ * anyone leaving a tracking/admin page open past that window (or a mobile
+ * browser evicting and re-fetching an image from memory) got a 403 from
+ * MinIO ("Request has expired"), which renders as a broken-image icon with
+ * no visible error. Every URL is signed fresh per page load anyway, so this
+ * only widens the window during a single viewing session - it doesn't make
+ * links long-lived or shareable beyond that. */
+export async function presignGet(env: Env, objectKey: string, expiresSeconds = 60 * 60 * 24): Promise<string> {
   const u = new URL(`${env.MINIO_ENDPOINT}/${env.MINIO_BUCKET}/${objectKey}`);
   u.searchParams.set("X-Amz-Expires", String(expiresSeconds));
   const signed = await client(env).sign(u.toString(), { method: "GET", aws: { signQuery: true } });

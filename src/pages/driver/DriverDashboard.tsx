@@ -12,6 +12,7 @@ export default function DriverDashboard() {
   const { profile } = useAuth();
   const [shipments, setShipments] = useState<DriverShipmentSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showSelesai, setShowSelesai] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,10 +47,16 @@ export default function DriverDashboard() {
           <p className="text-xl font-bold text-blue-900 sm:text-2xl">{active.length}</p>
           <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">Aktif</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-3 text-center sm:p-4">
+        <button
+          type="button"
+          onClick={() => setShowSelesai((v) => !v)}
+          className={`rounded-xl border p-3 text-center transition-colors sm:p-4 ${
+            showSelesai ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white"
+          }`}
+        >
           <p className="text-xl font-bold text-emerald-600 sm:text-2xl">{selesai.length}</p>
           <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">Selesai</p>
-        </div>
+        </button>
         <div className="rounded-xl border border-slate-200 bg-white p-3 text-center sm:p-4">
           <p className="text-xl font-bold text-red-600 sm:text-2xl">{kendala.length}</p>
           <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">Kendala</p>
@@ -76,43 +83,70 @@ export default function DriverDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-        {shipments?.map((s) => (
-          <Link
-            key={s.awb}
-            to={`/driver/shipments/${s.awb}`}
-            className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md active:bg-slate-50"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-mono text-sm font-bold text-slate-900">{s.awb}</span>
-              <span
-                className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                  s.status === KENDALA_STATUS
-                    ? "bg-red-50 text-red-700"
-                    : s.status === SELESAI_STATUS
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-blue-50 text-blue-700"
-                }`}
-              >
-                {s.status}
-              </span>
+      {shipments !== null && shipments.length > 0 && active.length === 0 && kendala.length === 0 && !showSelesai && (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-400">
+          Semua pengiriman sudah selesai. Klik kartu "Selesai" di atas untuk melihat riwayat.
+        </div>
+      )}
+
+      <ShipmentGrid shipments={[...active, ...kendala]} />
+
+      {showSelesai && (
+        <div className="mt-6">
+          <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Riwayat Selesai
+          </h2>
+          {selesai.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-400">
+              Belum ada pengiriman yang selesai.
             </div>
-            <p className="mt-1.5 flex items-center gap-1.5 text-sm text-slate-600">
-              {s.kotaAsal} <ArrowRight size={13} className="text-slate-300" /> {s.kotaTujuan}
-            </p>
-            <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
-              <span className="flex items-center gap-1">
-                <Package size={12} /> {s.jumlahKoli} Koli
-              </span>
-              {s.truckNomorUnit && (
-                <span className="flex items-center gap-1">
-                  <Truck size={12} /> {s.truckNomorUnit}
-                </span>
-              )}
-            </div>
-          </Link>
-        ))}
-      </div>
+          ) : (
+            <ShipmentGrid shipments={selesai} />
+          )}
+        </div>
+      )}
     </DriverLayout>
+  );
+}
+
+function ShipmentGrid({ shipments }: { shipments: DriverShipmentSummary[] }) {
+  return (
+    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+      {shipments.map((s) => (
+        <Link
+          key={s.awb}
+          to={`/driver/shipments/${s.awb}`}
+          className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md active:bg-slate-50"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-mono text-sm font-bold text-slate-900">{s.awb}</span>
+            <span
+              className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                s.status === KENDALA_STATUS
+                  ? "bg-red-50 text-red-700"
+                  : s.status === SELESAI_STATUS
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-blue-50 text-blue-700"
+              }`}
+            >
+              {s.status}
+            </span>
+          </div>
+          <p className="mt-1.5 flex items-center gap-1.5 text-sm text-slate-600">
+            {s.kotaAsal} <ArrowRight size={13} className="text-slate-300" /> {s.kotaTujuan}
+          </p>
+          <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+            <span className="flex items-center gap-1">
+              <Package size={12} /> {s.jumlahKoli} Koli
+            </span>
+            {s.truckNomorUnit && (
+              <span className="flex items-center gap-1">
+                <Truck size={12} /> {s.truckNomorUnit}
+              </span>
+            )}
+          </div>
+        </Link>
+      ))}
+    </div>
   );
 }

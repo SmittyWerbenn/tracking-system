@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-dom";
-import { RequireAdmin, RequireAuth, RequireSuperadmin, RequireTrackingUpdater } from "./components/RequireAuth";
+import { RequireAdmin, RequireAuth, RequireDriver, RequireSuperadmin, RequireTrackingUpdater } from "./components/RequireAuth";
 import { AuditLogProvider } from "./store/AuditLogContext";
 import { AuthProvider } from "./store/AuthContext";
 import { FeedbackProvider } from "./store/FeedbackContext";
@@ -27,6 +27,9 @@ import ShipmentList from "./pages/admin/ShipmentList";
 import TruckHistory from "./pages/admin/TruckHistory";
 import UpdateTracking from "./pages/admin/UpdateTracking";
 import UserManagement from "./pages/admin/UserManagement";
+import DriverDashboard from "./pages/driver/DriverDashboard";
+import DriverLogin from "./pages/driver/DriverLogin";
+import DriverShipmentDetail from "./pages/driver/DriverShipmentDetail";
 import About from "./pages/public/About";
 import CekOngkir from "./pages/public/CekOngkir";
 import Contact from "./pages/public/Contact";
@@ -70,6 +73,18 @@ export default function App() {
           <Route path="/cek-ongkir" element={<CekOngkir />} />
           <Route path="/tracking" element={<TrackingSearch />} />
           <Route path="/tracking/:awb" element={<TrackingResult />} />
+
+          {/* Driver portal - fully separate from /admin, own login/layout */}
+          <Route path="/driver/login" element={<DriverLogin />} />
+          <Route path="/driver" element={<RequireDriver><DriverDashboard /></RequireDriver>} />
+          <Route
+            path="/driver/shipments/:awb"
+            element={
+              <RequireDriver>
+                <DriverShipmentDetail />
+              </RequireDriver>
+            }
+          />
 
           {/* Admin / internal */}
           <Route path="/admin/login" element={<Login />} />

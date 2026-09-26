@@ -58,6 +58,22 @@ export function RequireTrackingUpdater({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/** For the driver portal (/driver/*) - a fully separate app from /admin, so
+ * this redirects to /driver/login (never /admin/login), and only a Driver
+ * account may pass; any other role gets bounced back to /driver/login too,
+ * since there's no "driver home" for them to land on. */
+export function RequireDriver({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading, profile } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) return <LoadingScreen />;
+  if (!isAuthenticated || profile?.role !== "Driver") {
+    return <Navigate to="/driver/login" replace state={{ from: location }} />;
+  }
+
+  return <>{children}</>;
+}
+
 /** For routes only Superadmin may open (Manajemen User) - Admin and Viewer
  * are both bounced to the Dashboard. */
 export function RequireSuperadmin({ children }: { children: ReactNode }) {

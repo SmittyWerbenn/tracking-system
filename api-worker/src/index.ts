@@ -14,6 +14,7 @@ import { registerSettingsRoutes } from "./routes/settings";
 import { registerFileRoutes } from "./routes/files";
 import { registerPublicRoutes } from "./routes/public";
 import { registerDashboardRoutes } from "./routes/dashboard";
+import { registerDriverRoutes } from "./routes/driver";
 
 const router = new Router();
 registerAuthRoutes(router);
@@ -28,6 +29,7 @@ registerSettingsRoutes(router);
 registerFileRoutes(router);
 registerPublicRoutes(router);
 registerDashboardRoutes(router);
+registerDriverRoutes(router);
 
 router.get("/api/health", async () => ok({ status: "ok", time: new Date().toISOString() }));
 

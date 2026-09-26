@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  Loader2,
   MapPin,
   Navigation,
   Package,
@@ -9,9 +10,11 @@ import {
   Truck,
   User,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { DriverLayout } from "../../components/layout/DriverLayout";
+import { useShipments } from "../../store/ShipmentContext";
+import type { ShipmentStatus, TimelineEventType } from "../../types";
 import { ApiError } from "../../utils/apiClient";
 import {
   fetchDriverLastPosition,
@@ -20,14 +23,29 @@ import {
   type DriverLastPosition,
   type DriverShipmentDetail as DriverShipmentDetailData,
 } from "../../utils/driverApi";
-import { formatJam, formatTanggalPanjang } from "../../utils/format";
+import { formatJam, formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
+import { getAllowedNextEvents } from "../../utils/status";
 
 function formatCoord(n: number): string {
   return n.toFixed(5);
 }
 
+const KENDALA_REASONS = [
+  "Penerima Tidak Ada",
+  "Alamat Tidak Ditemukan",
+  "Nomor Penerima Tidak Aktif",
+  "Kendaraan Bermasalah",
+  "Kecelakaan / Keadaan Darurat",
+  "Jalan Tidak Dapat Dilalui",
+  "Penerima Menolak Barang",
+  "Barang Bermasalah",
+];
+
+const SELESAI_STATUS = "Selesai / Terkirim";
+
 export default function DriverShipmentDetail() {
   const { awb } = useParams<{ awb: string }>();
+  const { addTrackingUpdate } = useShipments();
   const [data, setData] = useState<DriverShipmentDetailData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -35,6 +53,14 @@ export default function DriverShipmentDetail() {
   const [reporting, setReporting] = useState(false);
   const [positionError, setPositionError] = useState<string | null>(null);
   const [positionSaved, setPositionSaved] = useState(false);
+
+  const [statusType, setStatusType] = useState<TimelineEventType | "">("");
+  const [statusLokasi, setStatusLokasi] = useState("");
+  const [statusKeterangan, setStatusKeterangan] = useState("");
+  const [statusNamaPenerima, setStatusNamaPenerima] = useState("");
+  const [statusSubmitting, setStatusSubmitting] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [statusSaved, setStatusSaved] = useState(false);
 
   useEffect(() => {
     if (!awb) return;
@@ -95,6 +121,52 @@ export default function DriverShipmentDetail() {
     );
   }
 
+  async function handleStatusSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!awb || !statusType) return;
+    const isSelesai = statusType === SELESAI_STATUS;
+    if (!isSelesai && !statusLokasi.trim()) {
+      setStatusError("Lokasi wajib diisi.");
+      return;
+    }
+    if (isSelesai && !statusNamaPenerima.trim()) {
+      setStatusError("Nama penerima wajib diisi.");
+      return;
+    }
+    if (!statusKeterangan.trim()) {
+      setStatusError("Catatan wajib diisi.");
+      return;
+    }
+
+    setStatusSubmitting(true);
+    setStatusError(null);
+    const result = await addTrackingUpdate({
+      awb,
+      type: statusType,
+      lokasi: statusLokasi.trim(),
+      tanggal: todayISO(),
+      jam: nowHHMM(),
+      keterangan: statusKeterangan.trim(),
+      namaPenerima: isSelesai ? statusNamaPenerima.trim() : undefined,
+    });
+    setStatusSubmitting(false);
+
+    if (!result.ok) {
+      setStatusError(result.error);
+      return;
+    }
+
+    setStatusType("");
+    setStatusLokasi("");
+    setStatusKeterangan("");
+    setStatusNamaPenerima("");
+    setStatusSaved(true);
+    setTimeout(() => setStatusSaved(false), 2500);
+    fetchDriverShipmentDetail(awb)
+      .then(setData)
+      .catch(() => {});
+  }
+
   if (loadError) {
     return (
       <DriverLayout>
@@ -121,6 +193,12 @@ export default function DriverShipmentDetail() {
   const { shipment, timeline } = data;
   const mapsQuery = encodeURIComponent(`${shipment.alamatTujuan}, ${shipment.kotaTujuan}`);
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+  const isLocked = shipment.status === SELESAI_STATUS;
+  const allowedNext = isLocked
+    ? []
+    : getAllowedNextEvents(shipment.status as ShipmentStatus).filter((t) => t !== "Transfer Unit");
+  const isSelesaiSelected = statusType === SELESAI_STATUS;
+  const isKendalaSelected = statusType === "Kendala";
 
   return (
     <DriverLayout>
@@ -168,6 +246,120 @@ export default function DriverShipmentDetail() {
           >
             <Phone size={16} /> Hubungi Penerima ({shipment.penerima.telepon})
           </a>
+        )}
+      </div>
+
+      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Perbarui Status</h2>
+
+        {isLocked ? (
+          <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-sm font-medium text-emerald-700">
+            <CheckCircle2 size={15} /> Pengiriman ini sudah Selesai/Terkirim.
+          </div>
+        ) : (
+          <form onSubmit={handleStatusSubmit} className="flex flex-col gap-3">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Status Baru</span>
+              <select
+                required
+                value={statusType}
+                onChange={(e) => {
+                  setStatusType(e.target.value as TimelineEventType);
+                  setStatusKeterangan("");
+                }}
+                className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              >
+                <option value="">Pilih status...</option>
+                {allowedNext.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {statusType && !isSelesaiSelected && (
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi</span>
+                <input
+                  required
+                  value={statusLokasi}
+                  onChange={(e) => setStatusLokasi(e.target.value)}
+                  placeholder="Contoh: Gudang Karawang"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                />
+              </label>
+            )}
+
+            {isSelesaiSelected && (
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Penerima</span>
+                <input
+                  required
+                  value={statusNamaPenerima}
+                  onChange={(e) => setStatusNamaPenerima(e.target.value)}
+                  placeholder="Nama yang menerima barang"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                />
+              </label>
+            )}
+
+            {isKendalaSelected && (
+              <div>
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">Jenis Kendala</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {KENDALA_REASONS.map((reason) => (
+                    <button
+                      key={reason}
+                      type="button"
+                      onClick={() => setStatusKeterangan(reason)}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+                        statusKeterangan === reason
+                          ? "border-red-500 bg-red-50 text-red-700"
+                          : "border-slate-300 text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {statusType && (
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">Catatan</span>
+                <textarea
+                  required
+                  rows={2}
+                  value={statusKeterangan}
+                  onChange={(e) => setStatusKeterangan(e.target.value)}
+                  placeholder="Keterangan singkat"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                />
+              </label>
+            )}
+
+            {statusError && (
+              <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-700">
+                <AlertTriangle size={14} /> {statusError}
+              </div>
+            )}
+            {statusSaved && (
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-xs font-medium text-emerald-700">
+                <CheckCircle2 size={14} /> Status berhasil diperbarui.
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={!statusType || statusSubmitting}
+              className="flex items-center justify-center gap-2 rounded-lg bg-blue-900 py-3 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60"
+            >
+              {statusSubmitting && <Loader2 size={15} className="animate-spin" />}
+              Simpan Status
+            </button>
+          </form>
         )}
       </div>
 

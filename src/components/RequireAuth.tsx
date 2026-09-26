@@ -10,14 +10,24 @@ function LoadingScreen() {
   );
 }
 
+/** Driver accounts don't use /admin at all anymore - they have their own
+ * portal at /driver. Every admin guard below checks this first and bounces
+ * a Driver there instead of rendering any admin page. */
+function driverRedirect(profile: { role: string } | null): ReactNode | null {
+  if (profile?.role === "Driver") return <Navigate to="/driver" replace />;
+  return null;
+}
+
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, profile } = useAuth();
   const location = useLocation();
 
   if (isLoading) return <LoadingScreen />;
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace state={{ from: location }} />;
   }
+  const redirect = driverRedirect(profile);
+  if (redirect) return redirect;
 
   return <>{children}</>;
 }
@@ -33,6 +43,8 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace state={{ from: location }} />;
   }
+  const redirect = driverRedirect(profile);
+  if (redirect) return redirect;
   if (profile?.role !== "Superadmin" && profile?.role !== "Admin") {
     return <Navigate to="/admin" replace />;
   }
@@ -40,9 +52,9 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-/** For Update Tracking specifically - Superadmin, Admin, and Driver all
- * qualify (a Driver's one job is logging status/delivery updates), only
- * Viewer is bounced to the Dashboard. */
+/** For Update Tracking specifically - Superadmin and Admin qualify. Driver
+ * now uses the driver portal's own status-update flow instead of this
+ * shared admin page, and Viewer is bounced to the Dashboard. */
 export function RequireTrackingUpdater({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading, profile } = useAuth();
   const location = useLocation();
@@ -51,6 +63,8 @@ export function RequireTrackingUpdater({ children }: { children: ReactNode }) {
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace state={{ from: location }} />;
   }
+  const redirect = driverRedirect(profile);
+  if (redirect) return redirect;
   if (profile?.role === "Viewer") {
     return <Navigate to="/admin" replace />;
   }
@@ -84,6 +98,8 @@ export function RequireSuperadmin({ children }: { children: ReactNode }) {
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace state={{ from: location }} />;
   }
+  const redirect = driverRedirect(profile);
+  if (redirect) return redirect;
   if (profile?.role !== "Superadmin") {
     return <Navigate to="/admin" replace />;
   }

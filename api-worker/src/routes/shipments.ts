@@ -248,6 +248,14 @@ export function registerShipmentRoutes(router: Router) {
     if (shipment.status === "Selesai / Terkirim") {
       throw Errors.unprocessable("Pengiriman ini sudah Selesai/Terkirim dan terkunci.");
     }
+    if (actor.role === "Driver") {
+      const owns = await ctx.env.DB.prepare(
+        `SELECT 1 FROM trucks t JOIN drivers d ON d.id = t.driver_id WHERE t.id = ? AND d.user_id = ?`,
+      )
+        .bind(shipment.truck_id, actor.id)
+        .first();
+      if (!owns) throw Errors.forbidden("Pengiriman ini bukan tugas Anda.");
+    }
 
     const body = await parseJsonBody(ctx.request);
     const type = reqEnum(body, "type", TIMELINE_EVENT_TYPES.filter((t) => t !== "Barang Diterima") as readonly TimelineEventType[]);
@@ -256,6 +264,12 @@ export function registerShipmentRoutes(router: Router) {
     const keterangan = reqString(body, "keterangan", { max: 500 });
     const truckId = optString(body, "truckId");
     const titikId = optString(body, "titikId");
+    // A driver reports their own operational progress only - reassigning
+    // the truck (including via a Transfer Unit event) is a dispatch/admin
+    // decision, not something a driver's status update should be able to do.
+    if (actor.role === "Driver" && (type === "Transfer Unit" || truckId)) {
+      throw Errors.forbidden("Driver tidak dapat mengubah unit truck.");
+    }
     const isSelesai = type === "Selesai / Terkirim";
     const lokasi = isSelesai ? String(shipment.kota_tujuan) : reqString(body, "lokasi", { max: 150 });
     const namaPenerima = isSelesai ? reqString(body, "namaPenerima", { max: 100 }) : undefined;

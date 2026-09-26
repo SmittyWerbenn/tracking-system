@@ -1,11 +1,11 @@
 import { AlertTriangle, Loader2, Lock, Mail } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useLocation, useNavigate, type Location } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
 import { useAuth } from "../../store/AuthContext";
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, logout, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -13,8 +13,24 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [awaitingRoleCheck, setAwaitingRoleCheck] = useState(false);
 
   const from = (location.state as { from?: Location } | null)?.from?.pathname ?? "/admin";
+
+  // login() resolves before AuthContext's profile state has actually
+  // flushed, so the role isn't readable synchronously right after - react
+  // to the profile update instead, once it lands.
+  useEffect(() => {
+    if (!awaitingRoleCheck || !profile) return;
+    setAwaitingRoleCheck(false);
+    if (profile.role === "Driver") {
+      logout();
+      setError("Akun Driver menggunakan Portal Driver, bukan di sini. Buka /driver untuk login.");
+    } else {
+      navigate(from, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, awaitingRoleCheck]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -22,11 +38,11 @@ export default function Login() {
     setError(null);
     const result = await login(email, password);
     setSubmitting(false);
-    if (result.ok) {
-      navigate(from, { replace: true });
-    } else {
+    if (!result.ok) {
       setError(result.error);
+      return;
     }
+    setAwaitingRoleCheck(true);
   }
 
   return (

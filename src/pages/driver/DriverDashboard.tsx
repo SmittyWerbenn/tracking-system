@@ -8,11 +8,13 @@ import { fetchDriverShipments, type DriverShipmentSummary } from "../../utils/dr
 const KENDALA_STATUS = "Kendala";
 const SELESAI_STATUS = "Selesai / Terkirim";
 
+type StatusFilter = "aktif" | "kendala" | "selesai";
+
 export default function DriverDashboard() {
   const { profile } = useAuth();
   const [shipments, setShipments] = useState<DriverShipmentSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showSelesai, setShowSelesai] = useState(false);
+  const [filter, setFilter] = useState<StatusFilter>("aktif");
 
   useEffect(() => {
     let cancelled = false;
@@ -28,11 +30,15 @@ export default function DriverDashboard() {
     };
   }, []);
 
-  const active = (shipments ?? []).filter((s) => s.status !== SELESAI_STATUS);
+  const active = (shipments ?? []).filter(
+    (s) => s.status !== SELESAI_STATUS && s.status !== KENDALA_STATUS,
+  );
   const kendala = (shipments ?? []).filter((s) => s.status === KENDALA_STATUS);
   // Best-effort "selesai hari ini" - detail's timeline has the real date,
   // this list endpoint doesn't, so this counts all "Selesai" items for now.
   const selesai = (shipments ?? []).filter((s) => s.status === SELESAI_STATUS);
+  const byFilter: Record<StatusFilter, DriverShipmentSummary[]> = { aktif: active, kendala, selesai };
+  const shown = byFilter[filter];
 
   return (
     <DriverLayout wide>
@@ -43,27 +49,41 @@ export default function DriverDashboard() {
       </div>
 
       <div className="mb-5 grid grid-cols-3 gap-2 sm:gap-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-3 text-center sm:p-4">
-          <p className="text-xl font-bold text-blue-900 sm:text-2xl">{active.length}</p>
-          <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">Aktif</p>
-        </div>
         <button
           type="button"
-          onClick={() => setShowSelesai((v) => !v)}
+          onClick={() => setFilter("aktif")}
           className={`rounded-xl border p-3 text-center transition-colors sm:p-4 ${
-            showSelesai ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white"
+            filter === "aktif" ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white"
+          }`}
+        >
+          <p className="text-xl font-bold text-blue-900 sm:text-2xl">{active.length}</p>
+          <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">Aktif</p>
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilter("selesai")}
+          className={`rounded-xl border p-3 text-center transition-colors sm:p-4 ${
+            filter === "selesai" ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white"
           }`}
         >
           <p className="text-xl font-bold text-emerald-600 sm:text-2xl">{selesai.length}</p>
           <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">Selesai</p>
         </button>
-        <div className="rounded-xl border border-slate-200 bg-white p-3 text-center sm:p-4">
+        <button
+          type="button"
+          onClick={() => setFilter("kendala")}
+          className={`rounded-xl border p-3 text-center transition-colors sm:p-4 ${
+            filter === "kendala" ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"
+          }`}
+        >
           <p className="text-xl font-bold text-red-600 sm:text-2xl">{kendala.length}</p>
           <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">Kendala</p>
-        </div>
+        </button>
       </div>
 
-      <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Pengiriman Saya</h2>
+      <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        Pengiriman Saya · {filter === "aktif" ? "Aktif" : filter === "kendala" ? "Kendala" : "Selesai"}
+      </h2>
 
       {error && (
         <div className="mb-3 flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700">
@@ -83,28 +103,13 @@ export default function DriverDashboard() {
         </div>
       )}
 
-      {shipments !== null && shipments.length > 0 && active.length === 0 && kendala.length === 0 && !showSelesai && (
+      {shipments !== null && shipments.length > 0 && shown.length === 0 && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-400">
-          Semua pengiriman sudah selesai. Klik kartu "Selesai" di atas untuk melihat riwayat.
+          Tidak ada pengiriman di kategori ini.
         </div>
       )}
 
-      <ShipmentGrid shipments={[...active, ...kendala]} />
-
-      {showSelesai && (
-        <div className="mt-6">
-          <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Riwayat Selesai
-          </h2>
-          {selesai.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-400">
-              Belum ada pengiriman yang selesai.
-            </div>
-          ) : (
-            <ShipmentGrid shipments={selesai} />
-          )}
-        </div>
-      )}
+      <ShipmentGrid shipments={shown} />
     </DriverLayout>
   );
 }

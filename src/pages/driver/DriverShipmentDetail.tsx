@@ -4,9 +4,9 @@ import {
   CheckCircle2,
   Loader2,
   MapPin,
+  MessageCircle,
   Navigation,
   Package,
-  Phone,
   Truck,
   User,
 } from "lucide-react";
@@ -28,6 +28,15 @@ import { getAllowedNextEvents } from "../../utils/status";
 
 function formatCoord(n: number): string {
   return n.toFixed(5);
+}
+
+/** "0813-9988-2211" -> "6281399882211" for a wa.me link - WhatsApp needs
+ * the country code with no leading 0/+. */
+function toWhatsAppNumber(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("62")) return digits;
+  if (digits.startsWith("0")) return `62${digits.slice(1)}`;
+  return `62${digits}`;
 }
 
 const KENDALA_REASONS = [
@@ -201,236 +210,251 @@ export default function DriverShipmentDetail() {
   const isKendalaSelected = statusType === "Kendala";
 
   return (
-    <DriverLayout>
+    <DriverLayout wide>
       <Link to="/driver" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
         <ArrowLeft size={15} /> Kembali
       </Link>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex items-center justify-between">
-          <span className="font-mono text-base font-bold text-slate-900">{shipment.awb}</span>
-          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-            {shipment.status}
-          </span>
-        </div>
+      <div className="lg:grid lg:grid-cols-5 lg:items-start lg:gap-4">
+        {/* Left column: shipment info (read-heavy) */}
+        <div className="flex flex-col gap-4 lg:col-span-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-base font-bold text-slate-900">{shipment.awb}</span>
+              <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                {shipment.status}
+              </span>
+            </div>
 
-        <div className="mt-4 flex items-start gap-2.5">
-          <MapPin size={16} className="mt-0.5 shrink-0 text-slate-400" />
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Asal</p>
-            <p className="text-sm text-slate-700">{shipment.alamatAsal}, {shipment.kotaAsal}</p>
-          </div>
-        </div>
-        <div className="mt-3 flex items-start gap-2.5">
-          <MapPin size={16} className="mt-0.5 shrink-0 text-emerald-500" />
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Tujuan</p>
-            <p className="text-sm font-medium text-slate-900">{shipment.penerima.nama}</p>
-            <p className="text-sm text-slate-700">{shipment.alamatTujuan}, {shipment.kotaTujuan}</p>
-          </div>
-        </div>
-
-        <a
-          href={mapsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-900 py-3 text-sm font-semibold text-white hover:bg-blue-800"
-        >
-          <Navigation size={16} /> Buka Navigasi
-        </a>
-
-        {shipment.penerima.telepon && (
-          <a
-            href={`tel:${shipment.penerima.telepon}`}
-            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            <Phone size={16} /> Hubungi Penerima ({shipment.penerima.telepon})
-          </a>
-        )}
-      </div>
-
-      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Perbarui Status</h2>
-
-        {isLocked ? (
-          <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-sm font-medium text-emerald-700">
-            <CheckCircle2 size={15} /> Pengiriman ini sudah Selesai/Terkirim.
-          </div>
-        ) : (
-          <form onSubmit={handleStatusSubmit} className="flex flex-col gap-3">
-            <label className="block">
-              <span className="mb-1.5 block text-xs font-medium text-slate-600">Status Baru</span>
-              <select
-                required
-                value={statusType}
-                onChange={(e) => {
-                  setStatusType(e.target.value as TimelineEventType);
-                  setStatusKeterangan("");
-                }}
-                className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-              >
-                <option value="">Pilih status...</option>
-                {allowedNext.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {statusType && !isSelesaiSelected && (
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi</span>
-                <input
-                  required
-                  value={statusLokasi}
-                  onChange={(e) => setStatusLokasi(e.target.value)}
-                  placeholder="Contoh: Gudang Karawang"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                />
-              </label>
-            )}
-
-            {isSelesaiSelected && (
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Penerima</span>
-                <input
-                  required
-                  value={statusNamaPenerima}
-                  onChange={(e) => setStatusNamaPenerima(e.target.value)}
-                  placeholder="Nama yang menerima barang"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                />
-              </label>
-            )}
-
-            {isKendalaSelected && (
-              <div>
-                <span className="mb-1.5 block text-xs font-medium text-slate-600">Jenis Kendala</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {KENDALA_REASONS.map((reason) => (
-                    <button
-                      key={reason}
-                      type="button"
-                      onClick={() => setStatusKeterangan(reason)}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
-                        statusKeterangan === reason
-                          ? "border-red-500 bg-red-50 text-red-700"
-                          : "border-slate-300 text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      {reason}
-                    </button>
-                  ))}
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="flex items-start gap-2.5">
+                <MapPin size={16} className="mt-0.5 shrink-0 text-slate-400" />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Asal</p>
+                  <p className="text-sm text-slate-700">{shipment.alamatAsal}, {shipment.kotaAsal}</p>
                 </div>
               </div>
-            )}
-
-            {statusType && (
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-medium text-slate-600">Catatan</span>
-                <textarea
-                  required
-                  rows={2}
-                  value={statusKeterangan}
-                  onChange={(e) => setStatusKeterangan(e.target.value)}
-                  placeholder="Keterangan singkat"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                />
-              </label>
-            )}
-
-            {statusError && (
-              <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-700">
-                <AlertTriangle size={14} /> {statusError}
+              <div className="flex items-start gap-2.5">
+                <MapPin size={16} className="mt-0.5 shrink-0 text-emerald-500" />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Tujuan</p>
+                  <p className="text-sm font-medium text-slate-900">{shipment.penerima.nama}</p>
+                  <p className="text-sm text-slate-700">{shipment.alamatTujuan}, {shipment.kotaTujuan}</p>
+                </div>
               </div>
-            )}
-            {statusSaved && (
-              <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-xs font-medium text-emerald-700">
-                <CheckCircle2 size={14} /> Status berhasil diperbarui.
+            </div>
+
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-900 py-3 text-sm font-semibold text-white hover:bg-blue-800"
+              >
+                <Navigation size={16} /> Buka Navigasi
+              </a>
+
+              {shipment.penerima.telepon && (
+                <a
+                  href={`https://wa.me/${toWhatsAppNumber(shipment.penerima.telepon)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
+                >
+                  <MessageCircle size={16} /> Hubungi Penerima ({shipment.penerima.telepon})
+                </a>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Informasi Barang</h2>
+            <div className="flex flex-col gap-2.5 text-sm">
+              <div className="flex items-center gap-2.5 text-slate-700">
+                <Package size={15} className="text-slate-400" />
+                {shipment.jumlahKoli} Koli &middot; {shipment.beratKg} Kg &middot; {shipment.layanan}
               </div>
+              <p className="text-slate-600">{shipment.deskripsiBarang}</p>
+              {shipment.truckNomorUnit && (
+                <div className="flex items-center gap-2.5 text-slate-700">
+                  <Truck size={15} className="text-slate-400" />
+                  {shipment.truckNomorUnit}
+                </div>
+              )}
+              <div className="flex items-center gap-2.5 text-slate-700">
+                <User size={15} className="text-slate-400" />
+                {shipment.penerima.nama}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Riwayat Perjalanan</h2>
+            <ol className="flex flex-col gap-3">
+              {[...timeline].reverse().map((e) => (
+                <li key={e.id} className="border-l-2 border-slate-200 pl-3">
+                  <p className="text-xs text-slate-400">
+                    {formatTanggalPanjang(e.tanggal)} &middot; {formatJam(e.jam)}
+                  </p>
+                  <p className="text-sm font-semibold text-slate-900">{e.type}</p>
+                  <p className="text-xs text-slate-500">{e.lokasi}</p>
+                  {e.keterangan && <p className="mt-0.5 text-xs text-slate-500">{e.keterangan}</p>}
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+
+        {/* Right column: driver actions */}
+        <div className="mt-4 flex flex-col gap-4 lg:col-span-2 lg:mt-0">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Perbarui Status</h2>
+
+            {isLocked ? (
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-sm font-medium text-emerald-700">
+                <CheckCircle2 size={15} /> Pengiriman ini sudah Selesai/Terkirim.
+              </div>
+            ) : (
+              <form onSubmit={handleStatusSubmit} className="flex flex-col gap-3">
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Status Baru</span>
+                  <select
+                    required
+                    value={statusType}
+                    onChange={(e) => {
+                      setStatusType(e.target.value as TimelineEventType);
+                      setStatusKeterangan("");
+                    }}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  >
+                    <option value="">Pilih status...</option>
+                    {allowedNext.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {statusType && !isSelesaiSelected && (
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi</span>
+                    <input
+                      required
+                      value={statusLokasi}
+                      onChange={(e) => setStatusLokasi(e.target.value)}
+                      placeholder="Contoh: Gudang Karawang"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    />
+                  </label>
+                )}
+
+                {isSelesaiSelected && (
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Penerima</span>
+                    <input
+                      required
+                      value={statusNamaPenerima}
+                      onChange={(e) => setStatusNamaPenerima(e.target.value)}
+                      placeholder="Nama yang menerima barang"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    />
+                  </label>
+                )}
+
+                {isKendalaSelected && (
+                  <div>
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Jenis Kendala</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {KENDALA_REASONS.map((reason) => (
+                        <button
+                          key={reason}
+                          type="button"
+                          onClick={() => setStatusKeterangan(reason)}
+                          className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+                            statusKeterangan === reason
+                              ? "border-red-500 bg-red-50 text-red-700"
+                              : "border-slate-300 text-slate-600 hover:bg-slate-50"
+                          }`}
+                        >
+                          {reason}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {statusType && (
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Catatan</span>
+                    <textarea
+                      required
+                      rows={2}
+                      value={statusKeterangan}
+                      onChange={(e) => setStatusKeterangan(e.target.value)}
+                      placeholder="Keterangan singkat"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    />
+                  </label>
+                )}
+
+                {statusError && (
+                  <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-700">
+                    <AlertTriangle size={14} /> {statusError}
+                  </div>
+                )}
+                {statusSaved && (
+                  <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-xs font-medium text-emerald-700">
+                    <CheckCircle2 size={14} /> Status berhasil diperbarui.
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={!statusType || statusSubmitting}
+                  className="flex items-center justify-center gap-2 rounded-lg bg-blue-900 py-3 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60"
+                >
+                  {statusSubmitting && <Loader2 size={15} className="animate-spin" />}
+                  Simpan Status
+                </button>
+              </form>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Laporkan Posisi</h2>
+
+            {lastPosition && (
+              <p className="mb-3 text-xs text-slate-500">
+                Posisi terakhir: {formatCoord(lastPosition.latitude)}, {formatCoord(lastPosition.longitude)}
+                <br />
+                {formatTanggalPanjang(lastPosition.created_at.slice(0, 10))} &middot;{" "}
+                {formatJam(lastPosition.created_at.slice(11, 16))}
+              </p>
             )}
 
             <button
-              type="submit"
-              disabled={!statusType || statusSubmitting}
-              className="flex items-center justify-center gap-2 rounded-lg bg-blue-900 py-3 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60"
+              type="button"
+              onClick={handleReportPosition}
+              disabled={reporting}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 py-3 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
             >
-              {statusSubmitting && <Loader2 size={15} className="animate-spin" />}
-              Simpan Status
+              <MapPin size={16} />
+              {reporting ? "Mengambil lokasi..." : "Perbarui Posisi"}
             </button>
-          </form>
-        )}
-      </div>
 
-      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Informasi Barang</h2>
-        <div className="flex flex-col gap-2.5 text-sm">
-          <div className="flex items-center gap-2.5 text-slate-700">
-            <Package size={15} className="text-slate-400" />
-            {shipment.jumlahKoli} Koli &middot; {shipment.beratKg} Kg &middot; {shipment.layanan}
-          </div>
-          <p className="text-slate-600">{shipment.deskripsiBarang}</p>
-          {shipment.truckNomorUnit && (
-            <div className="flex items-center gap-2.5 text-slate-700">
-              <Truck size={15} className="text-slate-400" />
-              {shipment.truckNomorUnit}
-            </div>
-          )}
-          <div className="flex items-center gap-2.5 text-slate-700">
-            <User size={15} className="text-slate-400" />
-            {shipment.penerima.nama}
+            {positionError && (
+              <div className="mt-3 flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-700">
+                <AlertTriangle size={14} /> {positionError}
+              </div>
+            )}
+            {positionSaved && (
+              <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-xs font-medium text-emerald-700">
+                <CheckCircle2 size={14} /> Posisi berhasil dikirim.
+              </div>
+            )}
           </div>
         </div>
-      </div>
-
-      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Laporkan Posisi</h2>
-
-        {lastPosition && (
-          <p className="mb-3 text-xs text-slate-500">
-            Posisi terakhir: {formatCoord(lastPosition.latitude)}, {formatCoord(lastPosition.longitude)}
-            <br />
-            {formatTanggalPanjang(lastPosition.created_at.slice(0, 10))} &middot; {formatJam(lastPosition.created_at.slice(11, 16))}
-          </p>
-        )}
-
-        <button
-          type="button"
-          onClick={handleReportPosition}
-          disabled={reporting}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 py-3 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
-        >
-          <MapPin size={16} />
-          {reporting ? "Mengambil lokasi..." : "Perbarui Posisi"}
-        </button>
-
-        {positionError && (
-          <div className="mt-3 flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-700">
-            <AlertTriangle size={14} /> {positionError}
-          </div>
-        )}
-        {positionSaved && (
-          <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-xs font-medium text-emerald-700">
-            <CheckCircle2 size={14} /> Posisi berhasil dikirim.
-          </div>
-        )}
-      </div>
-
-      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Riwayat Perjalanan</h2>
-        <ol className="flex flex-col gap-3">
-          {[...timeline].reverse().map((e) => (
-            <li key={e.id} className="border-l-2 border-slate-200 pl-3">
-              <p className="text-xs text-slate-400">
-                {formatTanggalPanjang(e.tanggal)} &middot; {formatJam(e.jam)}
-              </p>
-              <p className="text-sm font-semibold text-slate-900">{e.type}</p>
-              <p className="text-xs text-slate-500">{e.lokasi}</p>
-              {e.keterangan && <p className="mt-0.5 text-xs text-slate-500">{e.keterangan}</p>}
-            </li>
-          ))}
-        </ol>
       </div>
     </DriverLayout>
   );

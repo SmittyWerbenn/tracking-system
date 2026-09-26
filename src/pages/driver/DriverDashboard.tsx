@@ -34,25 +34,25 @@ export default function DriverDashboard() {
   const selesai = (shipments ?? []).filter((s) => s.status === SELESAI_STATUS);
 
   return (
-    <DriverLayout>
+    <DriverLayout wide>
       <div className="mb-5">
         <p className="text-sm text-slate-500">Halo,</p>
         <h1 className="text-lg font-semibold text-slate-900">{profile?.nama}</h1>
         <p className="text-xs text-slate-400">Driver</p>
       </div>
 
-      <div className="mb-5 grid grid-cols-3 gap-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-3 text-center">
-          <p className="text-xl font-bold text-blue-900">{active.length}</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">Aktif</p>
+      <div className="mb-5 grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 text-center sm:p-4">
+          <p className="text-xl font-bold text-blue-900 sm:text-2xl">{active.length}</p>
+          <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">Aktif</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-3 text-center">
-          <p className="text-xl font-bold text-emerald-600">{selesai.length}</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">Selesai</p>
+        <div className="rounded-xl border border-slate-200 bg-white p-3 text-center sm:p-4">
+          <p className="text-xl font-bold text-emerald-600 sm:text-2xl">{selesai.length}</p>
+          <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">Selesai</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-3 text-center">
-          <p className="text-xl font-bold text-red-600">{kendala.length}</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">Kendala</p>
+        <div className="rounded-xl border border-slate-200 bg-white p-3 text-center sm:p-4">
+          <p className="text-xl font-bold text-red-600 sm:text-2xl">{kendala.length}</p>
+          <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">Kendala</p>
         </div>
       </div>
 
@@ -76,12 +76,12 @@ export default function DriverDashboard() {
         </div>
       )}
 
-      <div className="flex flex-col gap-2.5">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
         {shipments?.map((s) => (
           <Link
             key={s.awb}
             to={`/driver/shipments/${s.awb}`}
-            className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm active:bg-slate-50"
+            className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md active:bg-slate-50"
           >
             <div className="flex items-center justify-between gap-2">
               <span className="font-mono text-sm font-bold text-slate-900">{s.awb}</span>

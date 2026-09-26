@@ -129,7 +129,13 @@ export default function AccountSettings() {
               <p className="text-xs text-slate-400">Role: {profile.role}</p>
               <label className="mt-1.5 inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-blue-700 hover:text-blue-900">
                 <ImagePlus size={13} /> Ganti Foto
-                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="user"
+                  className="hidden"
+                  onChange={handlePhotoChange}
+                />
               </label>
             </div>
           </div>

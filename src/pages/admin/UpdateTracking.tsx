@@ -526,6 +526,7 @@ export default function UpdateTracking() {
                         <input
                           type="file"
                           accept="image/*"
+                          capture="environment"
                           className="hidden"
                           onChange={handlePodPhotoChange("barang")}
                         />
@@ -565,6 +566,7 @@ export default function UpdateTracking() {
                         <input
                           type="file"
                           accept="image/*"
+                          capture="environment"
                           className="hidden"
                           onChange={handlePodPhotoChange("suratJalan")}
                         />
@@ -711,7 +713,13 @@ export default function UpdateTracking() {
                     <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
                       <ImagePlus size={18} />
                       <span className="text-[10px] font-medium">Unggah</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={handleFotoBarangDiterimaChange} />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={handleFotoBarangDiterimaChange}
+                      />
                     </label>
                   )}
                 </label>
@@ -736,7 +744,13 @@ export default function UpdateTracking() {
                     <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
                       <ImagePlus size={18} />
                       <span className="text-[10px] font-medium">Unggah</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={handleFotoSuratJalanChange} />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={handleFotoSuratJalanChange}
+                      />
                     </label>
                   )}
                 </label>
@@ -752,6 +766,7 @@ export default function UpdateTracking() {
                     <input
                       type="file"
                       accept="image/*"
+                      capture="environment"
                       multiple
                       className="hidden"
                       onChange={handlePhotoChange}

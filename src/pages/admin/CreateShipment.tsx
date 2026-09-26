@@ -412,7 +412,13 @@ export default function CreateShipment() {
               <label className="flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
                 <ImagePlus size={20} />
                 <span className="text-[10px] font-medium">Unggah Foto</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handlePhotoChange}
+                />
               </label>
               {form.fotoBarang && (
                 <div className="relative h-24 w-24 overflow-hidden rounded-lg border border-slate-200">
@@ -438,7 +444,13 @@ export default function CreateShipment() {
               <label className="flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500">
                 <ImagePlus size={20} />
                 <span className="text-[10px] font-medium">Unggah Foto</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleFotoSuratJalanChange} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handleFotoSuratJalanChange}
+                />
               </label>
               {form.fotoSuratJalan && (
                 <div className="relative h-24 w-24 overflow-hidden rounded-lg border border-slate-200">

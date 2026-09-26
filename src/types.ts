@@ -82,6 +82,10 @@ export interface Shipment {
   pod?: ProofOfDelivery;
   emailTerkirim: boolean;
   emailTerkirimAt?: string;
+  /** Admin only ever sets slaValue/slaUnit - estimasiTiba is always derived
+   * server-side from those + tanggalDibuat, never entered directly. */
+  slaValue?: number;
+  slaUnit?: string;
   estimasiTiba?: string; // ISO date, ditampilkan ke customer bila tersedia
 }
 
@@ -99,6 +103,8 @@ export interface ShipmentFormData {
   fotoBarang?: string;
   fotoSuratJalan?: string;
   truckId: string;
+  /** SLA in business days; ETA is calculated server-side from this. */
+  slaValue?: number;
 }
 
 export interface TrackingUpdateFormData {
@@ -124,6 +130,9 @@ export interface UpdateShipmentInfoData {
   kotaAsal: string;
   alamatTujuan: string;
   kotaTujuan: string;
+  /** Omit to leave SLA/ETA untouched; pass a number to set/change it, or
+   * null to clear it - either recalculates estimasiTiba server-side. */
+  slaValue?: number | null;
 }
 
 // ---------------------------------------------------------------------------

@@ -10,7 +10,7 @@ import { TrackingTimeline } from "../../components/TrackingTimeline";
 import { useLanguage } from "../../store/LanguageContext";
 import type { Shipment } from "../../types";
 import { recordAwbView } from "../../utils/awbHistory";
-import { formatTanggalPanjang } from "../../utils/format";
+import { formatTanggalPanjang, todayISO } from "../../utils/format";
 import { fetchPublicShipment } from "../../utils/publicTracking";
 import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
@@ -103,6 +103,8 @@ export default function TrackingResult() {
   }
 
   const isDelivered = shipment.status === "Selesai / Terkirim";
+  // Only a visual heads-up - never changes the actual shipment status.
+  const isOverdue = !isDelivered && !!shipment.estimasiTiba && shipment.estimasiTiba < todayISO();
 
   return (
     <PublicLayout wide>
@@ -150,15 +152,20 @@ export default function TrackingResult() {
             <StatusBadge status={shipment.status} />
           </div>
           <div className="flex items-center gap-1.5 text-xs text-slate-500">
-            <CalendarClock size={14} className="text-slate-400" />
+            <CalendarClock size={14} className={isOverdue ? "text-amber-500" : "text-slate-400"} />
             {t.trackingResult.estimatedArrival}:{" "}
-            <span className="font-medium text-slate-700">
+            <span className={`font-medium ${isOverdue ? "text-amber-600" : "text-slate-700"}`}>
               {isDelivered
                 ? t.trackingResult.delivered
                 : shipment.estimasiTiba
                   ? formatTanggalPanjang(shipment.estimasiTiba)
                   : t.trackingResult.notAvailable}
             </span>
+            {isOverdue && (
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                ⚠ Estimasi telah terlewati
+              </span>
+            )}
           </div>
         </div>
         <div className="grid grid-cols-2 divide-x divide-slate-100 border-t border-slate-100 px-5 py-4 sm:px-6">

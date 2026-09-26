@@ -24,8 +24,9 @@ import { useSettings } from "../../store/SettingsContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { LayananPengiriman, ShipmentFormData } from "../../types";
 import { checkPhotoSize, compressImage } from "../../utils/compressImage";
-import { todayISO } from "../../utils/format";
+import { formatTanggalPanjang, todayISO } from "../../utils/format";
 import { sendTrackingEmail, type EmailableShipment } from "../../utils/sendEmail";
+import { addBusinessDays } from "../../utils/sla";
 
 const emptyForm: ShipmentFormData = {
   pengirim: { nama: "", telepon: "", email: "" },
@@ -406,6 +407,22 @@ export default function CreateShipment() {
               value={form.jumlahKoli || ""}
               onChange={(e) => update("jumlahKoli", Number(e.target.value))}
             />
+          </Field>
+          <Field label="Target Pengiriman (Hari)">
+            <input
+              type="number"
+              min={1}
+              step={1}
+              className={inputClass}
+              placeholder="Contoh: 3 (opsional)"
+              value={form.slaValue ?? ""}
+              onChange={(e) => update("slaValue", e.target.value === "" ? undefined : Number(e.target.value))}
+            />
+            <p className="mt-1.5 text-[11px] text-slate-400">
+              {form.slaValue && form.slaValue > 0
+                ? `Estimasi Tiba: ${formatTanggalPanjang(addBusinessDays(todayISO(), form.slaValue))}`
+                : "Opsional. Jika diisi, sistem menghitung Estimasi Tiba otomatis dan menampilkannya ke customer."}
+            </p>
           </Field>
           <Field label="Deskripsi Barang" full>
             <textarea

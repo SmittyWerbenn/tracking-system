@@ -33,6 +33,9 @@ interface RawShipmentSummary {
   truckDriverNama: string | null;
   emailTerkirim: boolean;
   emailTerkirimAt: string | null;
+  slaValue: number | null;
+  slaUnit: string | null;
+  estimasiTiba: string | null;
   pod: { tanggal: string; jam: string; namaPenerima: string } | null;
   lastUpdate: { tanggal: string; jam: string } | null;
 }
@@ -91,6 +94,9 @@ function toShipment(row: RawShipmentSummary): Shipment {
       : undefined,
     emailTerkirim: row.emailTerkirim,
     emailTerkirimAt: row.emailTerkirimAt ?? undefined,
+    slaValue: row.slaValue ?? undefined,
+    slaUnit: row.slaUnit ?? undefined,
+    estimasiTiba: row.estimasiTiba ?? undefined,
   };
 }
 
@@ -227,6 +233,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       beratKg: data.beratKg,
       jumlahKoli: data.jumlahKoli,
       truckId: data.truckId || undefined,
+      slaValue: data.slaValue,
     });
 
     if (data.fotoBarang) {
@@ -287,6 +294,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         kotaAsal: data.kotaAsal,
         alamatTujuan: data.alamatTujuan,
         kotaTujuan: data.kotaTujuan,
+        ...(data.slaValue !== undefined ? { slaValue: data.slaValue } : {}),
       });
       await refresh();
       return { ok: true as const };

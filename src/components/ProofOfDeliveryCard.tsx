@@ -1,10 +1,13 @@
 import { CheckCircle2 } from "lucide-react";
+import { useState } from "react";
 import { useLanguage } from "../store/LanguageContext";
 import type { ProofOfDelivery } from "../types";
 import { formatJam, formatTanggalPanjang } from "../utils/format";
+import { ImageLightbox, PhotoThumb } from "./ImageLightbox";
 
 export function ProofOfDeliveryCard({ pod }: { pod: ProofOfDelivery }) {
   const { t } = useLanguage();
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   return (
     <div className="overflow-hidden rounded-xl border border-emerald-200 bg-emerald-50">
@@ -41,7 +44,25 @@ export function ProofOfDeliveryCard({ pod }: { pod: ProofOfDelivery }) {
         {pod.catatan && (
           <p className="mt-3 rounded-lg bg-white p-3 text-sm text-slate-600">{pod.catatan}</p>
         )}
+
+        {pod.fotoBarang && (
+          <div className="mt-4">
+            <p className="mb-1.5 text-xs text-slate-500">{t.pod.itemPhoto}</p>
+            <PhotoThumb
+              src={pod.fotoBarang}
+              alt={t.pod.itemPhoto}
+              className="h-28 w-28"
+              onClick={() => setLightboxOpen(true)}
+            />
+          </div>
+        )}
       </div>
+
+      <ImageLightbox
+        src={lightboxOpen ? (pod.fotoBarang ?? null) : null}
+        caption={t.pod.itemPhoto}
+        onClose={() => setLightboxOpen(false)}
+      />
     </div>
   );
 }

@@ -9,13 +9,16 @@ import {
   Package,
   Truck,
   User,
+  X,
 } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { DriverLayout } from "../../components/layout/DriverLayout";
+import { PhotoPickerBox } from "../../components/PhotoPickerBox";
 import { useShipments } from "../../store/ShipmentContext";
 import type { ShipmentStatus, TimelineEventType } from "../../types";
 import { ApiError } from "../../utils/apiClient";
+import { checkPhotoSize, compressImage } from "../../utils/compressImage";
 import {
   fetchDriverLastPosition,
   fetchDriverShipmentDetail,
@@ -67,6 +70,10 @@ export default function DriverShipmentDetail() {
   const [statusLokasi, setStatusLokasi] = useState("");
   const [statusKeterangan, setStatusKeterangan] = useState("");
   const [statusNamaPenerima, setStatusNamaPenerima] = useState("");
+  const [fotoBarangDiterima, setFotoBarangDiterima] = useState<string | null>(null);
+  const [fotoSuratJalan, setFotoSuratJalan] = useState<string | null>(null);
+  const [statusFoto, setStatusFoto] = useState<string[]>([]);
+  const [fotoError, setFotoError] = useState<string | null>(null);
   const [statusSubmitting, setStatusSubmitting] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [statusSaved, setStatusSaved] = useState(false);
@@ -130,6 +137,49 @@ export default function DriverShipmentDetail() {
     );
   }
 
+  function handleFotoBarangChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const sizeError = checkPhotoSize(file);
+    if (sizeError) {
+      setFotoError(sizeError);
+      return;
+    }
+    setFotoError(null);
+    compressImage(file)
+      .then(setFotoBarangDiterima)
+      .catch(() => setFotoError("Gagal memproses foto. Coba foto lain."));
+  }
+
+  function handleFotoSuratJalanChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const sizeError = checkPhotoSize(file);
+    if (sizeError) {
+      setFotoError(sizeError);
+      return;
+    }
+    setFotoError(null);
+    compressImage(file)
+      .then(setFotoSuratJalan)
+      .catch(() => setFotoError("Gagal memproses foto. Coba foto lain."));
+  }
+
+  function handleStatusFotoChange(e: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    setFotoError(null);
+    files.forEach((file) => {
+      const sizeError = checkPhotoSize(file);
+      if (sizeError) {
+        setFotoError(sizeError);
+        return;
+      }
+      compressImage(file)
+        .then((dataUrl) => setStatusFoto((prev) => [...prev, dataUrl]))
+        .catch(() => setFotoError("Gagal memproses salah satu foto. Coba lagi."));
+    });
+  }
+
   async function handleStatusSubmit(e: FormEvent) {
     e.preventDefault();
     if (!awb || !statusType) return;
@@ -140,6 +190,10 @@ export default function DriverShipmentDetail() {
     }
     if (isSelesai && !statusNamaPenerima.trim()) {
       setStatusError("Nama penerima wajib diisi.");
+      return;
+    }
+    if (isSelesai && !fotoBarangDiterima) {
+      setStatusError("Foto barang diterima wajib diunggah sebagai bukti serah terima.");
       return;
     }
     if (!statusKeterangan.trim()) {
@@ -157,6 +211,11 @@ export default function DriverShipmentDetail() {
       jam: nowHHMM(),
       keterangan: statusKeterangan.trim(),
       namaPenerima: isSelesai ? statusNamaPenerima.trim() : undefined,
+      foto: isSelesai
+        ? [fotoBarangDiterima, fotoSuratJalan].filter((f): f is string => !!f)
+        : statusFoto.length > 0
+          ? statusFoto
+          : undefined,
     });
     setStatusSubmitting(false);
 
@@ -169,6 +228,9 @@ export default function DriverShipmentDetail() {
     setStatusLokasi("");
     setStatusKeterangan("");
     setStatusNamaPenerima("");
+    setFotoBarangDiterima(null);
+    setFotoSuratJalan(null);
+    setStatusFoto([]);
     setStatusSaved(true);
     setTimeout(() => setStatusSaved(false), 2500);
     fetchDriverShipmentDetail(awb)
@@ -259,9 +321,12 @@ export default function DriverShipmentDetail() {
                   href={`https://wa.me/${toWhatsAppNumber(shipment.penerima.telepon)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
+                  className="flex w-full flex-col items-center justify-center gap-0.5 rounded-lg border border-emerald-300 bg-emerald-50 py-2.5 text-emerald-700 hover:bg-emerald-100"
                 >
-                  <MessageCircle size={16} /> Hubungi Penerima ({shipment.penerima.telepon})
+                  <span className="flex items-center gap-2 text-sm font-semibold">
+                    <MessageCircle size={16} /> Hubungi Penerima
+                  </span>
+                  <span className="text-xs font-normal text-emerald-600">{shipment.penerima.telepon}</span>
                 </a>
               )}
             </div>
@@ -337,29 +402,118 @@ export default function DriverShipmentDetail() {
                 </label>
 
                 {statusType && !isSelesaiSelected && (
-                  <label className="block">
-                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi</span>
-                    <input
-                      required
-                      value={statusLokasi}
-                      onChange={(e) => setStatusLokasi(e.target.value)}
-                      placeholder="Contoh: Gudang Karawang"
-                      className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    />
-                  </label>
+                  <>
+                    <label className="block">
+                      <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi</span>
+                      <input
+                        required
+                        value={statusLokasi}
+                        onChange={(e) => setStatusLokasi(e.target.value)}
+                        placeholder="Contoh: Gudang Karawang"
+                        className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                      />
+                    </label>
+
+                    <div>
+                      <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                        Foto <span className="text-slate-400">(Opsional)</span>
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <PhotoPickerBox onChange={handleStatusFotoChange} size="sm" multiple />
+                        {statusFoto.map((src, i) => (
+                          <div key={i} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-slate-200">
+                            <img src={src} alt={`Foto ${i + 1}`} className="h-full w-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => setStatusFoto((prev) => prev.filter((_, idx) => idx !== i))}
+                              className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white"
+                            >
+                              <X size={11} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
 
                 {isSelesaiSelected && (
-                  <label className="block">
-                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Penerima</span>
-                    <input
-                      required
-                      value={statusNamaPenerima}
-                      onChange={(e) => setStatusNamaPenerima(e.target.value)}
-                      placeholder="Nama yang menerima barang"
-                      className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    />
-                  </label>
+                  <>
+                    <label className="block">
+                      <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Penerima</span>
+                      <input
+                        required
+                        value={statusNamaPenerima}
+                        onChange={(e) => setStatusNamaPenerima(e.target.value)}
+                        placeholder="Nama yang menerima barang"
+                        className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                      />
+                    </label>
+
+                    <div>
+                      <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                        Foto Barang Diterima <span className="text-red-500">*</span>
+                      </span>
+                      <div className="flex items-center gap-3">
+                        {fotoBarangDiterima ? (
+                          <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-slate-200">
+                            <img
+                              src={fotoBarangDiterima}
+                              alt="Foto barang diterima"
+                              className="h-full w-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setFotoBarangDiterima(null)}
+                              className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ) : (
+                          <PhotoPickerBox onChange={handleFotoBarangChange} />
+                        )}
+                        <p className="text-xs text-slate-400">
+                          Wajib. Bukti foto barang sudah diterima - ini yang tampil di tracking customer.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                        Foto Surat Jalan <span className="text-slate-400">(Opsional)</span>
+                      </span>
+                      <div className="flex items-center gap-3">
+                        {fotoSuratJalan ? (
+                          <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-slate-200">
+                            <img
+                              src={fotoSuratJalan}
+                              alt="Foto surat jalan"
+                              className="h-full w-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setFotoSuratJalan(null)}
+                              className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ) : (
+                          <PhotoPickerBox onChange={handleFotoSuratJalanChange} />
+                        )}
+                        <p className="text-xs text-slate-400">
+                          Opsional. Tidak ditampilkan ke customer, hanya untuk arsip internal.
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {fotoError && (
+                  <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-700">
+                    <AlertTriangle size={14} /> {fotoError}
+                  </div>
                 )}
 
                 {isKendalaSelected && (

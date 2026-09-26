@@ -58,6 +58,17 @@ export function reqEmail(body: Record<string, unknown>, field: string): string {
   return v.toLowerCase();
 }
 
+export function optNumber(body: Record<string, unknown>, field: string, opts: { min?: number; max?: number } = {}): number | undefined {
+  const v = body[field];
+  if (v === undefined || v === null || v === "") return undefined;
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) throw Errors.badRequest(`Field "${field}" harus berupa angka.`);
+  if (!Number.isInteger(n)) throw Errors.badRequest(`Field "${field}" harus berupa angka bulat.`);
+  if (opts.min !== undefined && n < opts.min) throw Errors.badRequest(`Field "${field}" minimal ${opts.min}.`);
+  if (opts.max !== undefined && n > opts.max) throw Errors.badRequest(`Field "${field}" maksimal ${opts.max}.`);
+  return n;
+}
+
 export function optBool(body: Record<string, unknown>, field: string): boolean | undefined {
   const v = body[field];
   if (typeof v === "undefined") return undefined;

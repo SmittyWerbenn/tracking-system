@@ -22,6 +22,7 @@ import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment, TimelineEventType, TrackingUpdateFormData, UpdateShipmentInfoData } from "../../types";
 import { checkPhotoSize, compressImage } from "../../utils/compressImage";
 import { formatTanggalJam, formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
+import { addBusinessDays } from "../../utils/sla";
 import { getAllowedNextEvents } from "../../utils/status";
 
 const CUSTOM_LOKASI_VALUE = "__custom__";
@@ -63,6 +64,7 @@ export default function UpdateTracking() {
   const [editAlamatAsal, setEditAlamatAsal] = useState("");
   const [editKotaTujuan, setEditKotaTujuan] = useState("");
   const [editAlamatTujuan, setEditAlamatTujuan] = useState("");
+  const [editSlaValue, setEditSlaValue] = useState<number | undefined>(undefined);
   const [editSaved, setEditSaved] = useState(false);
   const [editFormError, setEditFormError] = useState<string | null>(null);
 
@@ -90,6 +92,7 @@ export default function UpdateTracking() {
         setEditAlamatAsal(s.alamatAsal);
         setEditKotaTujuan(s.kotaTujuan);
         setEditAlamatTujuan(s.alamatTujuan);
+        setEditSlaValue(s.slaValue);
       }
     });
     return () => {
@@ -193,6 +196,7 @@ export default function UpdateTracking() {
       kotaAsal: editKotaAsal,
       alamatTujuan: editAlamatTujuan,
       kotaTujuan: editKotaTujuan,
+      slaValue: editSlaValue ?? null,
     };
     const result = await updateShipmentInfo(shipment!.awb, data);
     if (result.ok) {
@@ -448,6 +452,23 @@ export default function UpdateTracking() {
                       value={editAlamatTujuan}
                       onChange={(e) => setEditAlamatTujuan(e.target.value)}
                     />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Target Pengiriman (Hari)</span>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      className={inputClass}
+                      placeholder="Contoh: 3 (opsional)"
+                      value={editSlaValue ?? ""}
+                      onChange={(e) => setEditSlaValue(e.target.value === "" ? undefined : Number(e.target.value))}
+                    />
+                    <p className="mt-1.5 text-[11px] text-slate-400">
+                      {editSlaValue && editSlaValue > 0
+                        ? `Estimasi Tiba: ${formatTanggalPanjang(addBusinessDays(shipment.tanggalDibuat, editSlaValue))}`
+                        : "Kosongkan untuk menghapus SLA/Estimasi Tiba."}
+                    </p>
                   </label>
                 </div>
               </div>

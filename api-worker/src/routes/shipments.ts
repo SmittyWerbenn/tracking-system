@@ -1,13 +1,14 @@
 import type { Router } from "../router";
 import type { Ctx } from "../types";
 import { ok, Errors } from "../http";
-import { parseJsonBody, reqString, reqEnum, reqNumber, reqEmail, optString } from "../validate";
+import { parseJsonBody, reqString, reqEnum, reqNumber, reqEmail, optString, optNumber } from "../validate";
 import { newId } from "../crypto";
 import { requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta } from "../pagination";
 import { generateAwb } from "../awb";
 import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, type TimelineEventType } from "../status";
+import { addBusinessDays } from "../sla";
 
 const LAYANAN = ["Darat", "Express", "Kargo", "Regular", "Charter"] as const;
 
@@ -33,6 +34,9 @@ function shipmentSummary(row: Record<string, unknown>) {
     truckNomorUnit: row.truck_nomor_unit ?? null,
     truckJenis: row.truck_jenis ?? null,
     truckDriverNama: row.truck_driver_nama ?? null,
+    slaValue: row.sla_value ?? null,
+    slaUnit: row.sla_unit ?? null,
+    estimasiTiba: row.estimasi_tiba ?? null,
     emailTerkirim: !!row.email_terkirim,
     emailTerkirimAt: row.email_terkirim_at,
     createdAt: row.created_at,
@@ -110,6 +114,7 @@ export function registerShipmentRoutes(router: Router) {
     const beratKg = reqNumber(body, "beratKg", { min: 0.01, max: 100000 });
     const jumlahKoli = reqNumber(body, "jumlahKoli", { min: 1, max: 100000 });
     const truckId = optString(body, "truckId");
+    const slaValue = optNumber(body, "slaValue", { min: 1, max: 365 });
 
     if (truckId) {
       const truck = await ctx.env.DB.prepare(`SELECT id FROM trucks WHERE id = ?`).bind(truckId).first();
@@ -121,6 +126,10 @@ export function registerShipmentRoutes(router: Router) {
     const nowIso = now.toISOString();
     const tanggalDibuat = nowIso.slice(0, 10);
     const jamDibuat = nowIso.slice(11, 16);
+    // ETA is always derived from SLA + the shipment's own start date - never
+    // entered directly, and never fabricated when no SLA was given.
+    const slaUnit = slaValue !== undefined ? "hari_kerja" : null;
+    const estimasiTiba = slaValue !== undefined ? addBusinessDays(tanggalDibuat, slaValue) : null;
 
     await ctx.env.DB.prepare(
       `INSERT INTO shipments (
@@ -129,8 +138,9 @@ export function registerShipmentRoutes(router: Router) {
         penerima_nama, penerima_telepon, penerima_email,
         alamat_asal, kota_asal, alamat_tujuan, kota_tujuan,
         deskripsi_barang, layanan, berat_kg, jumlah_koli, truck_id,
+        sla_value, sla_unit, estimasi_tiba,
         email_terkirim, created_at, updated_at, created_by, updated_by
-      ) VALUES (?, ?, ?, 'Dalam Persiapan', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, 'Dalam Persiapan', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
     )
       .bind(
         awb, tanggalDibuat, jamDibuat,
@@ -138,6 +148,7 @@ export function registerShipmentRoutes(router: Router) {
         penerimaNama, penerimaTelepon, penerimaEmail,
         alamatAsal, kotaAsal, alamatTujuan, kotaTujuan,
         deskripsiBarang, layanan, beratKg, jumlahKoli, truckId ?? null,
+        slaValue ?? null, slaUnit, estimasiTiba,
         nowIso, nowIso, actor.id, actor.id,
       )
       .run();
@@ -198,9 +209,9 @@ export function registerShipmentRoutes(router: Router) {
 
   router.patch("/api/shipments/:awb", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "shipments.update_info");
-    const shipment = await ctx.env.DB.prepare(`SELECT status FROM shipments WHERE awb = ?`).bind(params.awb).first<{
-      status: string;
-    }>();
+    const shipment = await ctx.env.DB.prepare(`SELECT status, tanggal_dibuat, sla_value, estimasi_tiba FROM shipments WHERE awb = ?`)
+      .bind(params.awb)
+      .first<{ status: string; tanggal_dibuat: string; sla_value: number | null; estimasi_tiba: string | null }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
     if (shipment.status === "Selesai / Terkirim") {
       throw Errors.unprocessable("Pengiriman yang sudah Selesai/Terkirim tidak bisa diubah lagi.");
@@ -217,16 +228,28 @@ export function registerShipmentRoutes(router: Router) {
     const kotaAsal = reqString(body, "kotaAsal", { max: 80 });
     const alamatTujuan = reqString(body, "alamatTujuan", { max: 300 });
     const kotaTujuan = reqString(body, "kotaTujuan", { max: 80 });
+    // SLA is optional in this payload (older callers won't send it) - only
+    // touch sla/eta when the field is actually present in the request.
+    const slaProvided = Object.prototype.hasOwnProperty.call(body, "slaValue");
+    const slaValue = slaProvided ? optNumber(body, "slaValue", { min: 1, max: 365 }) : undefined;
 
-    await ctx.env.DB.prepare(
-      `UPDATE shipments SET pengirim_nama=?, pengirim_telepon=?, pengirim_email=?, penerima_nama=?, penerima_telepon=?, penerima_email=?,
-        alamat_asal=?, kota_asal=?, alamat_tujuan=?, kota_tujuan=?, updated_at=?, updated_by=? WHERE awb=?`,
-    )
-      .bind(
-        pengirimNama, pengirimTelepon, pengirimEmail, penerimaNama, penerimaTelepon, penerimaEmail,
-        alamatAsal, kotaAsal, alamatTujuan, kotaTujuan, new Date().toISOString(), actor.id, params.awb,
-      )
-      .run();
+    const sets = [
+      "pengirim_nama=?", "pengirim_telepon=?", "pengirim_email=?", "penerima_nama=?", "penerima_telepon=?", "penerima_email=?",
+      "alamat_asal=?", "kota_asal=?", "alamat_tujuan=?", "kota_tujuan=?", "updated_at=?", "updated_by=?",
+    ];
+    const values: unknown[] = [
+      pengirimNama, pengirimTelepon, pengirimEmail, penerimaNama, penerimaTelepon, penerimaEmail,
+      alamatAsal, kotaAsal, alamatTujuan, kotaTujuan, new Date().toISOString(), actor.id,
+    ];
+    let newEta: string | null = shipment.estimasi_tiba;
+    if (slaProvided) {
+      newEta = slaValue !== undefined ? addBusinessDays(shipment.tanggal_dibuat, slaValue) : null;
+      sets.push("sla_value=?", "sla_unit=?", "estimasi_tiba=?");
+      values.push(slaValue ?? null, slaValue !== undefined ? "hari_kerja" : null, newEta);
+    }
+    values.push(params.awb);
+
+    await ctx.env.DB.prepare(`UPDATE shipments SET ${sets.join(", ")} WHERE awb=?`).bind(...values).run();
 
     await writeAuditLog(ctx.env, actor, {
       action: "UPDATE_SHIPMENT_INFO",
@@ -235,6 +258,16 @@ export function registerShipmentRoutes(router: Router) {
       awb: params.awb,
       description: "Data pengiriman diperbarui.",
     });
+
+    if (slaProvided && slaValue !== shipment.sla_value) {
+      await writeAuditLog(ctx.env, actor, {
+        action: "UPDATE_SLA",
+        actionLabel: "UPDATE SLA",
+        module: "Shipment",
+        awb: params.awb,
+        description: `SLA: ${shipment.sla_value ?? "-"} -> ${slaValue ?? "-"} Hari Kerja. Estimasi Tiba: ${shipment.estimasi_tiba ?? "-"} -> ${newEta ?? "-"}.`,
+      });
+    }
 
     return ok({ updated: true });
   });

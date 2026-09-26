@@ -60,6 +60,7 @@ function emptyRow(): BulkRow {
     jumlahKoli: "",
     deskripsiBarang: "",
     nomorPolisiTruck: "",
+    slaValue: "",
   };
 }
 
@@ -101,6 +102,10 @@ function rowErrors(row: BulkRow): string[] {
   if (!row.beratKg || !Number.isFinite(berat) || berat <= 0) errs.push("Berat tidak valid");
   const koli = Number(row.jumlahKoli);
   if (!row.jumlahKoli || !Number.isFinite(koli) || koli <= 0) errs.push("Jumlah koli tidak valid");
+  if (row.slaValue.trim()) {
+    const sla = Number(row.slaValue);
+    if (!Number.isInteger(sla) || sla <= 0) errs.push("Target pengiriman harus angka bulat positif");
+  }
   return errs;
 }
 
@@ -206,6 +211,7 @@ export function BulkShipmentImport() {
         beratKg: Number(row.beratKg),
         jumlahKoli: Number(row.jumlahKoli),
         truckId: truck?.id ?? "",
+        slaValue: row.slaValue.trim() ? Number(row.slaValue) : undefined,
       });
       created.push({ awb, kotaAsal: row.kotaAsal, kotaTujuan: row.kotaTujuan });
     }
@@ -283,6 +289,7 @@ export function BulkShipmentImport() {
                 Detail Pengiriman
               </th>
               <th className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">Armada</th>
+              <th className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">Target Pengiriman</th>
               <th></th>
             </tr>
             <tr className="border-b border-slate-200 bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -302,6 +309,7 @@ export function BulkShipmentImport() {
               <th className="px-2.5 py-2.5">Jumlah Koli</th>
               <th className="px-2.5 py-2.5">Deskripsi Barang</th>
               <th className="border-l border-slate-200 px-2.5 py-2.5">Truck (Opsional)</th>
+              <th className="border-l border-slate-200 px-2.5 py-2.5">Hari (Opsional)</th>
               <th className="px-2.5 py-2.5"></th>
             </tr>
           </thead>
@@ -486,6 +494,17 @@ export function BulkShipmentImport() {
                       </option>
                     ))}
                   </select>
+                </td>
+                <td className="border-l border-slate-100 px-2.5 py-2">
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    className={`${cellInputClass} min-w-[80px]`}
+                    value={row.slaValue}
+                    onChange={(e) => updateRow(row.id, "slaValue", e.target.value)}
+                    placeholder="3"
+                  />
                 </td>
                 <td className="px-2.5 py-2">
                   <button

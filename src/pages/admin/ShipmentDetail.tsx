@@ -171,6 +171,18 @@ export default function ShipmentDetail() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Jumlah Koli</p>
                 <p className="text-sm font-medium text-slate-800">{shipment.jumlahKoli} Koli</p>
               </div>
+              {shipment.slaValue != null && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">SLA</p>
+                  <p className="text-sm font-medium text-slate-800">{shipment.slaValue} Hari</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Estimasi Tiba</p>
+                <p className="text-sm font-medium text-slate-800">
+                  {shipment.estimasiTiba ? formatTanggalPanjang(shipment.estimasiTiba) : "Belum tersedia"}
+                </p>
+              </div>
             </div>
 
             <div className="mt-5 border-t border-slate-100 pt-5">

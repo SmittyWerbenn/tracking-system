@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  Headset,
   Loader2,
   MapPin,
   MessageCircle,
@@ -19,6 +20,7 @@ import { useShipments } from "../../store/ShipmentContext";
 import type { ShipmentStatus, TimelineEventType } from "../../types";
 import { ApiError } from "../../utils/apiClient";
 import { checkPhotoSize, compressImage } from "../../utils/compressImage";
+import { CS_PHONE_DISPLAY, CS_WHATSAPP_NUMBER } from "../../utils/contact";
 import {
   fetchDriverLastPosition,
   fetchDriverShipmentDetail,
@@ -330,6 +332,20 @@ export default function DriverShipmentDetail() {
                 </a>
               )}
             </div>
+
+            <a
+              href={`https://wa.me/${CS_WHATSAPP_NUMBER}?text=${encodeURIComponent(
+                `Halo CS, saya driver AWB ${shipment.awb} butuh bantuan.`,
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 flex w-full flex-col items-center justify-center gap-0.5 rounded-lg border border-amber-300 bg-amber-50 py-2.5 text-amber-700 hover:bg-amber-100"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                <Headset size={16} /> Hubungi CS (Darurat/Kendala)
+              </span>
+              <span className="text-xs font-normal text-amber-600">{CS_PHONE_DISPLAY}</span>
+            </a>
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

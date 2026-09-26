@@ -2,12 +2,13 @@ import { ArrowLeft, Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-rea
 import { useNavigate } from "react-router-dom";
 import { PublicLayout } from "../../components/layout/PublicLayout";
 import { useLanguage } from "../../store/LanguageContext";
+import { CS_PHONE_DISPLAY, CS_WHATSAPP_NUMBER } from "../../utils/contact";
 import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
 const CHANNEL_ICONS = [Phone, MessageCircle, Mail];
 const CHANNEL_VALUES = [
   { value: "021-2200-8899", href: "tel:0212200899" },
-  { value: "0812-0000-8899", href: "https://wa.me/6281200008899" },
+  { value: CS_PHONE_DISPLAY, href: `https://wa.me/${CS_WHATSAPP_NUMBER}` },
   { value: "cs@gangsarmitrasuatama.co.id", href: "mailto:cs@gangsarmitrasuatama.co.id" },
 ];
 

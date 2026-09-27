@@ -689,7 +689,7 @@ export default function UpdateTracking() {
 
             {isSelesai ? (
               <div className="grid grid-cols-1 gap-4 sm:col-span-2 sm:grid-cols-2">
-                <label className="block">
+                <div>
                   <span className="mb-1.5 block text-xs font-medium text-slate-600">Foto Barang Diterima</span>
                   <span className="mb-1.5 block text-[11px] text-slate-400">
                     Kondisi barang saat diterima di lokasi tujuan.
@@ -708,9 +708,9 @@ export default function UpdateTracking() {
                   ) : (
                     <PhotoPickerBox onChange={handleFotoBarangDiterimaChange} />
                   )}
-                </label>
+                </div>
 
-                <label className="block">
+                <div>
                   <span className="mb-1.5 block text-xs font-medium text-slate-600">Foto Surat Jalan</span>
                   <span className="mb-1.5 block text-[11px] text-slate-400">
                     Surat jalan yang ditandatangani/dicap penerima.
@@ -729,11 +729,11 @@ export default function UpdateTracking() {
                   ) : (
                     <PhotoPickerBox onChange={handleFotoSuratJalanChange} />
                   )}
-                </label>
+                </div>
                 {photoError && <p className="text-xs font-medium text-red-600 sm:col-span-2">{photoError}</p>}
               </div>
             ) : (
-              <label className="block sm:col-span-2">
+              <div className="sm:col-span-2">
                 <span className="mb-1.5 block text-xs font-medium text-slate-600">Foto</span>
                 <div className="flex flex-wrap items-center gap-3">
                   <PhotoPickerBox onChange={handlePhotoChange} size="sm" multiple />
@@ -751,7 +751,7 @@ export default function UpdateTracking() {
                   ))}
                 </div>
                 {photoError && <p className="mt-1.5 text-xs font-medium text-red-600">{photoError}</p>}
-              </label>
+              </div>
             )}
 
             <div className="sm:col-span-2 border-t border-slate-100 pt-4">

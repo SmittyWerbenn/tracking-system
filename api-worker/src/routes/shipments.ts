@@ -271,11 +271,11 @@ export function registerShipmentRoutes(router: Router) {
 
     if (slaProvided && slaValue !== shipment.sla_value) {
       await writeAuditLog(ctx.env, actor, {
-        action: "UPDATE_SLA",
-        actionLabel: "UPDATE SLA",
+        action: "UPDATE_ETA",
+        actionLabel: "UPDATE ETA",
         module: "Shipment",
         awb: params.awb,
-        description: `SLA: ${shipment.sla_value ?? "-"} -> ${slaValue ?? "-"} Hari Kerja. Estimasi Tiba: ${shipment.estimasi_tiba ?? "-"} -> ${newEta ?? "-"}.`,
+        description: `Target Pengiriman: ${shipment.sla_value ?? "-"} -> ${slaValue ?? "-"} Hari. ETA: ${shipment.estimasi_tiba ?? "-"} -> ${newEta ?? "-"}.`,
       });
     }
 

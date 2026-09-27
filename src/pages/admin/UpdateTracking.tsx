@@ -467,7 +467,7 @@ export default function UpdateTracking() {
                     <p className="mt-1.5 text-[11px] text-slate-400">
                       {editSlaValue && editSlaValue > 0
                         ? `Estimasi Tiba: ${formatTanggalPanjang(addBusinessDays(shipment.tanggalDibuat, editSlaValue))}`
-                        : "Kosongkan untuk menghapus SLA/Estimasi Tiba."}
+                        : "Kosongkan untuk menghapus ETA/Estimasi Tiba."}
                     </p>
                   </label>
                 </div>

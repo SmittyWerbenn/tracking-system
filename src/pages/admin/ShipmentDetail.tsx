@@ -212,7 +212,7 @@ export default function ShipmentDetail() {
               </div>
               {shipment.slaValue != null && (
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">SLA</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">ETA</p>
                   <p className="text-sm font-medium text-slate-800">{shipment.slaValue} Hari</p>
                 </div>
               )}

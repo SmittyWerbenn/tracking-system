@@ -87,6 +87,12 @@ export interface Shipment {
   slaValue?: number;
   slaUnit?: string;
   estimasiTiba?: string; // ISO date, ditampilkan ke customer bila tersedia
+  /** Set while a driver has requested to claim this (still-unassigned)
+   * shipment and is waiting for admin to confirm or reject it. */
+  claimStatus?: "pending";
+  claimDriverNama?: string;
+  claimDriverTelepon?: string;
+  claimRequestedAt?: string;
 }
 
 export interface ShipmentFormData {
@@ -102,7 +108,9 @@ export interface ShipmentFormData {
   jumlahKoli: number;
   fotoBarang?: string;
   fotoSuratJalan?: string;
-  truckId: string;
+  /** Optional - leave empty to create an unassigned ("Pesanan Terbuka")
+   * shipment any driver can request to claim. */
+  truckId?: string;
   /** SLA in business days; ETA is calculated server-side from this. */
   slaValue?: number;
 }

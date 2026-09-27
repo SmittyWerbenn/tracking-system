@@ -1,14 +1,14 @@
-import { Download, Eye, FileEdit, MapPin, Printer, Search, X } from "lucide-react";
+import { CheckCircle2, Download, Eye, FileEdit, Loader2, MapPin, PackageSearch, Printer, Search, X, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../store/AuthContext";
 import { useSettings } from "../../store/SettingsContext";
-import { useShipments } from "../../store/ShipmentContext";
+import { useShipments, type PendingClaim } from "../../store/ShipmentContext";
 import type { ShipmentStatus } from "../../types";
 import { exportShipmentsCsv } from "../../utils/exportCsv";
-import { formatTanggalPendek, stripKeteranganMeta, todayISO } from "../../utils/format";
+import { formatTanggalJam, formatTanggalPendek, stripKeteranganMeta, todayISO } from "../../utils/format";
 import { getStagnantShipments } from "../../utils/stagnant";
 import { SHIPMENT_STATUS_OPTIONS } from "../../utils/status";
 
@@ -21,15 +21,49 @@ function isShipmentStatus(value: string): value is ShipmentStatus {
  * and the "macet" quick-filter refine client-side over that already-
  * filtered, already-bounded batch rather than the whole table. */
 export default function ShipmentList() {
-  const { shipments, isLoading, refresh } = useShipments();
+  const { shipments, isLoading, refresh, fetchPendingClaims, confirmClaim, rejectClaim } = useShipments();
   const { settings } = useSettings();
   const { profile } = useAuth();
   const canCreateShipment = profile?.role === "Superadmin" || profile?.role === "Admin";
+  const canManageClaims = profile?.role === "Superadmin" || profile?.role === "Admin";
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [pendingClaims, setPendingClaims] = useState<PendingClaim[]>([]);
+  const [claimActionAwb, setClaimActionAwb] = useState<string | null>(null);
+  const [claimError, setClaimError] = useState<string | null>(null);
+
+  function loadPendingClaims() {
+    if (!canManageClaims) return;
+    fetchPendingClaims()
+      .then(setPendingClaims)
+      .catch(() => {});
+  }
+
+  useEffect(() => {
+    loadPendingClaims();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleConfirmClaim(awb: string) {
+    setClaimActionAwb(awb);
+    setClaimError(null);
+    const result = await confirmClaim(awb);
+    setClaimActionAwb(null);
+    if (result.ok) loadPendingClaims();
+    else setClaimError(result.error);
+  }
+
+  async function handleRejectClaim(awb: string) {
+    setClaimActionAwb(awb);
+    setClaimError(null);
+    const result = await rejectClaim(awb);
+    setClaimActionAwb(null);
+    if (result.ok) loadPendingClaims();
+    else setClaimError(result.error);
+  }
 
   const statusParam = searchParams.get("status") ?? "";
   const statusFilter: ShipmentStatus | "Semua" = isShipmentStatus(statusParam) ? statusParam : "Semua";
@@ -106,6 +140,56 @@ export default function ShipmentList() {
           </Link>
         )}
       </div>
+
+      {canManageClaims && pendingClaims.length > 0 && (
+        <div className="mt-5 rounded-xl border border-violet-200 bg-violet-50 p-4">
+          <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-violet-800">
+            <PackageSearch size={15} /> Klaim Pengiriman Menunggu Konfirmasi ({pendingClaims.length})
+          </p>
+          {claimError && <p className="mb-3 text-xs font-medium text-red-600">{claimError}</p>}
+          <div className="flex flex-col gap-2">
+            {pendingClaims.map((c) => (
+              <div
+                key={c.awb}
+                className="flex flex-col gap-2 rounded-lg border border-violet-100 bg-white px-3.5 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="font-mono text-sm font-bold text-slate-900">
+                    {c.awb}{" "}
+                    <span className="font-sans text-xs font-normal text-slate-500">
+                      {c.kotaAsal} → {c.kotaTujuan}
+                    </span>
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Diajukan oleh <span className="font-medium text-slate-700">{c.driver.nama}</span> (
+                    {c.driver.telepon}) ·{" "}
+                    {formatTanggalJam(c.claimRequestedAt.slice(0, 10), c.claimRequestedAt.slice(11, 16))}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={claimActionAwb === c.awb}
+                    onClick={() => handleRejectClaim(c.awb)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+                  >
+                    <XCircle size={13} /> Tolak
+                  </button>
+                  <button
+                    type="button"
+                    disabled={claimActionAwb === c.awb}
+                    onClick={() => handleConfirmClaim(c.awb)}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
+                  >
+                    {claimActionAwb === c.awb ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                    Konfirmasi
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {macetOnly && (
         <div className="mt-5 flex items-center gap-2 rounded-lg bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-800">
@@ -237,7 +321,15 @@ export default function ShipmentList() {
                   <td className="whitespace-nowrap px-4 py-3">
                     <StatusBadge status={s.status} size="sm" />
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.truck.nomorUnit}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                    {s.claimStatus === "pending" ? (
+                      <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-700">
+                        Diklaim: {s.claimDriverNama}
+                      </span>
+                    ) : (
+                      s.truck.nomorUnit
+                    )}
+                  </td>
                   <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.truck.driver ?? "-"}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
                     {lastUpdate(s.awb)}

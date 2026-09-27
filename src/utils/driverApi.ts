@@ -33,6 +33,12 @@ export interface DriverShipmentDetail {
   timeline: DriverTimelineEvent[];
 }
 
+export interface OpenShipmentSummary extends DriverShipmentSummary {
+  claimStatus: "pending" | null;
+  /** True when THIS driver is the one with the pending claim on it. */
+  isMine: boolean;
+}
+
 export interface DriverLastPosition {
   latitude: number;
   longitude: number;
@@ -61,4 +67,18 @@ export async function fetchDriverLastPosition(awb: string): Promise<DriverLastPo
     `/api/driver/shipments/${encodeURIComponent(awb)}/position`,
   );
   return res.lastPosition;
+}
+
+/** Unassigned shipments any driver may browse and request to claim. */
+export async function fetchOpenShipments(): Promise<OpenShipmentSummary[]> {
+  const res = await api.get<{ items: OpenShipmentSummary[] }>("/api/driver/open-shipments");
+  return res.items;
+}
+
+export async function claimShipment(awb: string): Promise<void> {
+  await api.post(`/api/driver/shipments/${encodeURIComponent(awb)}/claim`);
+}
+
+export async function cancelShipmentClaim(awb: string): Promise<void> {
+  await api.post(`/api/driver/shipments/${encodeURIComponent(awb)}/claim/cancel`);
 }

@@ -2,12 +2,14 @@ import {
   ArrowLeft,
   CheckCircle2,
   Download,
+  Loader2,
   Mail,
   MapPin,
   Package,
   Printer,
   Truck,
   User,
+  XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -17,15 +19,25 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../store/AuthContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment } from "../../types";
-import { formatJam, formatTanggalPanjang } from "../../utils/format";
+import { formatJam, formatTanggalJam, formatTanggalPanjang } from "../../utils/format";
 
 export default function ShipmentDetail() {
   const { awb } = useParams<{ awb: string }>();
-  const { getByAwb } = useShipments();
+  const { getByAwb, confirmClaim, rejectClaim, unassignDriver } = useShipments();
   const { profile } = useAuth();
   const navigate = useNavigate();
   const [shipment, setShipment] = useState<Shipment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [claimActionPending, setClaimActionPending] = useState(false);
+  const [claimActionError, setClaimActionError] = useState<string | null>(null);
+  const canManageClaims = profile?.role === "Superadmin" || profile?.role === "Admin";
+
+  function reload() {
+    return getByAwb(awb ?? "").then((s) => {
+      setShipment(s);
+      return s;
+    });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -41,6 +53,33 @@ export default function ShipmentDetail() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [awb]);
+
+  async function handleConfirmClaim() {
+    setClaimActionPending(true);
+    setClaimActionError(null);
+    const result = await confirmClaim(shipment!.awb);
+    setClaimActionPending(false);
+    if (result.ok) await reload();
+    else setClaimActionError(result.error);
+  }
+
+  async function handleRejectClaim() {
+    setClaimActionPending(true);
+    setClaimActionError(null);
+    const result = await rejectClaim(shipment!.awb);
+    setClaimActionPending(false);
+    if (result.ok) await reload();
+    else setClaimActionError(result.error);
+  }
+
+  async function handleUnassignDriver() {
+    setClaimActionPending(true);
+    setClaimActionError(null);
+    const result = await unassignDriver(shipment!.awb);
+    setClaimActionPending(false);
+    if (result.ok) await reload();
+    else setClaimActionError(result.error);
+  }
 
   if (isLoading) {
     return (
@@ -218,19 +257,78 @@ export default function ShipmentDetail() {
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
                 <Truck size={13} /> Truck &amp; Driver
               </p>
-              <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-700">
-                <p>
-                  <span className="text-slate-400">Nomor Unit:</span> {shipment.truck.nomorUnit}
-                </p>
-                <p>
-                  <span className="text-slate-400">Jenis:</span> {shipment.truck.jenis}
-                </p>
-                {shipment.truck.driver && (
-                  <p>
-                    <span className="text-slate-400">Driver:</span> {shipment.truck.driver}
+
+              {claimActionError && (
+                <p className="mb-2 text-xs font-medium text-red-600">{claimActionError}</p>
+              )}
+
+              {shipment.claimStatus === "pending" ? (
+                <div className="rounded-lg border border-violet-200 bg-violet-50 p-3">
+                  <p className="text-sm text-violet-800">
+                    Diklaim oleh <span className="font-semibold">{shipment.claimDriverNama}</span>
+                    {shipment.claimDriverTelepon && ` (${shipment.claimDriverTelepon})`} - menunggu
+                    konfirmasi.
+                    {shipment.claimRequestedAt && (
+                      <span className="mt-0.5 block text-xs text-violet-600">
+                        Diajukan {formatTanggalJam(shipment.claimRequestedAt.slice(0, 10), shipment.claimRequestedAt.slice(11, 16))}
+                      </span>
+                    )}
                   </p>
-                )}
-              </div>
+                  {canManageClaims && (
+                    <div className="mt-3 flex items-center gap-2 no-print">
+                      <button
+                        type="button"
+                        disabled={claimActionPending}
+                        onClick={handleRejectClaim}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+                      >
+                        <XCircle size={13} /> Tolak
+                      </button>
+                      <button
+                        type="button"
+                        disabled={claimActionPending}
+                        onClick={handleConfirmClaim}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
+                      >
+                        {claimActionPending ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                        Konfirmasi
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : !shipment.truckId ? (
+                <p className="text-sm text-slate-500">
+                  Belum ditugaskan ke driver manapun - pengiriman ini masuk daftar "Pesanan Terbuka"
+                  di portal driver.
+                </p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-700">
+                    <p>
+                      <span className="text-slate-400">Nomor Unit:</span> {shipment.truck.nomorUnit}
+                    </p>
+                    <p>
+                      <span className="text-slate-400">Jenis:</span> {shipment.truck.jenis}
+                    </p>
+                    {shipment.truck.driver && (
+                      <p>
+                        <span className="text-slate-400">Driver:</span> {shipment.truck.driver}
+                      </p>
+                    )}
+                  </div>
+                  {canManageClaims && shipment.status === "Dalam Persiapan" && (
+                    <button
+                      type="button"
+                      disabled={claimActionPending}
+                      onClick={handleUnassignDriver}
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 no-print"
+                    >
+                      {claimActionPending ? <Loader2 size={13} className="animate-spin" /> : null}
+                      Batalkan Penugasan
+                    </button>
+                  )}
+                </>
+              )}
             </div>
 
             <div className="mt-6 grid grid-cols-2 gap-4 border-t border-slate-100 pt-5 text-sm sm:grid-cols-3">

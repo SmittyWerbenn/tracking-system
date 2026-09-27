@@ -37,6 +37,10 @@ function shipmentSummary(row: Record<string, unknown>) {
     slaValue: row.sla_value ?? null,
     slaUnit: row.sla_unit ?? null,
     estimasiTiba: row.estimasi_tiba ?? null,
+    claimStatus: row.claim_status ?? null,
+    claimDriverNama: row.claim_driver_nama ?? null,
+    claimDriverTelepon: row.claim_driver_telepon ?? null,
+    claimRequestedAt: row.claim_requested_at ?? null,
     emailTerkirim: !!row.email_terkirim,
     emailTerkirimAt: row.email_terkirim_at,
     createdAt: row.created_at,
@@ -72,11 +76,13 @@ export function registerShipmentRoutes(router: Router) {
 
     const rows = await ctx.env.DB.prepare(
       `SELECT s.*, t.nomor_unit as truck_nomor_unit, d.nama as truck_driver_nama,
+              cd.nama as claim_driver_nama, cd.telepon as claim_driver_telepon,
               p.tanggal as pod_tanggal, p.jam as pod_jam, p.nama_penerima as pod_nama_penerima,
               le.tanggal as last_tanggal, le.jam as last_jam
        FROM shipments s
        LEFT JOIN trucks t ON t.id = s.truck_id
        LEFT JOIN drivers d ON d.id = t.driver_id
+       LEFT JOIN drivers cd ON cd.id = s.claim_driver_id
        LEFT JOIN shipment_pod p ON p.awb = s.awb
        LEFT JOIN (
          SELECT e1.awb, e1.tanggal, e1.jam FROM shipment_timeline_events e1
@@ -174,8 +180,12 @@ export function registerShipmentRoutes(router: Router) {
   router.get("/api/shipments/:awb", async (ctx: Ctx, params) => {
     requirePermission(ctx, "shipments.view");
     const row = await ctx.env.DB.prepare(
-      `SELECT s.*, t.nomor_unit as truck_nomor_unit, t.jenis as truck_jenis, d.nama as truck_driver_nama
-       FROM shipments s LEFT JOIN trucks t ON t.id = s.truck_id LEFT JOIN drivers d ON d.id = t.driver_id
+      `SELECT s.*, t.nomor_unit as truck_nomor_unit, t.jenis as truck_jenis, d.nama as truck_driver_nama,
+              cd.nama as claim_driver_nama, cd.telepon as claim_driver_telepon
+       FROM shipments s
+       LEFT JOIN trucks t ON t.id = s.truck_id
+       LEFT JOIN drivers d ON d.id = t.driver_id
+       LEFT JOIN drivers cd ON cd.id = s.claim_driver_id
        WHERE s.awb = ?`,
     )
       .bind(params.awb)
@@ -419,5 +429,131 @@ export function registerShipmentRoutes(router: Router) {
     });
 
     return ok({ updated: true });
+  });
+
+  // Shipments a driver has requested to claim - across all AWBs, so admin
+  // doesn't have to open each shipment detail to notice a pending request.
+  router.get("/api/shipments/claims/pending", async (ctx: Ctx) => {
+    requirePermission(ctx, "shipments.update_info");
+    const rows = await ctx.env.DB.prepare(
+      `SELECT s.awb, s.kota_asal, s.kota_tujuan, s.alamat_tujuan, s.deskripsi_barang, s.claim_requested_at,
+              d.id as driver_id, d.nama as driver_nama, d.telepon as driver_telepon
+       FROM shipments s
+       JOIN drivers d ON d.id = s.claim_driver_id
+       WHERE s.claim_status = 'pending'
+       ORDER BY s.claim_requested_at ASC`,
+    ).all();
+    return ok({
+      items: (rows.results ?? []).map((row: Record<string, unknown>) => ({
+        awb: row.awb,
+        kotaAsal: row.kota_asal,
+        kotaTujuan: row.kota_tujuan,
+        alamatTujuan: row.alamat_tujuan,
+        deskripsiBarang: row.deskripsi_barang,
+        claimRequestedAt: row.claim_requested_at,
+        driver: { id: row.driver_id, nama: row.driver_nama, telepon: row.driver_telepon },
+      })),
+    });
+  });
+
+  // Approves a driver's claim request - actually assigns the driver's
+  // truck, which is what makes the shipment show up on their dashboard.
+  router.post("/api/shipments/:awb/claim/confirm", async (ctx: Ctx, params) => {
+    const actor = requirePermission(ctx, "shipments.update_info");
+    const shipment = await ctx.env.DB.prepare(
+      `SELECT claim_status, claim_driver_id FROM shipments WHERE awb = ?`,
+    )
+      .bind(params.awb)
+      .first<{ claim_status: string | null; claim_driver_id: string | null }>();
+    if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
+    if (shipment.claim_status !== "pending") {
+      throw Errors.badRequest("Tidak ada klaim yang menunggu konfirmasi untuk pengiriman ini.");
+    }
+
+    const truck = await ctx.env.DB.prepare(`SELECT id, nomor_unit FROM trucks WHERE driver_id = ?`)
+      .bind(shipment.claim_driver_id)
+      .first<{ id: string; nomor_unit: string }>();
+    if (!truck) throw Errors.badRequest("Driver ini belum memiliki unit truck di Master Armada.");
+
+    const now = new Date().toISOString();
+    await ctx.env.DB.prepare(
+      `UPDATE shipments SET truck_id = ?, claim_status = NULL, claim_driver_id = NULL, claim_requested_at = NULL,
+              updated_at = ?, updated_by = ? WHERE awb = ?`,
+    )
+      .bind(truck.id, now, actor.id, params.awb)
+      .run();
+
+    await writeAuditLog(ctx.env, actor, {
+      action: "CONFIRM_CLAIM",
+      actionLabel: "CONFIRM CLAIM",
+      module: "Shipment",
+      awb: params.awb,
+      description: `Klaim driver dikonfirmasi - pengiriman ditugaskan ke unit ${truck.nomor_unit}.`,
+    });
+
+    return ok({ confirmed: true, truckId: truck.id });
+  });
+
+  // Declines a driver's claim request - shipment goes back to the open
+  // pool for other drivers, unchanged otherwise.
+  router.post("/api/shipments/:awb/claim/reject", async (ctx: Ctx, params) => {
+    const actor = requirePermission(ctx, "shipments.update_info");
+    const shipment = await ctx.env.DB.prepare(`SELECT claim_status FROM shipments WHERE awb = ?`)
+      .bind(params.awb)
+      .first<{ claim_status: string | null }>();
+    if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
+    if (shipment.claim_status !== "pending") {
+      throw Errors.badRequest("Tidak ada klaim yang menunggu konfirmasi untuk pengiriman ini.");
+    }
+
+    await ctx.env.DB.prepare(
+      `UPDATE shipments SET claim_status = NULL, claim_driver_id = NULL, claim_requested_at = NULL WHERE awb = ?`,
+    )
+      .bind(params.awb)
+      .run();
+
+    await writeAuditLog(ctx.env, actor, {
+      action: "REJECT_CLAIM",
+      actionLabel: "REJECT CLAIM",
+      module: "Shipment",
+      awb: params.awb,
+      description: "Klaim driver ditolak - pengiriman dikembalikan ke daftar terbuka.",
+    });
+
+    return ok({ rejected: true });
+  });
+
+  // Unassigns an already-confirmed driver, sending the shipment back to
+  // the open pool - only while nothing has actually happened yet (still
+  // "Dalam Persiapan"), so an en-route shipment can't be yanked from under
+  // a driver mid-trip.
+  router.post("/api/shipments/:awb/unassign", async (ctx: Ctx, params) => {
+    const actor = requirePermission(ctx, "shipments.update_info");
+    const shipment = await ctx.env.DB.prepare(`SELECT status, truck_id FROM shipments WHERE awb = ?`)
+      .bind(params.awb)
+      .first<{ status: string; truck_id: string | null }>();
+    if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
+    if (!shipment.truck_id) throw Errors.badRequest("Pengiriman ini belum ditugaskan ke driver manapun.");
+    if (shipment.status !== "Dalam Persiapan") {
+      throw Errors.unprocessable(
+        "Pengiriman yang sudah berjalan (status selain Dalam Persiapan) tidak bisa dibatalkan penugasannya.",
+      );
+    }
+
+    await ctx.env.DB.prepare(
+      `UPDATE shipments SET truck_id = NULL, updated_at = ?, updated_by = ? WHERE awb = ?`,
+    )
+      .bind(new Date().toISOString(), actor.id, params.awb)
+      .run();
+
+    await writeAuditLog(ctx.env, actor, {
+      action: "UNASSIGN_DRIVER",
+      actionLabel: "UNASSIGN DRIVER",
+      module: "Shipment",
+      awb: params.awb,
+      description: "Penugasan driver dibatalkan - pengiriman dikembalikan ke daftar terbuka.",
+    });
+
+    return ok({ unassigned: true });
   });
 }

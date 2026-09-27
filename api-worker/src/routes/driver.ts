@@ -50,6 +50,96 @@ export function registerDriverRoutes(router: Router) {
     return ok({ items: (rows.results ?? []).map(shipmentSummary) });
   });
 
+  // Unassigned shipments (truck_id IS NULL) any driver may browse and
+  // request to claim - excludes ones another driver already has a pending
+  // claim on, but still shows the requesting driver's own pending claim.
+  router.get("/api/driver/open-shipments", async (ctx: Ctx) => {
+    const driverId = await requireDriverId(ctx);
+    const rows = await ctx.env.DB.prepare(
+      `SELECT s.* FROM shipments s
+       WHERE s.truck_id IS NULL
+         AND (s.claim_status IS NULL OR s.claim_driver_id = ?)
+       ORDER BY s.created_at ASC`,
+    )
+      .bind(driverId)
+      .all();
+    return ok({
+      items: (rows.results ?? []).map((row) => ({
+        ...shipmentSummary(row),
+        claimStatus: row.claim_status ?? null,
+        isMine: row.claim_driver_id === driverId,
+      })),
+    });
+  });
+
+  // Request to take an unassigned shipment - stays "pending" until an
+  // admin confirms it (which actually assigns the truck) or rejects it.
+  router.post("/api/driver/shipments/:awb/claim", async (ctx: Ctx, params) => {
+    const actor = requireAuth(ctx);
+    const driverId = await requireDriverId(ctx);
+    const shipment = await ctx.env.DB.prepare(
+      `SELECT truck_id, claim_status, claim_driver_id FROM shipments WHERE awb = ?`,
+    )
+      .bind(params.awb)
+      .first<{ truck_id: string | null; claim_status: string | null; claim_driver_id: string | null }>();
+    if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
+    if (shipment.truck_id) throw Errors.conflict("Pengiriman ini sudah punya driver yang ditugaskan.");
+    if (shipment.claim_status === "pending") {
+      if (shipment.claim_driver_id === driverId) return ok({ claimed: true });
+      throw Errors.conflict("Pengiriman ini sedang diklaim driver lain, menunggu konfirmasi admin.");
+    }
+
+    const now = new Date().toISOString();
+    const result = await ctx.env.DB.prepare(
+      `UPDATE shipments SET claim_status = 'pending', claim_driver_id = ?, claim_requested_at = ?
+       WHERE awb = ? AND truck_id IS NULL AND claim_status IS NULL`,
+    )
+      .bind(driverId, now, params.awb)
+      .run();
+    if (!result.meta.changes) throw Errors.conflict("Pengiriman ini baru saja diambil driver lain.");
+
+    await writeAuditLog(ctx.env, actor, {
+      action: "CLAIM_SHIPMENT_REQUEST",
+      actionLabel: "CLAIM SHIPMENT REQUEST",
+      module: "Driver",
+      awb: params.awb,
+      description: `Driver ${actor.nama} mengajukan klaim pengiriman ini.`,
+    });
+
+    return ok({ claimed: true });
+  });
+
+  // Withdraw a still-pending claim request before admin acts on it.
+  router.post("/api/driver/shipments/:awb/claim/cancel", async (ctx: Ctx, params) => {
+    const actor = requireAuth(ctx);
+    const driverId = await requireDriverId(ctx);
+    const shipment = await ctx.env.DB.prepare(
+      `SELECT claim_status, claim_driver_id FROM shipments WHERE awb = ?`,
+    )
+      .bind(params.awb)
+      .first<{ claim_status: string | null; claim_driver_id: string | null }>();
+    if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
+    if (shipment.claim_status !== "pending" || shipment.claim_driver_id !== driverId) {
+      throw Errors.badRequest("Tidak ada klaim aktif dari Anda untuk pengiriman ini.");
+    }
+
+    await ctx.env.DB.prepare(
+      `UPDATE shipments SET claim_status = NULL, claim_driver_id = NULL, claim_requested_at = NULL WHERE awb = ?`,
+    )
+      .bind(params.awb)
+      .run();
+
+    await writeAuditLog(ctx.env, actor, {
+      action: "CLAIM_SHIPMENT_CANCEL",
+      actionLabel: "CLAIM SHIPMENT CANCEL",
+      module: "Driver",
+      awb: params.awb,
+      description: `Driver ${actor.nama} membatalkan klaim pengiriman ini.`,
+    });
+
+    return ok({ cancelled: true });
+  });
+
   router.get("/api/driver/shipments/:awb", async (ctx: Ctx, params) => {
     const driverId = await requireDriverId(ctx);
     const row = await ctx.env.DB.prepare(

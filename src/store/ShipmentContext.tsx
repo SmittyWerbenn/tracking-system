@@ -36,8 +36,22 @@ interface RawShipmentSummary {
   slaValue: number | null;
   slaUnit: string | null;
   estimasiTiba: string | null;
+  claimStatus: "pending" | null;
+  claimDriverNama: string | null;
+  claimDriverTelepon: string | null;
+  claimRequestedAt: string | null;
   pod: { tanggal: string; jam: string; namaPenerima: string } | null;
   lastUpdate: { tanggal: string; jam: string } | null;
+}
+
+export interface PendingClaim {
+  awb: string;
+  kotaAsal: string;
+  kotaTujuan: string;
+  alamatTujuan: string;
+  deskripsiBarang: string;
+  claimRequestedAt: string;
+  driver: { id: string; nama: string; telepon: string };
 }
 
 interface RawTimelineRow {
@@ -97,6 +111,10 @@ function toShipment(row: RawShipmentSummary): Shipment {
     slaValue: row.slaValue ?? undefined,
     slaUnit: row.slaUnit ?? undefined,
     estimasiTiba: row.estimasiTiba ?? undefined,
+    claimStatus: row.claimStatus ?? undefined,
+    claimDriverNama: row.claimDriverNama ?? undefined,
+    claimDriverTelepon: row.claimDriverTelepon ?? undefined,
+    claimRequestedAt: row.claimRequestedAt ?? undefined,
   };
 }
 
@@ -148,6 +166,10 @@ interface ShipmentContextValue {
   addTrackingUpdate: (data: TrackingUpdateFormData) => Promise<{ ok: true } | { ok: false; error: string }>;
   updateShipmentInfo: (awb: string, data: UpdateShipmentInfoData) => Promise<{ ok: true } | { ok: false; error: string }>;
   updatePodPhoto: (awb: string, slot: "barang" | "suratJalan", fotoDataUrl: string | undefined) => Promise<void>;
+  fetchPendingClaims: () => Promise<PendingClaim[]>;
+  confirmClaim: (awb: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  rejectClaim: (awb: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  unassignDriver: (awb: string) => Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
 const ShipmentContext = createContext<ShipmentContextValue | null>(null);
@@ -310,9 +332,59 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     await api.patch(`/api/shipments/${encodeURIComponent(awb)}/pod-photo`, { fotoFileId: uploaded.id, slot });
   }
 
+  async function fetchPendingClaims(): Promise<PendingClaim[]> {
+    const res = await api.get<{ items: PendingClaim[] }>("/api/shipments/claims/pending");
+    return res.items;
+  }
+
+  async function confirmClaim(awb: string) {
+    try {
+      await api.post(`/api/shipments/${encodeURIComponent(awb)}/claim/confirm`);
+      await refresh();
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal mengonfirmasi klaim." };
+    }
+  }
+
+  async function rejectClaim(awb: string) {
+    try {
+      await api.post(`/api/shipments/${encodeURIComponent(awb)}/claim/reject`);
+      await refresh();
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal menolak klaim." };
+    }
+  }
+
+  async function unassignDriver(awb: string) {
+    try {
+      await api.post(`/api/shipments/${encodeURIComponent(awb)}/unassign`);
+      await refresh();
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal membatalkan penugasan." };
+    }
+  }
+
   return (
     <ShipmentContext.Provider
-      value={{ shipments, isLoading, listMeta, refresh, getByAwb, createShipment, markEmailSent, addTrackingUpdate, updateShipmentInfo, updatePodPhoto }}
+      value={{
+        shipments,
+        isLoading,
+        listMeta,
+        refresh,
+        getByAwb,
+        createShipment,
+        markEmailSent,
+        addTrackingUpdate,
+        updateShipmentInfo,
+        updatePodPhoto,
+        fetchPendingClaims,
+        confirmClaim,
+        rejectClaim,
+        unassignDriver,
+      }}
     >
       {children}
     </ShipmentContext.Provider>

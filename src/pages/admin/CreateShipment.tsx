@@ -138,10 +138,6 @@ export default function CreateShipment() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!form.truckId) {
-      setFormError("Pilih unit truck terlebih dahulu.");
-      return;
-    }
     if (!form.kotaAsal || !form.kotaTujuan) {
       setFormError("Pilih kota asal dan kota tujuan terlebih dahulu.");
       return;
@@ -483,11 +479,15 @@ export default function CreateShipment() {
           <Field label="Pilih Unit Truck" full>
             <SearchableSelect
               options={truckOptions}
-              value={form.truckId}
+              value={form.truckId ?? ""}
               onChange={(v) => update("truckId", v)}
-              placeholder="Pilih Unit Truck"
+              placeholder="Pilih Unit Truck (opsional)"
               emptyLabel="Tidak ada unit truck yang tersedia."
             />
+            <p className="mt-1.5 text-[11px] text-slate-400">
+              Opsional. Kosongkan supaya pengiriman ini masuk ke daftar "Pesanan Terbuka" - semua driver
+              bisa melihat dan mengajukan klaim, lalu Anda tinggal konfirmasi siapa yang mengambilnya.
+            </p>
           </Field>
           {selectedTruck ? (
             <div className="sm:col-span-2 flex flex-wrap items-center gap-4 rounded-lg bg-slate-50 px-3.5 py-3 text-sm">

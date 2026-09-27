@@ -1,6 +1,7 @@
-import { AlertTriangle, ArrowRight, Loader2, Package, PackageSearch, Truck } from "lucide-react";
+import { AlertTriangle, ArrowRight, Loader2, Package, PackageSearch, ScanLine, Truck, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { BarcodeScannerModal } from "../../components/BarcodeScannerModal";
 import { DriverLayout } from "../../components/layout/DriverLayout";
 import { useAuth } from "../../store/AuthContext";
 import {
@@ -28,6 +29,9 @@ export default function DriverDashboard() {
   const [openError, setOpenError] = useState<string | null>(null);
   const [claimingAwb, setClaimingAwb] = useState<string | null>(null);
   const [filter, setFilter] = useState<StatusFilter>("aktif");
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scanResultAwb, setScanResultAwb] = useState<string | null>(null);
+  const [scanNotFound, setScanNotFound] = useState<string | null>(null);
 
   function loadShipments() {
     fetchDriverShipments()
@@ -76,6 +80,20 @@ export default function DriverDashboard() {
     }
   }
 
+  function handleScanned(rawAwb: string) {
+    setScannerOpen(false);
+    const scanned = rawAwb.trim();
+    const match = (openShipments ?? []).find((s) => s.awb.toUpperCase() === scanned.toUpperCase());
+    setFilter("terbuka");
+    if (match) {
+      setScanResultAwb(match.awb);
+      setScanNotFound(null);
+    } else {
+      setScanResultAwb(null);
+      setScanNotFound(scanned);
+    }
+  }
+
   const active = (shipments ?? []).filter(
     (s) => s.status !== SELESAI_STATUS && s.status !== KENDALA_STATUS,
   );
@@ -84,28 +102,38 @@ export default function DriverDashboard() {
   // this list endpoint doesn't, so this counts all "Selesai" items for now.
   const selesai = (shipments ?? []).filter((s) => s.status === SELESAI_STATUS);
   const terbuka = openShipments ?? [];
+  const scanResult = scanResultAwb ? terbuka.find((s) => s.awb === scanResultAwb) ?? null : null;
 
   return (
     <DriverLayout wide>
-      <div className="mb-5">
-        <p className="text-sm text-slate-500">Halo,</p>
-        <h1 className="text-lg font-semibold text-slate-900">{profile?.nama}</h1>
-        <p className="text-xs text-slate-400">Driver</p>
-        {trucks.length > 0 && (
-          <div className="mt-2 flex flex-col gap-0.5">
-            {trucks.map((t, i) => (
-              <p
-                key={t.id}
-                className={`flex items-center gap-1.5 text-xs ${
-                  i === 0 ? "font-medium text-slate-700" : "text-slate-400"
-                }`}
-              >
-                <Truck size={12} className={i === 0 ? "text-slate-500" : "text-slate-300"} />
-                Unit: {t.jenis} &nbsp;&nbsp; Nopol: {t.nomorUnit}
-              </p>
-            ))}
-          </div>
-        )}
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm text-slate-500">Halo,</p>
+          <h1 className="text-lg font-semibold text-slate-900">{profile?.nama}</h1>
+          <p className="text-xs text-slate-400">Driver</p>
+          {trucks.length > 0 && (
+            <div className="mt-2 flex flex-col gap-0.5">
+              {trucks.map((t, i) => (
+                <p
+                  key={t.id}
+                  className={`flex items-center gap-1.5 text-xs ${
+                    i === 0 ? "font-medium text-slate-700" : "text-slate-400"
+                  }`}
+                >
+                  <Truck size={12} className={i === 0 ? "text-slate-500" : "text-slate-300"} />
+                  Unit: {t.jenis} &nbsp;&nbsp; Nopol: {t.nomorUnit}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setScannerOpen(true)}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-900 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-800"
+        >
+          <ScanLine size={14} /> Scan AWB
+        </button>
       </div>
 
       <div className="mb-5 grid grid-cols-4 gap-2 sm:gap-3">
@@ -158,8 +186,37 @@ export default function DriverDashboard() {
           </h2>
           <p className="mb-3 text-xs text-slate-400">
             Pengiriman yang belum ditugaskan ke driver manapun - klik "Ambil Pesanan" untuk mengajukan
-            klaim, lalu tunggu admin konfirmasi.
+            klaim, lalu tunggu admin konfirmasi. Atau scan barcode/QR pada resi.
           </p>
+
+          {scanNotFound && (
+            <div className="mb-3 flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-700">
+              <span className="flex items-center gap-2">
+                <AlertTriangle size={15} /> AWB "{scanNotFound}" tidak ditemukan di pesanan terbuka.
+              </span>
+              <button onClick={() => setScanNotFound(null)} className="shrink-0 text-amber-700 hover:text-amber-900">
+                <X size={14} />
+              </button>
+            </div>
+          )}
+
+          {scanResult && (
+            <div className="mb-4">
+              <div className="mb-1.5 flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">Hasil Scan</p>
+                <button onClick={() => setScanResultAwb(null)} className="text-slate-400 hover:text-slate-700">
+                  <X size={14} />
+                </button>
+              </div>
+              <OpenShipmentCard
+                item={scanResult}
+                claiming={claimingAwb === scanResult.awb}
+                onClaim={() => handleClaim(scanResult.awb)}
+                onCancel={() => handleCancelClaim(scanResult.awb)}
+                highlighted
+              />
+            </div>
+          )}
 
           {openError && (
             <div className="mb-3 flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700">
@@ -180,50 +237,17 @@ export default function DriverDashboard() {
           )}
 
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-            {terbuka.map((s) => (
-              <div key={s.awb} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-sm font-bold text-slate-900">{s.awb}</span>
-                  {s.claimStatus === "pending" && s.isMine && (
-                    <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
-                      Menunggu Konfirmasi
-                    </span>
-                  )}
-                </div>
-                <p className="mt-1.5 flex items-center gap-1.5 text-sm text-slate-600">
-                  {s.kotaAsal} <ArrowRight size={13} className="text-slate-300" /> {s.kotaTujuan}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">{s.alamatTujuan}</p>
-                <div className="mt-2 flex items-center gap-3 text-xs text-slate-400">
-                  <span className="flex items-center gap-1">
-                    <Package size={12} /> {s.jumlahKoli} Koli
-                  </span>
-                  <span>{s.layanan}</span>
-                </div>
-
-                {s.claimStatus === "pending" && s.isMine ? (
-                  <button
-                    type="button"
-                    disabled={claimingAwb === s.awb}
-                    onClick={() => handleCancelClaim(s.awb)}
-                    className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-300 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
-                  >
-                    {claimingAwb === s.awb ? <Loader2 size={13} className="animate-spin" /> : null}
-                    Batalkan Klaim
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={claimingAwb === s.awb}
-                    onClick={() => handleClaim(s.awb)}
-                    className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600 py-2 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
-                  >
-                    {claimingAwb === s.awb ? <Loader2 size={13} className="animate-spin" /> : <PackageSearch size={13} />}
-                    Ambil Pesanan
-                  </button>
-                )}
-              </div>
-            ))}
+            {terbuka
+              .filter((s) => s.awb !== scanResultAwb)
+              .map((s) => (
+                <OpenShipmentCard
+                  key={s.awb}
+                  item={s}
+                  claiming={claimingAwb === s.awb}
+                  onClaim={() => handleClaim(s.awb)}
+                  onCancel={() => handleCancelClaim(s.awb)}
+                />
+              ))}
           </div>
         </>
       ) : (
@@ -261,7 +285,72 @@ export default function DriverDashboard() {
           <ShipmentGrid shipments={{ aktif: active, kendala, selesai }[filter]} />
         </>
       )}
+
+      {scannerOpen && <BarcodeScannerModal onClose={() => setScannerOpen(false)} onDetected={handleScanned} />}
     </DriverLayout>
+  );
+}
+
+function OpenShipmentCard({
+  item,
+  claiming,
+  onClaim,
+  onCancel,
+  highlighted = false,
+}: {
+  item: OpenShipmentSummary;
+  claiming: boolean;
+  onClaim: () => void;
+  onCancel: () => void;
+  highlighted?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-xl border bg-white p-4 shadow-sm ${
+        highlighted ? "border-violet-300 ring-2 ring-violet-100" : "border-slate-200"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono text-sm font-bold text-slate-900">{item.awb}</span>
+        {item.claimStatus === "pending" && item.isMine && (
+          <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+            Menunggu Konfirmasi
+          </span>
+        )}
+      </div>
+      <p className="mt-1.5 flex items-center gap-1.5 text-sm text-slate-600">
+        {item.kotaAsal} <ArrowRight size={13} className="text-slate-300" /> {item.kotaTujuan}
+      </p>
+      <p className="mt-1 text-xs text-slate-500">{item.alamatTujuan}</p>
+      <div className="mt-2 flex items-center gap-3 text-xs text-slate-400">
+        <span className="flex items-center gap-1">
+          <Package size={12} /> {item.jumlahKoli} Koli
+        </span>
+        <span>{item.layanan}</span>
+      </div>
+
+      {item.claimStatus === "pending" && item.isMine ? (
+        <button
+          type="button"
+          disabled={claiming}
+          onClick={onCancel}
+          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-300 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+        >
+          {claiming ? <Loader2 size={13} className="animate-spin" /> : null}
+          Batalkan Klaim
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={claiming}
+          onClick={onClaim}
+          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600 py-2 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
+        >
+          {claiming ? <Loader2 size={13} className="animate-spin" /> : <PackageSearch size={13} />}
+          Ambil Pesanan
+        </button>
+      )}
+    </div>
   );
 }
 

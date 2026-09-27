@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { LocationTextInput } from "../../components/LocationTextInput";
 import { PhotoPickerBox } from "../../components/PhotoPickerBox";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -24,8 +25,6 @@ import { checkPhotoSize, compressImage } from "../../utils/compressImage";
 import { formatTanggalJam, formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
 import { addBusinessDays } from "../../utils/sla";
 import { getAllowedNextEvents } from "../../utils/status";
-
-const CUSTOM_LOKASI_VALUE = "__custom__";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
@@ -42,8 +41,7 @@ export default function UpdateTracking() {
   const initializedFor = useRef<string | null>(null);
 
   const [type, setType] = useState<TimelineEventType>("Transit");
-  const [titikId, setTitikId] = useState("");
-  const [customLokasi, setCustomLokasi] = useState("");
+  const [lokasi, setLokasi] = useState("");
   const [tanggal, setTanggal] = useState(todayISO());
   const [jam, setJam] = useState(nowHHMM());
   const [keterangan, setKeterangan] = useState("");
@@ -160,10 +158,6 @@ export default function UpdateTracking() {
         .catch(() => setError("Gagal memproses foto. Coba foto lain."));
     };
   }
-  const lokasiOptions = [
-    ...activeTitikLokasi.map((t) => ({ value: t.id, label: t.namaKota, description: `${t.jenis} - ${t.provinsi}` })),
-    { value: CUSTOM_LOKASI_VALUE, label: "Lainnya (ketik manual)" },
-  ];
   const truckOptions = trucksWithDriver.map((t) => ({
     value: t.id,
     label: `${t.nomorUnit} - ${t.jenis}`,
@@ -171,11 +165,7 @@ export default function UpdateTracking() {
   }));
   const selectedTruck = trucksWithDriver.find((t) => t.id === truckId);
   const isSelesai = type === "Selesai / Terkirim";
-  const resolvedLokasi = isSelesai
-    ? shipment.kotaTujuan
-    : titikId === CUSTOM_LOKASI_VALUE
-      ? customLokasi
-      : (activeTitikLokasi.find((t) => t.id === titikId)?.namaKota ?? "");
+  const resolvedLokasi = isSelesai ? shipment.kotaTujuan : lokasi;
   const kotaOptions = activeTitikLokasi.map((k) => ({
     value: k.namaKota,
     label: k.namaKota,
@@ -253,7 +243,7 @@ export default function UpdateTracking() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!isSelesai && !resolvedLokasi) {
-      setFormError("Pilih atau isi lokasi terlebih dahulu.");
+      setFormError("Isi lokasi terlebih dahulu.");
       return;
     }
     if (isSelesai && !namaPenerima.trim()) {
@@ -266,7 +256,6 @@ export default function UpdateTracking() {
       awb: shipment!.awb,
       type,
       lokasi: resolvedLokasi,
-      titikId: isSelesai || titikId === CUSTOM_LOKASI_VALUE ? undefined : titikId || undefined,
       tanggal,
       jam,
       keterangan,
@@ -636,22 +625,15 @@ export default function UpdateTracking() {
             ) : (
               <label className="block">
                 <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi / Titik Transit</span>
-                <SearchableSelect
-                  options={lokasiOptions}
-                  value={titikId}
-                  onChange={setTitikId}
-                  placeholder="Pilih lokasi"
-                  emptyLabel="Lokasi tidak ditemukan."
+                <LocationTextInput
+                  id="update-tracking-lokasi"
+                  required
+                  className={inputClass}
+                  value={lokasi}
+                  onChange={setLokasi}
+                  suggestions={activeTitikLokasi.map((t) => t.namaKota)}
+                  placeholder="Ketik lokasi, contoh: Gudang Karawang"
                 />
-                {titikId === CUSTOM_LOKASI_VALUE && (
-                  <input
-                    required
-                    className={`${inputClass} mt-2`}
-                    placeholder="Ketik nama lokasi"
-                    value={customLokasi}
-                    onChange={(e) => setCustomLokasi(e.target.value)}
-                  />
-                )}
               </label>
             )}
             <label className="block">

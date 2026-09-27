@@ -15,7 +15,9 @@ import {
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { DriverLayout } from "../../components/layout/DriverLayout";
+import { LocationTextInput } from "../../components/LocationTextInput";
 import { PhotoPickerBox } from "../../components/PhotoPickerBox";
+import { useLocations } from "../../store/LocationContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { ShipmentStatus, TimelineEventType } from "../../types";
 import { ApiError } from "../../utils/apiClient";
@@ -60,6 +62,7 @@ const SELESAI_STATUS = "Selesai / Terkirim";
 export default function DriverShipmentDetail() {
   const { awb } = useParams<{ awb: string }>();
   const { addTrackingUpdate } = useShipments();
+  const { activeTitikLokasi } = useLocations();
   const [data, setData] = useState<DriverShipmentDetailData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -421,10 +424,12 @@ export default function DriverShipmentDetail() {
                   <>
                     <label className="block">
                       <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi</span>
-                      <input
+                      <LocationTextInput
+                        id="driver-status-lokasi"
                         required
                         value={statusLokasi}
-                        onChange={(e) => setStatusLokasi(e.target.value)}
+                        onChange={setStatusLokasi}
+                        suggestions={activeTitikLokasi.map((t) => t.namaKota)}
                         placeholder="Contoh: Gudang Karawang"
                         className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                       />

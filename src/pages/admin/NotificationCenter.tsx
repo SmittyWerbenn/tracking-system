@@ -1,4 +1,5 @@
 import { AlertTriangle, Bell, CheckCircle2, Mail, PackagePlus } from "lucide-react";
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useNotifications } from "../../store/NotificationContext";
@@ -16,7 +17,12 @@ function formatTimestamp(iso: string): string {
 }
 
 export default function NotificationCenter() {
-  const { notifications } = useNotifications();
+  const { notifications, markAllRead } = useNotifications();
+
+  useEffect(() => {
+    markAllRead();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <AdminLayout>

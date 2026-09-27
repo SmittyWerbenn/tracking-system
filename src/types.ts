@@ -261,6 +261,7 @@ export interface NotificationItem {
   toName: string;
   recipientRole: "penerima" | "pengirim";
   createdAt: string;
+  isRead: boolean;
 }
 
 // ---------------------------------------------------------------------------

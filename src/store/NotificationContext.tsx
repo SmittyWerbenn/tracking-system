@@ -12,6 +12,7 @@ interface NotificationRow {
   to_name: string;
   recipient_role: "penerima" | "pengirim";
   created_at: string;
+  is_read: number;
 }
 
 function toItem(row: NotificationRow): NotificationItem {
@@ -24,13 +25,16 @@ function toItem(row: NotificationRow): NotificationItem {
     toName: row.to_name,
     recipientRole: row.recipient_role,
     createdAt: row.created_at,
+    isRead: row.is_read === 1,
   };
 }
 
 interface NotificationContextValue {
   notifications: NotificationItem[];
+  unreadCount: number;
   isLoading: boolean;
   refresh: () => Promise<void>;
+  markAllRead: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
@@ -61,8 +65,19 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
+  async function markAllRead() {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    try {
+      await api.post("/api/notifications/read-all");
+    } catch {
+      // Best-effort - a failed mark-as-read shouldn't block viewing the list.
+    }
+  }
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
   return (
-    <NotificationContext.Provider value={{ notifications, isLoading, refresh }}>
+    <NotificationContext.Provider value={{ notifications, unreadCount, isLoading, refresh, markAllRead }}>
       {children}
     </NotificationContext.Provider>
   );

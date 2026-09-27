@@ -16,7 +16,7 @@ function formatTimestamp(iso: string): string {
 }
 
 export function NotificationBell() {
-  const { notifications } = useNotifications();
+  const { notifications, unreadCount, markAllRead } = useNotifications();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -30,18 +30,26 @@ export function NotificationBell() {
 
   const recent = notifications.slice(0, 5);
 
+  function toggleOpen() {
+    setOpen((v) => {
+      const next = !v;
+      if (next) markAllRead();
+      return next;
+    });
+  }
+
   return (
     <div className="relative" ref={ref}>
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggleOpen}
         title="Notifikasi"
         aria-label="Notifikasi"
         className="relative rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
       >
         <Bell size={18} />
-        {notifications.length > 0 && (
+        {unreadCount > 0 && (
           <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold leading-none text-white">
-            {notifications.length > 9 ? "9+" : notifications.length}
+            {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>

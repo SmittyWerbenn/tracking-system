@@ -18,6 +18,12 @@ export interface DriverShipmentSummary {
   truckNomorUnit: string | null;
 }
 
+export interface DriverTruckInfo {
+  id: string;
+  nomorUnit: string;
+  jenis: string;
+}
+
 export interface DriverTimelineEvent {
   id: string;
   type: string;
@@ -48,6 +54,13 @@ export interface DriverLastPosition {
 
 export async function fetchDriverShipments(): Promise<DriverShipmentSummary[]> {
   const res = await api.get<{ items: DriverShipmentSummary[] }>("/api/driver/shipments");
+  return res.items;
+}
+
+/** Truck unit(s) assigned to the logged-in driver - normally one, but
+ * lists all if the data model ever links more than one. */
+export async function fetchDriverTrucks(): Promise<DriverTruckInfo[]> {
+  const res = await api.get<{ items: DriverTruckInfo[] }>("/api/driver/trucks");
   return res.items;
 }
 

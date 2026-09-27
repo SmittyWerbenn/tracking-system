@@ -7,8 +7,10 @@ import {
   cancelShipmentClaim,
   claimShipment,
   fetchDriverShipments,
+  fetchDriverTrucks,
   fetchOpenShipments,
   type DriverShipmentSummary,
+  type DriverTruckInfo,
   type OpenShipmentSummary,
 } from "../../utils/driverApi";
 
@@ -21,6 +23,7 @@ export default function DriverDashboard() {
   const { profile } = useAuth();
   const [shipments, setShipments] = useState<DriverShipmentSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [trucks, setTrucks] = useState<DriverTruckInfo[]>([]);
   const [openShipments, setOpenShipments] = useState<OpenShipmentSummary[] | null>(null);
   const [openError, setOpenError] = useState<string | null>(null);
   const [claimingAwb, setClaimingAwb] = useState<string | null>(null);
@@ -41,6 +44,9 @@ export default function DriverDashboard() {
   useEffect(() => {
     loadShipments();
     loadOpenShipments();
+    fetchDriverTrucks()
+      .then(setTrucks)
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -85,6 +91,21 @@ export default function DriverDashboard() {
         <p className="text-sm text-slate-500">Halo,</p>
         <h1 className="text-lg font-semibold text-slate-900">{profile?.nama}</h1>
         <p className="text-xs text-slate-400">Driver</p>
+        {trucks.length > 0 && (
+          <div className="mt-2 flex flex-col gap-0.5">
+            {trucks.map((t, i) => (
+              <p
+                key={t.id}
+                className={`flex items-center gap-1.5 text-xs ${
+                  i === 0 ? "font-medium text-slate-700" : "text-slate-400"
+                }`}
+              >
+                <Truck size={12} className={i === 0 ? "text-slate-500" : "text-slate-300"} />
+                Unit: {t.jenis} &nbsp;&nbsp; Nopol: {t.nomorUnit}
+              </p>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mb-5 grid grid-cols-4 gap-2 sm:gap-3">

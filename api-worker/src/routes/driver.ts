@@ -34,6 +34,26 @@ function shipmentSummary(row: Record<string, unknown>) {
 }
 
 export function registerDriverRoutes(router: Router) {
+  // Truck unit(s) assigned to this driver - normally just one, but the
+  // data model allows more than one truck to point at the same driver, so
+  // this returns all of them (oldest-assigned first) for the dashboard
+  // header to list.
+  router.get("/api/driver/trucks", async (ctx: Ctx) => {
+    const driverId = await requireDriverId(ctx);
+    const rows = await ctx.env.DB.prepare(
+      `SELECT id, nomor_unit, jenis FROM trucks WHERE driver_id = ? ORDER BY created_at ASC`,
+    )
+      .bind(driverId)
+      .all();
+    return ok({
+      items: (rows.results ?? []).map((r: Record<string, unknown>) => ({
+        id: r.id,
+        nomorUnit: r.nomor_unit,
+        jenis: r.jenis,
+      })),
+    });
+  });
+
   // Assigned shipments only - joined through drivers -> trucks -> shipments,
   // never a raw "all shipments" list like the admin endpoint.
   router.get("/api/driver/shipments", async (ctx: Ctx) => {

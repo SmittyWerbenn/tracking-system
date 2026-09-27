@@ -38,6 +38,7 @@ const ALL: Permission[] = [
 const ROLE_PERMISSIONS: Record<Role, Set<Permission>> = {
   Superadmin: new Set(ALL),
   Admin: new Set([
+    "users.manage",
     "shipments.view",
     "shipments.create",
     "shipments.update_info",

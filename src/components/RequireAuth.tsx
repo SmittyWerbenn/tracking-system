@@ -88,8 +88,9 @@ export function RequireDriver({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-/** For routes only Superadmin may open (Manajemen User) - Admin and Viewer
- * are both bounced to the Dashboard. */
+/** For routes only Superadmin may open - Admin and Viewer are both bounced
+ * to the Dashboard. Currently unused (Manajemen User now also admits
+ * Admin, see RequireAdmin), kept for a future Superadmin-only page. */
 export function RequireSuperadmin({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading, profile } = useAuth();
   const location = useLocation();

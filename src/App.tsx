@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-dom";
-import { RequireAdmin, RequireAuth, RequireDriver, RequireSuperadmin, RequireTrackingUpdater } from "./components/RequireAuth";
+import { RequireAdmin, RequireAuth, RequireDriver, RequireTrackingUpdater } from "./components/RequireAuth";
 import { AuditLogProvider } from "./store/AuditLogContext";
 import { AuthProvider } from "./store/AuthContext";
 import { FeedbackProvider } from "./store/FeedbackContext";
@@ -108,7 +108,7 @@ export default function App() {
           <Route path="/admin/notifikasi" element={<RequireAuth><NotificationCenter /></RequireAuth>} />
           <Route path="/admin/feedback" element={<RequireAuth><FeedbackAdmin /></RequireAuth>} />
           <Route path="/admin/audit-log" element={<RequireAdmin><AuditLogPage /></RequireAdmin>} />
-          <Route path="/admin/users" element={<RequireSuperadmin><UserManagement /></RequireSuperadmin>} />
+          <Route path="/admin/users" element={<RequireAdmin><UserManagement /></RequireAdmin>} />
           <Route path="/admin/pengaturan/tracking" element={<RequireAdmin><SettingsPage /></RequireAdmin>} />
           <Route path="/admin/pengaturan/akun" element={<RequireAuth><AccountSettings /></RequireAuth>} />
 

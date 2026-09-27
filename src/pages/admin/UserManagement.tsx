@@ -1,6 +1,7 @@
 import { Camera, Pencil, Plus, Power, Shield, Upload, X } from "lucide-react";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { useAuth } from "../../store/AuthContext";
 import { useUserManagement, type UserFormData } from "../../store/UserManagementContext";
 import { ASSIGNABLE_USER_ROLES, type AppUser, type UserRole } from "../../types";
 import { checkPhotoSize, compressImage, MAX_PHOTO_SIZE_MB } from "../../utils/compressImage";
@@ -11,14 +12,16 @@ import { useFileUrl } from "../../utils/useFileUrl";
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
 
-const emptyForm: UserFormData = {
-  nama: "",
-  email: "",
-  role: "Admin",
-  fotoDataUrl: undefined,
-  password: "",
-  driverId: null,
-};
+function emptyForm(defaultRole: UserRole): UserFormData {
+  return {
+    nama: "",
+    email: "",
+    role: defaultRole,
+    fotoDataUrl: undefined,
+    password: "",
+    driverId: null,
+  };
+}
 
 function UserRowAvatar({ fileId, nama }: { fileId?: string; nama: string }) {
   const url = useFileUrl(fileId);
@@ -52,16 +55,21 @@ function formatLastLogin(iso?: string): string {
 
 export default function UserManagement() {
   const { users, drivers, createUser, updateUser, setUserActive } = useUserManagement();
+  const { profile } = useAuth();
+  // Admin may only add/edit Driver and Viewer accounts - Admin-role
+  // accounts (including their own) are Superadmin's to manage.
+  const isAdminActor = profile?.role === "Admin";
+  const assignableRoles = isAdminActor ? ASSIGNABLE_USER_ROLES.filter((r) => r !== "Admin") : ASSIGNABLE_USER_ROLES;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<UserFormData>(emptyForm);
+  const [form, setForm] = useState<UserFormData>(emptyForm(assignableRoles[0]));
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   function openAdd() {
     setEditingId(null);
-    setForm(emptyForm);
+    setForm(emptyForm(assignableRoles[0]));
     setPhotoError(null);
     setSubmitError(null);
     setModalOpen(true);
@@ -131,7 +139,10 @@ export default function UserManagement() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Manajemen User</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Kelola akun internal dan peran akses (Admin / Driver / Viewer). Khusus Superadmin.
+            Kelola akun internal dan peran akses (Admin / Driver / Viewer).
+            {isAdminActor
+              ? " Sebagai Admin, Anda hanya dapat menambah/mengubah akun Driver dan Viewer."
+              : ""}
           </p>
         </div>
         <button
@@ -156,7 +167,9 @@ export default function UserManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {users.map((u) => (
+              {users.map((u) => {
+                const canManage = u.role !== "Superadmin" && !(isAdminActor && u.role === "Admin");
+                return (
                 <tr key={u.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
@@ -187,26 +200,42 @@ export default function UserManagement() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => openEdit(u)}
-                        title="Edit"
-                        className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        onClick={() => setUserActive(u.id, !u.aktif)}
-                        title={u.aktif ? "Nonaktifkan" : "Aktifkan"}
-                        className={`rounded-md p-1.5 hover:bg-slate-100 ${
-                          u.aktif ? "text-slate-500 hover:text-red-600" : "text-slate-500 hover:text-emerald-600"
-                        }`}
-                      >
-                        <Power size={16} />
-                      </button>
+                      {canManage ? (
+                        <>
+                          <button
+                            onClick={() => openEdit(u)}
+                            title="Edit"
+                            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            onClick={() => setUserActive(u.id, !u.aktif)}
+                            title={u.aktif ? "Nonaktifkan" : "Aktifkan"}
+                            className={`rounded-md p-1.5 hover:bg-slate-100 ${
+                              u.aktif ? "text-slate-500 hover:text-red-600" : "text-slate-500 hover:text-emerald-600"
+                            }`}
+                          >
+                            <Power size={16} />
+                          </button>
+                        </>
+                      ) : (
+                        <span
+                          className="text-xs text-slate-300"
+                          title={
+                            u.role === "Superadmin"
+                              ? "Akun Superadmin tidak bisa diubah lewat halaman ini"
+                              : "Hanya Superadmin yang dapat mengubah akun Admin lain"
+                          }
+                        >
+                          -
+                        </span>
+                      )}
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -301,7 +330,7 @@ export default function UserManagement() {
                     value={form.role}
                     onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}
                   >
-                    {ASSIGNABLE_USER_ROLES.map((role) => (
+                    {assignableRoles.map((role) => (
                       <option key={role} value={role}>
                         {role}
                       </option>

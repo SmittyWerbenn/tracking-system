@@ -51,6 +51,10 @@ export function registerUserRoutes(router: Router) {
     const fotoFileId = optString(body, "fotoFileId");
     const driverId = optString(body, "driverId");
 
+    if (actor.role === "Admin" && role === "Admin") {
+      throw Errors.forbidden("Admin tidak dapat menambah akun dengan role Admin. Hubungi Superadmin.");
+    }
+
     if (driverId && role !== "Driver") {
       throw Errors.badRequest("driverId hanya berlaku untuk role Driver.");
     }
@@ -102,11 +106,17 @@ export function registerUserRoutes(router: Router) {
     if (target.role === "Superadmin") {
       throw Errors.forbidden("Role atau data Superadmin tidak bisa diubah lewat Manajemen User.");
     }
+    if (actor.role === "Admin" && target.role === "Admin") {
+      throw Errors.forbidden("Admin tidak dapat mengubah akun Admin lain (termasuk menonaktifkan). Hubungi Superadmin.");
+    }
 
     const body = await parseJsonBody(ctx.request);
     const nama = optString(body, "nama");
     const email = body.email !== undefined ? reqEmail(body, "email") : undefined;
     const role = body.role !== undefined ? reqEnum(body, "role", ROLES) : undefined;
+    if (actor.role === "Admin" && role === "Admin") {
+      throw Errors.forbidden("Admin tidak dapat menaikkan role akun menjadi Admin. Hubungi Superadmin.");
+    }
     const password = optString(body, "password");
     const aktif = optBool(body, "aktif");
     const fotoFileId = optString(body, "fotoFileId");

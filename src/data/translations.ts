@@ -333,7 +333,7 @@ const id: Translations = {
     heroTitle: "Lacak Pengiriman Anda",
     heroDesc:
       "Masukkan nomor AWB (resi) yang tertera pada email atau resi fisik Anda untuk melihat status pengiriman secara real-time.",
-    placeholder: "Contoh: GMS260911-001",
+    placeholder: "Contoh: G260911001",
     submitButton: "Lacak Sekarang",
     notFound: "Nomor AWB tidak ditemukan. Periksa kembali nomor resi Anda.",
     scanButton: "Scan Barcode / QR Code",
@@ -596,7 +596,7 @@ const en: Translations = {
   trackingSearch: {
     heroTitle: "Track Your Shipment",
     heroDesc: "Enter the AWB (receipt) number shown on your email or physical receipt to see the delivery status in real time.",
-    placeholder: "e.g. GMS260911-001",
+    placeholder: "e.g. G260911001",
     submitButton: "Track Now",
     notFound: "AWB number not found. Please double-check your receipt number.",
     scanButton: "Scan Barcode / QR Code",

@@ -1,4 +1,4 @@
-import { CheckCircle2, Download, Eye, FileEdit, Loader2, MapPin, PackageSearch, Printer, Search, X, XCircle } from "lucide-react";
+import { CheckCircle2, Download, Eye, FileEdit, LayoutList, ListTree, Loader2, MapPin, PackageSearch, Printer, Search, X, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -31,6 +31,7 @@ export default function ShipmentList() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [viewMode, setViewMode] = useState<"ringkas" | "detail">("detail");
   const [pendingClaims, setPendingClaims] = useState<PendingClaim[]>([]);
   const [claimActionAwb, setClaimActionAwb] = useState<string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
@@ -267,26 +268,58 @@ export default function ShipmentList() {
         </button>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <p className="text-xs text-slate-400">{filtered.length} pengiriman</p>
+        <div className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-0.5">
+          <button
+            type="button"
+            onClick={() => setViewMode("ringkas")}
+            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold ${
+              viewMode === "ringkas" ? "bg-blue-900 text-white" : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            <LayoutList size={13} /> Data Ringkas
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("detail")}
+            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold ${
+              viewMode === "detail" ? "bg-blue-900 text-white" : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            <ListTree size={13} /> Data Detail
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         {/* Bounded height (not just overflow-x-auto) so the horizontal
             scrollbar sits right under the visible rows instead of at the
-            very bottom of a 1900px-wide table the user would have to
-            scroll the whole page down to reach. */}
+            very bottom of a wide table the user would have to scroll the
+            whole page down to reach. */}
         <div className="max-h-[65vh] overflow-auto">
-          <table className="w-full min-w-[1900px] text-left text-sm">
+          <table className={`w-full text-left text-sm ${viewMode === "detail" ? "min-w-[1900px]" : "min-w-[920px]"}`}>
             <thead className="sticky top-0 z-10 border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3 font-medium">AWB</th>
                 <th className="px-4 py-3 font-medium">Tanggal</th>
-                <th className="px-4 py-3 font-medium">Pengirim</th>
-                <th className="px-4 py-3 font-medium">Penerima</th>
+                {viewMode === "detail" && (
+                  <>
+                    <th className="px-4 py-3 font-medium">Pengirim</th>
+                    <th className="px-4 py-3 font-medium">Penerima</th>
+                  </>
+                )}
                 <th className="px-4 py-3 font-medium">Rute</th>
-                <th className="px-4 py-3 font-medium">Service</th>
-                <th className="px-4 py-3 font-medium">Berat (Kg)</th>
-                <th className="px-4 py-3 font-medium">Koli</th>
-                <th className="px-4 py-3 font-medium">Diterima Oleh</th>
-                <th className="px-4 py-3 font-medium">Diterima</th>
-                <th className="px-4 py-3 font-medium">Keterangan</th>
+                {viewMode === "detail" && (
+                  <>
+                    <th className="px-4 py-3 font-medium">Service</th>
+                    <th className="px-4 py-3 font-medium">Berat (Kg)</th>
+                    <th className="px-4 py-3 font-medium">Koli</th>
+                    <th className="px-4 py-3 font-medium">Diterima Oleh</th>
+                    <th className="px-4 py-3 font-medium">Diterima</th>
+                    <th className="px-4 py-3 font-medium">Keterangan</th>
+                  </>
+                )}
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Truck</th>
                 <th className="px-4 py-3 font-medium">Driver</th>
@@ -303,21 +336,29 @@ export default function ShipmentList() {
                   <td className="whitespace-nowrap px-4 py-3 text-slate-600">
                     {formatTanggalPendek(s.tanggalDibuat)}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{s.pengirim.nama}</td>
-                  <td className="px-4 py-3 text-slate-600">{s.penerima.nama}</td>
+                  {viewMode === "detail" && (
+                    <>
+                      <td className="px-4 py-3 text-slate-600">{s.pengirim.nama}</td>
+                      <td className="px-4 py-3 text-slate-600">{s.penerima.nama}</td>
+                    </>
+                  )}
                   <td className="whitespace-nowrap px-4 py-3 text-slate-600">
                     {s.kotaAsal} → {s.kotaTujuan}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.layanan}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.beratKg}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.jumlahKoli}</td>
-                  <td className="px-4 py-3 text-slate-600">{s.pod?.namaPenerima ?? "-"}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
-                    {s.pod ? `${formatTanggalPendek(s.pod.tanggal)}, ${s.pod.jam}` : "-"}
-                  </td>
-                  <td className="max-w-[260px] whitespace-normal break-words px-4 py-3 text-slate-600">
-                    {stripKeteranganMeta(s.deskripsiBarang)}
-                  </td>
+                  {viewMode === "detail" && (
+                    <>
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.layanan}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.beratKg}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.jumlahKoli}</td>
+                      <td className="px-4 py-3 text-slate-600">{s.pod?.namaPenerima ?? "-"}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
+                        {s.pod ? `${formatTanggalPendek(s.pod.tanggal)}, ${s.pod.jam}` : "-"}
+                      </td>
+                      <td className="max-w-[260px] whitespace-normal break-words px-4 py-3 text-slate-600">
+                        {stripKeteranganMeta(s.deskripsiBarang)}
+                      </td>
+                    </>
+                  )}
                   <td className="whitespace-nowrap px-4 py-3">
                     <StatusBadge status={s.status} size="sm" />
                   </td>
@@ -372,14 +413,14 @@ export default function ShipmentList() {
               ))}
               {isLoading && (
                 <tr>
-                  <td colSpan={16} className="px-4 py-10 text-center">
+                  <td colSpan={viewMode === "detail" ? 16 : 8} className="px-4 py-10 text-center">
                     <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-blue-900" />
                   </td>
                 </tr>
               )}
               {!isLoading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={16} className="px-4 py-10 text-center text-sm text-slate-400">
+                  <td colSpan={viewMode === "detail" ? 16 : 8} className="px-4 py-10 text-center text-sm text-slate-400">
                     Tidak ada data pengiriman yang cocok dengan filter.
                   </td>
                 </tr>

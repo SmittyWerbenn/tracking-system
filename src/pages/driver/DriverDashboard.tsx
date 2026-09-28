@@ -1,9 +1,10 @@
-import { AlertTriangle, ArrowRight, CalendarClock, FileSpreadsheet, Loader2, Package, PackageSearch, RefreshCw, ScanLine, Truck, Weight, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, FileSpreadsheet, HelpCircle, Loader2, MessageCircle, Package, PackageSearch, RefreshCw, ScanLine, Truck, Weight, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { BarcodeScannerModal } from "../../components/BarcodeScannerModal";
 import { DriverLayout } from "../../components/layout/DriverLayout";
 import { useAuth } from "../../store/AuthContext";
+import { CS_PHONE_DISPLAY, CS_WHATSAPP_NUMBER } from "../../utils/contact";
 import {
   cancelShipmentClaim,
   claimShipment,
@@ -344,6 +345,26 @@ export default function DriverDashboard() {
           <ShipmentGrid shipments={{ aktif: active, kendala, selesai }[filter]} />
         </>
       )}
+
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-slate-300 bg-white p-4">
+        <div className="flex items-center gap-2.5">
+          <HelpCircle size={18} className="shrink-0 text-slate-400" />
+          <div>
+            <p className="text-sm font-semibold text-slate-800">Butuh Bantuan?</p>
+            <p className="text-xs text-slate-500">Hubungi Admin untuk konfirmasi atau kendala lainnya.</p>
+          </div>
+        </div>
+        <a
+          href={`https://wa.me/${CS_WHATSAPP_NUMBER}?text=${encodeURIComponent(
+            `Halo Admin, saya driver ${profile?.nama ?? ""} butuh bantuan.`,
+          )}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3.5 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
+        >
+          <MessageCircle size={15} /> Hubungi Admin ({CS_PHONE_DISPLAY})
+        </a>
+      </div>
 
       {scannerOpen && <BarcodeScannerModal onClose={() => setScannerOpen(false)} onDetected={handleScanned} />}
     </DriverLayout>

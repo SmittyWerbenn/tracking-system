@@ -150,7 +150,7 @@ export default function ShipmentList() {
             onClick={handleRefresh}
             disabled={refreshing}
             title="Muat ulang data"
-            className="inline-flex items-center gap-1.5 rounded-lg border-2 border-amber-600 bg-white px-3.5 py-2 text-sm font-semibold text-amber-700 shadow-sm hover:bg-amber-50 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3.5 py-2 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50 disabled:opacity-60"
           >
             <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} /> Refresh
           </button>

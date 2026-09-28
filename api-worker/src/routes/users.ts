@@ -25,15 +25,14 @@ export function registerUserRoutes(router: Router) {
     return ok({ items: rows.results });
   });
 
-  // Minimal, low-privilege lookup (name + email of active Admin/Superadmin
-  // accounts only) - any authenticated role may call this, unlike GET
-  // /api/users, so a Driver session can find out who to notify without
-  // needing users.manage. Used for the "package selesai/terkirim" email.
+  // Minimal, low-privilege lookup (name + email of active Admin accounts
+  // only - Superadmin deliberately excluded) - any authenticated role may
+  // call this, unlike GET /api/users, so a Driver session can find out who
+  // to notify without needing users.manage. Used for the "package
+  // selesai/terkirim" email.
   router.get("/api/admin-emails", async (ctx: Ctx) => {
     requireAuth(ctx);
-    const rows = await ctx.env.DB.prepare(
-      `SELECT nama, email FROM users WHERE role IN ('Superadmin', 'Admin') AND aktif = 1`,
-    ).all();
+    const rows = await ctx.env.DB.prepare(`SELECT nama, email FROM users WHERE role = 'Admin' AND aktif = 1`).all();
     return ok({ items: rows.results });
   });
 

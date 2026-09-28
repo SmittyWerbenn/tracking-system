@@ -22,7 +22,7 @@ export function exportDriverShipmentsPdf(
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("Data Kiriman", 14, 15);
+  doc.text("Data Pengiriman", 14, 15);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);

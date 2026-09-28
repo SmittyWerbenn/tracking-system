@@ -66,7 +66,7 @@ export default function DriverShipmentHistory() {
   useEffect(() => {
     fetchDriverShipments()
       .then(setShipments)
-      .catch(() => setError("Gagal memuat data kiriman. Coba muat ulang halaman."));
+      .catch(() => setError("Gagal memuat data pengiriman. Coba muat ulang halaman."));
   }, []);
 
   const filtered = useMemo(() => {
@@ -87,7 +87,7 @@ export default function DriverShipmentHistory() {
       </Link>
 
       <div className="mb-4">
-        <h1 className="text-lg font-semibold text-slate-900">Data Kiriman Saya</h1>
+        <h1 className="text-lg font-semibold text-slate-900">Data Pengiriman</h1>
         <p className="text-xs text-slate-400">Seluruh pengiriman yang pernah ditugaskan ke Anda.</p>
       </div>
 

@@ -147,7 +147,7 @@ export default function DriverDashboard() {
             to="/driver/riwayat"
             className="inline-flex items-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3.5 py-2.5 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50"
           >
-            <FileSpreadsheet size={16} /> Data Kiriman Saya
+            <FileSpreadsheet size={16} /> Data Pengiriman
           </Link>
           <button
             type="button"

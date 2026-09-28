@@ -11,7 +11,7 @@ interface DriverPdfMeta {
 }
 
 /** Generates a real PDF file (not window.print()) for the driver portal's
- * "Data Kiriman Saya" export, so the output is always clean - no browser
+ * "Data Pengiriman" export, so the output is always clean - no browser
  * print-dialog header/footer (URL, date, page number) to worry about. */
 export function exportDriverShipmentsPdf(
   shipments: DriverShipmentSummary[],

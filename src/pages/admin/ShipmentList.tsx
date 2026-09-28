@@ -266,29 +266,28 @@ export default function ShipmentList() {
         >
           <Download size={15} /> Export CSV
         </button>
-      </div>
-
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <p className="text-xs text-slate-400">{filtered.length} pengiriman</p>
-        <div className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-0.5">
-          <button
-            type="button"
-            onClick={() => setViewMode("ringkas")}
-            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold ${
-              viewMode === "ringkas" ? "bg-blue-900 text-white" : "text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            <LayoutList size={13} /> Data Ringkas
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode("detail")}
-            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold ${
-              viewMode === "detail" ? "bg-blue-900 text-white" : "text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            <ListTree size={13} /> Data Detail
-          </button>
+        <div className="flex items-center gap-2">
+          <span className="hidden text-xs text-slate-400 sm:inline">{filtered.length} pengiriman</span>
+          <div className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+            <button
+              type="button"
+              onClick={() => setViewMode("ringkas")}
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold ${
+                viewMode === "ringkas" ? "bg-blue-900 text-white" : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <LayoutList size={13} /> Ringkas
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("detail")}
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold ${
+                viewMode === "detail" ? "bg-blue-900 text-white" : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <ListTree size={13} /> Detail
+            </button>
+          </div>
         </div>
       </div>
 

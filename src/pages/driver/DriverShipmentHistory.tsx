@@ -2,6 +2,7 @@ import { AlertTriangle, ArrowLeft, ArrowRight, Download, FileText, X } from "luc
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { DriverLayout } from "../../components/layout/DriverLayout";
+import { useAuth } from "../../store/AuthContext";
 import { fetchDriverShipments, type DriverShipmentSummary } from "../../utils/driverApi";
 import { exportDriverShipmentsCsv } from "../../utils/exportCsv";
 import { formatTanggalPanjang } from "../../utils/format";
@@ -17,17 +18,35 @@ function statusStyle(status: string): string {
 }
 
 /** Full shipment history for the logged-in driver (not just the dashboard's
- * status-filtered tabs), with a date-created filter and Excel/PDF export -
- * the CSV shares the admin portal's Excel-friendly convention, and "PDF" is
- * the browser's own print-to-PDF (window.print()), matching how resi
- * printing already works elsewhere in this app rather than adding a PDF
- * library dependency. */
+ * status-filtered tabs), with a date-created + status filter and Excel/PDF
+ * export. PDF is a real generated file (jsPDF), not window.print() - avoids
+ * the browser print dialog's own header/footer (URL, date, page number)
+ * that can't be suppressed from the page itself. */
 export default function DriverShipmentHistory() {
+  const { profile } = useAuth();
   const [shipments, setShipments] = useState<DriverShipmentSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [statusFilter, setStatusFilter] = useState("Semua");
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  async function handleDownloadPdf() {
+    setPdfLoading(true);
+    try {
+      // Dynamically imported so jsPDF/jspdf-autotable (and its optional
+      // html2canvas/dompurify deps) never bloat the main app bundle that
+      // every visitor downloads - only loaded when this button is used.
+      const { exportDriverShipmentsPdf } = await import("../../utils/exportPdf");
+      exportDriverShipmentsPdf(
+        filtered,
+        { driverNama: profile?.nama ?? "-", dateFrom, dateTo, statusFilter },
+        `data-kiriman-saya-${Date.now()}.pdf`,
+      );
+    } finally {
+      setPdfLoading(false);
+    }
+  }
 
   useEffect(() => {
     fetchDriverShipments()
@@ -105,10 +124,11 @@ export default function DriverShipmentHistory() {
             <Download size={15} /> Unduh Excel
           </button>
           <button
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+            onClick={handleDownloadPdf}
+            disabled={pdfLoading}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
           >
-            <FileText size={15} /> Unduh PDF
+            <FileText size={15} /> {pdfLoading ? "Menyiapkan..." : "Unduh PDF"}
           </button>
         </div>
       </div>

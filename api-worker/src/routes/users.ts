@@ -3,7 +3,7 @@ import type { Ctx } from "../types";
 import { ok, Errors } from "../http";
 import { parseJsonBody, reqString, reqEmail, reqEnum, optString, optBool } from "../validate";
 import { hashPassword, newId } from "../crypto";
-import { requirePermission } from "../authMiddleware";
+import { requireAuth, requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta } from "../pagination";
 
@@ -21,6 +21,18 @@ export function registerUserRoutes(router: Router) {
        LEFT JOIN users u ON u.id = d.user_id
        LEFT JOIN trucks t ON t.driver_id = d.id
        ORDER BY d.nama`,
+    ).all();
+    return ok({ items: rows.results });
+  });
+
+  // Minimal, low-privilege lookup (name + email of active Admin/Superadmin
+  // accounts only) - any authenticated role may call this, unlike GET
+  // /api/users, so a Driver session can find out who to notify without
+  // needing users.manage. Used for the "package selesai/terkirim" email.
+  router.get("/api/admin-emails", async (ctx: Ctx) => {
+    requireAuth(ctx);
+    const rows = await ctx.env.DB.prepare(
+      `SELECT nama, email FROM users WHERE role IN ('Superadmin', 'Admin') AND aktif = 1`,
     ).all();
     return ok({ items: rows.results });
   });

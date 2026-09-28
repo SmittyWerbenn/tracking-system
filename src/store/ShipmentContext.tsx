@@ -10,6 +10,7 @@ import type {
 } from "../types";
 import { api, ApiError, uploadFile } from "../utils/apiClient";
 import { resolveFileUrls, type FileRef } from "../utils/resolveFiles";
+import { sendAdminDeliveryEmail } from "../utils/sendEmail";
 import { useAuth } from "./AuthContext";
 
 interface RawShipmentSummary {
@@ -273,6 +274,25 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     setShipments((prev) => prev.map((s) => (s.awb === awb ? { ...s, emailTerkirim: true, emailTerkirimAt: new Date().toISOString() } : s)));
   }
 
+  // Notifies every active Admin/Superadmin by email once a shipment reaches
+  // "Selesai / Terkirim" - triggered from either the admin or driver portal
+  // (both funnel through addTrackingUpdate), so admins learn a delivery
+  // completed without needing to be the one who marked it done.
+  async function notifyAdminsDelivered(awb: string) {
+    const [shipment, adminsRes] = await Promise.all([
+      getByAwb(awb),
+      api.get<{ items: { nama: string; email: string }[] }>("/api/admin-emails"),
+    ]);
+    if (!shipment || adminsRes.items.length === 0) return;
+
+    const detailUrl = `${window.location.origin}/admin/resi/${awb}`;
+    await Promise.all(
+      adminsRes.items.map((admin) =>
+        sendAdminDeliveryEmail(shipment, detailUrl, admin.email, admin.nama).catch(() => {}),
+      ),
+    );
+  }
+
   async function addTrackingUpdate(data: TrackingUpdateFormData) {
     try {
       const isSelesai = data.type === "Selesai / Terkirim";
@@ -297,6 +317,9 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       }
 
       await refresh();
+      // Fire-and-forget - never let a slow/failed internal email delay or
+      // fail the status update itself, which is already saved by this point.
+      if (isSelesai) notifyAdminsDelivered(data.awb).catch(() => {});
       return { ok: true as const };
     } catch (err) {
       return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal menyimpan update tracking." };

@@ -18,7 +18,7 @@ export interface SendEmailResult {
   error?: string;
 }
 
-export type EmailRecipientRole = "penerima" | "pengirim";
+export type EmailRecipientRole = "penerima" | "pengirim" | "admin";
 
 // Production email endpoint: a Cloudflare Worker (see cloudflare-worker/)
 // that speaks real SMTP to Brevo via TCP sockets, since a static host like
@@ -42,32 +42,24 @@ function emailEndpoint(): string {
   return isLocalDev() ? "/api/send-email" : WORKER_EMAIL_ENDPOINT;
 }
 
-/**
- * Sends the resi/tracking notification email. `recipient` selects whether
- * it goes to the penerima (default) or the pengirim.
- */
-export async function sendTrackingEmail(
-  shipment: EmailableShipment,
-  trackingUrl: string,
-  recipient: EmailRecipientRole = "penerima",
-): Promise<SendEmailResult> {
-  const person = shipment[recipient];
+interface PostEmailPayload {
+  to: string;
+  toName: string;
+  recipientRole: EmailRecipientRole;
+  awb: string;
+  kotaAsal: string;
+  kotaTujuan: string;
+  status: string;
+  tanggalDibuat: string;
+  trackingUrl: string;
+}
 
+async function postEmail(payload: PostEmailPayload): Promise<SendEmailResult> {
   try {
     const res = await fetch(emailEndpoint(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: person.email,
-        toName: person.nama,
-        recipientRole: recipient,
-        awb: shipment.awb,
-        kotaAsal: shipment.kotaAsal,
-        kotaTujuan: shipment.kotaTujuan,
-        status: shipment.status,
-        tanggalDibuat: shipment.tanggalDibuat,
-        trackingUrl,
-      }),
+      body: JSON.stringify(payload),
     });
 
     const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
@@ -85,4 +77,49 @@ export async function sendTrackingEmail(
           : "Tidak dapat terhubung ke server email.",
     };
   }
+}
+
+/**
+ * Sends the resi/tracking notification email. `recipient` selects whether
+ * it goes to the penerima (default) or the pengirim.
+ */
+export async function sendTrackingEmail(
+  shipment: EmailableShipment,
+  trackingUrl: string,
+  recipient: "penerima" | "pengirim" = "penerima",
+): Promise<SendEmailResult> {
+  const person = shipment[recipient];
+  return postEmail({
+    to: person.email,
+    toName: person.nama,
+    recipientRole: recipient,
+    awb: shipment.awb,
+    kotaAsal: shipment.kotaAsal,
+    kotaTujuan: shipment.kotaTujuan,
+    status: shipment.status,
+    tanggalDibuat: shipment.tanggalDibuat,
+    trackingUrl,
+  });
+}
+
+/** Internal-only notification, sent to a single admin/superadmin account
+ * when a shipment reaches "Selesai / Terkirim" - links to the admin detail
+ * page instead of the public tracking page. */
+export async function sendAdminDeliveryEmail(
+  shipment: EmailableShipment,
+  adminDetailUrl: string,
+  adminEmail: string,
+  adminNama: string,
+): Promise<SendEmailResult> {
+  return postEmail({
+    to: adminEmail,
+    toName: adminNama,
+    recipientRole: "admin",
+    awb: shipment.awb,
+    kotaAsal: shipment.kotaAsal,
+    kotaTujuan: shipment.kotaTujuan,
+    status: shipment.status,
+    tanggalDibuat: shipment.tanggalDibuat,
+    trackingUrl: adminDetailUrl,
+  });
 }

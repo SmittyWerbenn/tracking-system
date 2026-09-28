@@ -70,7 +70,8 @@ export default {
       return json({ ok: false, error: "Data email tidak lengkap (to/awb/trackingUrl wajib diisi)." }, 400, cors);
     }
 
-    const recipientRole: EmailRecipientRole = data.recipientRole === "pengirim" ? "pengirim" : "penerima";
+    const recipientRole: EmailRecipientRole =
+      data.recipientRole === "pengirim" || data.recipientRole === "admin" ? data.recipientRole : "penerima";
     // senderName brands the email body; fromName is only the SMTP From
     // mailbox display name, which can be a different verified sender.
     const senderName = env.BREVO_SENDER_NAME || "PT Gangsar Mitra Suatama";

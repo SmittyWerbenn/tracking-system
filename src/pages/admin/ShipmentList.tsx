@@ -31,7 +31,7 @@ export default function ShipmentList() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [viewMode, setViewMode] = useState<"ringkas" | "detail">("detail");
+  const [viewMode, setViewMode] = useState<"ringkas" | "detail">("ringkas");
   const [pendingClaims, setPendingClaims] = useState<PendingClaim[]>([]);
   const [claimActionAwb, setClaimActionAwb] = useState<string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);

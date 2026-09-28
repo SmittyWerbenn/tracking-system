@@ -2,9 +2,10 @@ import { AlertTriangle, ArrowLeft, ArrowRight, Download, FileText, X } from "luc
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { DriverLayout } from "../../components/layout/DriverLayout";
+import { fetchDriverShipments, type DriverShipmentSummary } from "../../utils/driverApi";
 import { exportDriverShipmentsCsv } from "../../utils/exportCsv";
 import { formatTanggalPanjang } from "../../utils/format";
-import { fetchDriverShipments, type DriverShipmentSummary } from "../../utils/driverApi";
+import { SHIPMENT_STATUS_OPTIONS } from "../../utils/status";
 
 const KENDALA_STATUS = "Kendala";
 const SELESAI_STATUS = "Selesai / Terkirim";
@@ -26,6 +27,7 @@ export default function DriverShipmentHistory() {
   const [error, setError] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [statusFilter, setStatusFilter] = useState("Semua");
 
   useEffect(() => {
     fetchDriverShipments()
@@ -38,10 +40,11 @@ export default function DriverShipmentHistory() {
       .filter((s) => {
         if (dateFrom && s.tanggalDibuat < dateFrom) return false;
         if (dateTo && s.tanggalDibuat > dateTo) return false;
+        if (statusFilter !== "Semua" && s.status !== statusFilter) return false;
         return true;
       })
       .sort((a, b) => (a.tanggalDibuat + a.jamDibuat < b.tanggalDibuat + b.jamDibuat ? 1 : -1));
-  }, [shipments, dateFrom, dateTo]);
+  }, [shipments, dateFrom, dateTo, statusFilter]);
 
   return (
     <DriverLayout wide>
@@ -70,11 +73,24 @@ export default function DriverShipmentHistory() {
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
           />
         </div>
-        {(dateFrom || dateTo) && (
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+        >
+          <option value="Semua">Semua Status</option>
+          {SHIPMENT_STATUS_OPTIONS.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        {(dateFrom || dateTo || statusFilter !== "Semua") && (
           <button
             onClick={() => {
               setDateFrom("");
               setDateTo("");
+              setStatusFilter("Semua");
             }}
             className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-800"
           >
@@ -111,7 +127,7 @@ export default function DriverShipmentHistory() {
 
       {shipments !== null && filtered.length === 0 && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-400">
-          Tidak ada pengiriman pada rentang tanggal ini.
+          Tidak ada pengiriman yang cocok dengan filter.
         </div>
       )}
 

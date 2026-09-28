@@ -145,14 +145,24 @@ export default function ShipmentList() {
             Daftar seluruh resi (AWB) yang tercatat dalam sistem.
           </p>
         </div>
-        {canCreateShipment && (
-          <Link
-            to="/admin/pengiriman/baru"
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            title="Muat ulang data"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-amber-600 disabled:opacity-60"
           >
-            Buat Pengiriman
-          </Link>
-        )}
+            <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} /> Refresh
+          </button>
+          {canCreateShipment && (
+            <Link
+              to="/admin/pengiriman/baru"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+            >
+              Buat Pengiriman
+            </Link>
+          )}
+        </div>
       </div>
 
       {canManageClaims && pendingClaims.length > 0 && (
@@ -273,14 +283,6 @@ export default function ShipmentList() {
             Reset
           </button>
         )}
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          title="Muat ulang data"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-        >
-          <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} /> Refresh
-        </button>
         <button
           onClick={() => exportShipmentsCsv(filtered, `data-pengiriman-${todayISO()}.csv`)}
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"

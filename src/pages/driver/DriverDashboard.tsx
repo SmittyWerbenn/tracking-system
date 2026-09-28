@@ -447,6 +447,13 @@ function ShipmentGrid({ shipments }: { shipments: DriverShipmentSummary[] }) {
               </span>
             )}
           </div>
+          <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+            <CalendarClock size={12} className="shrink-0 text-slate-400" />
+            Estimasi Tiba:{" "}
+            <span className="font-medium text-slate-700">
+              {s.estimasiTiba ? formatTanggalPanjang(s.estimasiTiba) : "Belum tersedia"}
+            </span>
+          </p>
         </Link>
       ))}
     </div>

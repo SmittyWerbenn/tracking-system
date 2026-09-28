@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, CalendarClock, Loader2, Package, PackageSearch, ScanLine, Truck, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, Loader2, Package, PackageSearch, RefreshCw, ScanLine, Truck, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { BarcodeScannerModal } from "../../components/BarcodeScannerModal";
@@ -33,6 +33,7 @@ export default function DriverDashboard() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanResultAwb, setScanResultAwb] = useState<string | null>(null);
   const [scanNotFound, setScanNotFound] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   function loadShipments() {
     fetchDriverShipments()
@@ -54,6 +55,25 @@ export default function DriverDashboard() {
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    setError(null);
+    setOpenError(null);
+    try {
+      await Promise.all([
+        fetchDriverShipments()
+          .then(setShipments)
+          .catch(() => setError("Gagal memuat pengiriman. Coba muat ulang halaman.")),
+        fetchOpenShipments()
+          .then(setOpenShipments)
+          .catch(() => setOpenError("Gagal memuat pesanan terbuka. Coba muat ulang halaman.")),
+        fetchDriverTrucks().then(setTrucks).catch(() => {}),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   async function handleClaim(awb: string) {
     setClaimingAwb(awb);
@@ -113,13 +133,24 @@ export default function DriverDashboard() {
           <h1 className="text-lg font-semibold text-slate-900">{profile?.nama}</h1>
           <p className="text-xs text-slate-400">Driver</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setScannerOpen(true)}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-900 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-800"
-        >
-          <ScanLine size={14} /> Scan AWB
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            title="Muat ulang data"
+            className="inline-flex items-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3 py-2.5 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50 disabled:opacity-60"
+          >
+            <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setScannerOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+          >
+            <ScanLine size={18} /> Scan AWB
+          </button>
+        </div>
       </div>
 
       {trucks.length > 0 && (

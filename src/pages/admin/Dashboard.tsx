@@ -38,7 +38,8 @@ interface DashboardStats {
 export default function Dashboard() {
   const { shipments } = useShipments();
   const { profile } = useAuth();
-  const canCreateShipment = profile?.role === "Superadmin" || profile?.role === "Admin";
+  const canCreateShipment =
+    profile?.role === "Superadmin" || profile?.role === "Admin" || profile?.role === "Cust-Admin";
   const { notifications } = useNotifications();
   const { feedback } = useFeedback();
   const { settings } = useSettings();

@@ -6,6 +6,8 @@ import { api } from "./apiClient";
 export interface DriverShipmentSummary {
   awb: string;
   status: string;
+  tanggalDibuat: string;
+  jamDibuat: string;
   penerima: { nama: string; telepon: string };
   alamatAsal: string;
   kotaAsal: string;

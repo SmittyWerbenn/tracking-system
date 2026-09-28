@@ -30,6 +30,7 @@ import UserManagement from "./pages/admin/UserManagement";
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import DriverLogin from "./pages/driver/DriverLogin";
 import DriverShipmentDetail from "./pages/driver/DriverShipmentDetail";
+import DriverShipmentHistory from "./pages/driver/DriverShipmentHistory";
 import About from "./pages/public/About";
 import CekOngkir from "./pages/public/CekOngkir";
 import Contact from "./pages/public/Contact";
@@ -77,6 +78,7 @@ export default function App() {
           {/* Driver portal - fully separate from /admin, own login/layout */}
           <Route path="/driver/login" element={<DriverLogin />} />
           <Route path="/driver" element={<RequireDriver><DriverDashboard /></RequireDriver>} />
+          <Route path="/driver/riwayat" element={<RequireDriver><DriverShipmentHistory /></RequireDriver>} />
           <Route
             path="/driver/shipments/:awb"
             element={

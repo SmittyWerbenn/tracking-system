@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, CalendarClock, Loader2, Package, PackageSearch, RefreshCw, ScanLine, Truck, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, Loader2, Package, PackageSearch, RefreshCw, ScanLine, Truck, Weight, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { BarcodeScannerModal } from "../../components/BarcodeScannerModal";
@@ -381,6 +381,9 @@ function OpenShipmentCard({
         </span>
         <span>{item.layanan}</span>
       </div>
+      <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
+        <Weight size={12} /> {item.beratKg} Kg
+      </p>
       <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
         <CalendarClock size={12} className="shrink-0 text-slate-400" />
         Estimasi Tiba: <span className="font-medium text-slate-700">{item.estimasiTiba ? formatTanggalPanjang(item.estimasiTiba) : "Belum tersedia"}</span>
@@ -447,6 +450,9 @@ function ShipmentGrid({ shipments }: { shipments: DriverShipmentSummary[] }) {
               </span>
             )}
           </div>
+          <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
+            <Weight size={12} /> {s.beratKg} Kg
+          </p>
           <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
             <CalendarClock size={12} className="shrink-0 text-slate-400" />
             Estimasi Tiba:{" "}

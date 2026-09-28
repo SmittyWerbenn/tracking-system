@@ -1,4 +1,6 @@
 import type { Shipment } from "../types";
+import { downloadCsv } from "./csv";
+import type { DriverShipmentSummary } from "./driverApi";
 import { stripKeteranganMeta } from "./format";
 
 function csvEscape(value: string): string {
@@ -80,4 +82,36 @@ export function exportShipmentsCsv(shipments: Shipment[], filename = "data-pengi
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+const DRIVER_COLUMNS = [
+  "AWB",
+  "Tanggal",
+  "Asal",
+  "Tujuan",
+  "Status",
+  "Service",
+  "Berat (Kg)",
+  "Koli",
+  "Estimasi Tiba",
+  "Truck",
+] as const;
+
+/** Same CSV/Excel-friendly download as exportShipmentsCsv, but for the
+ * driver portal's own shipment shape (DriverShipmentSummary), which is a
+ * narrower response than the admin Shipment type. */
+export function exportDriverShipmentsCsv(shipments: DriverShipmentSummary[], filename = "data-kiriman-saya.csv") {
+  const rows = shipments.map((s) => [
+    s.awb,
+    formatTanggalDDMMYYYY(s.tanggalDibuat),
+    s.kotaAsal,
+    s.kotaTujuan,
+    s.status,
+    s.layanan,
+    String(s.beratKg),
+    String(s.jumlahKoli),
+    s.estimasiTiba ? formatTanggalDDMMYYYY(s.estimasiTiba) : "-",
+    s.truckNomorUnit ?? "-",
+  ]);
+  downloadCsv(filename, DRIVER_COLUMNS, rows);
 }

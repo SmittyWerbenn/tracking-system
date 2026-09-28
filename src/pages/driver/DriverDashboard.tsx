@@ -1,10 +1,10 @@
-import { AlertTriangle, ArrowRight, CalendarClock, FileSpreadsheet, HelpCircle, Loader2, MessageCircle, Package, PackageSearch, RefreshCw, ScanLine, Truck, Weight, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, FileSpreadsheet, Loader2, MessageCircle, Package, PackageSearch, RefreshCw, ScanLine, Truck, Weight, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { BarcodeScannerModal } from "../../components/BarcodeScannerModal";
 import { DriverLayout } from "../../components/layout/DriverLayout";
 import { useAuth } from "../../store/AuthContext";
-import { CS_PHONE_DISPLAY, CS_WHATSAPP_NUMBER } from "../../utils/contact";
+import { CS_WHATSAPP_NUMBER } from "../../utils/contact";
 import {
   cancelShipmentClaim,
   claimShipment,
@@ -165,16 +165,30 @@ export default function DriverDashboard() {
           {/* Primary unit - the truck this driver mainly runs */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-800 to-blue-950 p-4 shadow-md">
             <Truck size={96} className="pointer-events-none absolute -right-4 -top-4 rotate-12 text-white/10" />
-            <p className="relative flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-blue-200">
-              <Truck size={13} /> Unit Truck Anda
-            </p>
-            <div className="relative mt-2 flex flex-wrap items-center gap-3">
-              <span className="inline-block rounded-lg bg-white px-3.5 py-1.5 font-mono text-2xl font-extrabold tracking-wide text-blue-950 shadow-sm">
-                {trucks[0].nomorUnit}
-              </span>
-              <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">
-                {trucks[0].jenis}
-              </span>
+            <div className="relative flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-blue-200">
+                  <Truck size={13} /> Unit Truck Anda
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <span className="inline-block rounded-lg bg-white px-3.5 py-1.5 font-mono text-2xl font-extrabold tracking-wide text-blue-950 shadow-sm">
+                    {trucks[0].nomorUnit}
+                  </span>
+                  <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">
+                    {trucks[0].jenis}
+                  </span>
+                </div>
+              </div>
+              <a
+                href={`https://wa.me/${CS_WHATSAPP_NUMBER}?text=${encodeURIComponent(
+                  `Halo Admin, saya driver ${profile?.nama ?? ""} butuh bantuan.`,
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-white/15 px-3 py-2 text-xs font-semibold text-white hover:bg-white/25"
+              >
+                <MessageCircle size={14} /> Butuh Bantuan?
+              </a>
             </div>
           </div>
 
@@ -345,26 +359,6 @@ export default function DriverDashboard() {
           <ShipmentGrid shipments={{ aktif: active, kendala, selesai }[filter]} />
         </>
       )}
-
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-slate-300 bg-white p-4">
-        <div className="flex items-center gap-2.5">
-          <HelpCircle size={18} className="shrink-0 text-slate-400" />
-          <div>
-            <p className="text-sm font-semibold text-slate-800">Butuh Bantuan?</p>
-            <p className="text-xs text-slate-500">Hubungi Admin untuk konfirmasi atau kendala lainnya.</p>
-          </div>
-        </div>
-        <a
-          href={`https://wa.me/${CS_WHATSAPP_NUMBER}?text=${encodeURIComponent(
-            `Halo Admin, saya driver ${profile?.nama ?? ""} butuh bantuan.`,
-          )}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3.5 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
-        >
-          <MessageCircle size={15} /> Hubungi Admin ({CS_PHONE_DISPLAY})
-        </a>
-      </div>
 
       {scannerOpen && <BarcodeScannerModal onClose={() => setScannerOpen(false)} onDetected={handleScanned} />}
     </DriverLayout>

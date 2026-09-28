@@ -17,6 +17,21 @@ function statusStyle(status: string): string {
   return "bg-blue-50 text-blue-700";
 }
 
+/** "Eko Prasetyo" -> "data-kiriman-2026_09_28-eko-prasetyo.pdf" */
+function buildExportFilename(driverNama: string, ext: string): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  const slug =
+    driverNama
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "driver";
+  return `data-kiriman-${y}_${m}_${d}-${slug}.${ext}`;
+}
+
 /** Full shipment history for the logged-in driver (not just the dashboard's
  * status-filtered tabs), with a date-created + status filter and Excel/PDF
  * export. PDF is a real generated file (jsPDF), not window.print() - avoids
@@ -41,7 +56,7 @@ export default function DriverShipmentHistory() {
       exportDriverShipmentsPdf(
         filtered,
         { driverNama: profile?.nama ?? "-", dateFrom, dateTo, statusFilter },
-        `data-kiriman-saya-${Date.now()}.pdf`,
+        buildExportFilename(profile?.nama ?? "", "pdf"),
       );
     } finally {
       setPdfLoading(false);
@@ -118,7 +133,7 @@ export default function DriverShipmentHistory() {
         )}
         <div className="flex items-center gap-2 sm:ml-auto">
           <button
-            onClick={() => exportDriverShipmentsCsv(filtered, `data-kiriman-saya-${Date.now()}.csv`)}
+            onClick={() => exportDriverShipmentsCsv(filtered, buildExportFilename(profile?.nama ?? "", "csv"))}
             className="inline-flex items-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3.5 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-50"
           >
             <Download size={15} /> Unduh Excel

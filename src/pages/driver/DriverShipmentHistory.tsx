@@ -132,36 +132,36 @@ export default function DriverShipmentHistory() {
       )}
 
       {filtered.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm print:shadow-none">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm print:overflow-visible print:rounded-none print:border-0 print:shadow-none">
+          <div className="overflow-x-auto print:overflow-visible">
+            <table className="w-full min-w-[720px] table-auto text-left text-sm print:min-w-0 print:w-full print:text-[10px]">
+              <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 print:bg-white">
                 <tr>
-                  <th className="px-4 py-3 font-medium">AWB</th>
-                  <th className="px-4 py-3 font-medium">Tanggal</th>
-                  <th className="px-4 py-3 font-medium">Rute</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Estimasi Tiba</th>
+                  <th className="px-4 py-3 font-medium print:px-1.5 print:py-1">AWB</th>
+                  <th className="px-4 py-3 font-medium print:px-1.5 print:py-1">Tanggal</th>
+                  <th className="px-4 py-3 font-medium print:px-1.5 print:py-1">Rute</th>
+                  <th className="px-4 py-3 font-medium print:px-1.5 print:py-1">Status</th>
+                  <th className="px-4 py-3 font-medium print:px-1.5 print:py-1">Estimasi Tiba</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((s) => (
-                  <tr key={s.awb}>
-                    <td className="whitespace-nowrap px-4 py-3 font-mono font-medium text-slate-900">{s.awb}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                  <tr key={s.awb} className="print:break-inside-avoid">
+                    <td className="whitespace-nowrap px-4 py-3 font-mono font-medium text-slate-900 print:whitespace-normal print:break-words print:px-1.5 print:py-1">{s.awb}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600 print:whitespace-normal print:px-1.5 print:py-1">
                       {formatTanggalPanjang(s.tanggalDibuat)}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">
-                      <span className="flex items-center gap-1.5">
-                        {s.kotaAsal} <ArrowRight size={12} className="text-slate-300" /> {s.kotaTujuan}
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600 print:whitespace-normal print:break-words print:px-1.5 print:py-1">
+                      <span className="flex items-center gap-1.5 print:flex-wrap">
+                        {s.kotaAsal} <ArrowRight size={12} className="text-slate-300 print:hidden" /> {s.kotaTujuan}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusStyle(s.status)}`}>
+                    <td className="whitespace-nowrap px-4 py-3 print:whitespace-normal print:px-1.5 print:py-1">
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusStyle(s.status)} print:rounded-none print:bg-transparent print:px-0 print:py-0 print:text-slate-700`}>
                         {s.status}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600 print:whitespace-normal print:px-1.5 print:py-1">
                       {s.estimasiTiba ? formatTanggalPanjang(s.estimasiTiba) : "Belum tersedia"}
                     </td>
                   </tr>

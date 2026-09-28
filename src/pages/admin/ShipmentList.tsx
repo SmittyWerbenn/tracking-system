@@ -1,4 +1,4 @@
-import { CheckCircle2, Download, Eye, FileEdit, LayoutList, ListTree, Loader2, MapPin, PackageSearch, Printer, Search, X, XCircle } from "lucide-react";
+import { CheckCircle2, Download, Eye, FileEdit, LayoutList, ListTree, Loader2, MapPin, PackageSearch, Printer, RefreshCw, Search, X, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -79,6 +79,19 @@ export default function ShipmentList() {
     refresh({ status: statusFilter === "Semua" ? undefined : statusFilter, q: debouncedQuery || undefined });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, debouncedQuery]);
+
+  const [refreshing, setRefreshing] = useState(false);
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        refresh({ status: statusFilter === "Semua" ? undefined : statusFilter, q: debouncedQuery || undefined }),
+        canManageClaims ? fetchPendingClaims().then(setPendingClaims).catch(() => {}) : Promise.resolve(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const stagnantAwbs = useMemo(() => {
     if (!macetOnly) return null;
@@ -260,6 +273,14 @@ export default function ShipmentList() {
             Reset
           </button>
         )}
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          title="Muat ulang data"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        >
+          <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} /> Refresh
+        </button>
         <button
           onClick={() => exportShipmentsCsv(filtered, `data-pengiriman-${todayISO()}.csv`)}
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"

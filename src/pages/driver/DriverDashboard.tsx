@@ -106,26 +106,11 @@ export default function DriverDashboard() {
 
   return (
     <DriverLayout wide>
-      <div className="mb-5 flex items-start justify-between gap-3">
+      <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <p className="text-sm text-slate-500">Halo,</p>
           <h1 className="text-lg font-semibold text-slate-900">{profile?.nama}</h1>
           <p className="text-xs text-slate-400">Driver</p>
-          {trucks.length > 0 && (
-            <div className="mt-2 flex flex-col gap-0.5">
-              {trucks.map((t, i) => (
-                <p
-                  key={t.id}
-                  className={`flex items-center gap-1.5 text-xs ${
-                    i === 0 ? "font-medium text-slate-700" : "text-slate-400"
-                  }`}
-                >
-                  <Truck size={12} className={i === 0 ? "text-slate-500" : "text-slate-300"} />
-                  Unit: {t.jenis} &nbsp;&nbsp; Nopol: {t.nomorUnit}
-                </p>
-              ))}
-            </div>
-          )}
         </div>
         <button
           type="button"
@@ -135,6 +120,39 @@ export default function DriverDashboard() {
           <ScanLine size={14} /> Scan AWB
         </button>
       </div>
+
+      {trucks.length > 0 && (
+        <div className="mb-5 flex flex-col gap-2">
+          {trucks.map((t, i) => (
+            <div
+              key={t.id}
+              className={`flex items-center gap-3 rounded-xl border-2 p-3.5 shadow-sm ${
+                i === 0 ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white"
+              }`}
+            >
+              <div
+                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${
+                  i === 0 ? "bg-blue-900 text-white" : "bg-slate-100 text-slate-400"
+                }`}
+              >
+                <Truck size={24} />
+              </div>
+              <div className="min-w-0">
+                <p
+                  className={`text-[11px] font-semibold uppercase tracking-wide ${
+                    i === 0 ? "text-blue-700" : "text-slate-400"
+                  }`}
+                >
+                  Unit {t.jenis}
+                </p>
+                <p className={`font-mono text-xl font-bold leading-tight ${i === 0 ? "text-blue-900" : "text-slate-600"}`}>
+                  {t.nomorUnit}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="mb-5 grid grid-cols-4 gap-2 sm:gap-3">
         <button

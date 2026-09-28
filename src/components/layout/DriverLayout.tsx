@@ -1,6 +1,6 @@
-import { FileSpreadsheet, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import type { ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
 import { useAuth } from "../../store/AuthContext";
 
@@ -27,13 +27,6 @@ export function DriverLayout({ children, wide = false }: { children: ReactNode; 
           </div>
           <div className="flex items-center gap-3">
             {profile && <span className="hidden text-sm text-slate-500 sm:block">{profile.nama}</span>}
-            <Link
-              to="/driver/riwayat"
-              title="Data Kiriman Saya"
-              className="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            >
-              <FileSpreadsheet size={18} />
-            </Link>
             <button
               onClick={handleLogout}
               title="Keluar"

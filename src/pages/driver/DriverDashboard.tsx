@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, CalendarClock, Loader2, Package, PackageSearch, RefreshCw, ScanLine, Truck, Weight, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, FileSpreadsheet, Loader2, Package, PackageSearch, RefreshCw, ScanLine, Truck, Weight, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { BarcodeScannerModal } from "../../components/BarcodeScannerModal";
@@ -127,13 +127,13 @@ export default function DriverDashboard() {
 
   return (
     <DriverLayout wide>
-      <div className="mb-4 flex items-start justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm text-slate-500">Halo,</p>
           <h1 className="text-lg font-semibold text-slate-900">{profile?.nama}</h1>
           <p className="text-xs text-slate-400">Driver</p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={handleRefresh}
@@ -143,6 +143,12 @@ export default function DriverDashboard() {
           >
             <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} /> Refresh
           </button>
+          <Link
+            to="/driver/riwayat"
+            className="inline-flex items-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3.5 py-2.5 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50"
+          >
+            <FileSpreadsheet size={16} /> Data Kiriman Saya
+          </Link>
           <button
             type="button"
             onClick={() => setScannerOpen(true)}

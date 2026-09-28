@@ -91,7 +91,7 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
 
   async function refresh() {
-    if (profile?.role !== "Superadmin") return;
+    if (profile?.role !== "Superadmin" && profile?.role !== "Admin") return;
     setIsLoading(true);
     try {
       const [usersRes, driversRes] = await Promise.all([
@@ -109,7 +109,7 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    if (isAuthenticated && profile?.role === "Superadmin") refresh();
+    if (isAuthenticated && (profile?.role === "Superadmin" || profile?.role === "Admin")) refresh();
     else setUsers([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, profile?.role]);

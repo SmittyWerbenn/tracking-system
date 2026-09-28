@@ -71,6 +71,19 @@ const ROLE_PERMISSIONS: Record<Role, Set<Permission>> = {
     "notifications.view",
     "settings.view",
   ]),
+  // Customer-side portal account: same base as Viewer, plus creating
+  // shipments - visibility is further narrowed to just its own
+  // customer_id inside routes/shipments.ts (rbac alone can't express that
+  // row-level scoping).
+  "Cust-Admin": new Set([
+    "shipments.view",
+    "shipments.create",
+    "fleet.view",
+    "locations.view",
+    "feedback.view",
+    "notifications.view",
+    "settings.view",
+  ]),
 };
 
 export function hasPermission(role: Role, permission: Permission): boolean {

@@ -20,6 +20,7 @@ function emptyForm(defaultRole: UserRole): UserFormData {
     fotoDataUrl: undefined,
     password: "",
     driverId: null,
+    customerId: null,
   };
 }
 
@@ -37,6 +38,7 @@ const ROLE_BADGE_STYLE: Record<UserRole, string> = {
   Admin: "bg-blue-100 text-blue-700",
   Driver: "bg-amber-100 text-amber-700",
   Viewer: "bg-violet-100 text-violet-700",
+  "Cust-Admin": "bg-teal-100 text-teal-700",
 };
 
 const ROLE_DESCRIPTION: Record<UserRole, string> = {
@@ -44,6 +46,8 @@ const ROLE_DESCRIPTION: Record<UserRole, string> = {
   Admin: "Dapat membuat/mengubah data pengiriman, armada, lokasi, dan pengaturan.",
   Driver: "Hanya dapat membuka Update Tracking untuk melaporkan status/serah terima.",
   Viewer: "Hanya dapat melihat data (read-only), tidak bisa mengubah apa pun.",
+  "Cust-Admin":
+    "Setara Viewer, ditambah bisa Buat Pengiriman. Hanya melihat data pengiriman dengan Nomor Pelanggan miliknya sendiri.",
 };
 
 function formatLastLogin(iso?: string): string {
@@ -54,7 +58,7 @@ function formatLastLogin(iso?: string): string {
 }
 
 export default function UserManagement() {
-  const { users, drivers, createUser, updateUser, setUserActive } = useUserManagement();
+  const { users, drivers, customerIds, createUser, updateUser, setUserActive } = useUserManagement();
   const { profile } = useAuth();
   // Admin may only add/edit Driver and Viewer accounts - Admin-role
   // accounts (including their own) are Superadmin's to manage.
@@ -85,6 +89,7 @@ export default function UserManagement() {
       fotoDataUrl: undefined,
       password: "",
       driverId: linkedDriver?.id ?? null,
+      customerId: u.customerId ?? null,
     });
     setPhotoError(null);
     setSubmitError(null);
@@ -113,12 +118,17 @@ export default function UserManagement() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitError(null);
+    if (form.role === "Cust-Admin" && !form.customerId?.trim()) {
+      setSubmitError("Nomor Pelanggan wajib diisi untuk role Cust-Admin.");
+      return;
+    }
     const data: UserFormData = {
       nama: form.nama,
       email: form.email,
       role: form.role,
       fotoDataUrl: form.fotoDataUrl,
       driverId: form.role === "Driver" ? form.driverId ?? null : null,
+      customerId: form.role === "Cust-Admin" ? form.customerId?.trim() ?? null : null,
       ...(form.password ? { password: form.password } : {}),
     };
     try {
@@ -185,6 +195,9 @@ export default function UserManagement() {
                       <Shield size={12} />
                       {u.role}
                     </span>
+                    {u.role === "Cust-Admin" && u.customerId && (
+                      <span className="mt-1 block text-[11px] text-slate-400">{u.customerId}</span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
                     <span
@@ -361,6 +374,29 @@ export default function UserManagement() {
                       Menautkan akun ini ke data driver di Master Armada, supaya pengiriman yang
                       ditugaskan ke truck-nya muncul di dashboard Portal Driver. Kalau belum
                       ditautkan, dashboard driver akan kosong.
+                    </span>
+                  </label>
+                )}
+
+                {form.role === "Cust-Admin" && (
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Nomor Pelanggan</span>
+                    <input
+                      required
+                      list="customer-id-suggestions"
+                      className={inputClass}
+                      placeholder="Contoh: IDTMDI001"
+                      value={form.customerId ?? ""}
+                      onChange={(e) => setForm({ ...form, customerId: e.target.value })}
+                      autoComplete="off"
+                    />
+                    <datalist id="customer-id-suggestions">
+                      {customerIds.map((c) => (
+                        <option key={c} value={c} />
+                      ))}
+                    </datalist>
+                    <span className="mt-1.5 block text-[11px] text-slate-400">
+                      Akun ini hanya akan melihat data pengiriman dengan Nomor Pelanggan yang sama.
                     </span>
                   </label>
                 )}

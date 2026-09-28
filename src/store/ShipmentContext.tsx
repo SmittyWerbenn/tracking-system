@@ -32,6 +32,7 @@ interface RawShipmentSummary {
   truckNomorUnit: string | null;
   truckJenis: string | null;
   truckDriverNama: string | null;
+  customerId: string | null;
   emailTerkirim: boolean;
   emailTerkirimAt: string | null;
   slaValue: number | null;
@@ -101,6 +102,7 @@ function toShipment(row: RawShipmentSummary): Shipment {
       driver: row.truckDriverNama ?? undefined,
     },
     truckId: row.truckId ?? undefined,
+    customerId: row.customerId ?? undefined,
     timeline: row.lastUpdate
       ? [{ id: "last", type: row.status as TimelineEventType, lokasi: "", tanggal: row.lastUpdate.tanggal, jam: row.lastUpdate.jam, keterangan: "" }]
       : [],
@@ -257,6 +259,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       jumlahKoli: data.jumlahKoli,
       truckId: data.truckId || undefined,
       slaValue: data.slaValue,
+      customerId: data.customerId || undefined,
     });
 
     if (data.fotoBarang) {

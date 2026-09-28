@@ -24,7 +24,8 @@ export default function ShipmentList() {
   const { shipments, isLoading, refresh, fetchPendingClaims, confirmClaim, rejectClaim } = useShipments();
   const { settings } = useSettings();
   const { profile } = useAuth();
-  const canCreateShipment = profile?.role === "Superadmin" || profile?.role === "Admin";
+  const canCreateShipment =
+    profile?.role === "Superadmin" || profile?.role === "Admin" || profile?.role === "Cust-Admin";
   const canManageClaims = profile?.role === "Superadmin" || profile?.role === "Admin";
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -413,7 +414,7 @@ export default function ShipmentList() {
                       >
                         <MapPin size={16} />
                       </Link>
-                      {profile?.role !== "Viewer" && (
+                      {profile?.role !== "Viewer" && profile?.role !== "Cust-Admin" && (
                         <Link
                           to={`/admin/update-tracking/${s.awb}`}
                           title="Update"

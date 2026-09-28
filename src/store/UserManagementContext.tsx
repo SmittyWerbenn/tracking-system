@@ -11,6 +11,7 @@ interface UserRow {
   aktif: number;
   foto_file_id: string | null;
   last_login_at: string | null;
+  customer_id: string | null;
 }
 
 interface DriverRow {
@@ -51,6 +52,7 @@ function toAppUser(row: UserRow): AppUser {
     aktif: row.aktif === 1,
     lastLogin: row.last_login_at ?? undefined,
     foto: row.foto_file_id ?? undefined,
+    customerId: row.customer_id,
   };
 }
 
@@ -70,11 +72,15 @@ export interface UserFormData {
    * to it. Only meaningful when role is "Driver". Pass null to unlink,
    * omit to leave the current link untouched on an edit. */
   driverId?: string | null;
+  /** Nomor Pelanggan - mandatory when role is "Cust-Admin", ignored/cleared
+   * for every other role. */
+  customerId?: string | null;
 }
 
 interface UserManagementContextValue {
   users: AppUser[];
   drivers: DriverOption[];
+  customerIds: string[];
   isLoading: boolean;
   refresh: () => Promise<void>;
   createUser: (data: UserFormData) => Promise<void>;
@@ -88,21 +94,25 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, profile } = useAuth();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [drivers, setDrivers] = useState<DriverOption[]>([]);
+  const [customerIds, setCustomerIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   async function refresh() {
     if (profile?.role !== "Superadmin" && profile?.role !== "Admin") return;
     setIsLoading(true);
     try {
-      const [usersRes, driversRes] = await Promise.all([
+      const [usersRes, driversRes, customerIdsRes] = await Promise.all([
         api.get<{ items: UserRow[] }>("/api/users?limit=100"),
         api.get<{ items: DriverRow[] }>("/api/drivers"),
+        api.get<{ items: string[] }>("/api/customer-ids"),
       ]);
       setUsers(usersRes.items.map(toAppUser));
       setDrivers(driversRes.items.map(toDriverOption));
+      setCustomerIds(customerIdsRes.items);
     } catch {
       setUsers([]);
       setDrivers([]);
+      setCustomerIds([]);
     } finally {
       setIsLoading(false);
     }
@@ -128,6 +138,7 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
       password: data.password,
       fotoFileId,
       ...(data.driverId ? { driverId: data.driverId } : {}),
+      ...(data.customerId ? { customerId: data.customerId } : {}),
     });
     await refresh();
   }
@@ -145,6 +156,7 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
       password: data.password || undefined,
       fotoFileId,
       ...(data.driverId !== undefined ? { driverId: data.driverId } : {}),
+      ...(data.customerId !== undefined ? { customerId: data.customerId } : {}),
     });
     await refresh();
   }
@@ -156,7 +168,7 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
 
   return (
     <UserManagementContext.Provider
-      value={{ users, drivers, isLoading, refresh, createUser, updateUser, setUserActive }}
+      value={{ users, drivers, customerIds, isLoading, refresh, createUser, updateUser, setUserActive }}
     >
       {children}
     </UserManagementContext.Provider>

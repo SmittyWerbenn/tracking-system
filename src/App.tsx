@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-dom";
-import { RequireAdmin, RequireAuth, RequireDriver, RequireTrackingUpdater } from "./components/RequireAuth";
+import { RequireAdmin, RequireAuth, RequireDriver, RequireShipmentCreator, RequireTrackingUpdater } from "./components/RequireAuth";
 import { AuditLogProvider } from "./store/AuditLogContext";
 import { AuthProvider } from "./store/AuthContext";
 import { FeedbackProvider } from "./store/FeedbackContext";
@@ -92,7 +92,7 @@ export default function App() {
           <Route path="/admin/login" element={<Login />} />
           <Route path="/admin" element={<RequireAuth><Dashboard /></RequireAuth>} />
           <Route path="/admin/pengiriman" element={<RequireAuth><ShipmentList /></RequireAuth>} />
-          <Route path="/admin/pengiriman/baru" element={<RequireAdmin><CreateShipment /></RequireAdmin>} />
+          <Route path="/admin/pengiriman/baru" element={<RequireShipmentCreator><CreateShipment /></RequireShipmentCreator>} />
           <Route path="/admin/resi/:awb" element={<RequireAuth><ShipmentDetail /></RequireAuth>} />
           <Route path="/admin/resi/:awb/email" element={<RequireAuth><EmailPreview /></RequireAuth>} />
           <Route

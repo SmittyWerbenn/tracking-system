@@ -78,6 +78,9 @@ export interface Shipment {
   fotoSuratJalan?: string;
   truck: TruckInfo;
   truckId?: string; // links to Truck master data
+  /** Nomor Pelanggan this shipment is tagged to - mandatory on every
+   * shipment, scopes visibility for Cust-Admin accounts server-side. */
+  customerId?: string | null;
   timeline: TimelineEvent[];
   pod?: ProofOfDelivery;
   emailTerkirim: boolean;
@@ -113,6 +116,10 @@ export interface ShipmentFormData {
   truckId?: string;
   /** SLA in business days; ETA is calculated server-side from this. */
   slaValue?: number;
+  /** Nomor Pelanggan - mandatory. A Cust-Admin's value is ignored by the
+   * server and force-replaced with its own; other creator roles must
+   * supply one explicitly. */
+  customerId?: string;
 }
 
 export interface TrackingUpdateFormData {
@@ -189,11 +196,11 @@ export interface TitikLokasi {
  * Driver: can only open Update Tracking to log an in-transit status or mark
  * a shipment as delivered - no access to create shipments, fleet/location
  * master data, settings, or user management. Viewer: read-only everywhere. */
-export type UserRole = "Superadmin" | "Admin" | "Driver" | "Viewer";
+export type UserRole = "Superadmin" | "Admin" | "Driver" | "Viewer" | "Cust-Admin";
 
 /** Roles assignable to OTHER team members via Manajemen User - Superadmin
  * itself isn't assignable there, it's the single account signed in. */
-export const ASSIGNABLE_USER_ROLES: UserRole[] = ["Admin", "Driver", "Viewer"];
+export const ASSIGNABLE_USER_ROLES: UserRole[] = ["Admin", "Driver", "Viewer", "Cust-Admin"];
 
 export interface AppUser {
   id: string;
@@ -205,6 +212,9 @@ export interface AppUser {
   /** File id of the user's avatar (see api-worker's `files` table) -
    * resolve to a viewable URL with `useFileUrl`, never a raw image itself. */
   foto?: string;
+  /** Nomor Pelanggan - set only for role "Cust-Admin", scopes that account
+   * to just its own customer's shipments. */
+  customerId?: string | null;
 }
 
 // ---------------------------------------------------------------------------

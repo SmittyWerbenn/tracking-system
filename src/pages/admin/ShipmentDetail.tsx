@@ -376,7 +376,7 @@ export default function ShipmentDetail() {
               Scan QR untuk membuka halaman tracking publik AWB ini.
             </p>
           </div>
-          {profile?.role !== "Viewer" && (
+          {profile?.role !== "Viewer" && profile?.role !== "Cust-Admin" && (
             <Link
               to={`/admin/update-tracking/${shipment.awb}`}
               className="block rounded-xl border border-dashed border-blue-300 bg-blue-50 p-4 text-center text-sm font-semibold text-blue-800 hover:bg-blue-100 no-print"

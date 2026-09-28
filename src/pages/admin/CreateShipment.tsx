@@ -11,18 +11,20 @@ import {
   User,
   X,
 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { BulkShipmentImport } from "../../components/BulkShipmentImport";
 import { PhotoPickerBox } from "../../components/PhotoPickerBox";
 import { QRCode } from "../../components/QRCode";
 import { SearchableSelect } from "../../components/SearchableSelect";
+import { useAuth } from "../../store/AuthContext";
 import { useFleet } from "../../store/FleetContext";
 import { useLocations } from "../../store/LocationContext";
 import { useSettings } from "../../store/SettingsContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { LayananPengiriman, ShipmentFormData } from "../../types";
+import { api } from "../../utils/apiClient";
 import { checkPhotoSize, compressImage } from "../../utils/compressImage";
 import { formatTanggalPanjang, todayISO } from "../../utils/format";
 import { sendTrackingEmail, type EmailableShipment } from "../../utils/sendEmail";
@@ -42,6 +44,7 @@ const emptyForm: ShipmentFormData = {
   fotoBarang: undefined,
   fotoSuratJalan: undefined,
   truckId: "",
+  customerId: "",
 };
 
 const LAYANAN_OPTIONS: LayananPengiriman[] = ["Darat", "Express", "Kargo", "Regular", "Charter"];
@@ -91,10 +94,24 @@ export default function CreateShipment() {
   const { trucksWithDriver } = useFleet();
   const { activeTitikLokasi } = useLocations();
   const { settings } = useSettings();
+  const { profile } = useAuth();
   const navigate = useNavigate();
+  const isCustAdmin = profile?.role === "Cust-Admin";
 
   const [mode, setMode] = useState<"single" | "bulk">("single");
-  const [form, setForm] = useState<ShipmentFormData>(emptyForm);
+  const [form, setForm] = useState<ShipmentFormData>(() => ({
+    ...emptyForm,
+    customerId: isCustAdmin ? profile?.customerId ?? "" : "",
+  }));
+  const [customerIds, setCustomerIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (isCustAdmin) return;
+    api
+      .get<{ items: string[] }>("/api/customer-ids")
+      .then((res) => setCustomerIds(res.items))
+      .catch(() => setCustomerIds([]));
+  }, [isCustAdmin]);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [photoSuratJalanError, setPhotoSuratJalanError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -148,6 +165,10 @@ export default function CreateShipment() {
     }
     if (!form.jumlahKoli || form.jumlahKoli <= 0) {
       setFormError("Masukkan jumlah koli yang valid.");
+      return;
+    }
+    if (!form.customerId?.trim()) {
+      setFormError("Nomor Pelanggan wajib diisi.");
       return;
     }
     setFormError(null);
@@ -379,6 +400,28 @@ export default function CreateShipment() {
                 </option>
               ))}
             </select>
+          </Field>
+          <Field label="Nomor Pelanggan">
+            <input
+              required
+              disabled={isCustAdmin}
+              list="customer-id-suggestions"
+              className={`${inputClass} ${isCustAdmin ? "bg-slate-50 text-slate-500" : ""}`}
+              placeholder="Contoh: IDTMDI001"
+              value={form.customerId ?? ""}
+              onChange={(e) => update("customerId", e.target.value)}
+              autoComplete="off"
+            />
+            <datalist id="customer-id-suggestions">
+              {customerIds.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+            {isCustAdmin && (
+              <p className="mt-1.5 text-[11px] text-slate-400">
+                Terkunci ke Nomor Pelanggan akun Anda.
+              </p>
+            )}
           </Field>
           <Field label="Berat (Kg)">
             <input

@@ -13,7 +13,7 @@ export async function loadUserFromRequest(ctx: Ctx): Promise<AuthedUser | null> 
   const now = new Date().toISOString();
 
   const row = await ctx.env.DB.prepare(
-    `SELECT u.id, u.nama, u.email, u.role, u.aktif
+    `SELECT u.id, u.nama, u.email, u.role, u.aktif, u.customer_id as customerId
      FROM sessions s
      JOIN users u ON u.id = s.user_id
      WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ?`,

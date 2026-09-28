@@ -8,6 +8,8 @@ export interface AdminProfile {
   email: string;
   role: UserRole;
   fotoFileId?: string;
+  /** Nomor Pelanggan - set only for role "Cust-Admin". */
+  customerId?: string | null;
 }
 
 interface MeResponse {
@@ -17,12 +19,13 @@ interface MeResponse {
   role: UserRole;
   aktif: number;
   foto_file_id: string | null;
+  customer_id: string | null;
 }
 
 interface LoginResponse {
   token: string;
   expiresAt: string;
-  user: { id: string; nama: string; email: string; role: UserRole };
+  user: { id: string; nama: string; email: string; role: UserRole; customerId: string | null };
 }
 
 interface AuthContextValue {
@@ -38,7 +41,14 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 function toProfile(me: MeResponse): AdminProfile {
-  return { id: me.id, nama: me.nama, email: me.email, role: me.role, fotoFileId: me.foto_file_id ?? undefined };
+  return {
+    id: me.id,
+    nama: me.nama,
+    email: me.email,
+    role: me.role,
+    fotoFileId: me.foto_file_id ?? undefined,
+    customerId: me.customer_id,
+  };
 }
 
 /**

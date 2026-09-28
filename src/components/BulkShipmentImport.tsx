@@ -8,12 +8,14 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../store/AuthContext";
 import { useFleet } from "../store/FleetContext";
 import { useLocations } from "../store/LocationContext";
 import { useShipments } from "../store/ShipmentContext";
 import type { LayananPengiriman } from "../types";
+import { api } from "../utils/apiClient";
 
 interface CreatedShipmentSummary {
   awb: string;
@@ -116,7 +118,9 @@ export function BulkShipmentImport() {
   const { createShipment } = useShipments();
   const { trucksWithDriver } = useFleet();
   const { activeTitikLokasi } = useLocations();
+  const { profile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isCustAdmin = profile?.role === "Cust-Admin";
 
   const [rows, setRows] = useState<BulkRow[]>(() => [emptyRow(), emptyRow(), emptyRow()]);
   const [importError, setImportError] = useState<string | null>(null);
@@ -124,6 +128,18 @@ export function BulkShipmentImport() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ created: CreatedShipmentSummary[]; skipped: number } | null>(null);
   const [hoveredStatusRowId, setHoveredStatusRowId] = useState<string | null>(null);
+  // Bulk import applies one Nomor Pelanggan to the whole batch, rather than
+  // a per-row column - keeps the import table/template unchanged.
+  const [customerId, setCustomerId] = useState(isCustAdmin ? profile?.customerId ?? "" : "");
+  const [customerIds, setCustomerIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (isCustAdmin) return;
+    api
+      .get<{ items: string[] }>("/api/customer-ids")
+      .then((res) => setCustomerIds(res.items))
+      .catch(() => setCustomerIds([]));
+  }, [isCustAdmin]);
 
   const knownKota = activeTitikLokasi.map((k) => k.namaKota);
   const truckOptions = trucksWithDriver.filter((t) => t.status !== "Inactive");
@@ -188,11 +204,16 @@ export function BulkShipmentImport() {
   }
 
   async function handleSubmitAll() {
+    if (!customerId.trim()) {
+      setImportError("Nomor Pelanggan wajib diisi sebelum menerbitkan resi.");
+      return;
+    }
     const withErrors = rows.map((r) => ({ row: r, errors: rowErrors(r) }));
     const validRows = withErrors.filter((r) => r.errors.length === 0).map((r) => r.row);
     const skipped = rows.length - validRows.length;
     if (validRows.length === 0) return;
 
+    setImportError(null);
     setSubmitting(true);
     const created: CreatedShipmentSummary[] = [];
     for (const row of validRows) {
@@ -212,6 +233,7 @@ export function BulkShipmentImport() {
         jumlahKoli: Number(row.jumlahKoli),
         truckId: truck?.id ?? "",
         slaValue: row.slaValue.trim() ? Number(row.slaValue) : undefined,
+        customerId: customerId.trim(),
       });
       created.push({ awb, kotaAsal: row.kotaAsal, kotaTujuan: row.kotaTujuan });
     }
@@ -260,6 +282,28 @@ export function BulkShipmentImport() {
             />
           </div>
         </div>
+        <label className="mt-4 block max-w-xs">
+          <span className="mb-1.5 block text-xs font-medium text-slate-600">
+            Nomor Pelanggan (berlaku untuk semua baris)
+          </span>
+          <input
+            required
+            disabled={isCustAdmin}
+            list="bulk-customer-id-suggestions"
+            className={`w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+              isCustAdmin ? "bg-slate-50 text-slate-500" : ""
+            }`}
+            placeholder="Contoh: IDTMDI001"
+            value={customerId}
+            onChange={(e) => setCustomerId(e.target.value)}
+            autoComplete="off"
+          />
+          <datalist id="bulk-customer-id-suggestions">
+            {customerIds.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+        </label>
         {importError && (
           <div className="mt-3 flex items-start gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-xs text-red-700">
             <AlertTriangle size={14} className="mt-0.5 shrink-0" />

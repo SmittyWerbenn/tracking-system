@@ -29,10 +29,18 @@ export function registerAuthRoutes(router: Router) {
     checkRateLimit(`${ip}:${email}`);
 
     const user = await ctx.env.DB.prepare(
-      `SELECT id, nama, email, password_hash, role, aktif FROM users WHERE email = ?`,
+      `SELECT id, nama, email, password_hash, role, aktif, customer_id FROM users WHERE email = ?`,
     )
       .bind(email)
-      .first<{ id: string; nama: string; email: string; password_hash: string; role: string; aktif: number }>();
+      .first<{
+        id: string;
+        nama: string;
+        email: string;
+        password_hash: string;
+        role: string;
+        aktif: number;
+        customer_id: string | null;
+      }>();
 
     const validPassword = user ? await verifyPassword(password, user.password_hash) : false;
     if (!user || !validPassword || user.aktif !== 1) {
@@ -60,17 +68,17 @@ export function registerAuthRoutes(router: Router) {
 
     await ctx.env.DB.prepare(`UPDATE users SET last_login_at = ? WHERE id = ?`).bind(now.toISOString(), user.id).run();
 
-    await writeAuditLog(ctx.env, { id: user.id, nama: user.nama, email: user.email, role: user.role as any, aktif: 1 }, {
-      action: "LOGIN_SUCCESS",
-      actionLabel: "LOGIN SUCCESS",
-      module: "Auth",
-      description: `${user.nama} berhasil login.`,
-    }, ip);
+    await writeAuditLog(
+      ctx.env,
+      { id: user.id, nama: user.nama, email: user.email, role: user.role as any, aktif: 1, customerId: user.customer_id },
+      { action: "LOGIN_SUCCESS", actionLabel: "LOGIN SUCCESS", module: "Auth", description: `${user.nama} berhasil login.` },
+      ip,
+    );
 
     return ok({
       token,
       expiresAt: expiresAt.toISOString(),
-      user: { id: user.id, nama: user.nama, email: user.email, role: user.role },
+      user: { id: user.id, nama: user.nama, email: user.email, role: user.role, customerId: user.customer_id },
     });
   });
 
@@ -90,7 +98,7 @@ export function registerAuthRoutes(router: Router) {
   router.get("/api/auth/me", async (ctx: Ctx) => {
     const user = requireAuth(ctx);
     const row = await ctx.env.DB.prepare(
-      `SELECT id, nama, email, role, aktif, foto_file_id, last_login_at FROM users WHERE id = ?`,
+      `SELECT id, nama, email, role, aktif, foto_file_id, last_login_at, customer_id FROM users WHERE id = ?`,
     )
       .bind(user.id)
       .first();

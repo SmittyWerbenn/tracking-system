@@ -34,6 +34,7 @@ function shipmentSummary(row: Record<string, unknown>) {
     truckNomorUnit: row.truck_nomor_unit ?? null,
     truckJenis: row.truck_jenis ?? null,
     truckDriverNama: row.truck_driver_nama ?? null,
+    customerId: row.customer_id ?? null,
     slaValue: row.sla_value ?? null,
     slaUnit: row.sla_unit ?? null,
     estimasiTiba: row.estimasi_tiba ?? null,
@@ -54,7 +55,7 @@ function shipmentSummary(row: Record<string, unknown>) {
 
 export function registerShipmentRoutes(router: Router) {
   router.get("/api/shipments", async (ctx: Ctx) => {
-    requirePermission(ctx, "shipments.view");
+    const actor = requirePermission(ctx, "shipments.view");
     const url = new URL(ctx.request.url);
     const { page, limit, offset } = parsePagination(url);
     const status = url.searchParams.get("status");
@@ -63,6 +64,12 @@ export function registerShipmentRoutes(router: Router) {
     const where: string[] = [];
     const params: unknown[] = [];
     if (status) { where.push("s.status = ?"); params.push(status); }
+    // Cust-Admin only ever sees its own customer's shipments - forced
+    // server-side, regardless of any status/search filters the client sends.
+    if (actor.role === "Cust-Admin") {
+      where.push("s.customer_id = ?");
+      params.push(actor.customerId);
+    }
     if (search) {
       where.push("(s.awb LIKE ? OR s.pengirim_nama LIKE ? OR s.penerima_nama LIKE ?)");
       const like = `%${search}%`;
@@ -121,6 +128,13 @@ export function registerShipmentRoutes(router: Router) {
     const jumlahKoli = reqNumber(body, "jumlahKoli", { min: 1, max: 100000 });
     const truckId = optString(body, "truckId");
     const slaValue = optNumber(body, "slaValue", { min: 1, max: 365 });
+    // Cust-Admin can only ever create shipments tagged with its own
+    // customer_id - any value it sends in the body is ignored. Every other
+    // creator role must supply one explicitly.
+    const customerId = actor.role === "Cust-Admin" ? actor.customerId : optString(body, "customerId");
+    if (!customerId) {
+      throw Errors.badRequest("Nomor Pelanggan wajib diisi.");
+    }
 
     if (truckId) {
       const truck = await ctx.env.DB.prepare(`SELECT id FROM trucks WHERE id = ?`).bind(truckId).first();
@@ -144,9 +158,9 @@ export function registerShipmentRoutes(router: Router) {
         penerima_nama, penerima_telepon, penerima_email,
         alamat_asal, kota_asal, alamat_tujuan, kota_tujuan,
         deskripsi_barang, layanan, berat_kg, jumlah_koli, truck_id,
-        sla_value, sla_unit, estimasi_tiba,
+        sla_value, sla_unit, estimasi_tiba, customer_id,
         email_terkirim, created_at, updated_at, created_by, updated_by
-      ) VALUES (?, ?, ?, 'Dalam Persiapan', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, 'Dalam Persiapan', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
     )
       .bind(
         awb, tanggalDibuat, jamDibuat,
@@ -154,7 +168,7 @@ export function registerShipmentRoutes(router: Router) {
         penerimaNama, penerimaTelepon, penerimaEmail,
         alamatAsal, kotaAsal, alamatTujuan, kotaTujuan,
         deskripsiBarang, layanan, beratKg, jumlahKoli, truckId ?? null,
-        slaValue ?? null, slaUnit, estimasiTiba,
+        slaValue ?? null, slaUnit, estimasiTiba, customerId,
         nowIso, nowIso, actor.id, actor.id,
       )
       .run();
@@ -178,7 +192,7 @@ export function registerShipmentRoutes(router: Router) {
   });
 
   router.get("/api/shipments/:awb", async (ctx: Ctx, params) => {
-    requirePermission(ctx, "shipments.view");
+    const actor = requirePermission(ctx, "shipments.view");
     const row = await ctx.env.DB.prepare(
       `SELECT s.*, t.nomor_unit as truck_nomor_unit, t.jenis as truck_jenis, d.nama as truck_driver_nama,
               cd.nama as claim_driver_nama, cd.telepon as claim_driver_telepon
@@ -189,8 +203,11 @@ export function registerShipmentRoutes(router: Router) {
        WHERE s.awb = ?`,
     )
       .bind(params.awb)
-      .first();
+      .first<Record<string, unknown>>();
     if (!row) throw Errors.notFound("AWB tidak ditemukan.");
+    if (actor.role === "Cust-Admin" && row.customer_id !== actor.customerId) {
+      throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
+    }
 
     const timeline = await ctx.env.DB.prepare(
       `SELECT e.*, t.nomor_unit as truck_nomor_unit, d.nama as truck_driver_nama,

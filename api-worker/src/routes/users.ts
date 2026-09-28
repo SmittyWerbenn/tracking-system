@@ -7,7 +7,7 @@ import { requireAuth, requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta } from "../pagination";
 
-const ROLES = ["Admin", "Driver", "Viewer"] as const;
+const ROLES = ["Admin", "Driver", "Viewer", "Cust-Admin"] as const;
 
 export function registerUserRoutes(router: Router) {
   // Driver master data (drivers table, keyed by truck assignment) is
@@ -43,13 +43,25 @@ export function registerUserRoutes(router: Router) {
 
     const total = await ctx.env.DB.prepare(`SELECT COUNT(*) as c FROM users`).first<{ c: number }>();
     const rows = await ctx.env.DB.prepare(
-      `SELECT id, nama, email, role, aktif, foto_file_id, last_login_at, created_at
+      `SELECT id, nama, email, role, aktif, foto_file_id, last_login_at, created_at, customer_id
        FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?`,
     )
       .bind(limit, offset)
       .all();
 
     return ok({ items: rows.results, meta: pageMeta(page, limit, total?.c ?? 0) });
+  });
+
+  // Distinct customer_id values already in use (from Cust-Admin accounts)
+  // - powers the "Nomor Pelanggan" autocomplete on Buat Pengiriman and
+  // Manajemen User, so the same customer keeps a consistent ID instead of
+  // near-duplicate free-text typos. Any authenticated role may call this.
+  router.get("/api/customer-ids", async (ctx: Ctx) => {
+    requireAuth(ctx);
+    const rows = await ctx.env.DB.prepare(
+      `SELECT DISTINCT customer_id FROM users WHERE customer_id IS NOT NULL ORDER BY customer_id`,
+    ).all<{ customer_id: string }>();
+    return ok({ items: (rows.results ?? []).map((r) => r.customer_id) });
   });
 
   router.post("/api/users", async (ctx: Ctx) => {
@@ -61,9 +73,17 @@ export function registerUserRoutes(router: Router) {
     const password = reqString(body, "password", { min: 8 });
     const fotoFileId = optString(body, "fotoFileId");
     const driverId = optString(body, "driverId");
+    const customerId = optString(body, "customerId");
 
     if (actor.role === "Admin" && role === "Admin") {
       throw Errors.forbidden("Admin tidak dapat menambah akun dengan role Admin. Hubungi Superadmin.");
+    }
+
+    if (role === "Cust-Admin" && !customerId) {
+      throw Errors.badRequest("Nomor Pelanggan wajib diisi untuk role Cust-Admin.");
+    }
+    if (customerId && role !== "Cust-Admin") {
+      throw Errors.badRequest("Nomor Pelanggan hanya berlaku untuk role Cust-Admin.");
     }
 
     if (driverId && role !== "Driver") {
@@ -85,10 +105,10 @@ export function registerUserRoutes(router: Router) {
     const passwordHash = await hashPassword(password);
 
     await ctx.env.DB.prepare(
-      `INSERT INTO users (id, nama, email, password_hash, role, aktif, foto_file_id, created_at, updated_at, created_by, updated_by)
-       VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (id, nama, email, password_hash, role, aktif, foto_file_id, created_at, updated_at, created_by, updated_by, customer_id)
+       VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`,
     )
-      .bind(id, nama, email, passwordHash, role, fotoFileId ?? null, now, now, actor.id, actor.id)
+      .bind(id, nama, email, passwordHash, role, fotoFileId ?? null, now, now, actor.id, actor.id, customerId ?? null)
       .run();
 
     if (driverId) {
@@ -104,14 +124,15 @@ export function registerUserRoutes(router: Router) {
       description: `User "${nama}" (${role}) ditambahkan.`,
     });
 
-    return ok({ id, nama, email, role, aktif: 1 }, {}, 201);
+    return ok({ id, nama, email, role, aktif: 1, customerId: customerId ?? null }, {}, 201);
   });
 
   router.patch("/api/users/:id", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "users.manage");
-    const target = await ctx.env.DB.prepare(`SELECT id, role FROM users WHERE id = ?`).bind(params.id).first<{
+    const target = await ctx.env.DB.prepare(`SELECT id, role, customer_id FROM users WHERE id = ?`).bind(params.id).first<{
       id: string;
       role: string;
+      customer_id: string | null;
     }>();
     if (!target) throw Errors.notFound("User tidak ditemukan.");
     if (target.role === "Superadmin") {
@@ -133,10 +154,19 @@ export function registerUserRoutes(router: Router) {
     const fotoFileId = optString(body, "fotoFileId");
     const driverIdProvided = Object.prototype.hasOwnProperty.call(body, "driverId");
     const driverId = driverIdProvided ? optString(body, "driverId") ?? null : undefined;
+    const customerIdProvided = Object.prototype.hasOwnProperty.call(body, "customerId");
+    const customerId = customerIdProvided ? optString(body, "customerId") ?? null : undefined;
     const effectiveRole = role ?? target.role;
+    const effectiveCustomerId = customerIdProvided ? customerId : target.customer_id;
 
     if (driverId && effectiveRole !== "Driver") {
       throw Errors.badRequest("driverId hanya berlaku untuk role Driver.");
+    }
+    if (effectiveRole === "Cust-Admin" && !effectiveCustomerId) {
+      throw Errors.badRequest("Nomor Pelanggan wajib diisi untuk role Cust-Admin.");
+    }
+    if (effectiveCustomerId && effectiveRole !== "Cust-Admin") {
+      throw Errors.badRequest("Nomor Pelanggan hanya berlaku untuk role Cust-Admin.");
     }
     if (driverId) {
       const driver = await ctx.env.DB.prepare(`SELECT id, user_id FROM drivers WHERE id = ?`)
@@ -163,6 +193,16 @@ export function registerUserRoutes(router: Router) {
     if (aktif !== undefined) { sets.push("aktif = ?"); values.push(aktif ? 1 : 0); }
     if (fotoFileId) { sets.push("foto_file_id = ?"); values.push(fotoFileId); }
     if (password) { sets.push("password_hash = ?"); values.push(await hashPassword(password)); }
+    if (customerIdProvided) {
+      sets.push("customer_id = ?");
+      values.push(customerId);
+    } else if (role && role !== "Cust-Admin" && target.role === "Cust-Admin") {
+      // Role moved away from Cust-Admin without explicitly clearing the
+      // Nomor Pelanggan - clear it so a re-promotion later doesn't inherit
+      // a stale customer scope.
+      sets.push("customer_id = ?");
+      values.push(null);
+    }
 
     if (sets.length === 0 && !driverIdProvided) throw Errors.badRequest("Tidak ada perubahan yang dikirim.");
 

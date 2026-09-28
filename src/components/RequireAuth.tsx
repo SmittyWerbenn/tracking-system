@@ -52,6 +52,26 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/** For Buat Pengiriman specifically - Superadmin, Admin and Cust-Admin
+ * qualify (a Cust-Admin creates shipments tagged to its own Nomor
+ * Pelanggan). Driver and Viewer are both bounced to the Dashboard. */
+export function RequireShipmentCreator({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading, profile } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) return <LoadingScreen />;
+  if (!isAuthenticated) {
+    return <Navigate to="/admin/login" replace state={{ from: location }} />;
+  }
+  const redirect = driverRedirect(profile);
+  if (redirect) return redirect;
+  if (profile?.role !== "Superadmin" && profile?.role !== "Admin" && profile?.role !== "Cust-Admin") {
+    return <Navigate to="/admin" replace />;
+  }
+
+  return <>{children}</>;
+}
+
 /** For Update Tracking specifically - Superadmin and Admin qualify. Driver
  * now uses the driver portal's own status-update flow instead of this
  * shared admin page, and Viewer is bounced to the Dashboard. */

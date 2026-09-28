@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   ArrowLeft,
+  CalendarClock,
   CheckCircle2,
   Headset,
   Loader2,
@@ -292,6 +293,14 @@ export default function DriverShipmentDetail() {
                 {shipment.status}
               </span>
             </div>
+
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+              <CalendarClock size={13} className="shrink-0 text-slate-400" />
+              Estimasi Tiba:{" "}
+              <span className="font-semibold text-slate-700">
+                {shipment.estimasiTiba ? formatTanggalPanjang(shipment.estimasiTiba) : "Belum tersedia"}
+              </span>
+            </p>
 
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex items-start gap-2.5">

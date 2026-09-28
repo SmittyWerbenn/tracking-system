@@ -16,6 +16,7 @@ export interface DriverShipmentSummary {
   beratKg: number;
   jumlahKoli: number;
   truckNomorUnit: string | null;
+  estimasiTiba: string | null;
 }
 
 export interface DriverTruckInfo {

@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, Loader2, Package, PackageSearch, ScanLine, Truck, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, Loader2, Package, PackageSearch, ScanLine, Truck, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { BarcodeScannerModal } from "../../components/BarcodeScannerModal";
@@ -14,6 +14,7 @@ import {
   type DriverTruckInfo,
   type OpenShipmentSummary,
 } from "../../utils/driverApi";
+import { formatTanggalPanjang } from "../../utils/format";
 
 const KENDALA_STATUS = "Kendala";
 const SELESAI_STATUS = "Selesai / Terkirim";
@@ -349,6 +350,10 @@ function OpenShipmentCard({
         </span>
         <span>{item.layanan}</span>
       </div>
+      <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+        <CalendarClock size={12} className="shrink-0 text-slate-400" />
+        Estimasi Tiba: <span className="font-medium text-slate-700">{item.estimasiTiba ? formatTanggalPanjang(item.estimasiTiba) : "Belum tersedia"}</span>
+      </p>
 
       {item.claimStatus === "pending" && item.isMine ? (
         <button

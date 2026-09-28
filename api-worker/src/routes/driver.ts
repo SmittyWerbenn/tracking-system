@@ -30,6 +30,7 @@ function shipmentSummary(row: Record<string, unknown>) {
     beratKg: row.berat_kg,
     jumlahKoli: row.jumlah_koli,
     truckNomorUnit: row.truck_nomor_unit ?? null,
+    estimasiTiba: row.estimasi_tiba ?? null,
   };
 }
 

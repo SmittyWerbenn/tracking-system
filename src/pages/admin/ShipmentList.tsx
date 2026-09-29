@@ -321,7 +321,7 @@ export default function ShipmentList() {
             very bottom of a wide table the user would have to scroll the
             whole page down to reach. */}
         <div className="max-h-[65vh] overflow-auto">
-          <table className={`w-full text-left text-sm ${viewMode === "detail" ? "min-w-[2060px]" : "min-w-[920px]"}`}>
+          <table className={`w-full text-left text-sm ${viewMode === "detail" ? "min-w-[2220px]" : "min-w-[920px]"}`}>
             <thead className="sticky top-0 z-10 border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3 font-medium">AWB</th>
@@ -339,6 +339,7 @@ export default function ShipmentList() {
                     <th className="px-4 py-3 font-medium">Service</th>
                     <th className="px-4 py-3 font-medium">Berat (Kg)</th>
                     <th className="px-4 py-3 font-medium">Koli</th>
+                    <th className="px-4 py-3 font-medium">Estimasi Tiba</th>
                     <th className="px-4 py-3 font-medium">Diterima Oleh</th>
                     <th className="px-4 py-3 font-medium">Diterima</th>
                     <th className="px-4 py-3 font-medium">Keterangan</th>
@@ -375,6 +376,9 @@ export default function ShipmentList() {
                       <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.layanan}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.beratKg}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.jumlahKoli}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                        {s.estimasiTiba ? formatTanggalPendek(s.estimasiTiba) : "-"}
+                      </td>
                       <td className="px-4 py-3 text-slate-600">{s.pod?.namaPenerima ?? "-"}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
                         {s.pod ? `${formatTanggalPendek(s.pod.tanggal)}, ${s.pod.jam}` : "-"}
@@ -438,14 +442,14 @@ export default function ShipmentList() {
               ))}
               {isLoading && (
                 <tr>
-                  <td colSpan={viewMode === "detail" ? 17 : 8} className="px-4 py-10 text-center">
+                  <td colSpan={viewMode === "detail" ? 18 : 8} className="px-4 py-10 text-center">
                     <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-blue-900" />
                   </td>
                 </tr>
               )}
               {!isLoading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={viewMode === "detail" ? 17 : 8} className="px-4 py-10 text-center text-sm text-slate-400">
+                  <td colSpan={viewMode === "detail" ? 18 : 8} className="px-4 py-10 text-center text-sm text-slate-400">
                     Tidak ada data pengiriman yang cocok dengan filter.
                   </td>
                 </tr>

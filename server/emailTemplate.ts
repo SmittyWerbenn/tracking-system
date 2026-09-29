@@ -22,15 +22,16 @@ function formatTanggal(tanggal: string): string {
 export type EmailRecipientRole = "penerima" | "pengirim" | "admin";
 
 export interface EmailTemplateData {
-  toName?: string;
-  awb: string;
-  kotaAsal: string;
-  kotaTujuan: string;
-  status: string;
-  tanggalDibuat: string;
-  trackingUrl: string;
-  senderName: string;
-  recipientRole: EmailRecipientRole;
+ toName?: string;
+ awb: string;
+ kotaAsal: string;
+ kotaTujuan: string;
+ status: string;
+ tanggalDibuat: string;
+ trackingUrl: string;
+ senderName: string;
+ pengirimNama: string;
+ recipientRole: EmailRecipientRole;
 }
 
 export function emailSubject(awb: string, recipientRole: EmailRecipientRole): string {
@@ -41,7 +42,7 @@ export function emailSubject(awb: string, recipientRole: EmailRecipientRole): st
 }
 
 export function buildEmailHtml(data: EmailTemplateData): string {
-  const { toName, awb, kotaAsal, kotaTujuan, status, tanggalDibuat, trackingUrl, senderName, recipientRole } = data;
+  const { toName, awb, kotaAsal, kotaTujuan, status, tanggalDibuat, trackingUrl, senderName, pengirimNama, recipientRole } = data;
 
   const introText =
     recipientRole === "admin"
@@ -69,7 +70,7 @@ export function buildEmailHtml(data: EmailTemplateData): string {
           <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;max-width:600px;width:100%;">
             <tr>
               <td style="background-color:#172554;padding:28px 24px;text-align:center;">
-                <div style="color:#ffffff;font-size:16px;font-weight:bold;">${senderName}</div>
+              <div style="color:#ffffff;font-size:16px;font-weight:bold;">GMS Logistics</div>
               </td>
             </tr>
             <tr>
@@ -85,7 +86,7 @@ export function buildEmailHtml(data: EmailTemplateData): string {
                         <tr>
                           <td width="50%" style="vertical-align:top;padding-top:14px;">
                             <div style="font-size:11px;color:#94a3b8;">Dari</div>
-                            <div style="font-size:13px;color:#334155;font-weight:600;">${senderName}</div>
+                            <div style="font-size:13px;color:#334155;font-weight:600;">${pengirimNama}</div>
                             <div style="font-size:12px;color:#64748b;">${kotaAsal}</div>
                           </td>
                           <td width="50%" style="vertical-align:top;padding-top:14px;">

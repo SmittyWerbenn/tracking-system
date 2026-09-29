@@ -13,15 +13,16 @@ export interface Env {
 }
 
 interface SendEmailBody {
-  to?: string;
-  toName?: string;
-  awb?: string;
-  kotaAsal?: string;
-  kotaTujuan?: string;
-  status?: string;
-  tanggalDibuat?: string;
-  trackingUrl?: string;
-  recipientRole?: EmailRecipientRole;
+ to?: string;
+ toName?: string;
+ awb?: string;
+ kotaAsal?: string;
+ kotaTujuan?: string;
+ status?: string;
+ tanggalDibuat?: string;
+ trackingUrl?: string;
+ pengirimNama?: string;
+ recipientRole?: EmailRecipientRole;
 }
 
 function corsHeaders(origin: string | null, allowedOrigins: string[]): HeadersInit {
@@ -86,8 +87,9 @@ export default {
       tanggalDibuat: data.tanggalDibuat ?? new Date().toISOString().slice(0, 10),
       trackingUrl: data.trackingUrl,
       senderName,
+      pengirimNama: data.pengirimNama ?? "-",
       recipientRole,
-    });
+      });
 
     try {
       const mailer = await WorkerMailer.connect({

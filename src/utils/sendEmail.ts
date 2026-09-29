@@ -43,15 +43,16 @@ function emailEndpoint(): string {
 }
 
 interface PostEmailPayload {
-  to: string;
-  toName: string;
-  recipientRole: EmailRecipientRole;
-  awb: string;
-  kotaAsal: string;
-  kotaTujuan: string;
-  status: string;
-  tanggalDibuat: string;
-  trackingUrl: string;
+ to: string;
+ toName: string;
+ recipientRole: EmailRecipientRole;
+ awb: string;
+ kotaAsal: string;
+ kotaTujuan: string;
+ status: string;
+ tanggalDibuat: string;
+ trackingUrl: string;
+ pengirimNama: string;
 }
 
 async function postEmail(payload: PostEmailPayload): Promise<SendEmailResult> {
@@ -90,15 +91,16 @@ export async function sendTrackingEmail(
 ): Promise<SendEmailResult> {
   const person = shipment[recipient];
   return postEmail({
-    to: person.email,
-    toName: person.nama,
-    recipientRole: recipient,
-    awb: shipment.awb,
-    kotaAsal: shipment.kotaAsal,
-    kotaTujuan: shipment.kotaTujuan,
-    status: shipment.status,
-    tanggalDibuat: shipment.tanggalDibuat,
-    trackingUrl,
+  to: person.email,
+  toName: person.nama,
+  recipientRole: recipient,
+  awb: shipment.awb,
+  kotaAsal: shipment.kotaAsal,
+  kotaTujuan: shipment.kotaTujuan,
+  status: shipment.status,
+  tanggalDibuat: shipment.tanggalDibuat,
+  trackingUrl,
+  pengirimNama: shipment.pengirim.nama,
   });
 }
 
@@ -112,14 +114,15 @@ export async function sendAdminDeliveryEmail(
   adminNama: string,
 ): Promise<SendEmailResult> {
   return postEmail({
-    to: adminEmail,
-    toName: adminNama,
-    recipientRole: "admin",
-    awb: shipment.awb,
-    kotaAsal: shipment.kotaAsal,
-    kotaTujuan: shipment.kotaTujuan,
-    status: shipment.status,
-    tanggalDibuat: shipment.tanggalDibuat,
-    trackingUrl: adminDetailUrl,
+  to: adminEmail,
+  toName: adminNama,
+  recipientRole: "admin",
+  awb: shipment.awb,
+  kotaAsal: shipment.kotaAsal,
+  kotaTujuan: shipment.kotaTujuan,
+  status: shipment.status,
+  tanggalDibuat: shipment.tanggalDibuat,
+  trackingUrl: adminDetailUrl,
+  pengirimNama: shipment.pengirim.nama,
   });
 }

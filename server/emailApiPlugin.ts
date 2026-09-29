@@ -4,15 +4,16 @@ import type { Connect, Plugin } from "vite";
 import { buildEmailHtml, emailSubject, type EmailRecipientRole } from "./emailTemplate.ts";
 
 interface SendEmailBody {
-  to?: string;
-  toName?: string;
-  awb?: string;
-  kotaAsal?: string;
-  kotaTujuan?: string;
-  status?: string;
-  tanggalDibuat?: string;
-  trackingUrl?: string;
-  recipientRole?: EmailRecipientRole;
+ to?: string;
+ toName?: string;
+ awb?: string;
+ kotaAsal?: string;
+ kotaTujuan?: string;
+ status?: string;
+ tanggalDibuat?: string;
+ trackingUrl?: string;
+ pengirimNama?: string;
+ recipientRole?: EmailRecipientRole;
 }
 
 function readBody(req: IncomingMessage): Promise<string> {
@@ -81,8 +82,9 @@ function createHandler(env: Record<string, string>): Connect.NextHandleFunction 
         tanggalDibuat: data.tanggalDibuat ?? new Date().toISOString().slice(0, 10),
         trackingUrl: data.trackingUrl,
         senderName,
+        pengirimNama: data.pengirimNama ?? "-",
         recipientRole,
-      });
+        });
 
       await transporter.sendMail({
         from: `"${fromName}" <${env.BREVO_SENDER_EMAIL}>`,

@@ -1,4 +1,5 @@
 import {
+  Building2,
   History,
   LayoutDashboard,
   LogOut,
@@ -50,6 +51,13 @@ const navGroups: { title: string; items: NavItem[] }[] = [
     items: [
       { to: "/admin/armada", label: "Master Armada", icon: Truck, end: false },
       { to: "/admin/kota", label: "Kota & Titik Transit", icon: MapPinned, end: true },
+      {
+        to: "/admin/customer",
+        label: "Master Data Customer",
+        icon: Building2,
+        end: true,
+        roles: ["Superadmin", "Admin"],
+      },
     ],
   },
   {

@@ -14,6 +14,7 @@ import { UserManagementProvider } from "./store/UserManagementContext";
 import AccountSettings from "./pages/admin/AccountSettings";
 import AuditLogPage from "./pages/admin/AuditLogPage";
 import CreateShipment from "./pages/admin/CreateShipment";
+import CustomerList from "./pages/admin/CustomerList";
 import Dashboard from "./pages/admin/Dashboard";
 import EmailPreview from "./pages/admin/EmailPreview";
 import FeedbackAdmin from "./pages/admin/FeedbackAdmin";
@@ -107,6 +108,7 @@ export default function App() {
           <Route path="/admin/armada" element={<RequireAuth><FleetList /></RequireAuth>} />
           <Route path="/admin/armada/:id" element={<RequireAuth><TruckHistory /></RequireAuth>} />
           <Route path="/admin/kota" element={<RequireAuth><LocationList /></RequireAuth>} />
+          <Route path="/admin/customer" element={<RequireAdmin><CustomerList /></RequireAdmin>} />
           <Route path="/admin/notifikasi" element={<RequireAuth><NotificationCenter /></RequireAuth>} />
           <Route path="/admin/feedback" element={<RequireAuth><FeedbackAdmin /></RequireAuth>} />
           <Route path="/admin/audit-log" element={<RequireAdmin><AuditLogPage /></RequireAdmin>} />

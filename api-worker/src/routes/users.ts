@@ -64,6 +64,50 @@ export function registerUserRoutes(router: Router) {
     return ok({ items: (rows.results ?? []).map((r) => r.customer_id) });
   });
 
+  // Master Data Customer: read-only view of every Customer ID that exists
+  // because a Cust-Admin account was created for it in Manajemen User -
+  // there's no separate "customers" table, this is derived straight from
+  // users + shipments. Superadmin/Admin only, same gate as GET /api/users.
+  router.get("/api/customers", async (ctx: Ctx) => {
+    requirePermission(ctx, "users.manage");
+    const [accounts, shipmentCounts] = await Promise.all([
+      ctx.env.DB.prepare(
+        `SELECT id, nama, email, aktif, created_at, customer_id
+         FROM users WHERE role = 'Cust-Admin' AND customer_id IS NOT NULL
+         ORDER BY customer_id, created_at ASC`,
+      ).all<{ id: string; nama: string; email: string; aktif: number; created_at: string; customer_id: string }>(),
+      ctx.env.DB.prepare(
+        `SELECT customer_id, COUNT(*) as c FROM shipments WHERE customer_id IS NOT NULL GROUP BY customer_id`,
+      ).all<{ customer_id: string; c: number }>(),
+    ]);
+
+    const shipmentCountByCustomer = new Map<string, number>();
+    for (const row of shipmentCounts.results ?? []) shipmentCountByCustomer.set(row.customer_id, row.c);
+
+    const byCustomer = new Map<
+      string,
+      { customerId: string; shipmentCount: number; accounts: { id: string; nama: string; email: string; aktif: boolean; createdAt: string }[] }
+    >();
+    for (const row of accounts.results ?? []) {
+      if (!byCustomer.has(row.customer_id)) {
+        byCustomer.set(row.customer_id, {
+          customerId: row.customer_id,
+          shipmentCount: shipmentCountByCustomer.get(row.customer_id) ?? 0,
+          accounts: [],
+        });
+      }
+      byCustomer.get(row.customer_id)!.accounts.push({
+        id: row.id,
+        nama: row.nama,
+        email: row.email,
+        aktif: row.aktif === 1,
+        createdAt: row.created_at,
+      });
+    }
+
+    return ok({ items: Array.from(byCustomer.values()).sort((a, b) => a.customerId.localeCompare(b.customerId)) });
+  });
+
   router.post("/api/users", async (ctx: Ctx) => {
     const actor = requirePermission(ctx, "users.manage");
     const body = await parseJsonBody(ctx.request);

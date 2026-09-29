@@ -1,22 +1,45 @@
-import { CheckCircle2, Mail, Settings as SettingsIcon } from "lucide-react";
+import { CheckCircle2, Mail, Phone, Settings as SettingsIcon } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { useAuth } from "../../store/AuthContext";
 import { useSettings } from "../../store/SettingsContext";
 
 export default function SettingsPage() {
-  const { settings, setStagnantThresholdDays, setEmailSendingEnabled } = useSettings();
+  const { profile } = useAuth();
+  const isSuperadmin = profile?.role === "Superadmin";
+  const { settings, setStagnantThresholdDays, setEmailSendingEnabled, setHelpPhoneNumber } = useSettings();
   const [days, setDays] = useState(settings.stagnantThresholdDays);
   const [saved, setSaved] = useState(false);
+
+  const [helpPhone, setHelpPhone] = useState(settings.helpPhoneNumber);
+  const [helpPhoneSaved, setHelpPhoneSaved] = useState(false);
+  const [helpPhoneError, setHelpPhoneError] = useState<string | null>(null);
 
   useEffect(() => {
     setDays(settings.stagnantThresholdDays);
   }, [settings.stagnantThresholdDays]);
+
+  useEffect(() => {
+    setHelpPhone(settings.helpPhoneNumber);
+  }, [settings.helpPhoneNumber]);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setStagnantThresholdDays(Math.max(1, days));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function handleHelpPhoneSubmit(e: FormEvent) {
+    e.preventDefault();
+    setHelpPhoneError(null);
+    try {
+      await setHelpPhoneNumber(helpPhone.trim());
+      setHelpPhoneSaved(true);
+      setTimeout(() => setHelpPhoneSaved(false), 2000);
+    } catch {
+      setHelpPhoneError("Gagal menyimpan Nomor Bantuan. Coba lagi.");
+    }
   }
 
   return (
@@ -108,6 +131,56 @@ export default function SettingsPage() {
           {settings.emailSendingEnabled ? "Pengiriman email aktif." : "Pengiriman email dinonaktifkan."}
         </div>
       </div>
+
+      <form
+        onSubmit={handleHelpPhoneSubmit}
+        className="mt-6 max-w-lg rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+      >
+        <div className="mb-4 flex items-center gap-2">
+          <Phone size={17} className="text-blue-900" />
+          <h2 className="text-sm font-semibold text-slate-800">Nomor Bantuan</h2>
+        </div>
+
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium text-slate-600">
+            Nomor WhatsApp CS / Admin
+          </span>
+          <input
+            type="text"
+            required
+            disabled={!isSuperadmin}
+            value={helpPhone}
+            onChange={(e) => setHelpPhone(e.target.value)}
+            placeholder="0812-0000-8899"
+            className="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-500"
+          />
+        </label>
+        <p className="mt-2 text-xs text-slate-400">
+          Nomor ini tampil di halaman Kontak (publik) dan tombol "Butuh Bantuan"/"Hubungi CS" di
+          Portal Driver. {isSuperadmin
+            ? "Hanya Superadmin yang bisa mengubahnya, supaya tetap stabil walau ada pergantian Admin."
+            : "Hanya Superadmin yang dapat mengubah nomor ini."}
+        </p>
+
+        {helpPhoneError && (
+          <p className="mt-3 text-sm font-medium text-red-600">{helpPhoneError}</p>
+        )}
+        {helpPhoneSaved && (
+          <div className="mt-4 flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-sm font-medium text-emerald-700">
+            <CheckCircle2 size={15} />
+            Nomor Bantuan disimpan.
+          </div>
+        )}
+
+        {isSuperadmin && (
+          <button
+            type="submit"
+            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+          >
+            Simpan Nomor Bantuan
+          </button>
+        )}
+      </form>
     </AdminLayout>
   );
 }

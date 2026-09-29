@@ -19,12 +19,12 @@ import { DriverLayout } from "../../components/layout/DriverLayout";
 import { LocationTextInput } from "../../components/LocationTextInput";
 import { PhotoPickerBox } from "../../components/PhotoPickerBox";
 import { RefreshButton } from "../../components/RefreshButton";
+import { toWhatsAppNumber, useHelpContact } from "../../store/HelpContactContext";
 import { useLocations } from "../../store/LocationContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { ShipmentStatus, TimelineEventType } from "../../types";
 import { ApiError } from "../../utils/apiClient";
 import { checkPhotoSize, compressImage } from "../../utils/compressImage";
-import { CS_PHONE_DISPLAY, CS_WHATSAPP_NUMBER } from "../../utils/contact";
 import {
   fetchDriverLastPosition,
   fetchDriverShipmentDetail,
@@ -37,15 +37,6 @@ import { getAllowedNextEvents } from "../../utils/status";
 
 function formatCoord(n: number): string {
   return n.toFixed(5);
-}
-
-/** "0813-9988-2211" -> "6281399882211" for a wa.me link - WhatsApp needs
- * the country code with no leading 0/+. */
-function toWhatsAppNumber(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("62")) return digits;
-  if (digits.startsWith("0")) return `62${digits.slice(1)}`;
-  return `62${digits}`;
 }
 
 const KENDALA_REASONS = [
@@ -65,6 +56,7 @@ export default function DriverShipmentDetail() {
   const { awb } = useParams<{ awb: string }>();
   const { addTrackingUpdate } = useShipments();
   const { activeTitikLokasi } = useLocations();
+  const { helpPhoneDisplay, helpWhatsAppNumber } = useHelpContact();
   const [data, setData] = useState<DriverShipmentDetailData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -367,7 +359,7 @@ export default function DriverShipmentDetail() {
             </div>
 
             <a
-              href={`https://wa.me/${CS_WHATSAPP_NUMBER}?text=${encodeURIComponent(
+              href={`https://wa.me/${helpWhatsAppNumber}?text=${encodeURIComponent(
                 `Halo CS, saya driver AWB ${shipment.awb} butuh bantuan.`,
               )}`}
               target="_blank"
@@ -377,7 +369,7 @@ export default function DriverShipmentDetail() {
               <span className="flex items-center gap-2 text-sm font-semibold">
                 <Headset size={16} /> Hubungi CS (Darurat/Kendala)
               </span>
-              <span className="text-xs font-normal text-amber-600">{CS_PHONE_DISPLAY}</span>
+              <span className="text-xs font-normal text-amber-600">{helpPhoneDisplay}</span>
             </a>
           </div>
 

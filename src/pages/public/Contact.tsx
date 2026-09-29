@@ -1,22 +1,23 @@
 import { ArrowLeft, Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { PublicLayout } from "../../components/layout/PublicLayout";
+import { useHelpContact } from "../../store/HelpContactContext";
 import { useLanguage } from "../../store/LanguageContext";
-import { CS_PHONE_DISPLAY, CS_WHATSAPP_NUMBER } from "../../utils/contact";
 import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
 const CHANNEL_ICONS = [Phone, MessageCircle, Mail];
-const CHANNEL_VALUES = [
-  { value: "021-2200-8899", href: "tel:0212200899" },
-  { value: CS_PHONE_DISPLAY, href: `https://wa.me/${CS_WHATSAPP_NUMBER}` },
-  { value: "cs@gms-logistics.co.id", href: "mailto:cs@gms-logistics.co.id" },
-];
 
 export default function Contact() {
   const { t } = useLanguage();
   useDocumentTitle(t.contact.title);
   const navigate = useNavigate();
+  const { helpPhoneDisplay, helpWhatsAppNumber } = useHelpContact();
   const channelLabels = [t.contact.channelPhone, t.contact.channelWhatsapp, t.contact.channelEmail];
+  const CHANNEL_VALUES = [
+    { value: "021-2200-8899", href: "tel:0212200899" },
+    { value: helpPhoneDisplay, href: `https://wa.me/${helpWhatsAppNumber}` },
+    { value: "cs@gms-logistics.co.id", href: "mailto:cs@gms-logistics.co.id" },
+  ];
 
   return (
     <PublicLayout>

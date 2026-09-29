@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { BarcodeScannerModal } from "../../components/BarcodeScannerModal";
 import { DriverLayout } from "../../components/layout/DriverLayout";
 import { useAuth } from "../../store/AuthContext";
-import { CS_WHATSAPP_NUMBER } from "../../utils/contact";
+import { useHelpContact } from "../../store/HelpContactContext";
 import {
   cancelShipmentClaim,
   claimShipment,
@@ -24,6 +24,7 @@ type StatusFilter = "aktif" | "kendala" | "selesai" | "terbuka";
 
 export default function DriverDashboard() {
   const { profile } = useAuth();
+  const { helpWhatsAppNumber } = useHelpContact();
   const [shipments, setShipments] = useState<DriverShipmentSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [trucks, setTrucks] = useState<DriverTruckInfo[]>([]);
@@ -180,7 +181,7 @@ export default function DriverDashboard() {
                 </div>
               </div>
               <a
-                href={`https://wa.me/${CS_WHATSAPP_NUMBER}?text=${encodeURIComponent(
+                href={`https://wa.me/${helpWhatsAppNumber}?text=${encodeURIComponent(
                   `Halo Admin, saya driver ${profile?.nama ?? ""} butuh bantuan.`,
                 )}`}
                 target="_blank"

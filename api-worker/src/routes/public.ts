@@ -81,6 +81,17 @@ export function registerPublicRoutes(router: Router) {
     });
   });
 
+  // Nomor Bantuan (CS/admin contact) - configurable by Superadmin under
+  // Pengaturan, but consumed by the public Contact page and the driver
+  // portal's "Butuh Bantuan" links, neither of which has settings.view.
+  // No auth - the number is meant to be publicly visible anyway.
+  router.get("/api/public/settings", async (ctx: Ctx) => {
+    const row = await ctx.env.DB.prepare(`SELECT value FROM settings WHERE key = 'help_phone_number'`).first<{
+      value: string;
+    }>();
+    return ok({ helpPhoneNumber: row?.value ?? "0812-0000-8899" });
+  });
+
   router.get("/api/public/locations", async (ctx: Ctx) => {
     const rows = await ctx.env.DB.prepare(
       `SELECT id, nama_kota, kode_kota, provinsi, jenis FROM locations WHERE aktif = 1 ORDER BY nama_kota`,

@@ -4,6 +4,7 @@ import { AuditLogProvider } from "./store/AuditLogContext";
 import { AuthProvider } from "./store/AuthContext";
 import { FeedbackProvider } from "./store/FeedbackContext";
 import { FleetProvider } from "./store/FleetContext";
+import { HelpContactProvider } from "./store/HelpContactContext";
 import { LanguageProvider } from "./store/LanguageContext";
 import { LocationProvider } from "./store/LocationContext";
 import { NotificationProvider } from "./store/NotificationContext";
@@ -43,23 +44,25 @@ import TrackingSearch from "./pages/public/TrackingSearch";
 function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <LanguageProvider>
-      <AuthProvider>
-        <AuditLogProvider>
-          <NotificationProvider>
-            <FeedbackProvider>
-              <FleetProvider>
-                <LocationProvider>
-                  <UserManagementProvider>
-                    <SettingsProvider>
-                      <ShipmentProvider>{children}</ShipmentProvider>
-                    </SettingsProvider>
-                  </UserManagementProvider>
-                </LocationProvider>
-              </FleetProvider>
-            </FeedbackProvider>
-          </NotificationProvider>
-        </AuditLogProvider>
-      </AuthProvider>
+      <HelpContactProvider>
+        <AuthProvider>
+          <AuditLogProvider>
+            <NotificationProvider>
+              <FeedbackProvider>
+                <FleetProvider>
+                  <LocationProvider>
+                    <UserManagementProvider>
+                      <SettingsProvider>
+                        <ShipmentProvider>{children}</ShipmentProvider>
+                      </SettingsProvider>
+                    </UserManagementProvider>
+                  </LocationProvider>
+                </FleetProvider>
+              </FeedbackProvider>
+            </NotificationProvider>
+          </AuditLogProvider>
+        </AuthProvider>
+      </HelpContactProvider>
     </LanguageProvider>
   );
 }

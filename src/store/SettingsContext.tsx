@@ -5,15 +5,22 @@ import { useAuth } from "./AuthContext";
 interface Settings {
   stagnantThresholdDays: number;
   emailSendingEnabled: boolean;
+  helpPhoneNumber: string;
 }
 
-const DEFAULT_SETTINGS: Settings = { stagnantThresholdDays: 3, emailSendingEnabled: true };
+const DEFAULT_SETTINGS: Settings = {
+  stagnantThresholdDays: 3,
+  emailSendingEnabled: true,
+  helpPhoneNumber: "0812-0000-8899",
+};
 
 interface SettingsContextValue {
   settings: Settings;
   isLoading: boolean;
   setStagnantThresholdDays: (days: number) => Promise<void>;
   setEmailSendingEnabled: (enabled: boolean) => Promise<void>;
+  /** Superadmin-only - the backend rejects this from any other role. */
+  setHelpPhoneNumber: (phone: string) => Promise<void>;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -43,8 +50,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setSettings((s) => ({ ...s, emailSendingEnabled: enabled }));
   }
 
+  async function setHelpPhoneNumber(phone: string) {
+    await api.patch("/api/settings", { helpPhoneNumber: phone });
+    setSettings((s) => ({ ...s, helpPhoneNumber: phone }));
+  }
+
   return (
-    <SettingsContext.Provider value={{ settings, isLoading, setStagnantThresholdDays, setEmailSendingEnabled }}>
+    <SettingsContext.Provider
+      value={{ settings, isLoading, setStagnantThresholdDays, setEmailSendingEnabled, setHelpPhoneNumber }}
+    >
       {children}
     </SettingsContext.Provider>
   );

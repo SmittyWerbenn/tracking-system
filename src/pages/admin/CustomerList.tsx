@@ -1,4 +1,4 @@
-import { Building2, Mail, Package, User } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { api, ApiError } from "../../utils/apiClient";
@@ -70,47 +70,59 @@ export default function CustomerList() {
           Belum ada Customer ID. Buat akun Cust-Admin lewat Manajemen User untuk menambahkan customer baru.
         </div>
       ) : (
-        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {customers.map((c) => (
-            <div key={c.customerId} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-2">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-700">
-                  <Building2 size={17} />
-                </span>
-                <span className="font-mono text-sm font-semibold text-slate-900">{c.customerId}</span>
-              </div>
-
-              <div className="mt-3 flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                <Package size={13} className="text-slate-400" />
-                {c.shipmentCount} Pengiriman
-              </div>
-
-              <div className="mt-4 flex flex-col gap-2.5 border-t border-slate-100 pt-3.5">
-                {c.accounts.map((a) => (
-                  <div key={a.id} className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <User size={13} className="shrink-0 text-slate-400" />
-                      <span className="text-sm font-medium text-slate-800">{a.nama}</span>
-                      <span
-                        className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                          a.aktif ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
-                        }`}
-                      >
-                        {a.aktif ? "Aktif" : "Nonaktif"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 pl-[19px] text-xs text-slate-500">
-                      <Mail size={11} className="shrink-0 text-slate-400" />
-                      {a.email}
-                    </div>
-                    <p className="pl-[19px] text-[11px] text-slate-400">
-                      Dibuat {formatCreatedAt(a.createdAt)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+        <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] text-left text-sm">
+              <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Customer ID</th>
+                  <th className="px-4 py-3 font-medium">Nama Akun</th>
+                  <th className="px-4 py-3 font-medium">Email</th>
+                  <th className="px-4 py-3 font-medium">Status Akun</th>
+                  <th className="px-4 py-3 font-medium">Dibuat</th>
+                  <th className="px-4 py-3 font-medium">Jumlah Pengiriman</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {customers.map((c) =>
+                  c.accounts.map((a, i) => (
+                    <tr key={a.id} className="hover:bg-slate-50">
+                      {i === 0 && (
+                        <td
+                          rowSpan={c.accounts.length}
+                          className="whitespace-nowrap border-r border-slate-100 px-4 py-3 align-top"
+                        >
+                          <span className="flex items-center gap-1.5 font-mono font-semibold text-slate-900">
+                            <Building2 size={14} className="text-teal-600" />
+                            {c.customerId}
+                          </span>
+                        </td>
+                      )}
+                      <td className="px-4 py-3 text-slate-800">{a.nama}</td>
+                      <td className="px-4 py-3 text-slate-600">{a.email}</td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                            a.aktif ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                          }`}
+                        >
+                          {a.aktif ? "Aktif" : "Nonaktif"}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
+                        {formatCreatedAt(a.createdAt)}
+                      </td>
+                      {i === 0 && (
+                        <td rowSpan={c.accounts.length} className="whitespace-nowrap px-4 py-3 align-top text-slate-600">
+                          {c.shipmentCount}
+                        </td>
+                      )}
+                    </tr>
+                  )),
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </AdminLayout>

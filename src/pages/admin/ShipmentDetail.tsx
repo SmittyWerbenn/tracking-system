@@ -198,6 +198,12 @@ export default function ShipmentDetail() {
             </div>
 
             <div className="mt-6 flex flex-wrap gap-6 border-t border-slate-100 pt-5">
+              {shipment.customerId && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Nomor Pelanggan</p>
+                  <p className="text-sm font-medium text-slate-800">{shipment.customerId}</p>
+                </div>
+              )}
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Layanan</p>
                 <p className="text-sm font-medium text-slate-800">{shipment.layanan}</p>

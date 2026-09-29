@@ -170,7 +170,7 @@ interface ShipmentContextValue {
   updateShipmentInfo: (awb: string, data: UpdateShipmentInfoData) => Promise<{ ok: true } | { ok: false; error: string }>;
   updateShipmentAlamat: (
     awb: string,
-    data: { alamatAsal: string; alamatTujuan: string },
+    data: { alamatAsal: string; kotaAsal: string; alamatTujuan: string; kotaTujuan: string },
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
   cancelShipment: (awb: string, alasan?: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   updatePodPhoto: (awb: string, slot: "barang" | "suratJalan", fotoDataUrl: string | undefined) => Promise<void>;
@@ -356,11 +356,16 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function updateShipmentAlamat(awb: string, data: { alamatAsal: string; alamatTujuan: string }) {
+  async function updateShipmentAlamat(
+    awb: string,
+    data: { alamatAsal: string; kotaAsal: string; alamatTujuan: string; kotaTujuan: string },
+  ) {
     try {
       await api.patch(`/api/shipments/${encodeURIComponent(awb)}/alamat`, {
         alamatAsal: data.alamatAsal,
+        kotaAsal: data.kotaAsal,
         alamatTujuan: data.alamatTujuan,
+        kotaTujuan: data.kotaTujuan,
       });
       await refresh();
       return { ok: true as const };

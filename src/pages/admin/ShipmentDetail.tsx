@@ -22,6 +22,7 @@ import { QRCode } from "../../components/QRCode";
 import { RefreshButton } from "../../components/RefreshButton";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../store/AuthContext";
+import { useLocations } from "../../store/LocationContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment } from "../../types";
 import { formatJam, formatTanggalJam, formatTanggalPanjang } from "../../utils/format";
@@ -29,6 +30,7 @@ import { formatJam, formatTanggalJam, formatTanggalPanjang } from "../../utils/f
 export default function ShipmentDetail() {
   const { awb } = useParams<{ awb: string }>();
   const { getByAwb, confirmClaim, rejectClaim, unassignDriver, cancelShipment, updateShipmentAlamat } = useShipments();
+  const { activeTitikLokasi } = useLocations();
   const { profile } = useAuth();
   const navigate = useNavigate();
   const [shipment, setShipment] = useState<Shipment | null>(null);
@@ -45,9 +47,12 @@ export default function ShipmentDetail() {
 
   const [alamatModalOpen, setAlamatModalOpen] = useState(false);
   const [alamatAsalInput, setAlamatAsalInput] = useState("");
+  const [kotaAsalInput, setKotaAsalInput] = useState("");
   const [alamatTujuanInput, setAlamatTujuanInput] = useState("");
+  const [kotaTujuanInput, setKotaTujuanInput] = useState("");
   const [alamatPending, setAlamatPending] = useState(false);
   const [alamatError, setAlamatError] = useState<string | null>(null);
+  const kotaSuggestions = Array.from(new Set(activeTitikLokasi.map((k) => k.namaKota))).sort();
 
   function reload() {
     return getByAwb(awb ?? "").then((s) => {
@@ -128,7 +133,9 @@ export default function ShipmentDetail() {
 
   function openAlamatModal() {
     setAlamatAsalInput(shipment!.alamatAsal);
+    setKotaAsalInput(shipment!.kotaAsal);
     setAlamatTujuanInput(shipment!.alamatTujuan);
+    setKotaTujuanInput(shipment!.kotaTujuan);
     setAlamatError(null);
     setAlamatModalOpen(true);
   }
@@ -138,7 +145,9 @@ export default function ShipmentDetail() {
     setAlamatError(null);
     const result = await updateShipmentAlamat(shipment!.awb, {
       alamatAsal: alamatAsalInput.trim(),
+      kotaAsal: kotaAsalInput.trim(),
       alamatTujuan: alamatTujuanInput.trim(),
+      kotaTujuan: kotaTujuanInput.trim(),
     });
     setAlamatPending(false);
     if (result.ok) {
@@ -567,9 +576,7 @@ export default function ShipmentDetail() {
               </div>
               <div className="flex flex-col gap-4">
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-slate-600">
-                    Alamat Asal ({shipment.kotaAsal})
-                  </span>
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Alamat Asal</span>
                   <textarea
                     required
                     rows={2}
@@ -579,9 +586,23 @@ export default function ShipmentDetail() {
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-slate-600">
-                    Alamat Tujuan ({shipment.kotaTujuan})
-                  </span>
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota Asal</span>
+                  <input
+                    required
+                    list="detail-kota-asal-suggestions"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    value={kotaAsalInput}
+                    onChange={(e) => setKotaAsalInput(e.target.value)}
+                    autoComplete="off"
+                  />
+                  <datalist id="detail-kota-asal-suggestions">
+                    {kotaSuggestions.map((k) => (
+                      <option key={k} value={k} />
+                    ))}
+                  </datalist>
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Alamat Tujuan</span>
                   <textarea
                     required
                     rows={2}
@@ -589,6 +610,22 @@ export default function ShipmentDetail() {
                     value={alamatTujuanInput}
                     onChange={(e) => setAlamatTujuanInput(e.target.value)}
                   />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota Tujuan</span>
+                  <input
+                    required
+                    list="detail-kota-tujuan-suggestions"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    value={kotaTujuanInput}
+                    onChange={(e) => setKotaTujuanInput(e.target.value)}
+                    autoComplete="off"
+                  />
+                  <datalist id="detail-kota-tujuan-suggestions">
+                    {kotaSuggestions.map((k) => (
+                      <option key={k} value={k} />
+                    ))}
+                  </datalist>
                 </label>
               </div>
               {alamatError && (
@@ -606,7 +643,13 @@ export default function ShipmentDetail() {
                 </button>
                 <button
                   type="button"
-                  disabled={alamatPending || !alamatAsalInput.trim() || !alamatTujuanInput.trim()}
+                  disabled={
+                    alamatPending ||
+                    !alamatAsalInput.trim() ||
+                    !kotaAsalInput.trim() ||
+                    !alamatTujuanInput.trim() ||
+                    !kotaTujuanInput.trim()
+                  }
                   onClick={handleSaveAlamat}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
                 >

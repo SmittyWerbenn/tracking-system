@@ -309,7 +309,7 @@ export function registerShipmentRoutes(router: Router) {
 
   // Narrow, self-service address correction for Cust-Admin - unlike the
   // full PATCH /api/shipments/:awb above (Superadmin/Admin only, any
-  // field), this only ever touches alamat_asal/alamat_tujuan, only while
+  // field), this only ever touches alamat/kota asal & tujuan, only while
   // the shipment is still "Dalam Persiapan" (before a truck has actually
   // departed), and only for the Cust-Admin's own customer_id.
   router.patch("/api/shipments/:awb/alamat", async (ctx: Ctx, params) => {
@@ -332,12 +332,14 @@ export function registerShipmentRoutes(router: Router) {
 
     const body = await parseJsonBody(ctx.request);
     const alamatAsal = reqString(body, "alamatAsal", { max: 300 });
+    const kotaAsal = reqString(body, "kotaAsal", { max: 80 });
     const alamatTujuan = reqString(body, "alamatTujuan", { max: 300 });
+    const kotaTujuan = reqString(body, "kotaTujuan", { max: 80 });
 
     await ctx.env.DB.prepare(
-      `UPDATE shipments SET alamat_asal = ?, alamat_tujuan = ?, updated_at = ?, updated_by = ? WHERE awb = ?`,
+      `UPDATE shipments SET alamat_asal = ?, kota_asal = ?, alamat_tujuan = ?, kota_tujuan = ?, updated_at = ?, updated_by = ? WHERE awb = ?`,
     )
-      .bind(alamatAsal, alamatTujuan, new Date().toISOString(), actor.id, params.awb)
+      .bind(alamatAsal, kotaAsal, alamatTujuan, kotaTujuan, new Date().toISOString(), actor.id, params.awb)
       .run();
 
     await writeAuditLog(ctx.env, actor, {

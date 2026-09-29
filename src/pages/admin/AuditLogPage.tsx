@@ -2,7 +2,7 @@ import { History } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useAuditLog } from "../../store/AuditLogContext";
-import type { AuditAction } from "../../types";
+import { roleLabel, type AuditAction } from "../../types";
 import { formatTanggalPanjang } from "../../utils/format";
 
 const inputClass =
@@ -137,7 +137,7 @@ export default function AuditLogPage() {
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
               <span className="font-medium text-slate-800">{e.userName}</span>
-              <span className="text-xs text-slate-400">({e.role})</span>
+              <span className="text-xs text-slate-400">({roleLabel(e.role)})</span>
               <span className="text-slate-300">-</span>
               <span className="text-xs font-medium uppercase tracking-wide text-slate-400">{e.module}</span>
               {e.awb && (

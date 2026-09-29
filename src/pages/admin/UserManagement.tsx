@@ -3,7 +3,7 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useAuth } from "../../store/AuthContext";
 import { useUserManagement, type UserFormData } from "../../store/UserManagementContext";
-import { ASSIGNABLE_USER_ROLES, type AppUser, type UserRole } from "../../types";
+import { ASSIGNABLE_USER_ROLES, roleLabel, type AppUser, type UserRole } from "../../types";
 import { checkPhotoSize, compressImage, MAX_PHOTO_SIZE_MB } from "../../utils/compressImage";
 import { formatTanggalPanjang } from "../../utils/format";
 import { initials } from "../../utils/initials";
@@ -149,9 +149,9 @@ export default function UserManagement() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Manajemen User</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Kelola akun internal dan peran akses (Admin / Driver / Viewer).
+            Kelola akun internal dan peran akses (GMS-Admin / Driver / Viewer / Cust-Admin).
             {isAdminActor
-              ? " Sebagai Admin, Anda hanya dapat menambah/mengubah akun Driver dan Viewer."
+              ? " Sebagai GMS-Admin, Anda hanya dapat menambah/mengubah akun Driver, Viewer, dan Cust-Admin."
               : ""}
           </p>
         </div>
@@ -193,7 +193,7 @@ export default function UserManagement() {
                       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${ROLE_BADGE_STYLE[u.role]}`}
                     >
                       <Shield size={12} />
-                      {u.role}
+                      {roleLabel(u.role)}
                     </span>
                     {u.role === "Cust-Admin" && u.customerId && (
                       <span className="mt-1 block text-[11px] text-slate-400">{u.customerId}</span>
@@ -238,7 +238,7 @@ export default function UserManagement() {
                           title={
                             u.role === "Superadmin"
                               ? "Akun Superadmin tidak bisa diubah lewat halaman ini"
-                              : "Hanya Superadmin yang dapat mengubah akun Admin lain"
+                              : "Hanya Superadmin yang dapat mengubah akun GMS-Admin lain"
                           }
                         >
                           -
@@ -345,7 +345,7 @@ export default function UserManagement() {
                   >
                     {assignableRoles.map((role) => (
                       <option key={role} value={role}>
-                        {role}
+                        {roleLabel(role)}
                       </option>
                     ))}
                   </select>

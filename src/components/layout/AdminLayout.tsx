@@ -16,7 +16,7 @@ import { useState, type ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
 import { useAuth } from "../../store/AuthContext";
-import type { UserRole } from "../../types";
+import { roleLabel, type UserRole } from "../../types";
 import { initials } from "../../utils/initials";
 import { useFileUrl } from "../../utils/useFileUrl";
 import { NotificationBell } from "./NotificationBell";
@@ -172,7 +172,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             })}
           </nav>
           <div className="mx-4 mt-2 rounded-lg bg-slate-50 p-4 text-xs text-slate-500">
-            <p className="font-medium text-slate-700">{profile.role}</p>
+            <p className="font-medium text-slate-700">{roleLabel(profile.role)}</p>
             <p className="mt-1">Sistem Tracking &amp; Resi Digital &mdash; PT Gangsar Mitra Suatama.</p>
           </div>
         </aside>

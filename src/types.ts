@@ -202,6 +202,22 @@ export type UserRole = "Superadmin" | "Admin" | "Driver" | "Viewer" | "Cust-Admi
  * itself isn't assignable there, it's the single account signed in. */
 export const ASSIGNABLE_USER_ROLES: UserRole[] = ["Admin", "Driver", "Viewer", "Cust-Admin"];
 
+/** Display-only label for a role - the underlying value stays "Admin"
+ * everywhere in code/DB/API (permission checks, ROLES arrays, etc.); only
+ * user-facing text should route through this, to show "GMS-Admin" instead
+ * without touching any functional role comparison. */
+const ROLE_DISPLAY_LABEL: Record<UserRole, string> = {
+  Superadmin: "Superadmin",
+  Admin: "GMS-Admin",
+  Driver: "Driver",
+  Viewer: "Viewer",
+  "Cust-Admin": "Cust-Admin",
+};
+
+export function roleLabel(role: UserRole): string {
+  return ROLE_DISPLAY_LABEL[role];
+}
+
 export interface AppUser {
   id: string;
   nama: string;

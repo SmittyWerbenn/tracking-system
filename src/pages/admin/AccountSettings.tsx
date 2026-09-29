@@ -3,6 +3,7 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useAuth } from "../../store/AuthContext";
+import { roleLabel } from "../../types";
 import { uploadFile } from "../../utils/apiClient";
 import { checkPhotoSize, compressImage, MAX_PHOTO_SIZE_MB } from "../../utils/compressImage";
 import { initials } from "../../utils/initials";
@@ -131,7 +132,7 @@ export default function AccountSettings() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-slate-800">{profile.nama}</p>
-              <p className="text-xs text-slate-400">Role: {profile.role}</p>
+              <p className="text-xs text-slate-400">Role: {roleLabel(profile.role)}</p>
               <div className="mt-1.5 flex items-center gap-3">
                 <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-blue-700 hover:text-blue-900">
                   <Camera size={13} /> Kamera

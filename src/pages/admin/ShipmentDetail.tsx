@@ -576,16 +576,6 @@ export default function ShipmentDetail() {
               </div>
               <div className="flex flex-col gap-4">
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Alamat Asal</span>
-                  <textarea
-                    required
-                    rows={2}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    value={alamatAsalInput}
-                    onChange={(e) => setAlamatAsalInput(e.target.value)}
-                  />
-                </label>
-                <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota Asal</span>
                   <input
                     required
@@ -602,13 +592,13 @@ export default function ShipmentDetail() {
                   </datalist>
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Alamat Tujuan</span>
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Alamat Asal</span>
                   <textarea
                     required
                     rows={2}
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    value={alamatTujuanInput}
-                    onChange={(e) => setAlamatTujuanInput(e.target.value)}
+                    value={alamatAsalInput}
+                    onChange={(e) => setAlamatAsalInput(e.target.value)}
                   />
                 </label>
                 <label className="block">
@@ -626,6 +616,16 @@ export default function ShipmentDetail() {
                       <option key={k} value={k} />
                     ))}
                   </datalist>
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Alamat Tujuan</span>
+                  <textarea
+                    required
+                    rows={2}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    value={alamatTujuanInput}
+                    onChange={(e) => setAlamatTujuanInput(e.target.value)}
+                  />
                 </label>
               </div>
               {alamatError && (

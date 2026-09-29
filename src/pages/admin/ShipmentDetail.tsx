@@ -1,14 +1,18 @@
 import {
+  AlertTriangle,
   ArrowLeft,
+  Ban,
   CheckCircle2,
   Download,
   Loader2,
   Mail,
   MapPin,
   Package,
+  Pencil,
   Printer,
   Truck,
   User,
+  X,
   XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -24,7 +28,7 @@ import { formatJam, formatTanggalJam, formatTanggalPanjang } from "../../utils/f
 
 export default function ShipmentDetail() {
   const { awb } = useParams<{ awb: string }>();
-  const { getByAwb, confirmClaim, rejectClaim, unassignDriver } = useShipments();
+  const { getByAwb, confirmClaim, rejectClaim, unassignDriver, cancelShipment, updateShipmentAlamat } = useShipments();
   const { profile } = useAuth();
   const navigate = useNavigate();
   const [shipment, setShipment] = useState<Shipment | null>(null);
@@ -33,6 +37,17 @@ export default function ShipmentDetail() {
   const [claimActionError, setClaimActionError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const canManageClaims = profile?.role === "Superadmin" || profile?.role === "Admin";
+
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelPending, setCancelPending] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const [alamatModalOpen, setAlamatModalOpen] = useState(false);
+  const [alamatAsalInput, setAlamatAsalInput] = useState("");
+  const [alamatTujuanInput, setAlamatTujuanInput] = useState("");
+  const [alamatPending, setAlamatPending] = useState(false);
+  const [alamatError, setAlamatError] = useState<string | null>(null);
 
   function reload() {
     return getByAwb(awb ?? "").then((s) => {
@@ -92,6 +107,48 @@ export default function ShipmentDetail() {
     else setClaimActionError(result.error);
   }
 
+  function openCancelModal() {
+    setCancelReason("");
+    setCancelError(null);
+    setCancelModalOpen(true);
+  }
+
+  async function handleCancelShipment() {
+    setCancelPending(true);
+    setCancelError(null);
+    const result = await cancelShipment(shipment!.awb, cancelReason.trim() || undefined);
+    setCancelPending(false);
+    if (result.ok) {
+      setCancelModalOpen(false);
+      await reload();
+    } else {
+      setCancelError(result.error);
+    }
+  }
+
+  function openAlamatModal() {
+    setAlamatAsalInput(shipment!.alamatAsal);
+    setAlamatTujuanInput(shipment!.alamatTujuan);
+    setAlamatError(null);
+    setAlamatModalOpen(true);
+  }
+
+  async function handleSaveAlamat() {
+    setAlamatPending(true);
+    setAlamatError(null);
+    const result = await updateShipmentAlamat(shipment!.awb, {
+      alamatAsal: alamatAsalInput.trim(),
+      alamatTujuan: alamatTujuanInput.trim(),
+    });
+    setAlamatPending(false);
+    if (result.ok) {
+      setAlamatModalOpen(false);
+      await reload();
+    } else {
+      setAlamatError(result.error);
+    }
+  }
+
   if (isLoading) {
     return (
       <AdminLayout>
@@ -116,6 +173,13 @@ export default function ShipmentDetail() {
   }
 
   const trackingUrl = `${window.location.origin}/tracking/${shipment.awb}`;
+  const isTerminalStatus = shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan";
+  const canCancelOrder =
+    !isTerminalStatus &&
+    (profile?.role === "Superadmin" ||
+      profile?.role === "Admin" ||
+      (profile?.role === "Cust-Admin" && shipment.status === "Dalam Persiapan"));
+  const canEditAlamat = profile?.role === "Cust-Admin" && shipment.status === "Dalam Persiapan";
 
   function printResi() {
     // The browser's print/"Save as PDF" dialog suggests document.title as the
@@ -180,12 +244,32 @@ export default function ShipmentDetail() {
           >
             <MapPin size={15} /> Lihat Tracking
           </Link>
+          {canCancelOrder && (
+            <button
+              type="button"
+              onClick={openCancelModal}
+              className="inline-flex items-center gap-1.5 rounded-lg border-2 border-rose-600 bg-white px-3.5 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50"
+            >
+              <Ban size={15} /> Batalkan Pesanan
+            </button>
+          )}
         </div>
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3 print:mt-4 print:grid-cols-3 print:gap-4">
         <div className="space-y-6 lg:col-span-2 print:col-span-2 print:space-y-4">
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 print:shadow-none">
+            {canEditAlamat && (
+              <div className="mb-4 flex justify-end no-print">
+                <button
+                  type="button"
+                  onClick={openAlamatModal}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  <Pencil size={13} /> Edit Alamat
+                </button>
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 print:grid-cols-2">
               <div>
                 <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -404,6 +488,136 @@ export default function ShipmentDetail() {
           )}
         </div>
       </div>
+
+      {cancelModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+            <div className="p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+                  <Ban size={18} className="text-rose-600" /> Batalkan Pesanan
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setCancelModalOpen(false)}
+                  className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <p className="text-sm text-slate-600">
+                AWB <span className="font-mono font-semibold">{shipment.awb}</span> akan dibatalkan.
+                Setelah dibatalkan, status tidak bisa dikembalikan lagi.
+              </p>
+              <label className="mt-4 block">
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                  Alasan Pembatalan <span className="text-slate-400">(opsional)</span>
+                </span>
+                <textarea
+                  rows={3}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  placeholder="Contoh: Salah input, pesanan diganti, dll."
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                />
+              </label>
+              {cancelError && (
+                <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-red-600">
+                  <AlertTriangle size={14} /> {cancelError}
+                </p>
+              )}
+              <div className="mt-5 flex justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setCancelModalOpen(false)}
+                  className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={cancelPending}
+                  onClick={handleCancelShipment}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 disabled:opacity-60"
+                >
+                  {cancelPending ? <Loader2 size={15} className="animate-spin" /> : <Ban size={15} />}
+                  Batalkan Pesanan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {alamatModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+            <div className="p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+                  <Pencil size={18} /> Edit Alamat
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setAlamatModalOpen(false)}
+                  className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="flex flex-col gap-4">
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                    Alamat Asal ({shipment.kotaAsal})
+                  </span>
+                  <textarea
+                    required
+                    rows={2}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    value={alamatAsalInput}
+                    onChange={(e) => setAlamatAsalInput(e.target.value)}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                    Alamat Tujuan ({shipment.kotaTujuan})
+                  </span>
+                  <textarea
+                    required
+                    rows={2}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    value={alamatTujuanInput}
+                    onChange={(e) => setAlamatTujuanInput(e.target.value)}
+                  />
+                </label>
+              </div>
+              {alamatError && (
+                <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-red-600">
+                  <AlertTriangle size={14} /> {alamatError}
+                </p>
+              )}
+              <div className="mt-5 flex justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setAlamatModalOpen(false)}
+                  className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={alamatPending || !alamatAsalInput.trim() || !alamatTujuanInput.trim()}
+                  onClick={handleSaveAlamat}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
+                >
+                  {alamatPending ? <Loader2 size={15} className="animate-spin" /> : null}
+                  Simpan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

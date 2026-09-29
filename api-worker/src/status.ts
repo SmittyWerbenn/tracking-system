@@ -9,7 +9,8 @@ export type ShipmentStatus =
   | "Dalam Perjalanan"
   | "Kendala"
   | "Tiba di Tujuan"
-  | "Selesai / Terkirim";
+  | "Selesai / Terkirim"
+  | "Dibatalkan";
 
 export type TimelineEventType =
   | "Barang Diterima"

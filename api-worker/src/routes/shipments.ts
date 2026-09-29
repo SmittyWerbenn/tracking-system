@@ -3,7 +3,7 @@ import type { Ctx } from "../types";
 import { ok, Errors } from "../http";
 import { parseJsonBody, reqString, reqEnum, reqNumber, reqEmail, optString, optNumber } from "../validate";
 import { newId } from "../crypto";
-import { requirePermission } from "../authMiddleware";
+import { requireAuth, requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta } from "../pagination";
 import { generateAwb } from "../awb";
@@ -69,6 +69,11 @@ export function registerShipmentRoutes(router: Router) {
     if (actor.role === "Cust-Admin") {
       where.push("s.customer_id = ?");
       params.push(actor.customerId);
+    }
+    // Cancelled orders are internal-admin/owning-customer data only - never
+    // shown to Viewer or Driver, even if they explicitly filter for it.
+    if (actor.role === "Viewer" || actor.role === "Driver") {
+      where.push("s.status != 'Dibatalkan'");
     }
     if (search) {
       where.push("(s.awb LIKE ? OR s.pengirim_nama LIKE ? OR s.penerima_nama LIKE ?)");
@@ -205,6 +210,9 @@ export function registerShipmentRoutes(router: Router) {
       .bind(params.awb)
       .first<Record<string, unknown>>();
     if (!row) throw Errors.notFound("AWB tidak ditemukan.");
+    if ((actor.role === "Viewer" || actor.role === "Driver") && row.status === "Dibatalkan") {
+      throw Errors.notFound("AWB tidak ditemukan.");
+    }
     if (actor.role === "Cust-Admin" && row.customer_id !== actor.customerId) {
       throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
     }
@@ -240,8 +248,8 @@ export function registerShipmentRoutes(router: Router) {
       .bind(params.awb)
       .first<{ status: string; tanggal_dibuat: string; sla_value: number | null; estimasi_tiba: string | null }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
-    if (shipment.status === "Selesai / Terkirim") {
-      throw Errors.unprocessable("Pengiriman yang sudah Selesai/Terkirim tidak bisa diubah lagi.");
+    if (shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan") {
+      throw Errors.unprocessable("Pengiriman yang sudah Selesai/Terkirim atau Dibatalkan tidak bisa diubah lagi.");
     }
 
     const body = await parseJsonBody(ctx.request);
@@ -299,14 +307,117 @@ export function registerShipmentRoutes(router: Router) {
     return ok({ updated: true });
   });
 
+  // Narrow, self-service address correction for Cust-Admin - unlike the
+  // full PATCH /api/shipments/:awb above (Superadmin/Admin only, any
+  // field), this only ever touches alamat_asal/alamat_tujuan, only while
+  // the shipment is still "Dalam Persiapan" (before a truck has actually
+  // departed), and only for the Cust-Admin's own customer_id.
+  router.patch("/api/shipments/:awb/alamat", async (ctx: Ctx, params) => {
+    const actor = requireAuth(ctx);
+    if (actor.role !== "Cust-Admin" && actor.role !== "Superadmin" && actor.role !== "Admin") {
+      throw Errors.forbidden();
+    }
+    const shipment = await ctx.env.DB.prepare(`SELECT status, customer_id FROM shipments WHERE awb = ?`)
+      .bind(params.awb)
+      .first<{ status: string; customer_id: string | null }>();
+    if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
+    if (actor.role === "Cust-Admin") {
+      if (shipment.customer_id !== actor.customerId) throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
+      if (shipment.status !== "Dalam Persiapan") {
+        throw Errors.unprocessable("Alamat hanya bisa diubah selama status masih Dalam Persiapan.");
+      }
+    } else if (shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan") {
+      throw Errors.unprocessable("Pengiriman ini sudah terkunci dan tidak bisa diubah.");
+    }
+
+    const body = await parseJsonBody(ctx.request);
+    const alamatAsal = reqString(body, "alamatAsal", { max: 300 });
+    const alamatTujuan = reqString(body, "alamatTujuan", { max: 300 });
+
+    await ctx.env.DB.prepare(
+      `UPDATE shipments SET alamat_asal = ?, alamat_tujuan = ?, updated_at = ?, updated_by = ? WHERE awb = ?`,
+    )
+      .bind(alamatAsal, alamatTujuan, new Date().toISOString(), actor.id, params.awb)
+      .run();
+
+    await writeAuditLog(ctx.env, actor, {
+      action: "UPDATE_SHIPMENT_INFO",
+      actionLabel: "UPDATE ALAMAT",
+      module: "Shipment",
+      awb: params.awb,
+      description: `Alamat pengiriman diperbarui oleh ${actor.nama}.`,
+    });
+
+    return ok({ updated: true });
+  });
+
+  // Cancel order - Superadmin/Admin may cancel from any not-yet-terminal
+  // status; Cust-Admin only its own customer's shipments and only while
+  // still "Dalam Persiapan" (mirrors the alamat-edit restriction above -
+  // once a truck is actually moving, cancellation goes through ops).
+  router.post("/api/shipments/:awb/cancel", async (ctx: Ctx, params) => {
+    const actor = requireAuth(ctx);
+    if (actor.role !== "Cust-Admin" && actor.role !== "Superadmin" && actor.role !== "Admin") {
+      throw Errors.forbidden();
+    }
+    const shipment = await ctx.env.DB.prepare(`SELECT status, customer_id, kota_asal FROM shipments WHERE awb = ?`)
+      .bind(params.awb)
+      .first<{ status: string; customer_id: string | null; kota_asal: string }>();
+    if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
+    if (shipment.status === "Selesai / Terkirim") {
+      throw Errors.unprocessable("Pengiriman yang sudah Selesai/Terkirim tidak bisa dibatalkan.");
+    }
+    if (shipment.status === "Dibatalkan") {
+      throw Errors.unprocessable("Pengiriman ini sudah dibatalkan.");
+    }
+    if (actor.role === "Cust-Admin") {
+      if (shipment.customer_id !== actor.customerId) throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
+      if (shipment.status !== "Dalam Persiapan") {
+        throw Errors.unprocessable("Hanya pengiriman dengan status Dalam Persiapan yang bisa dibatalkan.");
+      }
+    }
+
+    const body = await parseJsonBody(ctx.request).catch(() => ({}) as Record<string, unknown>);
+    const alasan = optString(body, "alasan") ?? "";
+    const nowIso = new Date().toISOString();
+    const tanggal = nowIso.slice(0, 10);
+    const jam = nowIso.slice(11, 16);
+
+    const seqRow = await ctx.env.DB.prepare(`SELECT COALESCE(MAX(seq), 0) + 1 as next FROM shipment_timeline_events WHERE awb = ?`)
+      .bind(params.awb)
+      .first<{ next: number }>();
+    const seq = seqRow?.next ?? 1;
+
+    await ctx.env.DB.prepare(
+      `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, input_by_user_id, input_by_name, input_at, created_at)
+       VALUES (?, ?, ?, 'Dibatalkan', ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+      .bind(newId(), params.awb, seq, shipment.kota_asal, tanggal, jam, alasan || "Pesanan dibatalkan.", actor.id, actor.nama, nowIso, nowIso)
+      .run();
+
+    await ctx.env.DB.prepare(`UPDATE shipments SET status = 'Dibatalkan', updated_at = ?, updated_by = ? WHERE awb = ?`)
+      .bind(nowIso, actor.id, params.awb)
+      .run();
+
+    await writeAuditLog(ctx.env, actor, {
+      action: "CANCEL_SHIPMENT",
+      actionLabel: "CANCEL SHIPMENT",
+      module: "Shipment",
+      awb: params.awb,
+      description: alasan ? `Pengiriman dibatalkan: ${alasan}` : "Pengiriman dibatalkan.",
+    });
+
+    return ok({ cancelled: true });
+  });
+
   router.post("/api/shipments/:awb/timeline", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "tracking.update");
     const shipment = await ctx.env.DB.prepare(`SELECT * FROM shipments WHERE awb = ?`).bind(params.awb).first<
       Record<string, unknown>
     >();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
-    if (shipment.status === "Selesai / Terkirim") {
-      throw Errors.unprocessable("Pengiriman ini sudah Selesai/Terkirim dan terkunci.");
+    if (shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan") {
+      throw Errors.unprocessable("Pengiriman ini sudah Selesai/Terkirim atau Dibatalkan, dan terkunci.");
     }
     if (actor.role === "Driver") {
       const owns = await ctx.env.DB.prepare(

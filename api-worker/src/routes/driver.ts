@@ -65,7 +65,7 @@ export function registerDriverRoutes(router: Router) {
       `SELECT s.*, t.nomor_unit as truck_nomor_unit
        FROM shipments s
        JOIN trucks t ON t.id = s.truck_id
-       WHERE t.driver_id = ?
+       WHERE t.driver_id = ? AND s.status != 'Dibatalkan'
        ORDER BY s.created_at DESC`,
     )
       .bind(driverId)
@@ -81,6 +81,7 @@ export function registerDriverRoutes(router: Router) {
     const rows = await ctx.env.DB.prepare(
       `SELECT s.* FROM shipments s
        WHERE s.truck_id IS NULL
+         AND s.status != 'Dibatalkan'
          AND (s.claim_status IS NULL OR s.claim_driver_id = ?)
        ORDER BY s.created_at ASC`,
     )
@@ -101,11 +102,12 @@ export function registerDriverRoutes(router: Router) {
     const actor = requireAuth(ctx);
     const driverId = await requireDriverId(ctx);
     const shipment = await ctx.env.DB.prepare(
-      `SELECT truck_id, claim_status, claim_driver_id FROM shipments WHERE awb = ?`,
+      `SELECT truck_id, claim_status, claim_driver_id, status FROM shipments WHERE awb = ?`,
     )
       .bind(params.awb)
-      .first<{ truck_id: string | null; claim_status: string | null; claim_driver_id: string | null }>();
+      .first<{ truck_id: string | null; claim_status: string | null; claim_driver_id: string | null; status: string }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
+    if (shipment.status === "Dibatalkan") throw Errors.notFound("AWB tidak ditemukan.");
     if (shipment.truck_id) throw Errors.conflict("Pengiriman ini sudah punya driver yang ditugaskan.");
     if (shipment.claim_status === "pending") {
       if (shipment.claim_driver_id === driverId) return ok({ claimed: true });
@@ -173,6 +175,7 @@ export function registerDriverRoutes(router: Router) {
       .bind(params.awb)
       .first<Record<string, unknown>>();
     if (!row) throw Errors.notFound("AWB tidak ditemukan.");
+    if (row.status === "Dibatalkan") throw Errors.notFound("AWB tidak ditemukan.");
     if (row.truck_driver_id !== driverId) throw Errors.forbidden("Pengiriman ini bukan tugas Anda.");
 
     const timeline = await ctx.env.DB.prepare(

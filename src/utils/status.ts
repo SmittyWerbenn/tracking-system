@@ -62,6 +62,12 @@ const STYLES: Record<string, StatusStyle> = {
     dot: "bg-slate-400",
     ring: "ring-slate-200",
   },
+  "Dibatalkan": {
+    bg: "bg-rose-100",
+    text: "text-rose-700",
+    dot: "bg-rose-500",
+    ring: "ring-rose-200",
+  },
 };
 
 export function getStatusStyle(status: ShipmentStatus | TimelineEventType): StatusStyle {
@@ -76,6 +82,7 @@ export const SHIPMENT_STATUS_OPTIONS: ShipmentStatus[] = [
   "Kendala",
   "Tiba di Tujuan",
   "Selesai / Terkirim",
+  "Dibatalkan",
 ];
 
 export const TIMELINE_EVENT_OPTIONS: TimelineEventType[] = [

@@ -1,4 +1,4 @@
-import { CheckCircle2, Download, Eye, FileEdit, LayoutList, ListTree, Loader2, MapPin, PackageSearch, Printer, RefreshCw, Search, X, XCircle } from "lucide-react";
+import { AlertTriangle, Ban, CheckCircle2, Download, Eye, FileEdit, LayoutList, ListTree, Loader2, MapPin, PackageSearch, Printer, RefreshCw, Search, X, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -21,7 +21,7 @@ function isShipmentStatus(value: string): value is ShipmentStatus {
  * and the "macet" quick-filter refine client-side over that already-
  * filtered, already-bounded batch rather than the whole table. */
 export default function ShipmentList() {
-  const { shipments, isLoading, refresh, fetchPendingClaims, confirmClaim, rejectClaim } = useShipments();
+  const { shipments, isLoading, refresh, fetchPendingClaims, confirmClaim, rejectClaim, cancelShipment } = useShipments();
   const { settings } = useSettings();
   const { profile } = useAuth();
   const canCreateShipment =
@@ -36,6 +36,37 @@ export default function ShipmentList() {
   const [pendingClaims, setPendingClaims] = useState<PendingClaim[]>([]);
   const [claimActionAwb, setClaimActionAwb] = useState<string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
+
+  const [cancelTargetAwb, setCancelTargetAwb] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelPending, setCancelPending] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  function canCancelRow(s: { status: ShipmentStatus }): boolean {
+    if (s.status === "Selesai / Terkirim" || s.status === "Dibatalkan") return false;
+    if (profile?.role === "Superadmin" || profile?.role === "Admin") return true;
+    if (profile?.role === "Cust-Admin") return s.status === "Dalam Persiapan";
+    return false;
+  }
+
+  function openCancelModal(awb: string) {
+    setCancelTargetAwb(awb);
+    setCancelReason("");
+    setCancelError(null);
+  }
+
+  async function handleCancelShipment() {
+    if (!cancelTargetAwb) return;
+    setCancelPending(true);
+    setCancelError(null);
+    const result = await cancelShipment(cancelTargetAwb, cancelReason.trim() || undefined);
+    setCancelPending(false);
+    if (result.ok) {
+      setCancelTargetAwb(null);
+    } else {
+      setCancelError(result.error);
+    }
+  }
 
   function loadPendingClaims() {
     if (!canManageClaims) return;
@@ -436,6 +467,16 @@ export default function ShipmentList() {
                       >
                         <Printer size={16} />
                       </Link>
+                      {canCancelRow(s) && (
+                        <button
+                          type="button"
+                          onClick={() => openCancelModal(s.awb)}
+                          title="Batalkan Pesanan"
+                          className="rounded-md p-1.5 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
+                        >
+                          <Ban size={16} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -458,6 +499,66 @@ export default function ShipmentList() {
           </table>
         </div>
       </div>
+
+      {cancelTargetAwb && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+            <div className="p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+                  <Ban size={18} className="text-rose-600" /> Batalkan Pesanan
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setCancelTargetAwb(null)}
+                  className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <p className="text-sm text-slate-600">
+                AWB <span className="font-mono font-semibold">{cancelTargetAwb}</span> akan dibatalkan.
+                Setelah dibatalkan, status tidak bisa dikembalikan lagi.
+              </p>
+              <label className="mt-4 block">
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                  Alasan Pembatalan <span className="text-slate-400">(opsional)</span>
+                </span>
+                <textarea
+                  rows={3}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  placeholder="Contoh: Salah input, pesanan diganti, dll."
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                />
+              </label>
+              {cancelError && (
+                <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-red-600">
+                  <AlertTriangle size={14} /> {cancelError}
+                </p>
+              )}
+              <div className="mt-5 flex justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setCancelTargetAwb(null)}
+                  className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={cancelPending}
+                  onClick={handleCancelShipment}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 disabled:opacity-60"
+                >
+                  {cancelPending ? <Loader2 size={15} className="animate-spin" /> : <Ban size={15} />}
+                  Batalkan Pesanan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

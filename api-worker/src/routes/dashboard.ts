@@ -15,16 +15,20 @@ export function registerDashboardRoutes(router: Router) {
     const custScope = actor.role === "Cust-Admin";
     const custWhere = custScope ? `AND customer_id = ?` : "";
     const custBind = (...extra: unknown[]) => (custScope ? [...extra, actor.customerId] : extra);
+    // Cancelled orders are internal-admin/owning-customer data only - never
+    // counted or listed for Viewer/Driver, even in aggregate stats.
+    const hideCancelled = actor.role === "Viewer" || actor.role === "Driver";
+    const cancelWhere = hideCancelled ? `AND status != 'Dibatalkan'` : "";
 
     const [byStatus, total, stagnant, trucks, avgRating, recent] = await Promise.all([
-      ctx.env.DB.prepare(`SELECT status, COUNT(*) as c FROM shipments WHERE 1=1 ${custWhere} GROUP BY status`)
+      ctx.env.DB.prepare(`SELECT status, COUNT(*) as c FROM shipments WHERE 1=1 ${custWhere} ${cancelWhere} GROUP BY status`)
         .bind(...custBind())
         .all<{ status: string; c: number }>(),
-      ctx.env.DB.prepare(`SELECT COUNT(*) as c FROM shipments WHERE 1=1 ${custWhere}`)
+      ctx.env.DB.prepare(`SELECT COUNT(*) as c FROM shipments WHERE 1=1 ${custWhere} ${cancelWhere}`)
         .bind(...custBind())
         .first<{ c: number }>(),
       ctx.env.DB.prepare(
-        `SELECT COUNT(*) as c FROM shipments WHERE status != 'Selesai / Terkirim' AND updated_at < ? ${custWhere}`,
+        `SELECT COUNT(*) as c FROM shipments WHERE status NOT IN ('Selesai / Terkirim', 'Dibatalkan') AND updated_at < ? ${custWhere}`,
       )
         .bind(...custBind(stagnantCutoff))
         .first<{ c: number }>(),
@@ -33,7 +37,7 @@ export function registerDashboardRoutes(router: Router) {
       ).all<{ status: string; c: number }>(),
       ctx.env.DB.prepare(`SELECT AVG(rating) as avg FROM feedback`).first<{ avg: number | null }>(),
       ctx.env.DB.prepare(
-        `SELECT awb, status, kota_asal, kota_tujuan, tanggal_dibuat FROM shipments WHERE 1=1 ${custWhere} ORDER BY tanggal_dibuat DESC, jam_dibuat DESC LIMIT 5`,
+        `SELECT awb, status, kota_asal, kota_tujuan, tanggal_dibuat FROM shipments WHERE 1=1 ${custWhere} ${cancelWhere} ORDER BY tanggal_dibuat DESC, jam_dibuat DESC LIMIT 5`,
       )
         .bind(...custBind())
         .all(),

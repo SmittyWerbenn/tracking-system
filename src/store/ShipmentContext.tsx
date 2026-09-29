@@ -168,6 +168,11 @@ interface ShipmentContextValue {
   markEmailSent: (awb: string) => void;
   addTrackingUpdate: (data: TrackingUpdateFormData) => Promise<{ ok: true } | { ok: false; error: string }>;
   updateShipmentInfo: (awb: string, data: UpdateShipmentInfoData) => Promise<{ ok: true } | { ok: false; error: string }>;
+  updateShipmentAlamat: (
+    awb: string,
+    data: { alamatAsal: string; alamatTujuan: string },
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  cancelShipment: (awb: string, alasan?: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   updatePodPhoto: (awb: string, slot: "barang" | "suratJalan", fotoDataUrl: string | undefined) => Promise<void>;
   fetchPendingClaims: () => Promise<PendingClaim[]>;
   confirmClaim: (awb: string) => Promise<{ ok: true } | { ok: false; error: string }>;
@@ -351,6 +356,29 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function updateShipmentAlamat(awb: string, data: { alamatAsal: string; alamatTujuan: string }) {
+    try {
+      await api.patch(`/api/shipments/${encodeURIComponent(awb)}/alamat`, {
+        alamatAsal: data.alamatAsal,
+        alamatTujuan: data.alamatTujuan,
+      });
+      await refresh();
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal menyimpan perubahan alamat." };
+    }
+  }
+
+  async function cancelShipment(awb: string, alasan?: string) {
+    try {
+      await api.post(`/api/shipments/${encodeURIComponent(awb)}/cancel`, { alasan });
+      await refresh();
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal membatalkan pengiriman." };
+    }
+  }
+
   async function updatePodPhoto(awb: string, slot: "barang" | "suratJalan", fotoDataUrl: string | undefined) {
     if (!fotoDataUrl) return;
     const entityType = slot === "suratJalan" ? "pod_surat_jalan" : "pod_barang";
@@ -405,6 +433,8 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         markEmailSent,
         addTrackingUpdate,
         updateShipmentInfo,
+        updateShipmentAlamat,
+        cancelShipment,
         updatePodPhoto,
         fetchPendingClaims,
         confirmClaim,

@@ -5,7 +5,8 @@ export type ShipmentStatus =
   | "Dalam Perjalanan"
   | "Kendala"
   | "Tiba di Tujuan"
-  | "Selesai / Terkirim";
+  | "Selesai / Terkirim"
+  | "Dibatalkan";
 
 export type LayananPengiriman = "Darat" | "Express" | "Kargo" | "Regular" | "Charter";
 
@@ -254,6 +255,7 @@ export type AuditAction =
   | "UPDATE_USER"
   | "UPDATE_SHIPMENT_INFO"
   | "UPDATE_POD_PHOTO"
+  | "CANCEL_SHIPMENT"
   | "LOGIN_SUCCESS"
   | "LOGIN_FAILED"
   | "PASSWORD_CHANGED"

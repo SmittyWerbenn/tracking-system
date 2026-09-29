@@ -27,8 +27,6 @@ interface BulkFleetRow extends BulkFleetRowInput {
   statusValue: ArmadaStatus;
 }
 
-const TRUCK_TYPE_OPTIONS = ["Wingbox", "CDD", "Box", "Pickup", "Fuso", "Tronton"];
-
 let rowSeq = 0;
 function newRowId() {
   rowSeq += 1;
@@ -284,17 +282,14 @@ export function BulkFleetImport({ existingNomorUnit = [] }: { existingNomorUnit?
                   />
                 </td>
                 <td className="px-2.5 py-2">
-                  <select
+                  <input
+                    list="jenis-truck-suggestions"
                     className={cellInputClass}
                     value={row.jenisValue}
                     onChange={(e) => updateRow(row.id, "jenisValue", e.target.value)}
-                  >
-                    {TRUCK_TYPE_OPTIONS.map((j) => (
-                      <option key={j} value={j}>
-                        {j}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Contoh: Wingbox"
+                    autoComplete="off"
+                  />
                 </td>
                 <td className="px-2.5 py-2">
                   <input

@@ -69,6 +69,13 @@ export default function FleetList() {
     () => trucksWithDriver.map((t) => t.nomorUnit.replace(/\s+/g, "").toLowerCase()),
     [trucksWithDriver],
   );
+  // Suggestions merge the original preset types with whatever jenis values
+  // are already in use, so a custom type someone typed once shows up as a
+  // suggestion for everyone after that instead of only the fixed preset.
+  const jenisSuggestions = useMemo(
+    () => Array.from(new Set([...TRUCK_TYPES, ...trucksWithDriver.map((t) => t.jenis)])).sort(),
+    [trucksWithDriver],
+  );
   const isDuplicateNomorUnit =
     form.nomorUnit.trim() !== "" && existingNomorUnit.includes(form.nomorUnit.replace(/\s+/g, "").toLowerCase());
 
@@ -138,6 +145,11 @@ export default function FleetList() {
 
   return (
     <AdminLayout>
+      <datalist id="jenis-truck-suggestions">
+        {jenisSuggestions.map((j) => (
+          <option key={j} value={j} />
+        ))}
+      </datalist>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Master Armada</h1>
@@ -228,17 +240,15 @@ export default function FleetList() {
             </label>
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">Jenis Truck</span>
-              <select
+              <input
+                required
+                list="jenis-truck-suggestions"
                 className={inputClass}
+                placeholder="Contoh: Wingbox"
                 value={form.jenis}
                 onChange={(e) => setForm({ ...form, jenis: e.target.value })}
-              >
-                {TRUCK_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+                autoComplete="off"
+              />
             </label>
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">Kapasitas</span>
@@ -457,17 +467,15 @@ export default function FleetList() {
                 </label>
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-slate-600">Jenis Truck</span>
-                  <select
+                  <input
+                    required
+                    list="jenis-truck-suggestions"
                     className={inputClass}
+                    placeholder="Contoh: Wingbox"
                     value={editForm.jenis}
                     onChange={(e) => setEditForm({ ...editForm, jenis: e.target.value })}
-                  >
-                    {TRUCK_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
+                    autoComplete="off"
+                  />
                 </label>
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-slate-600">Kapasitas</span>

@@ -70,10 +70,15 @@ export function registerShipmentRoutes(router: Router) {
       where.push("s.customer_id = ?");
       params.push(actor.customerId);
     }
-    // Cancelled orders are internal-admin/owning-customer data only - never
-    // shown to Viewer or Driver, even if they explicitly filter for it.
-    if (actor.role === "Viewer" || actor.role === "Driver") {
+    // Cancelled orders are "data batal order" - a separate bucket, not part
+    // of the everyday Data Pengiriman view. They're excluded from the
+    // default ("Semua") list for every role, including Superadmin/Admin/
+    // Cust-Admin, and only surface when explicitly filtered by
+    // status=Dibatalkan. Viewer/Driver never see them, even then.
+    if (!status) {
       where.push("s.status != 'Dibatalkan'");
+    } else if (status === "Dibatalkan" && (actor.role === "Viewer" || actor.role === "Driver")) {
+      where.push("1 = 0");
     }
     if (search) {
       where.push("(s.awb LIKE ? OR s.pengirim_nama LIKE ? OR s.penerima_nama LIKE ?)");

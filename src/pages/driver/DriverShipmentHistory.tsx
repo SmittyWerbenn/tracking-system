@@ -2,6 +2,7 @@ import { AlertTriangle, ArrowLeft, ArrowRight, Download, FileText, X } from "luc
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { DriverLayout } from "../../components/layout/DriverLayout";
+import { RefreshButton } from "../../components/RefreshButton";
 import { useAuth } from "../../store/AuthContext";
 import { fetchDriverShipments, type DriverShipmentSummary } from "../../utils/driverApi";
 import { exportDriverShipmentsCsv } from "../../utils/exportCsv";
@@ -45,6 +46,22 @@ export default function DriverShipmentHistory() {
   const [dateTo, setDateTo] = useState("");
   const [statusFilter, setStatusFilter] = useState("Semua");
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  function fetchHistory() {
+    return fetchDriverShipments()
+      .then(setShipments)
+      .catch(() => setError("Gagal memuat data pengiriman. Coba muat ulang halaman."));
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await fetchHistory();
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   async function handleDownloadPdf() {
     setPdfLoading(true);
@@ -64,9 +81,8 @@ export default function DriverShipmentHistory() {
   }
 
   useEffect(() => {
-    fetchDriverShipments()
-      .then(setShipments)
-      .catch(() => setError("Gagal memuat data pengiriman. Coba muat ulang halaman."));
+    fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = useMemo(() => {
@@ -86,9 +102,12 @@ export default function DriverShipmentHistory() {
         <ArrowLeft size={15} /> Kembali
       </Link>
 
-      <div className="mb-4">
-        <h1 className="text-lg font-semibold text-slate-900">Data Pengiriman</h1>
-        <p className="text-xs text-slate-400">Seluruh pengiriman yang pernah ditugaskan ke Anda.</p>
+      <div className="no-print mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold text-slate-900">Data Pengiriman</h1>
+          <p className="text-xs text-slate-400">Seluruh pengiriman yang pernah ditugaskan ke Anda.</p>
+        </div>
+        <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
       </div>
 
       <div className="no-print mb-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm sm:flex-row sm:items-center sm:flex-wrap">

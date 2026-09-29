@@ -1,6 +1,7 @@
 import { History } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { RefreshButton } from "../../components/RefreshButton";
 import { useAuditLog } from "../../store/AuditLogContext";
 import { roleLabel, type AuditAction } from "../../types";
 import { formatTanggalPanjang } from "../../utils/format";
@@ -37,7 +38,16 @@ const ACTION_STYLE: Record<AuditAction, string> = {
 };
 
 export default function AuditLogPage() {
-  const { entries } = useAuditLog();
+  const { entries, refresh } = useAuditLog();
+  const [refreshing, setRefreshing] = useState(false);
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const [userFilter, setUserFilter] = useState("Semua");
   const [actionFilter, setActionFilter] = useState("Semua");
@@ -65,9 +75,12 @@ export default function AuditLogPage() {
 
   return (
     <AdminLayout>
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Audit Log</h1>
-        <p className="mt-1 text-sm text-slate-500">Riwayat siapa mengubah apa dan kapan.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Audit Log</h1>
+          <p className="mt-1 text-sm text-slate-500">Riwayat siapa mengubah apa dan kapan.</p>
+        </div>
+        <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

@@ -1,6 +1,7 @@
 import { Building2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { RefreshButton } from "../../components/RefreshButton";
 import { api, ApiError } from "../../utils/apiClient";
 import { formatTanggalPanjang } from "../../utils/format";
 
@@ -25,36 +26,42 @@ function formatCreatedAt(iso: string): string {
 export default function CustomerList() {
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
+  function fetchCustomers() {
     setError(null);
-    api
+    return api
       .get<{ items: CustomerRow[] }>("/api/customers")
-      .then((res) => {
-        if (!cancelled) setCustomers(res.items);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof ApiError ? err.message : "Gagal memuat data customer.");
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then((res) => setCustomers(res.items))
+      .catch((err) => setError(err instanceof ApiError ? err.message : "Gagal memuat data customer."));
+  }
+
+  useEffect(() => {
+    setIsLoading(true);
+    fetchCustomers().finally(() => setIsLoading(false));
   }, []);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await fetchCustomers();
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   return (
     <AdminLayout>
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Master Data Customer</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Daftar Customer ID yang pernah dibuat lewat akun Cust-Admin di Manajemen User, beserta jumlah
-          pengiriman yang tertaut ke masing-masing Customer ID.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Master Data Customer</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Daftar Customer ID yang pernah dibuat lewat akun Cust-Admin di Manajemen User, beserta jumlah
+            pengiriman yang tertaut ke masing-masing Customer ID.
+          </p>
+        </div>
+        <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
       </div>
 
       {error && (

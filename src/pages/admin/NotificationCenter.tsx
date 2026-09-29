@@ -1,7 +1,8 @@
 import { AlertTriangle, Bell, CheckCircle2, Mail, PackagePlus } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { RefreshButton } from "../../components/RefreshButton";
 import { useNotifications } from "../../store/NotificationContext";
 import type { NotificationTrigger } from "../../types";
 import { formatTanggalPanjang } from "../../utils/format";
@@ -17,7 +18,16 @@ function formatTimestamp(iso: string): string {
 }
 
 export default function NotificationCenter() {
-  const { notifications, markAllRead } = useNotifications();
+  const { notifications, refresh, markAllRead } = useNotifications();
+  const [refreshing, setRefreshing] = useState(false);
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   useEffect(() => {
     markAllRead();
@@ -26,11 +36,14 @@ export default function NotificationCenter() {
 
   return (
     <AdminLayout>
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Notification Center</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Notifikasi customer yang dibuat sistem (resi terbit, kendala, dan pengiriman selesai).
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Notification Center</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Notifikasi customer yang dibuat sistem (resi terbit, kendala, dan pengiriman selesai).
+          </p>
+        </div>
+        <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
       </div>
 
       <div className="mt-5 flex flex-col gap-3">

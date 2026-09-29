@@ -18,6 +18,7 @@ import { Link, useParams } from "react-router-dom";
 import { DriverLayout } from "../../components/layout/DriverLayout";
 import { LocationTextInput } from "../../components/LocationTextInput";
 import { PhotoPickerBox } from "../../components/PhotoPickerBox";
+import { RefreshButton } from "../../components/RefreshButton";
 import { useLocations } from "../../store/LocationContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { ShipmentStatus, TimelineEventType } from "../../types";
@@ -84,6 +85,8 @@ export default function DriverShipmentDetail() {
   const [statusError, setStatusError] = useState<string | null>(null);
   const [statusSaved, setStatusSaved] = useState(false);
 
+  const [refreshing, setRefreshing] = useState(false);
+
   useEffect(() => {
     if (!awb) return;
     let cancelled = false;
@@ -104,6 +107,21 @@ export default function DriverShipmentDetail() {
       cancelled = true;
     };
   }, [awb]);
+
+  async function handleRefresh() {
+    if (!awb) return;
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        fetchDriverShipmentDetail(awb)
+          .then(setData)
+          .catch((err) => setLoadError(err instanceof ApiError ? err.message : "Gagal memuat pengiriman.")),
+        fetchDriverLastPosition(awb).then(setLastPosition).catch(() => {}),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   function handleReportPosition() {
     if (!awb) return;
@@ -279,9 +297,12 @@ export default function DriverShipmentDetail() {
 
   return (
     <DriverLayout wide>
-      <Link to="/driver" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
-        <ArrowLeft size={15} /> Kembali
-      </Link>
+      <div className="mb-4 flex items-center justify-between">
+        <Link to="/driver" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
+          <ArrowLeft size={15} /> Kembali
+        </Link>
+        <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
+      </div>
 
       <div className="lg:grid lg:grid-cols-5 lg:items-start lg:gap-4">
         {/* Left column: shipment info (read-heavy) */}

@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { QRCode } from "../../components/QRCode";
+import { RefreshButton } from "../../components/RefreshButton";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../store/AuthContext";
 import { useShipments } from "../../store/ShipmentContext";
@@ -30,6 +31,7 @@ export default function ShipmentDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [claimActionPending, setClaimActionPending] = useState(false);
   const [claimActionError, setClaimActionError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const canManageClaims = profile?.role === "Superadmin" || profile?.role === "Admin";
 
   function reload() {
@@ -37,6 +39,15 @@ export default function ShipmentDetail() {
       setShipment(s);
       return s;
     });
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await reload();
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   useEffect(() => {
@@ -144,6 +155,7 @@ export default function ShipmentDetail() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2 no-print">
+          <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
           <button
             onClick={printResi}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"

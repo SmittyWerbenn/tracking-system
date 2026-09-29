@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArmadaStatusBadge } from "../../components/ArmadaStatusBadge";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { RefreshButton } from "../../components/RefreshButton";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useFleet } from "../../store/FleetContext";
 import type { ShipmentStatus } from "../../types";
@@ -30,21 +31,35 @@ export default function TruckHistory() {
   const [dateTo, setDateTo] = useState("");
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const truck = getTruck(id ?? "");
 
-  useEffect(() => {
-    if (!id) return;
-    setIsLoading(true);
+  function fetchHistory() {
+    if (!id) return Promise.resolve();
     const search = new URLSearchParams({ limit: "100" });
     if (dateFrom) search.set("from", dateFrom);
     if (dateTo) search.set("to", dateTo);
-    api
+    return api
       .get<{ items: HistoryRow[] }>(`/api/trucks/${id}/history?${search.toString()}`)
       .then((res) => setRows(res.items))
-      .catch(() => setRows([]))
-      .finally(() => setIsLoading(false));
+      .catch(() => setRows([]));
+  }
+
+  useEffect(() => {
+    setIsLoading(true);
+    fetchHistory().finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, dateFrom, dateTo]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await fetchHistory();
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   function statusForTruck(s: HistoryRow): FilterMode {
     if (s.truck_id === id && s.status !== "Selesai / Terkirim") return "Sedang Dibawa";
@@ -68,12 +83,15 @@ export default function TruckHistory() {
 
   return (
     <AdminLayout>
-      <button
-        onClick={() => navigate(-1)}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800"
-      >
-        <ArrowLeft size={15} /> Kembali
-      </button>
+      <div className="mb-4 flex items-center justify-between">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800"
+        >
+          <ArrowLeft size={15} /> Kembali
+        </button>
+        <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
+      </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">

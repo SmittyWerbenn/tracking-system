@@ -2,6 +2,7 @@ import { AlertTriangle, Ban, CheckCircle2, MapPinned, Pencil, RotateCcw, Table, 
 import { useMemo, useState, type FormEvent } from "react";
 import { BulkLocationImport } from "../../components/BulkLocationImport";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { RefreshButton } from "../../components/RefreshButton";
 import { useAuth } from "../../store/AuthContext";
 import { useLocations, type TitikFormData } from "../../store/LocationContext";
 import { ApiError } from "../../utils/apiClient";
@@ -23,9 +24,19 @@ const JENIS_STYLE: Record<TitikJenis, string> = {
 };
 
 export default function LocationList() {
-  const { titikLokasi, createTitik, updateTitik, setTitikAktif } = useLocations();
+  const { titikLokasi, refresh, createTitik, updateTitik, setTitikAktif } = useLocations();
   const { profile } = useAuth();
   const canEdit = profile?.role === "Superadmin" || profile?.role === "Admin";
+
+  const [refreshing, setRefreshing] = useState(false);
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const [expanded, setExpanded] = useState(false);
   const [mode, setMode] = useState<"single" | "bulk">("single");
@@ -98,14 +109,19 @@ export default function LocationList() {
                 : "Tambah banyak titik lokasi sekaligus dengan mengisi tabel atau mengimpor file Excel/CSV."}
           </p>
         </div>
-        {canEdit && !expanded && (
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-          >
-            <Plus size={16} /> Tambah Titik
-          </button>
+        {!expanded && (
+          <div className="flex items-center gap-2">
+            <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => setExpanded(true)}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+              >
+                <Plus size={16} /> Tambah Titik
+              </button>
+            )}
+          </div>
         )}
         {canEdit && expanded && (
           <div className="flex items-center gap-2">

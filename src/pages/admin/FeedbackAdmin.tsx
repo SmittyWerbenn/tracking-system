@@ -1,8 +1,9 @@
 import { MessageSquare, Star } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { StatCard } from "../../components/StatCard";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { RefreshButton } from "../../components/RefreshButton";
 import { useFeedback } from "../../store/FeedbackContext";
 import { formatTanggalPendek } from "../../utils/format";
 
@@ -21,7 +22,16 @@ function StarRow({ rating }: { rating: number }) {
 }
 
 export default function FeedbackAdmin() {
-  const { feedback } = useFeedback();
+  const { feedback, refresh } = useFeedback();
+  const [refreshing, setRefreshing] = useState(false);
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const summary = useMemo(() => {
     const total = feedback.length;
@@ -37,9 +47,12 @@ export default function FeedbackAdmin() {
 
   return (
     <AdminLayout>
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Feedback Customer</h1>
-        <p className="mt-1 text-sm text-slate-500">Ulasan customer setelah pengiriman selesai.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Feedback Customer</h1>
+          <p className="mt-1 text-sm text-slate-500">Ulasan customer setelah pengiriman selesai.</p>
+        </div>
+        <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">

@@ -1,6 +1,7 @@
 import { Camera, Pencil, Plus, Power, Shield, Upload, X } from "lucide-react";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { RefreshButton } from "../../components/RefreshButton";
 import { useAuth } from "../../store/AuthContext";
 import { useUserManagement, type UserFormData } from "../../store/UserManagementContext";
 import { ASSIGNABLE_USER_ROLES, roleLabel, type AppUser, type UserRole } from "../../types";
@@ -58,7 +59,16 @@ function formatLastLogin(iso?: string): string {
 }
 
 export default function UserManagement() {
-  const { users, drivers, customerIds, createUser, updateUser, setUserActive } = useUserManagement();
+  const { users, drivers, customerIds, refresh, createUser, updateUser, setUserActive } = useUserManagement();
+  const [refreshing, setRefreshing] = useState(false);
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }
   const { profile } = useAuth();
   // Admin may only add/edit Driver and Viewer accounts - Admin-role
   // accounts (including their own) are Superadmin's to manage.
@@ -155,12 +165,15 @@ export default function UserManagement() {
               : ""}
           </p>
         </div>
-        <button
-          onClick={openAdd}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-        >
-          <Plus size={16} /> Tambah User
-        </button>
+        <div className="flex items-center gap-2">
+          <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
+          <button
+            onClick={openAdd}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+          >
+            <Plus size={16} /> Tambah User
+          </button>
+        </div>
       </div>
 
       <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

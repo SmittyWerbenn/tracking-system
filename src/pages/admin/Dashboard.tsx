@@ -13,6 +13,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { RefreshButton } from "../../components/RefreshButton";
 import { StagnantShipmentsCard } from "../../components/StagnantShipmentsCard";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -36,22 +37,37 @@ interface DashboardStats {
 }
 
 export default function Dashboard() {
-  const { shipments } = useShipments();
+  const { shipments, refresh: refreshShipments } = useShipments();
   const { profile } = useAuth();
   const canCreateShipment =
     profile?.role === "Superadmin" || profile?.role === "Admin" || profile?.role === "Cust-Admin";
-  const { notifications } = useNotifications();
-  const { feedback } = useFeedback();
+  const { notifications, refresh: refreshNotifications } = useNotifications();
+  const { feedback, refresh: refreshFeedback } = useFeedback();
   const { settings } = useSettings();
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    api
+  function fetchStats() {
+    return api
       .get<DashboardStats>(`/api/dashboard/stats?stagnantDays=${settings.stagnantThresholdDays}`)
       .then(setStats)
       .catch(() => setStats(null));
+  }
+
+  useEffect(() => {
+    fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.stagnantThresholdDays]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await Promise.all([fetchStats(), refreshShipments(), refreshNotifications(), refreshFeedback()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const total = stats?.totalShipments ?? 0;
   const dalamPerjalanan = stats?.statusCounts["Dalam Perjalanan"] ?? 0;
@@ -86,15 +102,18 @@ export default function Dashboard() {
             Ringkasan operasional pengiriman PT Gangsar Mitra Suatama.
           </p>
         </div>
-        {canCreateShipment && (
-          <Link
-            to="/admin/pengiriman/baru"
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800"
-          >
-            <PackagePlus size={17} />
-            Buat Pengiriman
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
+          {canCreateShipment && (
+            <Link
+              to="/admin/pengiriman/baru"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800"
+            >
+              <PackagePlus size={17} />
+              Buat Pengiriman
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">

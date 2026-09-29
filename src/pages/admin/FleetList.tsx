@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ArmadaStatusBadge } from "../../components/ArmadaStatusBadge";
 import { BulkFleetImport } from "../../components/BulkFleetImport";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { RefreshButton } from "../../components/RefreshButton";
 import { useAuth } from "../../store/AuthContext";
 import { useFleet, type TruckFormData, type TruckWithDriver } from "../../store/FleetContext";
 import type { ArmadaStatus } from "../../types";
@@ -30,9 +31,19 @@ const emptyForm: TruckFormData = {
 };
 
 export default function FleetList() {
-  const { trucksWithDriver, createTruck, updateTruck, setTruckStatus } = useFleet();
+  const { trucksWithDriver, refresh, createTruck, updateTruck, setTruckStatus } = useFleet();
   const { profile } = useAuth();
   const canEdit = profile?.role === "Superadmin" || profile?.role === "Admin";
+
+  const [refreshing, setRefreshing] = useState(false);
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const [expanded, setExpanded] = useState(false);
   const [mode, setMode] = useState<"single" | "bulk">("single");
@@ -138,14 +149,19 @@ export default function FleetList() {
                 : "Tambah banyak unit truck sekaligus dengan mengisi tabel atau mengimpor file Excel/CSV."}
           </p>
         </div>
-        {canEdit && !expanded && (
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-          >
-            <Plus size={16} /> Tambah Truck
-          </button>
+        {!expanded && (
+          <div className="flex items-center gap-2">
+            <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => setExpanded(true)}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+              >
+                <Plus size={16} /> Tambah Truck
+              </button>
+            )}
+          </div>
         )}
         {canEdit && expanded && (
           <div className="flex items-center gap-2">

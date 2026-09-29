@@ -168,7 +168,7 @@ export default function CreateShipment() {
       return;
     }
     if (!form.customerId?.trim()) {
-      setFormError("Nomor Pelanggan wajib diisi.");
+      setFormError("Customer ID wajib diisi.");
       return;
     }
     setFormError(null);
@@ -401,7 +401,7 @@ export default function CreateShipment() {
               ))}
             </select>
           </Field>
-          <Field label="Nomor Pelanggan">
+          <Field label="Customer ID">
             <input
               required
               disabled={isCustAdmin}
@@ -419,7 +419,7 @@ export default function CreateShipment() {
             </datalist>
             {isCustAdmin && (
               <p className="mt-1.5 text-[11px] text-slate-400">
-                Terkunci ke Nomor Pelanggan akun Anda.
+                Terkunci ke Customer ID akun Anda.
               </p>
             )}
           </Field>

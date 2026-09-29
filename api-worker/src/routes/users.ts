@@ -53,7 +53,7 @@ export function registerUserRoutes(router: Router) {
   });
 
   // Distinct customer_id values already in use (from Cust-Admin accounts)
-  // - powers the "Nomor Pelanggan" autocomplete on Buat Pengiriman and
+  // - powers the "Customer ID" autocomplete on Buat Pengiriman and
   // Manajemen User, so the same customer keeps a consistent ID instead of
   // near-duplicate free-text typos. Any authenticated role may call this.
   router.get("/api/customer-ids", async (ctx: Ctx) => {
@@ -80,10 +80,10 @@ export function registerUserRoutes(router: Router) {
     }
 
     if (role === "Cust-Admin" && !customerId) {
-      throw Errors.badRequest("Nomor Pelanggan wajib diisi untuk role Cust-Admin.");
+      throw Errors.badRequest("Customer ID wajib diisi untuk role Cust-Admin.");
     }
     if (customerId && role !== "Cust-Admin") {
-      throw Errors.badRequest("Nomor Pelanggan hanya berlaku untuk role Cust-Admin.");
+      throw Errors.badRequest("Customer ID hanya berlaku untuk role Cust-Admin.");
     }
 
     if (driverId && role !== "Driver") {
@@ -163,10 +163,10 @@ export function registerUserRoutes(router: Router) {
       throw Errors.badRequest("driverId hanya berlaku untuk role Driver.");
     }
     if (effectiveRole === "Cust-Admin" && !effectiveCustomerId) {
-      throw Errors.badRequest("Nomor Pelanggan wajib diisi untuk role Cust-Admin.");
+      throw Errors.badRequest("Customer ID wajib diisi untuk role Cust-Admin.");
     }
     if (effectiveCustomerId && effectiveRole !== "Cust-Admin") {
-      throw Errors.badRequest("Nomor Pelanggan hanya berlaku untuk role Cust-Admin.");
+      throw Errors.badRequest("Customer ID hanya berlaku untuk role Cust-Admin.");
     }
     if (driverId) {
       const driver = await ctx.env.DB.prepare(`SELECT id, user_id FROM drivers WHERE id = ?`)
@@ -198,7 +198,7 @@ export function registerUserRoutes(router: Router) {
       values.push(customerId);
     } else if (role && role !== "Cust-Admin" && target.role === "Cust-Admin") {
       // Role moved away from Cust-Admin without explicitly clearing the
-      // Nomor Pelanggan - clear it so a re-promotion later doesn't inherit
+      // Customer ID - clear it so a re-promotion later doesn't inherit
       // a stale customer scope.
       sets.push("customer_id = ?");
       values.push(null);

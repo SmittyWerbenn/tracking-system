@@ -78,7 +78,7 @@ export interface Shipment {
   fotoSuratJalan?: string;
   truck: TruckInfo;
   truckId?: string; // links to Truck master data
-  /** Nomor Pelanggan this shipment is tagged to - mandatory on every
+  /** Customer ID this shipment is tagged to - mandatory on every
    * shipment, scopes visibility for Cust-Admin accounts server-side. */
   customerId?: string | null;
   timeline: TimelineEvent[];
@@ -116,7 +116,7 @@ export interface ShipmentFormData {
   truckId?: string;
   /** SLA in business days; ETA is calculated server-side from this. */
   slaValue?: number;
-  /** Nomor Pelanggan - mandatory. A Cust-Admin's value is ignored by the
+  /** Customer ID - mandatory. A Cust-Admin's value is ignored by the
    * server and force-replaced with its own; other creator roles must
    * supply one explicitly. */
   customerId?: string;
@@ -228,7 +228,7 @@ export interface AppUser {
   /** File id of the user's avatar (see api-worker's `files` table) -
    * resolve to a viewable URL with `useFileUrl`, never a raw image itself. */
   foto?: string;
-  /** Nomor Pelanggan - set only for role "Cust-Admin", scopes that account
+  /** Customer ID - set only for role "Cust-Admin", scopes that account
    * to just its own customer's shipments. */
   customerId?: string | null;
 }

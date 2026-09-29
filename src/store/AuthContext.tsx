@@ -8,7 +8,7 @@ export interface AdminProfile {
   email: string;
   role: UserRole;
   fotoFileId?: string;
-  /** Nomor Pelanggan - set only for role "Cust-Admin". */
+  /** Customer ID - set only for role "Cust-Admin". */
   customerId?: string | null;
 }
 

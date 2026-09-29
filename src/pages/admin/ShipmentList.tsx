@@ -335,7 +335,7 @@ export default function ShipmentList() {
                 <th className="px-4 py-3 font-medium">Rute</th>
                 {viewMode === "detail" && (
                   <>
-                    <th className="px-4 py-3 font-medium">Nomor Pelanggan</th>
+                    <th className="px-4 py-3 font-medium">Customer ID</th>
                     <th className="px-4 py-3 font-medium">Service</th>
                     <th className="px-4 py-3 font-medium">Berat (Kg)</th>
                     <th className="px-4 py-3 font-medium">Koli</th>

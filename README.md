@@ -158,6 +158,7 @@ flowchart TB
 - URL backend (`gms-api` dan `gms-email-api`) **di-hardcode** di source frontend (`src/utils/apiClient.ts`, `src/utils/sendEmail.ts`), bukan lewat environment variable saat build. Lihat [§32 Known Limitations](#32-known-limitations).
 - Tidak ada API gateway/reverse proxy tambahan — Worker langsung menangani CORS dan routing sendiri (router custom, lihat [§5](#5-project-structure)).
 - Saat development lokal (`vite dev`), ada middleware Vite (`server/emailApiPlugin.ts`) yang mereplikasi endpoint email secara lokal via `nodemailer`, supaya tidak perlu deploy Worker email untuk testing lokal.
+- **Struktur domain (migrasi Sep 2026)**: frontend disajikan di **tiga origin** — public/company profile di `gms-logistics.id`, dashboard admin di `admin.gms-logistics.id`, portal driver di `driver.gms-logistics.id`. Ketiganya menyajikan SPA yang sama; pemilihan portal ditentukan di sisi klien oleh `src/utils/urls.ts` (`detectPortal`) + guard di `src/App.tsx`. `admin.`/`driver.` disajikan oleh Worker edge `gms-edge` (`edge-worker/`, reverse-proxy ke `gms-logistics.id`), dan `temp-gms.frel.cloud` (domain lama) di-redirect 301 oleh Worker yang sama. URL absolut (QR/email) memakai konstanta `PUBLIC_BASE_URL`/`ADMIN_BASE_URL`/`DRIVER_BASE_URL` di `src/utils/urls.ts`.
 
 ---
 
@@ -190,10 +191,13 @@ flowchart TB
 │   │   └── http.ts               # Response wrapper & error types
 │   ├── migrations/               # 6 file SQL migration (schema + 1 data migration)
 │   └── wrangler.toml             # Config deploy Worker (D1 binding, env vars, secrets)
-├── cloudflare-worker/            # Backend email (Cloudflare Worker: gms-email-api)
-│   ├── src/index.ts              # Kirim email via worker-mailer (Brevo SMTP)
-│   └── wrangler.toml
-├── server/                       # Middleware Vite dev-only (mereplikasi email API lokal)
+├── cloudflare-worker/ # Backend email (Cloudflare Worker: gms-email-api)
+│ ├── src/index.ts # Kirim email via worker-mailer (Brevo SMTP)
+│ └── wrangler.toml
+├── edge-worker/ # Cloudflare Worker gms-edge: proxy admin/driver subdomain + redirect temp-gms
+│ ├── src/index.ts
+│ └── wrangler.toml
+├── server/ # Middleware Vite dev-only (mereplikasi email API lokal)
 │   ├── emailApiPlugin.ts
 │   └── emailTemplate.ts          # Dipakai bersama oleh dev server & cloudflare-worker
 ├── public/                       # Static assets + 404.html (SPA fallback GitHub Pages)
@@ -832,7 +836,7 @@ Tidak ada integrasi payment gateway, maps API, SMS provider, atau analytics/APM 
 
 | Variable | Purpose | Required | Example |
 |---|---|---|---|
-| `ALLOWED_ORIGINS` | Daftar origin yang diizinkan CORS (comma-separated) | Yes | `https://smittywerbenn.github.io,https://temp-gms.frel.cloud,http://localhost:5183` |
+| `ALLOWED_ORIGINS` | Daftar origin yang diizinkan CORS (comma-separated) | Yes | `https://gms-logistics.id,https://admin.gms-logistics.id,https://driver.gms-logistics.id,https://smittywerbenn.github.io,http://localhost:5183` |
 | `MINIO_ENDPOINT` | Endpoint MinIO | Yes | `https://os-api.rextop.id` |
 | `MINIO_BUCKET` | Nama bucket | Yes | `gms` |
 | `SESSION_TTL_HOURS` | Lama sesi login (jam) | Yes | `24` |

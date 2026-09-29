@@ -7,6 +7,7 @@ import {
   Loader2,
   Mail,
   MapPin,
+  Navigation,
   Package,
   Pencil,
   Printer,
@@ -25,7 +26,18 @@ import { useAuth } from "../../store/AuthContext";
 import { useLocations } from "../../store/LocationContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment } from "../../types";
+import { api } from "../../utils/apiClient";
 import { formatJam, formatTanggalJam, formatTanggalPanjang } from "../../utils/format";
+
+/** Last row of driver_position_reports (raw DB shape) - the driver portal's
+ * "Perbarui Posisi" button writes this, the detail page only reads it. */
+interface DriverPosition {
+ latitude: number;
+ longitude: number;
+ accuracy: number | null;
+ created_at: string;
+ driver_nama: string | null;
+}
 
 export default function ShipmentDetail() {
   const { awb } = useParams<{ awb: string }>();
@@ -38,6 +50,7 @@ export default function ShipmentDetail() {
   const [claimActionPending, setClaimActionPending] = useState(false);
   const [claimActionError, setClaimActionError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [driverPosition, setDriverPosition] = useState<DriverPosition | null>(null);
   const canManageClaims = profile?.role === "Superadmin" || profile?.role === "Admin";
 
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
@@ -55,34 +68,53 @@ export default function ShipmentDetail() {
   const kotaSuggestions = Array.from(new Set(activeTitikLokasi.map((k) => k.namaKota))).sort();
 
   function reload() {
-    return getByAwb(awb ?? "").then((s) => {
-      setShipment(s);
-      return s;
-    });
+  return getByAwb(awb ?? "").then((s) => {
+  setShipment(s);
+  return s;
+  });
+  }
+
+  /** Position is supplementary - a failed fetch must never block or hide the
+  * detail page, hence the swallowed error (the card simply stays absent). */
+  function loadPosition() {
+  return api
+  .get<{ lastPosition: DriverPosition | null }>(
+  `/api/shipments/${encodeURIComponent(awb ?? "")}/position`,
+  )
+  .then((res) => setDriverPosition(res.lastPosition))
+  .catch(() => {});
   }
 
   async function handleRefresh() {
-    setRefreshing(true);
-    try {
-      await reload();
-    } finally {
-      setRefreshing(false);
-    }
+  setRefreshing(true);
+  try {
+  await Promise.all([reload(), loadPosition()]);
+  } finally {
+  setRefreshing(false);
+  }
   }
 
   useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    getByAwb(awb ?? "").then((s) => {
-      if (!cancelled) {
-        setShipment(s);
-        setIsLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  let cancelled = false;
+  setIsLoading(true);
+  getByAwb(awb ?? "").then((s) => {
+  if (!cancelled) {
+  setShipment(s);
+  setIsLoading(false);
+  }
+  });
+  api
+  .get<{ lastPosition: DriverPosition | null }>(
+  `/api/shipments/${encodeURIComponent(awb ?? "")}/position`,
+  )
+  .then((res) => {
+  if (!cancelled) setDriverPosition(res.lastPosition);
+  })
+  .catch(() => {});
+  return () => {
+  cancelled = true;
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [awb]);
 
   async function handleConfirmClaim() {
@@ -475,6 +507,42 @@ export default function ShipmentDetail() {
               <p className="text-sm font-medium text-slate-800">
                 {formatTanggalPanjang(shipment.pod.tanggal)} · {formatJam(shipment.pod.jam)}
               </p>
+            </div>
+          )}
+          {driverPosition && (
+            <div className="no-print rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                <Navigation size={13} /> Posisi Terakhir Driver
+              </p>
+              <p className="text-sm font-semibold text-slate-900">
+                {driverPosition.latitude.toFixed(5)}, {driverPosition.longitude.toFixed(5)}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                {formatTanggalJam(
+                  driverPosition.created_at.slice(0, 10),
+                  driverPosition.created_at.slice(11, 16),
+                )}
+              </p>
+              <p className="text-xs text-slate-500">
+                {driverPosition.driver_nama
+                  ? `Dilaporkan oleh ${driverPosition.driver_nama}`
+                  : "Dilaporkan dari portal driver"}
+              </p>
+              {driverPosition.accuracy != null && (
+                <p className="text-xs text-slate-500">
+                  Akurasi ±{Math.round(driverPosition.accuracy)} m
+                </p>
+              )}
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                  `${driverPosition.latitude},${driverPosition.longitude}`,
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <Navigation size={13} /> Buka di Google Maps
+              </a>
             </div>
           )}
           <div className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white p-5 text-center shadow-sm print:shadow-none">

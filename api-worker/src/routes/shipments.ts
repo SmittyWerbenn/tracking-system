@@ -245,9 +245,41 @@ export function registerShipmentRoutes(router: Router) {
       .all();
 
     return ok({ shipment: shipmentSummary(row), timeline: timeline.results, pod: pod ?? null, files: files.results ?? [] });
-  });
+    });
 
-  router.patch("/api/shipments/:awb", async (ctx: Ctx, params) => {
+    // Last position reported by the driver ("Perbarui Posisi" button on the
+    // driver portal) - so the admin's detail page can show where the unit last
+    // reported from, instead of only the driver ever seeing it. Row-level
+    // access rules mirror GET /api/shipments/:awb exactly.
+    router.get("/api/shipments/:awb/position", async (ctx: Ctx, params) => {
+    const actor = requirePermission(ctx, "shipments.view");
+    const row = await ctx.env.DB.prepare(
+    `SELECT status, customer_id FROM shipments WHERE awb = ?`,
+    )
+    .bind(params.awb)
+    .first<{ status: string; customer_id: string | null }>();
+    if (!row) throw Errors.notFound("AWB tidak ditemukan.");
+    if ((actor.role === "Viewer" || actor.role === "Driver") && row.status === "Dibatalkan") {
+    throw Errors.notFound("AWB tidak ditemukan.");
+    }
+    if (actor.role === "Cust-Admin" && row.customer_id !== actor.customerId) {
+    throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
+    }
+
+    const lastPosition = await ctx.env.DB.prepare(
+    `SELECT p.latitude, p.longitude, p.accuracy, p.created_at, u.nama as driver_nama
+    FROM driver_position_reports p
+    LEFT JOIN users u ON u.id = p.driver_user_id
+    WHERE p.awb = ?
+    ORDER BY p.created_at DESC LIMIT 1`,
+    )
+    .bind(params.awb)
+    .first();
+
+    return ok({ lastPosition: lastPosition ?? null });
+    });
+
+    router.patch("/api/shipments/:awb", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "shipments.update_info");
     const shipment = await ctx.env.DB.prepare(`SELECT status, tanggal_dibuat, sla_value, estimasi_tiba FROM shipments WHERE awb = ?`)
       .bind(params.awb)

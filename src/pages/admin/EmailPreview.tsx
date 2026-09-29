@@ -225,7 +225,7 @@ export default function EmailPreview() {
             <div className="overflow-hidden rounded-lg bg-white shadow-sm">
               <div className="bg-blue-900 px-6 py-5 text-center">
                 <img src={logoIcon} alt="GMS Logistics" className="mx-auto h-10 w-10 object-contain" />
-                <p className="mt-2 text-sm font-semibold text-white">PT Gangsar Mitra Suatama</p>
+                <p className="mt-2 text-sm font-semibold text-white">GMS Logistics</p>
               </div>
 
               <div className="px-6 py-6">
@@ -246,7 +246,7 @@ export default function EmailPreview() {
                   <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-sm">
                     <div>
                       <p className="text-[11px] text-slate-400">Dari</p>
-                      <p className="font-medium text-slate-700">PT Gangsar Mitra Suatama</p>
+                      <p className="font-medium text-slate-700">{shipment.pengirim.nama}</p>
                       <p className="text-xs text-slate-500">{shipment.kotaAsal}</p>
                     </div>
                     <div>

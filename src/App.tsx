@@ -25,6 +25,7 @@ import NotificationCenter from "./pages/admin/NotificationCenter";
 import SettingsPage from "./pages/admin/SettingsPage";
 import ShipmentDetail from "./pages/admin/ShipmentDetail";
 import ShipmentList from "./pages/admin/ShipmentList";
+import ShipmentTracking from "./pages/admin/ShipmentTracking";
 import TruckHistory from "./pages/admin/TruckHistory";
 import UpdateTracking from "./pages/admin/UpdateTracking";
 import UserManagement from "./pages/admin/UserManagement";
@@ -95,6 +96,7 @@ export default function App() {
           <Route path="/admin/pengiriman" element={<RequireAuth><ShipmentList /></RequireAuth>} />
           <Route path="/admin/pengiriman/baru" element={<RequireShipmentCreator><CreateShipment /></RequireShipmentCreator>} />
           <Route path="/admin/resi/:awb" element={<RequireAuth><ShipmentDetail /></RequireAuth>} />
+          <Route path="/admin/tracking/:awb" element={<RequireAuth><ShipmentTracking /></RequireAuth>} />
           <Route path="/admin/resi/:awb/email" element={<RequireAuth><EmailPreview /></RequireAuth>} />
           <Route
             path="/admin/update-tracking/:awb"

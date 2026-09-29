@@ -248,7 +248,7 @@ export default function ShipmentDetail() {
             <Mail size={15} /> Kirim Email
           </Link>
           <Link
-            to={`/tracking/${shipment.awb}`}
+            to={`/admin/tracking/${shipment.awb}`}
             className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-blue-800"
           >
             <MapPin size={15} /> Lihat Tracking

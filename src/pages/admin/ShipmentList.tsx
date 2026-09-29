@@ -488,7 +488,7 @@ export default function ShipmentList() {
                         <Eye size={16} />
                       </Link>
                       <Link
-                        to={`/tracking/${s.awb}`}
+                        to={`/admin/tracking/${s.awb}`}
                         title="Tracking"
                         className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
                       >

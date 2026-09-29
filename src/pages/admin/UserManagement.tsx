@@ -398,7 +398,7 @@ export default function UserManagement() {
                       required
                       list="customer-id-suggestions"
                       className={inputClass}
-                      placeholder="IDCUST001"
+                      placeholder="Contoh: IDCUST001"
                       value={form.customerId ?? ""}
                       onChange={(e) => setForm({ ...form, customerId: e.target.value })}
                       autoComplete="off"

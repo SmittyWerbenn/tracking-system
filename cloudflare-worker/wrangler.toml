@@ -16,4 +16,4 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 # Origins allowed to call this API (comma-separated), set as a plain var
 # since it's not secret.
-ALLOWED_ORIGINS = "https://smittywerbenn.github.io,https://temp-gms.frel.cloud,http://localhost:5183"
+ALLOWED_ORIGINS = "https://gms-logistics.id,https://admin.gms-logistics.id,https://driver.gms-logistics.id,https://smittywerbenn.github.io,https://temp-gms.frel.cloud,http://localhost:5183"

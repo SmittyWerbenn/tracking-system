@@ -1,0 +1,11 @@
+name = "gms-edge"
+main = "src/index.ts"
+compatibility_date = "2026-09-11"
+account_id = "aea7460c185f9ed038f60167b730c47b"
+workers_dev = false
+
+routes = [
+  { pattern = "admin.gms-logistics.id/*", zone_name = "gms-logistics.id" },
+  { pattern = "driver.gms-logistics.id/*", zone_name = "gms-logistics.id" },
+  { pattern = "temp-gms.frel.cloud/*", zone_name = "frel.cloud" },
+]

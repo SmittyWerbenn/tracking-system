@@ -28,6 +28,7 @@ import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment } from "../../types";
 import { api } from "../../utils/apiClient";
 import { formatJam, formatTanggalJam, formatTanggalPanjang } from "../../utils/format";
+import { trackingUrl as publicTrackingUrl } from "../../utils/urls";
 
 /** Last row of driver_position_reports (raw DB shape) - the driver portal's
  * "Perbarui Posisi" button writes this, the detail page only reads it. */
@@ -213,7 +214,7 @@ export default function ShipmentDetail() {
     );
   }
 
-  const trackingUrl = `${window.location.origin}/tracking/${shipment.awb}`;
+  const trackingUrl = publicTrackingUrl(shipment.awb);
   const isTerminalStatus = shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan";
   const canCancelOrder =
     !isTerminalStatus &&

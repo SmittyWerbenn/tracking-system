@@ -29,6 +29,7 @@ import { checkPhotoSize, compressImage } from "../../utils/compressImage";
 import { formatTanggalPanjang, todayISO } from "../../utils/format";
 import { sendTrackingEmail, type EmailableShipment } from "../../utils/sendEmail";
 import { addBusinessDays } from "../../utils/sla";
+import { trackingUrl as publicTrackingUrl } from "../../utils/urls";
 
 const emptyForm: ShipmentFormData = {
   pengirim: { nama: "", telepon: "", email: "" },
@@ -213,7 +214,7 @@ export default function CreateShipment() {
     }
   }
 
-  const trackingUrl = created ? `${window.location.origin}/tracking/${created.awb}` : "";
+  const trackingUrl = created ? publicTrackingUrl(created.awb) : "";
 
   const truckOptions = trucksWithDriver
     .filter((t) => t.status !== "Inactive")

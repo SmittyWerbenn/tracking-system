@@ -11,6 +11,7 @@ import type {
 import { api, ApiError, uploadFile } from "../utils/apiClient";
 import { resolveFileUrls, type FileRef } from "../utils/resolveFiles";
 import { sendAdminDeliveryEmail } from "../utils/sendEmail";
+import { adminResiUrl } from "../utils/urls";
 import { useAuth } from "./AuthContext";
 
 interface RawShipmentSummary {
@@ -293,7 +294,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     ]);
     if (!shipment || adminsRes.items.length === 0) return;
 
-    const detailUrl = `${window.location.origin}/admin/resi/${awb}`;
+    const detailUrl = adminResiUrl(awb);
     await Promise.all(
       adminsRes.items.map((admin) =>
         sendAdminDeliveryEmail(shipment, detailUrl, admin.email, admin.nama).catch(() => {}),

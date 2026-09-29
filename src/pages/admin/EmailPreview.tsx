@@ -8,6 +8,7 @@ import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment } from "../../types";
 import { formatTanggalPanjang } from "../../utils/format";
 import { sendTrackingEmail } from "../../utils/sendEmail";
+import { trackingUrl } from "../../utils/urls";
 
 export default function EmailPreview() {
   const { awb } = useParams<{ awb: string }>();
@@ -27,7 +28,7 @@ export default function EmailPreview() {
   const [pengirimError, setPengirimError] = useState<string | null>(null);
 
   function trackingUrlFor(current: NonNullable<typeof shipment>) {
-    return `${window.location.origin}/tracking/${current.awb}`;
+  return trackingUrl(current.awb);
   }
 
   async function handleSend(current: NonNullable<typeof shipment>) {

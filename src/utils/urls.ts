@@ -1,0 +1,40 @@
+/**
+ * Canonical public-facing URLs for the GMS Logistics apps.
+ *
+ * The three portals are served from three origins now:
+ *   - public site / tracking / cek ongkir  -> https://gms-logistics.id
+ *   - admin dashboard                      -> https://admin.gms-logistics.id
+ *   - driver portal                        -> https://driver.gms-logistics.id
+ *
+ * The API and email Workers keep their own (workers.dev) URLs, configured in
+ * apiClient.ts / sendEmail.ts - those are intentionally NOT here and must not
+ * be pointed at these app domains.
+ */
+
+export const PUBLIC_BASE_URL = "https://gms-logistics.id";
+export const ADMIN_BASE_URL = "https://admin.gms-logistics.id";
+export const DRIVER_BASE_URL = "https://driver.gms-logistics.id";
+
+/** Public tracking page for a shipment (used in QR codes, resi, and emails). */
+export function trackingUrl(awb: string): string {
+  return `${PUBLIC_BASE_URL}/tracking/${awb}`;
+}
+
+/** Admin detail page for a shipment (used in admin-notification emails). */
+export function adminResiUrl(awb: string): string {
+  return `${ADMIN_BASE_URL}/admin/resi/${awb}`;
+}
+
+/** Which portal the current hostname serves. Null for localhost and any
+ * legacy/preview host (temp-gms.frel.cloud, *.github.io) - those keep the
+ * pre-migration behaviour so local dev and the transition window still work. */
+export type Portal = "public" | "admin" | "driver" | null;
+
+export function detectPortal(): Portal {
+  if (typeof window === "undefined") return null;
+  const host = window.location.hostname;
+  if (host === "admin.gms-logistics.id") return "admin";
+  if (host === "driver.gms-logistics.id") return "driver";
+  if (host === "gms-logistics.id" || host === "www.gms-logistics.id") return "public";
+  return null;
+}

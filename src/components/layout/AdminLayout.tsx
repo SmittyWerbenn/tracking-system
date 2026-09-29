@@ -1,3 +1,4 @@
+import { adminPath } from "../../utils/urls";
 import {
   Building2,
   History,
@@ -35,24 +36,24 @@ const navGroups: { title: string; items: NavItem[] }[] = [
   {
     title: "Operasional",
     items: [
-      { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
+      { to: adminPath("/"), label: "Dashboard", icon: LayoutDashboard, end: true },
       {
-        to: "/admin/pengiriman/baru",
+        to: adminPath("/pengiriman/baru"),
         label: "Buat Pengiriman",
         icon: PackagePlus,
         end: true,
         roles: ["Superadmin", "Admin", "Cust-Admin"],
       },
-      { to: "/admin/pengiriman", label: "Data Pengiriman", icon: Package, end: true },
+      { to: adminPath("/pengiriman"), label: "Data Pengiriman", icon: Package, end: true },
     ],
   },
   {
     title: "Master Data",
     items: [
-      { to: "/admin/armada", label: "Master Armada", icon: Truck, end: false },
-      { to: "/admin/kota", label: "Kota & Titik Transit", icon: MapPinned, end: true },
+      { to: adminPath("/armada"), label: "Master Armada", icon: Truck, end: false },
+      { to: adminPath("/kota"), label: "Kota & Titik Transit", icon: MapPinned, end: true },
       {
-        to: "/admin/customer",
+        to: adminPath("/customer"),
         label: "Master Data Customer",
         icon: Building2,
         end: true,
@@ -62,15 +63,15 @@ const navGroups: { title: string; items: NavItem[] }[] = [
   },
   {
     title: "Layanan",
-    items: [{ to: "/admin/feedback", label: "Feedback Customer", icon: MessageSquare, end: true }],
+    items: [{ to: adminPath("/feedback"), label: "Feedback Customer", icon: MessageSquare, end: true }],
   },
   {
     title: "Sistem",
     items: [
-      { to: "/admin/users", label: "Manajemen User", icon: Users, end: true, roles: ["Superadmin", "Admin"] },
-      { to: "/admin/audit-log", label: "Audit Log", icon: History, end: true, roles: ["Superadmin", "Admin"] },
+      { to: adminPath("/users"), label: "Manajemen User", icon: Users, end: true, roles: ["Superadmin", "Admin"] },
+      { to: adminPath("/audit-log"), label: "Audit Log", icon: History, end: true, roles: ["Superadmin", "Admin"] },
       {
-        to: "/admin/pengaturan/tracking",
+        to: adminPath("/pengaturan/tracking"),
         label: "Pengaturan",
         icon: Settings,
         end: true,
@@ -90,7 +91,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
   function handleLogout() {
     logout();
-    navigate("/admin/login", { replace: true });
+    navigate(adminPath("/login"), { replace: true });
   }
 
   return (
@@ -116,7 +117,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         <div className="flex items-center gap-2 sm:gap-3">
           <NotificationBell />
           <NavLink
-            to="/admin/pengaturan/akun"
+            to={adminPath("/pengaturan/akun")}
             className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-slate-100"
             title="Pengaturan Akun"
           >

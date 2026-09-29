@@ -1,3 +1,4 @@
+import { adminPath } from "../../utils/urls";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -114,7 +115,7 @@ export default function UpdateTracking() {
       <AdminLayout>
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
           <p className="text-slate-500">AWB "{awb}" tidak ditemukan.</p>
-          <Link to="/admin/pengiriman" className="mt-3 inline-block text-sm text-blue-700 hover:underline">
+          <Link to={adminPath("/pengiriman")} className="mt-3 inline-block text-sm text-blue-700 hover:underline">
             Kembali ke Data Pengiriman
           </Link>
         </div>

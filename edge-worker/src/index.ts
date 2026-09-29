@@ -30,13 +30,15 @@ export default {
     const host = url.hostname;
 
     // Legacy temporary domain -> permanent redirects to the new structure.
+    // Portal prefixes are stripped: the subdomains now serve their portals at
+    // the root (admin.gms-logistics.id/... instead of /admin/...).
     if (isLegacyHost(host)) {
       const path = url.pathname + url.search;
       let target: string;
       if (path.startsWith("/admin")) {
-        target = `https://admin.gms-logistics.id${path}`;
+        target = `https://admin.gms-logistics.id${path.slice("/admin".length) || "/"}`;
       } else if (path.startsWith("/driver")) {
-        target = `https://driver.gms-logistics.id${path}`;
+        target = `https://driver.gms-logistics.id${path.slice("/driver".length) || "/"}`;
       } else {
         target = `https://gms-logistics.id${path}`;
       }

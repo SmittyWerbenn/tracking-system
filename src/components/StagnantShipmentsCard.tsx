@@ -1,3 +1,4 @@
+import { adminPath } from "../utils/urls";
 import { AlertTriangle, CheckCircle2, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { StagnantInfo } from "../utils/stagnant";
@@ -54,7 +55,7 @@ export function StagnantShipmentsCard({ items }: { items: StagnantInfo[] }) {
             ))}
           </ul>
           <Link
-            to="/admin/pengiriman?macet=1"
+            to={adminPath("/pengiriman?macet=1")}
             className="block border-t border-slate-100 px-5 py-2.5 text-center text-xs font-semibold text-blue-800 hover:bg-slate-50"
           >
             Lihat Semua di Data Pengiriman

@@ -1,3 +1,4 @@
+import { adminPath } from "../../utils/urls";
 import { AlertTriangle, Ban, CheckCircle2, History, Pencil, Plus, RotateCcw, Table, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -388,7 +389,7 @@ export default function FleetList() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <Link
-                        to={`/admin/armada/${t.id}`}
+                        to={adminPath(`/armada/${t.id}`)}
                         title="Riwayat Perjalanan"
                         className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
                       >

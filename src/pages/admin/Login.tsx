@@ -1,3 +1,4 @@
+import { adminPath } from "../../utils/urls";
 import { AlertTriangle, Loader2, Lock, Mail } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocation, useNavigate, type Location } from "react-router-dom";
@@ -15,7 +16,7 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
   const [awaitingRoleCheck, setAwaitingRoleCheck] = useState(false);
 
-  const from = (location.state as { from?: Location } | null)?.from?.pathname ?? "/admin";
+  const from = (location.state as { from?: Location } | null)?.from?.pathname ?? adminPath("/");
 
   // login() resolves before AuthContext's profile state has actually
   // flushed, so the role isn't readable synchronously right after - react
@@ -25,7 +26,7 @@ export default function Login() {
     setAwaitingRoleCheck(false);
     if (profile.role === "Driver") {
       logout();
-      setError("Akun Driver menggunakan Portal Driver, bukan di sini. Buka /driver untuk login.");
+      setError("Akun Driver menggunakan Portal Driver, bukan di sini. Buka driver.gms-logistics.id untuk login.");
     } else {
       navigate(from, { replace: true });
     }

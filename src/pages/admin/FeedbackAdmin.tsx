@@ -1,3 +1,4 @@
+import { adminPath } from "../../utils/urls";
 import { MessageSquare, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -91,7 +92,7 @@ export default function FeedbackAdmin() {
               {sorted.map((f) => (
                 <tr key={f.id} className="hover:bg-slate-50">
                   <td className="whitespace-nowrap px-4 py-3">
-                    <Link to={`/admin/resi/${f.awb}`} className="font-mono font-medium text-blue-800 hover:underline">
+                    <Link to={adminPath(`/resi/${f.awb}`)} className="font-mono font-medium text-blue-800 hover:underline">
                       {f.awb}
                     </Link>
                   </td>

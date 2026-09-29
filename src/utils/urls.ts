@@ -22,7 +22,7 @@ export function trackingUrl(awb: string): string {
 
 /** Admin detail page for a shipment (used in admin-notification emails). */
 export function adminResiUrl(awb: string): string {
-  return `${ADMIN_BASE_URL}/admin/resi/${awb}`;
+  return `${ADMIN_BASE_URL}/resi/${awb}`;
 }
 
 /** Which portal the current hostname serves. Null for localhost and any
@@ -37,4 +37,18 @@ export function detectPortal(): Portal {
   if (host === "driver.gms-logistics.id") return "driver";
   if (host === "gms-logistics.id" || host === "www.gms-logistics.id") return "public";
   return null;
+}
+
+/**
+ * In-app route paths for a portal. On the portal's own subdomain the routes
+ * live at the root (e.g. https://admin.gms-logistics.id/pengiriman), while on
+ * localhost and legacy hosts they stay namespaced (/admin/pengiriman) so they
+ * don't collide with the public routes in the single shared bundle.
+ */
+export function adminPath(path: string): string {
+  return detectPortal() === "admin" ? path : `/admin${path}`;
+}
+
+export function driverPath(path: string): string {
+  return detectPortal() === "driver" ? path : `/driver${path}`;
 }

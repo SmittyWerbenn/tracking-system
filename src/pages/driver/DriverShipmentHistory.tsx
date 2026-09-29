@@ -1,3 +1,4 @@
+import { driverPath } from "../../utils/urls";
 import { AlertTriangle, ArrowLeft, ArrowRight, Download, FileText, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -98,7 +99,7 @@ export default function DriverShipmentHistory() {
 
   return (
     <DriverLayout wide>
-      <Link to="/driver" className="no-print mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
+      <Link to={driverPath("/")} className="no-print mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
         <ArrowLeft size={15} /> Kembali
       </Link>
 

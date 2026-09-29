@@ -1,3 +1,4 @@
+import { driverPath } from "../../utils/urls";
 import { AlertTriangle, ArrowRight, CalendarClock, FileSpreadsheet, Loader2, MessageCircle, Package, PackageSearch, RefreshCw, ScanLine, Truck, Weight, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -146,7 +147,7 @@ export default function DriverDashboard() {
             <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} /> Refresh
           </button>
           <Link
-            to="/driver/riwayat"
+            to={driverPath("/riwayat")}
             className="inline-flex items-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3.5 py-2.5 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50"
           >
             <FileSpreadsheet size={16} /> Data Pengiriman
@@ -442,7 +443,7 @@ function ShipmentGrid({ shipments }: { shipments: DriverShipmentSummary[] }) {
       {shipments.map((s) => (
         <Link
           key={s.awb}
-          to={`/driver/shipments/${s.awb}`}
+          to={driverPath(`/shipments/${s.awb}`)}
           className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md active:bg-slate-50"
         >
           <div className="flex items-center justify-between gap-2">

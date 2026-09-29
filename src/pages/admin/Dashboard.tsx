@@ -1,3 +1,4 @@
+import { adminPath } from "../../utils/urls";
 import {
   AlertTriangle,
   ArrowRight,
@@ -106,7 +107,7 @@ export default function Dashboard() {
           <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
           {canCreateShipment && (
             <Link
-              to="/admin/pengiriman/baru"
+              to={adminPath("/pengiriman/baru")}
               className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800"
             >
               <PackagePlus size={17} />
@@ -122,63 +123,63 @@ export default function Dashboard() {
           value={total}
           icon={Package}
           accent="bg-blue-100 text-blue-700"
-          to="/admin/pengiriman"
+          to={adminPath("/pengiriman")}
         />
         <StatCard
           label="Dalam Perjalanan"
           value={dalamPerjalanan}
           icon={Truck}
           accent="bg-sky-100 text-sky-700"
-          to={`/admin/pengiriman?status=${encodeURIComponent("Dalam Perjalanan")}`}
+          to={adminPath(`/pengiriman?status=${encodeURIComponent("Dalam Perjalanan")}`)}
         />
         <StatCard
           label="Transit"
           value={transit}
           icon={Route}
           accent="bg-amber-100 text-amber-700"
-          to={`/admin/pengiriman?status=${encodeURIComponent("Transit")}`}
+          to={adminPath(`/pengiriman?status=${encodeURIComponent("Transit")}`)}
         />
         <StatCard
           label="Selesai"
           value={selesai}
           icon={CheckCircle2}
           accent="bg-emerald-100 text-emerald-700"
-          to={`/admin/pengiriman?status=${encodeURIComponent("Selesai / Terkirim")}`}
+          to={adminPath(`/pengiriman?status=${encodeURIComponent("Selesai / Terkirim")}`)}
         />
         <StatCard
           label="Kendala"
           value={bermasalah}
           icon={AlertTriangle}
           accent="bg-red-100 text-red-700"
-          to={`/admin/pengiriman?status=${encodeURIComponent("Kendala")}`}
+          to={adminPath(`/pengiriman?status=${encodeURIComponent("Kendala")}`)}
         />
         <StatCard
           label="AWB Macet"
           value={stagnantCount}
           icon={AlertTriangle}
           accent="bg-red-100 text-red-700"
-          to="/admin/pengiriman?macet=1"
+          to={adminPath("/pengiriman?macet=1")}
         />
         <StatCard
           label="Total Armada"
           value={totalTrucks}
           icon={Truck}
           accent="bg-violet-100 text-violet-700"
-          to="/admin/armada"
+          to={adminPath("/armada")}
         />
         <StatCard
           label="Truck On Trip"
           value={truckOnTrip}
           icon={Truck}
           accent="bg-sky-100 text-sky-700"
-          to={`/admin/armada?status=${encodeURIComponent("On Trip")}`}
+          to={adminPath(`/armada?status=${encodeURIComponent("On Trip")}`)}
         />
         <StatCard
           label="Avg. Customer Rating"
           value={avgRating.toFixed(1)}
           icon={Star}
           accent="bg-amber-100 text-amber-700"
-          to="/admin/feedback"
+          to={adminPath("/feedback")}
         />
       </div>
 
@@ -187,7 +188,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <h2 className="text-sm font-semibold text-slate-800">Pengiriman Terbaru (AWB)</h2>
             <Link
-              to="/admin/pengiriman"
+              to={adminPath("/pengiriman")}
               className="flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline"
             >
               Lihat semua <ArrowRight size={13} />
@@ -197,7 +198,7 @@ export default function Dashboard() {
             {recent.map((s) => (
               <li key={s.awb}>
                 <Link
-                  to={`/admin/resi/${s.awb}`}
+                  to={adminPath(`/resi/${s.awb}`)}
                   className="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 transition-colors hover:bg-slate-50"
                 >
                   <div className="min-w-0">
@@ -226,7 +227,7 @@ export default function Dashboard() {
             {Object.entries(statusBreakdown).map(([status, count]) => (
               <li key={status}>
                 <Link
-                  to={`/admin/pengiriman?status=${encodeURIComponent(status)}`}
+                  to={adminPath(`/pengiriman?status=${encodeURIComponent(status)}`)}
                   className="flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-slate-50"
                 >
                   <StatusBadge status={status as ShipmentStatus} size="sm" />
@@ -259,7 +260,7 @@ export default function Dashboard() {
             </ul>
           )}
           <div className="border-t border-slate-100 px-5 py-3">
-            <Link to="/admin/notifikasi" className="flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline">
+            <Link to={adminPath("/notifikasi")} className="flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline">
               Lihat semua <ArrowRight size={13} />
             </Link>
           </div>
@@ -294,7 +295,7 @@ export default function Dashboard() {
             </ul>
           )}
           <div className="border-t border-slate-100 px-5 py-3">
-            <Link to="/admin/feedback" className="flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline">
+            <Link to={adminPath("/feedback")} className="flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline">
               Lihat semua <ArrowRight size={13} />
             </Link>
           </div>

@@ -1,3 +1,4 @@
+import { driverPath } from "../../utils/urls";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -257,7 +258,7 @@ export default function DriverShipmentDetail() {
   if (loadError) {
     return (
       <DriverLayout>
-        <Link to="/driver" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
+        <Link to={driverPath("/")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
           <ArrowLeft size={15} /> Kembali
         </Link>
         <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700">
@@ -290,7 +291,7 @@ export default function DriverShipmentDetail() {
   return (
     <DriverLayout wide>
       <div className="mb-4 flex items-center justify-between">
-        <Link to="/driver" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
+        <Link to={driverPath("/")} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
           <ArrowLeft size={15} /> Kembali
         </Link>
         <RefreshButton onClick={handleRefresh} refreshing={refreshing} />

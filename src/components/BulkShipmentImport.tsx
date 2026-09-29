@@ -1,3 +1,4 @@
+import { adminPath } from "../utils/urls";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -609,7 +610,7 @@ export function BulkShipmentImport() {
                 <span className="text-slate-500">
                   {s.kotaAsal} &rarr; {s.kotaTujuan}
                 </span>
-                <Link to={`/admin/resi/${s.awb}`} className="font-medium text-blue-700 hover:underline">
+                <Link to={adminPath(`/resi/${s.awb}`)} className="font-medium text-blue-700 hover:underline">
                   Lihat Detail
                 </Link>
               </div>

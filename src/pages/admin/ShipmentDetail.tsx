@@ -28,7 +28,7 @@ import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment } from "../../types";
 import { api } from "../../utils/apiClient";
 import { formatJam, formatTanggalJam, formatTanggalPanjang } from "../../utils/format";
-import { trackingUrl as publicTrackingUrl } from "../../utils/urls";
+import { adminPath, trackingUrl as publicTrackingUrl } from "../../utils/urls";
 
 /** Last row of driver_position_reports (raw DB shape) - the driver portal's
  * "Perbarui Posisi" button writes this, the detail page only reads it. */
@@ -206,7 +206,7 @@ export default function ShipmentDetail() {
       <AdminLayout>
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
           <p className="text-slate-500">AWB "{awb}" tidak ditemukan.</p>
-          <Link to="/admin/pengiriman" className="mt-3 inline-block text-sm text-blue-700 hover:underline">
+          <Link to={adminPath("/pengiriman")} className="mt-3 inline-block text-sm text-blue-700 hover:underline">
             Kembali ke Data Pengiriman
           </Link>
         </div>
@@ -275,13 +275,13 @@ export default function ShipmentDetail() {
             <Download size={15} /> Download Resi
           </button>
           <Link
-            to={`/admin/resi/${shipment.awb}/email`}
+            to={adminPath(`/resi/${shipment.awb}/email`)}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             <Mail size={15} /> Kirim Email
           </Link>
           <Link
-            to={`/admin/tracking/${shipment.awb}`}
+            to={adminPath(`/tracking/${shipment.awb}`)}
             className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-blue-800"
           >
             <MapPin size={15} /> Lihat Tracking
@@ -558,7 +558,7 @@ export default function ShipmentDetail() {
           </div>
           {profile?.role !== "Viewer" && profile?.role !== "Cust-Admin" && (
             <Link
-              to={`/admin/update-tracking/${shipment.awb}`}
+              to={adminPath(`/update-tracking/${shipment.awb}`)}
               className="block rounded-xl border border-dashed border-blue-300 bg-blue-50 p-4 text-center text-sm font-semibold text-blue-800 hover:bg-blue-100 no-print"
             >
               + Tambah Update Tracking

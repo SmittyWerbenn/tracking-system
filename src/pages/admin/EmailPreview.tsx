@@ -8,7 +8,7 @@ import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment } from "../../types";
 import { formatTanggalPanjang } from "../../utils/format";
 import { sendTrackingEmail } from "../../utils/sendEmail";
-import { trackingUrl } from "../../utils/urls";
+import { adminPath, trackingUrl } from "../../utils/urls";
 
 export default function EmailPreview() {
   const { awb } = useParams<{ awb: string }>();
@@ -106,7 +106,7 @@ export default function EmailPreview() {
       <AdminLayout>
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
           <p className="text-slate-500">AWB "{awb}" tidak ditemukan.</p>
-          <Link to="/admin/pengiriman" className="mt-3 inline-block text-sm text-blue-700 hover:underline">
+          <Link to={adminPath("/pengiriman")} className="mt-3 inline-block text-sm text-blue-700 hover:underline">
             Kembali ke Data Pengiriman
           </Link>
         </div>
@@ -162,7 +162,7 @@ export default function EmailPreview() {
       {!settings.emailSendingEnabled ? (
         <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
           Pengiriman email real sedang dinonaktifkan untuk menghemat kuota SMTP. Aktifkan kembali di{" "}
-          <Link to="/admin/pengaturan/tracking" className="font-semibold underline">
+          <Link to={adminPath("/pengaturan/tracking")} className="font-semibold underline">
             Admin &gt; Pengaturan
           </Link>{" "}
           untuk mengirim email ini.

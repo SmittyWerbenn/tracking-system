@@ -29,7 +29,7 @@ import { checkPhotoSize, compressImage } from "../../utils/compressImage";
 import { formatTanggalPanjang, todayISO } from "../../utils/format";
 import { sendTrackingEmail, type EmailableShipment } from "../../utils/sendEmail";
 import { addBusinessDays } from "../../utils/sla";
-import { trackingUrl as publicTrackingUrl } from "../../utils/urls";
+import { adminPath, trackingUrl as publicTrackingUrl } from "../../utils/urls";
 
 const emptyForm: ShipmentFormData = {
   pengirim: { nama: "", telepon: "", email: "" },
@@ -549,7 +549,7 @@ export default function CreateShipment() {
           ) : (
             <p className="sm:col-span-2 text-xs text-slate-400">
               Belum ada unit dipilih. Kelola daftar armada di{" "}
-              <Link to="/admin/armada" className="text-blue-700 hover:underline">
+              <Link to={adminPath("/armada")} className="text-blue-700 hover:underline">
                 Master Armada
               </Link>
               .
@@ -660,13 +660,13 @@ export default function CreateShipment() {
 
               <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 <button
-                  onClick={() => navigate(`/admin/resi/${created.awb}`)}
+                  onClick={() => navigate(adminPath(`/resi/${created.awb}`))}
                   className="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
                 >
                   Lihat Detail Resi
                 </button>
                 <button
-                  onClick={() => navigate(`/admin/resi/${created.awb}/email`)}
+                  onClick={() => navigate(adminPath(`/resi/${created.awb}/email`))}
                   className="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
                 >
                   Preview Email

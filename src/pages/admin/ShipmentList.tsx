@@ -1,3 +1,4 @@
+import { adminPath } from "../../utils/urls";
 import { AlertTriangle, Ban, CheckCircle2, Download, Eye, FileEdit, LayoutList, ListTree, Loader2, MapPin, PackageSearch, Pencil, Printer, RefreshCw, Search, X, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -231,7 +232,7 @@ export default function ShipmentList() {
           </button>
           {canCreateShipment && (
             <Link
-              to="/admin/pengiriman/baru"
+              to={adminPath("/pengiriman/baru")}
               className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
             >
               Buat Pengiriman
@@ -481,14 +482,14 @@ export default function ShipmentList() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <Link
-                        to={`/admin/resi/${s.awb}`}
+                        to={adminPath(`/resi/${s.awb}`)}
                         title="Detail"
                         className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
                       >
                         <Eye size={16} />
                       </Link>
                       <Link
-                        to={`/admin/tracking/${s.awb}`}
+                        to={adminPath(`/tracking/${s.awb}`)}
                         title="Tracking"
                         className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
                       >
@@ -496,7 +497,7 @@ export default function ShipmentList() {
                       </Link>
                       {profile?.role !== "Viewer" && profile?.role !== "Cust-Admin" && (
                         <Link
-                          to={`/admin/update-tracking/${s.awb}`}
+                          to={adminPath(`/update-tracking/${s.awb}`)}
                           title="Update"
                           className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
                         >
@@ -504,7 +505,7 @@ export default function ShipmentList() {
                         </Link>
                       )}
                       <Link
-                        to={`/admin/resi/${s.awb}`}
+                        to={adminPath(`/resi/${s.awb}`)}
                         title="Cetak Resi"
                         className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
                       >

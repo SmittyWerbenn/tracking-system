@@ -1,3 +1,4 @@
+import { adminPath } from "../../utils/urls";
 import { AlertTriangle, Bell, CheckCircle2, PackagePlus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -65,7 +66,7 @@ export function NotificationBell() {
               return (
                 <Link
                   key={n.id}
-                  to={`/admin/resi/${n.awb}/email`}
+                  to={adminPath(`/resi/${n.awb}/email`)}
                   onClick={() => setOpen(false)}
                   className="flex items-start gap-3 border-b border-slate-50 px-4 py-3 hover:bg-slate-50"
                 >
@@ -85,7 +86,7 @@ export function NotificationBell() {
             )}
           </div>
           <Link
-            to="/admin/notifikasi"
+            to={adminPath("/notifikasi")}
             onClick={() => setOpen(false)}
             className="block border-t border-slate-100 px-4 py-2.5 text-center text-xs font-semibold text-blue-800 hover:bg-slate-50"
           >

@@ -1,3 +1,4 @@
+import { adminPath } from "../../utils/urls";
 import { AlertTriangle, Bell, CheckCircle2, Mail, PackagePlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -64,7 +65,7 @@ export default function NotificationCenter() {
                   <span className="font-mono">{n.awb}</span>
                 </p>
                 <Link
-                  to={`/admin/resi/${n.awb}/email`}
+                  to={adminPath(`/resi/${n.awb}/email`)}
                   className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-800 hover:underline"
                 >
                   <Mail size={13} /> Buka Email Preview

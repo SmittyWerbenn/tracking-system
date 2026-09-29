@@ -1,3 +1,4 @@
+import { driverPath } from "../../utils/urls";
 import { AlertTriangle, Loader2, Lock, Mail } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { Navigate, useLocation, useNavigate, type Location } from "react-router-dom";
@@ -15,7 +16,7 @@ export default function DriverLogin() {
   const [submitting, setSubmitting] = useState(false);
   const [awaitingRoleCheck, setAwaitingRoleCheck] = useState(false);
 
-  const from = (location.state as { from?: Location } | null)?.from?.pathname ?? "/driver";
+  const from = (location.state as { from?: Location } | null)?.from?.pathname ?? driverPath("/");
 
   // login() resolves before the AuthContext's profile state has actually
   // flushed, so the role isn't readable synchronously after awaiting it -
@@ -35,7 +36,7 @@ export default function DriverLogin() {
   // Already signed in as a driver and landed back on /driver/login - go
   // straight to the dashboard instead of showing the form again.
   if (isAuthenticated && profile?.role === "Driver" && !awaitingRoleCheck) {
-    return <Navigate to="/driver" replace />;
+    return <Navigate to={driverPath("/")} replace />;
   }
 
   async function handleSubmit(e: FormEvent) {

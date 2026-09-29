@@ -1,3 +1,4 @@
+import { driverPath } from "../../utils/urls";
 import { LogOut } from "lucide-react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
@@ -14,7 +15,7 @@ export function DriverLayout({ children, wide = false }: { children: ReactNode; 
 
   function handleLogout() {
     logout();
-    navigate("/driver/login", { replace: true });
+    navigate(driverPath("/login"), { replace: true });
   }
 
   return (

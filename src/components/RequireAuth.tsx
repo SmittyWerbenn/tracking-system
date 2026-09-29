@@ -1,3 +1,4 @@
+import { adminPath, driverPath } from "../utils/urls";
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../store/AuthContext";
@@ -14,7 +15,7 @@ function LoadingScreen() {
  * portal at /driver. Every admin guard below checks this first and bounces
  * a Driver there instead of rendering any admin page. */
 function driverRedirect(profile: { role: string } | null): ReactNode | null {
-  if (profile?.role === "Driver") return <Navigate to="/driver" replace />;
+  if (profile?.role === "Driver") return <Navigate to={driverPath("/")} replace />;
   return null;
 }
 
@@ -24,7 +25,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (isLoading) return <LoadingScreen />;
   if (!isAuthenticated) {
-    return <Navigate to="/admin/login" replace state={{ from: location }} />;
+    return <Navigate to={adminPath("/login")} replace state={{ from: location }} />;
   }
   const redirect = driverRedirect(profile);
   if (redirect) return redirect;
@@ -41,12 +42,12 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
 
   if (isLoading) return <LoadingScreen />;
   if (!isAuthenticated) {
-    return <Navigate to="/admin/login" replace state={{ from: location }} />;
+    return <Navigate to={adminPath("/login")} replace state={{ from: location }} />;
   }
   const redirect = driverRedirect(profile);
   if (redirect) return redirect;
   if (profile?.role !== "Superadmin" && profile?.role !== "Admin") {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to={adminPath("/")} replace />;
   }
 
   return <>{children}</>;
@@ -61,12 +62,12 @@ export function RequireShipmentCreator({ children }: { children: ReactNode }) {
 
   if (isLoading) return <LoadingScreen />;
   if (!isAuthenticated) {
-    return <Navigate to="/admin/login" replace state={{ from: location }} />;
+    return <Navigate to={adminPath("/login")} replace state={{ from: location }} />;
   }
   const redirect = driverRedirect(profile);
   if (redirect) return redirect;
   if (profile?.role !== "Superadmin" && profile?.role !== "Admin" && profile?.role !== "Cust-Admin") {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to={adminPath("/")} replace />;
   }
 
   return <>{children}</>;
@@ -81,12 +82,12 @@ export function RequireTrackingUpdater({ children }: { children: ReactNode }) {
 
   if (isLoading) return <LoadingScreen />;
   if (!isAuthenticated) {
-    return <Navigate to="/admin/login" replace state={{ from: location }} />;
+    return <Navigate to={adminPath("/login")} replace state={{ from: location }} />;
   }
   const redirect = driverRedirect(profile);
   if (redirect) return redirect;
   if (profile?.role === "Viewer") {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to={adminPath("/")} replace />;
   }
 
   return <>{children}</>;
@@ -102,7 +103,7 @@ export function RequireDriver({ children }: { children: ReactNode }) {
 
   if (isLoading) return <LoadingScreen />;
   if (!isAuthenticated || profile?.role !== "Driver") {
-    return <Navigate to="/driver/login" replace state={{ from: location }} />;
+    return <Navigate to={driverPath("/login")} replace state={{ from: location }} />;
   }
 
   return <>{children}</>;
@@ -117,12 +118,12 @@ export function RequireSuperadmin({ children }: { children: ReactNode }) {
 
   if (isLoading) return <LoadingScreen />;
   if (!isAuthenticated) {
-    return <Navigate to="/admin/login" replace state={{ from: location }} />;
+    return <Navigate to={adminPath("/login")} replace state={{ from: location }} />;
   }
   const redirect = driverRedirect(profile);
   if (redirect) return redirect;
   if (profile?.role !== "Superadmin") {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to={adminPath("/")} replace />;
   }
 
   return <>{children}</>;

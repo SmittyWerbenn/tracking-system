@@ -1,3 +1,4 @@
+import { adminPath } from "../../utils/urls";
 import { ArrowLeft, ArrowRight, CalendarClock, PackageSearch } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -56,7 +57,7 @@ export default function ShipmentTracking() {
           <p className="mt-1 max-w-sm text-sm text-slate-500">
             AWB <span className="font-mono font-medium text-slate-700">"{awb}"</span> tidak ditemukan dalam sistem.
           </p>
-          <Link to="/admin/pengiriman" className="mt-4 text-sm text-blue-700 hover:underline">
+          <Link to={adminPath("/pengiriman")} className="mt-4 text-sm text-blue-700 hover:underline">
             Kembali ke Data Pengiriman
           </Link>
         </div>

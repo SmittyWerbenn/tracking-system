@@ -1,3 +1,4 @@
+import { adminPath } from "../../utils/urls";
 import { ArrowLeft, MapPin, Phone, Truck as TruckIcon, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -73,7 +74,7 @@ export default function TruckHistory() {
       <AdminLayout>
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
           <p className="text-slate-500">Truck tidak ditemukan.</p>
-          <Link to="/admin/armada" className="mt-3 inline-block text-sm text-blue-700 hover:underline">
+          <Link to={adminPath("/armada")} className="mt-3 inline-block text-sm text-blue-700 hover:underline">
             Kembali ke Master Armada
           </Link>
         </div>
@@ -180,7 +181,7 @@ export default function TruckHistory() {
                 {relevantShipments.map((s) => (
                   <tr key={s.awb} className="hover:bg-slate-50">
                     <td className="whitespace-nowrap px-4 py-3">
-                      <Link to={`/admin/resi/${s.awb}`} className="font-mono font-medium text-blue-800 hover:underline">
+                      <Link to={adminPath(`/resi/${s.awb}`)} className="font-mono font-medium text-blue-800 hover:underline">
                         {s.awb}
                       </Link>
                     </td>

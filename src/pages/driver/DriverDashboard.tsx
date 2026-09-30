@@ -545,28 +545,39 @@ function OpenShipmentCard({
         highlighted ? "border-violet-300 ring-2 ring-violet-100" : "border-slate-200"
       }`}
     >
- <div className="flex items-center justify-between gap-2">
- <span className="font-mono text-sm font-bold text-slate-900">{item.awb}</span>
- {item.claimStatus === "pending" && item.isMine && (
- <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
- Menunggu Konfirmasi
- </span>
- )}
- </div>
- {/* Nomor Pelanggan (customer_id) - asal/origin order ini di-pickup. */}
- {item.customerId && (
- <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-blue-800">
- <Building2 size={12} className="shrink-0 text-blue-500" />
- <span className="truncate">
- {item.customerId}
- {item.customerName ? ` · ${item.customerName}` : ""}
- </span>
- </p>
- )}
- <p className="mt-1.5 flex items-center gap-1.5 text-sm text-slate-600">
- {item.kotaAsal} <ArrowRight size={13} className="text-slate-300" /> {item.kotaTujuan}
- </p>
-      <p className="mt-1 text-xs text-slate-500">{item.alamatTujuan}</p>
+        {/* Baris 1: AWB + Nomor Pelanggan (ID saja, tanpa nama). */}
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="shrink-0 font-mono text-sm font-bold text-slate-900">{item.awb}</span>
+          {item.customerId && (
+            <span
+              className="min-w-0 truncate font-mono text-xs font-semibold text-blue-800"
+              title={item.customerId}
+            >
+              {item.customerId}
+            </span>
+          )}
+        </div>
+        {/* Baris 2: keterangan customer. Dilewati kalau tidak ada nama yang
+            bisa ditampilkan, supaya Nomor Pelanggan tidak terulang di bawah. */}
+        {item.customerName && (
+          <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+            <Building2 size={12} className="shrink-0 text-slate-400" />
+            <span className="min-w-0 truncate" title={item.customerName}>
+              Customer: {item.customerName}
+            </span>
+          </p>
+        )}
+        {item.claimStatus === "pending" && item.isMine && (
+          <p className="mt-1.5">
+            <span className="inline-block rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+              Menunggu Konfirmasi
+            </span>
+          </p>
+        )}
+        <p className="mt-1.5 flex items-center gap-1.5 text-sm text-slate-600">
+          {item.kotaAsal} <ArrowRight size={13} className="text-slate-300" /> {item.kotaTujuan}
+        </p>
+        <p className="mt-1 text-xs text-slate-500">{item.alamatTujuan}</p>
       <div className="mt-2 flex items-center gap-3 text-xs text-slate-400">
         <span className="flex items-center gap-1">
           <Package size={12} /> {item.jumlahKoli} Koli

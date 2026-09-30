@@ -4,6 +4,9 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Navigate, useLocation, useNavigate, type Location } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
 import { useAuth } from "../../store/AuthContext";
+import { ContactAdminButton } from "../../components/ContactAdminButton";
+
+const MAX_WRONG_PASSWORD = 3;
 
 export default function DriverLogin() {
   const { login, logout, isAuthenticated, profile } = useAuth();
@@ -15,6 +18,12 @@ export default function DriverLogin() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [awaitingRoleCheck, setAwaitingRoleCheck] = useState(false);
+  // Consecutive "wrong password" failures for the email being tried. Only a
+  // hint - nothing is locked. Resets on success, on a different email, or
+  // when the page is reloaded.
+  const [failedCount, setFailedCount] = useState(0);
+  const [failedEmail, setFailedEmail] = useState("");
+  const wrongPasswordWarning = failedCount >= MAX_WRONG_PASSWORD && failedEmail === email.trim().toLowerCase();
 
   const from = (location.state as { from?: Location } | null)?.from?.pathname ?? driverPath("/");
 
@@ -47,8 +56,14 @@ export default function DriverLogin() {
     setSubmitting(false);
     if (!result.ok) {
       setError(result.error);
+      if (result.error.includes("password salah")) {
+        const key = email.trim().toLowerCase();
+        setFailedCount((n) => (failedEmail === key ? n + 1 : 1));
+        setFailedEmail(key);
+      }
       return;
     }
+    setFailedCount(0);
     setAwaitingRoleCheck(true);
   }
 
@@ -97,6 +112,18 @@ export default function DriverLogin() {
               <AlertTriangle size={14} />
               {error}
             </div>
+          )}
+          {wrongPasswordWarning && (
+            <div className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              Anda sudah {failedCount} kali salah memasukkan password. Jika lupa password atau akun bermasalah,
+              silakan hubungi admin.
+            </div>
+          )}
+          {wrongPasswordWarning && (
+            <ContactAdminButton
+              message={`Halo Admin GMS, saya driver dan tidak bisa login (password salah berulang kali) dengan email ${email}. Mohon bantuannya.`}
+            />
           )}
 
           <button

@@ -1,14 +1,15 @@
 import { adminPath } from "../../utils/urls";
-import { AlertTriangle, Loader2, Lock, Mail, MessageCircle } from "lucide-react";
+import { AlertTriangle, Loader2, Lock, Mail } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocation, useNavigate, type Location } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
 import { useAuth } from "../../store/AuthContext";
-import { useHelpContact } from "../../store/HelpContactContext";
+import { ContactAdminButton } from "../../components/ContactAdminButton";
+
+const MAX_WRONG_PASSWORD = 3;
 
 export default function Login() {
   const { login, logout, profile } = useAuth();
-  const { helpWhatsAppNumber } = useHelpContact();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -17,6 +18,12 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [awaitingRoleCheck, setAwaitingRoleCheck] = useState(false);
+  // Consecutive "wrong password" failures for the email being tried. Only a
+  // hint - nothing is locked. Resets on success, on a different email, or
+  // when the page is reloaded.
+  const [failedCount, setFailedCount] = useState(0);
+  const [failedEmail, setFailedEmail] = useState("");
+  const wrongPasswordWarning = failedCount >= MAX_WRONG_PASSWORD && failedEmail === email.trim().toLowerCase();
 
   // Backend refuses login for accounts of a deactivated Client with this
   // message; in that case offer a WhatsApp shortcut to the admin.
@@ -47,8 +54,14 @@ export default function Login() {
     setSubmitting(false);
     if (!result.ok) {
       setError(result.error);
+      if (result.error.includes("password salah")) {
+        const key = email.trim().toLowerCase();
+        setFailedCount((n) => (failedEmail === key ? n + 1 : 1));
+        setFailedEmail(key);
+      }
       return;
     }
+    setFailedCount(0);
     setAwaitingRoleCheck(true);
   }
 
@@ -98,17 +111,21 @@ export default function Login() {
               {error}
             </div>
           )}
-          {clientFrozen && (
-            <a
-              href={`https://wa.me/${helpWhatsAppNumber}?text=${encodeURIComponent(
-                `Halo Admin GMS, akun Client saya (${email}) dinonaktifkan. Mohon bantuannya.`,
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
-            >
-              <MessageCircle size={16} /> Hubungi Admin
-            </a>
+          {wrongPasswordWarning && (
+            <div className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              Anda sudah {failedCount} kali salah memasukkan password. Jika lupa password atau akun bermasalah,
+              silakan hubungi admin.
+            </div>
+          )}
+          {(clientFrozen || wrongPasswordWarning) && (
+            <ContactAdminButton
+              message={
+                clientFrozen
+                  ? `Halo Admin GMS, akun Client saya (${email}) dinonaktifkan. Mohon bantuannya.`
+                  : `Halo Admin GMS, saya tidak bisa login (password salah berulang kali) dengan email ${email}. Mohon bantuannya.`
+              }
+            />
           )}
 
           <button

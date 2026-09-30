@@ -1,6 +1,7 @@
 -- Rename role "Cust-Admin" → "Client" in the users table.
 -- SQLite/D1 cannot ALTER a CHECK constraint, so we recreate the table.
 
+PRAGMA defer_foreign_keys=ON;
 PRAGMA foreign_keys=OFF;
 
 CREATE TABLE users_new (

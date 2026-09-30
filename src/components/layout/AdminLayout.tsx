@@ -109,7 +109,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           <div className="flex min-w-0 items-center gap-2.5">
             <img src={logoIcon} alt="GMS Logistics" className="h-9 w-9 shrink-0 object-contain" />
             <div className="min-w-0 leading-tight">
-              <p className="truncate text-sm font-semibold text-slate-900">Gangsar Mitra Suatama</p>
+              <p className="truncate text-sm font-semibold text-slate-900">GMS Logistics</p>
               <p className="hidden truncate text-xs text-slate-500 sm:block">Sistem Tracking &amp; Resi Digital</p>
             </div>
           </div>

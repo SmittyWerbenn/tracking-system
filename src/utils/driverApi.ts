@@ -19,6 +19,12 @@ export interface DriverShipmentSummary {
   jumlahKoli: number;
   truckNomorUnit: string | null;
   estimasiTiba: string | null;
+  /** Free-text "Nomor Pelanggan" entered when the order was created
+   * (e.g. "IDTMDI001") - not an internal database id. */
+  customerId?: string | null;
+  /** Display name derived from the Cust-Admin account owning that
+   * customer id, when one exists. */
+  customerName?: string | null;
 }
 
 export interface DriverTruckInfo {
@@ -46,8 +52,6 @@ export interface OpenShipmentSummary extends DriverShipmentSummary {
   claimStatus: "pending" | null;
   /** True when THIS driver is the one with the pending claim on it. */
   isMine: boolean;
-  customerId?: string | null;
-  customerName?: string | null;
 }
 
 export interface DriverLastPosition {

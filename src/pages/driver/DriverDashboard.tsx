@@ -1,9 +1,10 @@
 import { driverPath } from "../../utils/urls";
-import { AlertTriangle, ArrowRight, CalendarClock, FileSpreadsheet, Loader2, MessageCircle, Package, PackageSearch, RefreshCw, ScanLine, Truck, Weight, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Building2, CalendarClock, FileSpreadsheet, Loader2, MessageCircle, Package, PackageSearch, RefreshCw, ScanLine, Truck, Weight, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { BarcodeScannerModal } from "../../components/BarcodeScannerModal";
 import { DriverLayout } from "../../components/layout/DriverLayout";
+import { SearchableSelect } from "../../components/SearchableSelect";
 import { useAuth } from "../../store/AuthContext";
 import { useHelpContact } from "../../store/HelpContactContext";
 import {
@@ -132,66 +133,75 @@ export default function DriverDashboard() {
   const terbuka = openShipments ?? [];
   const scanResult = scanResultAwb ? terbuka.find((s) => s.awb === scanResultAwb) ?? null : null;
 
-  function getAvailableCustomers() {
+  // --- Cascading filter for "Pesanan Terbuka" -------------------------
+  // `customer` holds the shipment's customer_id, which is the free-text
+  // "Nomor Pelanggan" (e.g. "IDTMDI001") filled in when the order was
+  // created - not an internal database id. It is what the driver uses to
+  // decide which origin/customer to pick orders up from.
+  type OpenFilterKey = "customer" | "tujuan" | "layanan";
+
+  // Matches one order against the active filters. `skip` lets a dropdown
+  // build its own option list from every OTHER active filter, so the value
+  // currently chosen in that dropdown can never disappear from its own list.
+  function matchesOpenFilters(s: OpenShipmentSummary, skip?: OpenFilterKey) {
+    if (skip !== "customer" && custFilter && (s.customerId ?? "") !== custFilter) return false;
+    if (skip !== "tujuan" && tujuanFilter && s.kotaTujuan !== tujuanFilter) return false;
+    if (skip !== "layanan" && layananFilter && s.layanan !== layananFilter) return false;
+    return true;
+  }
+
+  const filteredOpen = useMemo(
+    () => terbuka.filter((s) => matchesOpenFilters(s)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [terbuka, custFilter, tujuanFilter, layananFilter],
+  );
+
+  // Every option below is derived from the open orders that survive the
+  // OTHER filters, so each option is guaranteed to match >= 1 order.
+  const customerOptions = useMemo(() => {
     const map = new Map<string, string>();
     for (const s of terbuka) {
-      const cid = (s as OpenShipmentSummary).customerId ?? null;
-      const cname = (s as OpenShipmentSummary).customerName ?? (cid ? "Unknown" : "Tanpa Customer");
-      if (cid) map.set(cid, `${cid} - ${cname}`);
-      else if (cname && cname !== "Unknown") map.set(cname, cname);
+      if (!matchesOpenFilters(s, "customer")) continue;
+      const id = s.customerId;
+      if (!id) continue;
+      if (!map.has(id)) map.set(id, s.customerName ? `${id} - ${s.customerName}` : id);
     }
-    return Array.from(map.entries()).map(([id, label]) => ({ id, label }));
-  }
-
-  function getAvailableTujuan() {
-    const set = new Set<string>();
-    for (const s of terbuka) set.add(s.kotaTujuan);
-    return Array.from(set).sort();
-  }
-
-  function getAvailableLayanan() {
-    const set = new Set<string>();
-    for (const s of terbuka) set.add(s.layanan);
-    return Array.from(set).sort();
-  }
-
-  const availableCustomers = useMemo(() => getAvailableCustomers(), [terbuka]);
-  const availableTujuan = useMemo(() => getAvailableTujuan(), [terbuka]);
-  const availableLayanan = useMemo(() => getAvailableLayanan(), [terbuka]);
-
-  const smartTujuanOptions = useMemo(() => {
-    if (!custFilter) return availableTujuan;
-    const cid = custFilter.split(" - ")[0] || custFilter;
-    const set = new Set<string>();
-    for (const s of terbuka) {
-      const sCid = (s as OpenShipmentSummary).customerId ?? null;
-      if ((custFilter ? (sCid === cid || custFilter === sCid) : true) && sCid) set.add(s.kotaTujuan);
-    }
-    return Array.from(set).sort();
-  }, [terbuka, custFilter, availableTujuan]);
-
-  const smartLayananOptions = useMemo(() => {
-    if (!custFilter) return availableLayanan;
-    const cid = custFilter.split(" - ")[0] || custFilter;
-    const set = new Set<string>();
-    for (const s of terbuka) {
-      const sCid = (s as OpenShipmentSummary).customerId ?? null;
-      if ((custFilter ? (sCid === cid || custFilter === sCid) : true) && sCid) set.add(s.layanan);
-    }
-    return Array.from(set).sort();
-  }, [terbuka, custFilter, availableLayanan]);
-
-  const filteredOpen = useMemo(() => {
-    return terbuka.filter((s) => {
-      const sCid = (s as OpenShipmentSummary).customerId ?? null;
-      const customerMatch = !custFilter || sCid === (custFilter.split(" - ")[0] || custFilter) || custFilter === sCid || (custFilter === "Tanpa Customer" && !sCid);
-      const tujuanMatch = !tujuanFilter || s.kotaTujuan === tujuanFilter;
-      const layananMatch = !layananFilter || s.layanan === layananFilter;
-      return customerMatch && tujuanMatch && layananMatch;
-    });
+    return Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([value, label]) => ({ value, label }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [terbuka, custFilter, tujuanFilter, layananFilter]);
 
-  // Smart filter options based on selected customer
+  const tujuanOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of terbuka) if (matchesOpenFilters(s, "tujuan")) set.add(s.kotaTujuan);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [terbuka, custFilter, tujuanFilter, layananFilter]);
+
+  const layananOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of terbuka) if (matchesOpenFilters(s, "layanan")) set.add(s.layanan);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [terbuka, custFilter, tujuanFilter, layananFilter]);
+
+  // A selection can only go stale when the underlying data changes (e.g. a
+  // refresh, or another driver claiming the last order of that group) -
+  // options can never be picked into an empty result otherwise. Drop just
+  // the filter that no longer exists instead of showing an empty list.
+  useEffect(() => {
+    if (custFilter && !customerOptions.some((o) => o.value === custFilter)) setCustFilter(null);
+  }, [custFilter, customerOptions]);
+  useEffect(() => {
+    if (tujuanFilter && !tujuanOptions.includes(tujuanFilter)) setTujuanFilter(null);
+  }, [tujuanFilter, tujuanOptions]);
+  useEffect(() => {
+    if (layananFilter && !layananOptions.includes(layananFilter)) setLayananFilter(null);
+  }, [layananFilter, layananOptions]);
+
+  const hasOpenFilter = Boolean(custFilter || tujuanFilter || layananFilter);
+
 
 
   return (
@@ -333,54 +343,62 @@ export default function DriverDashboard() {
             Pengiriman yang belum ditugaskan ke driver manapun - klik "Ambil Pesanan" untuk mengajukan
             klaim, lalu tunggu admin konfirmasi. Atau scan barcode/QR pada resi.
           </p>
-          {/* Compact 3-select filter directly on page */}
-          <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <div>
-              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Customer</label>
-              <select
+          {/* Filter langsung di halaman. Nomor Pelanggan adalah filter
+              utama - driver memakainya untuk memilih origin pickup, lalu
+              Tujuan & Service menyesuaikan diri. */}
+          <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="min-w-0">
+              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                Nomor Pelanggan
+              </label>
+              <SearchableSelect
+                options={[{ value: "", label: "Semua Nomor Pelanggan" }, ...customerOptions]}
                 value={custFilter ?? ""}
-                onChange={(e) => setCustFilter(e.target.value || null)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-              >
-                <option value="">Semua Customer</option>
-                {availableCustomers.map((c) => (
-                  <option key={c.id} value={c.id}>{c.label}</option>
-                ))}
-              </select>
+                onChange={(v) => setCustFilter(v || null)}
+                placeholder="Semua Nomor Pelanggan"
+                emptyLabel="Tidak ada nomor pelanggan."
+              />
             </div>
-            <div>
-              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Tujuan</label>
+            <div className="min-w-0">
+              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                Tujuan
+              </label>
               <select
                 value={tujuanFilter ?? ""}
                 onChange={(e) => setTujuanFilter(e.target.value || null)}
                 className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
               >
                 <option value="">Semua Tujuan</option>
-                {smartTujuanOptions.map((t) => (
+                {tujuanOptions.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
             </div>
-            <div>
-              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Service</label>
+            <div className="min-w-0">
+              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                Service
+              </label>
               <select
                 value={layananFilter ?? ""}
                 onChange={(e) => setLayananFilter(e.target.value || null)}
                 className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
               >
                 <option value="">Semua Service</option>
-                {smartLayananOptions.map((l) => (
+                {layananOptions.map((l) => (
                   <option key={l} value={l}>{l}</option>
                 ))}
               </select>
             </div>
           </div>
-          {(custFilter || tujuanFilter || layananFilter) && (
+
+          {hasOpenFilter && (
             <div className="mb-3 flex flex-wrap items-center gap-2">
               {custFilter && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
-                  {custFilter}
-                  <button onClick={() => setCustFilter(null)} className="text-blue-500 hover:text-blue-800" title="Hapus filter customer"><X size={12} /></button>
+                <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                  <span className="truncate">
+                    {customerOptions.find((o) => o.value === custFilter)?.label ?? custFilter}
+                  </span>
+                  <button onClick={() => setCustFilter(null)} className="shrink-0 text-blue-500 hover:text-blue-800" title="Hapus filter nomor pelanggan"><X size={12} /></button>
                 </span>
               )}
               {tujuanFilter && (
@@ -396,10 +414,10 @@ export default function DriverDashboard() {
                 </span>
               )}
               <button
-                onClick={() => { setCustFilter(null); setTujuanFilter(null); setLayananFilter(null); (""); }}
-                className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 hover:bg-slate-200"
+                onClick={() => { setCustFilter(null); setTujuanFilter(null); setLayananFilter(null); }}
+                className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500 hover:bg-slate-200"
               >
-                <X size={11} /> Reset
+                <X size={11} /> Reset Semua
               </button>
             </div>
           )}
@@ -447,7 +465,9 @@ export default function DriverDashboard() {
 
           {openShipments !== null && filteredOpen.length === 0 && (
             <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-400">
-              {(custFilter || tujuanFilter || layananFilter) ? "Tidak ada pesanan terbuka yang cocok dengan filter." : "Tidak ada pesanan terbuka saat ini."}
+              {hasOpenFilter
+                ? "Tidak ada pesanan yang sesuai dengan filter yang dipilih."
+                : "Tidak ada pesanan terbuka saat ini."}
             </div>
           )}
 
@@ -525,17 +545,27 @@ function OpenShipmentCard({
         highlighted ? "border-violet-300 ring-2 ring-violet-100" : "border-slate-200"
       }`}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-sm font-bold text-slate-900">{item.awb}</span>
-        {item.claimStatus === "pending" && item.isMine && (
-          <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
-            Menunggu Konfirmasi
-          </span>
-        )}
-      </div>
-      <p className="mt-1.5 flex items-center gap-1.5 text-sm text-slate-600">
-        {item.kotaAsal} <ArrowRight size={13} className="text-slate-300" /> {item.kotaTujuan}
-      </p>
+ <div className="flex items-center justify-between gap-2">
+ <span className="font-mono text-sm font-bold text-slate-900">{item.awb}</span>
+ {item.claimStatus === "pending" && item.isMine && (
+ <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+ Menunggu Konfirmasi
+ </span>
+ )}
+ </div>
+ {/* Nomor Pelanggan (customer_id) - asal/origin order ini di-pickup. */}
+ {item.customerId && (
+ <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-blue-800">
+ <Building2 size={12} className="shrink-0 text-blue-500" />
+ <span className="truncate">
+ {item.customerId}
+ {item.customerName ? ` · ${item.customerName}` : ""}
+ </span>
+ </p>
+ )}
+ <p className="mt-1.5 flex items-center gap-1.5 text-sm text-slate-600">
+ {item.kotaAsal} <ArrowRight size={13} className="text-slate-300" /> {item.kotaTujuan}
+ </p>
       <p className="mt-1 text-xs text-slate-500">{item.alamatTujuan}</p>
       <div className="mt-2 flex items-center gap-3 text-xs text-slate-400">
         <span className="flex items-center gap-1">

@@ -16,6 +16,15 @@ async function requireDriverId(ctx: Ctx): Promise<string> {
   return row.id;
 }
 
+// The customer's display name for a shipment's "Nomor Pelanggan" tag.
+// There is no customers master table - the name is derived from the
+// Cust-Admin account that owns that customer_id (same mapping used by
+// GET /api/customers), hence the correlated subquery. LIMIT 1 keeps this
+// from fanning out if a customer_id ever has several accounts.
+const CUSTOMER_NAME_SQL = `(SELECT u.nama FROM users u
+        WHERE u.role = 'Cust-Admin' AND u.customer_id = s.customer_id
+        ORDER BY u.created_at ASC LIMIT 1) as customer_nama`;
+
 function shipmentSummary(row: Record<string, unknown>) {
   return {
     awb: row.awb,
@@ -33,8 +42,10 @@ function shipmentSummary(row: Record<string, unknown>) {
     jumlahKoli: row.jumlah_koli,
     truckNomorUnit: row.truck_nomor_unit ?? null,
     estimasiTiba: row.estimasi_tiba ?? null,
+    // customer_id is the free-text "Nomor Pelanggan" (e.g. "IDTMDI001")
+    // entered when the order was created - it is NOT an internal DB id.
     customerId: row.customer_id ?? null,
-    customerName: row.customer_nama ? String(row.customer_nama) : (row.customer_id ? String(row.customer_id) : null),
+    customerName: row.customer_nama ? String(row.customer_nama) : null,
   };
 }
 
@@ -64,8 +75,7 @@ export function registerDriverRoutes(router: Router) {
   router.get("/api/driver/shipments", async (ctx: Ctx) => {
     const driverId = await requireDriverId(ctx);
     const rows = await ctx.env.DB.prepare(
-      `SELECT s.*, s.customer_id as customer_id, s.customer_nama as customer_nama,
-              t.nomor_unit as truck_nomor_unit
+      `SELECT s.*, ${CUSTOMER_NAME_SQL}, t.nomor_unit as truck_nomor_unit
        FROM shipments s
        JOIN trucks t ON t.id = s.truck_id
        WHERE t.driver_id = ? AND s.status != 'Dibatalkan'
@@ -82,7 +92,7 @@ export function registerDriverRoutes(router: Router) {
   router.get("/api/driver/open-shipments", async (ctx: Ctx) => {
     const driverId = await requireDriverId(ctx);
     const rows = await ctx.env.DB.prepare(
-      `SELECT s.*, s.customer_id as customer_id, s.customer_nama as customer_nama
+      `SELECT s.*, ${CUSTOMER_NAME_SQL}
        FROM shipments s
        WHERE s.truck_id IS NULL
          AND s.status != 'Dibatalkan'

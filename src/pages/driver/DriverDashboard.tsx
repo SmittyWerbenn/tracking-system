@@ -1,5 +1,5 @@
 import { driverPath } from "../../utils/urls";
-import { AlertTriangle, ArrowRight, CalendarClock, FileSpreadsheet, Loader2, MessageCircle, Package, PackageSearch, RefreshCw, ScanLine, Search, Truck, Weight, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, FileSpreadsheet, Loader2, MessageCircle, Package, PackageSearch, RefreshCw, ScanLine, Truck, Weight, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { BarcodeScannerModal } from "../../components/BarcodeScannerModal";
@@ -39,8 +39,7 @@ export default function DriverDashboard() {
   const [custFilter, setCustFilter] = useState<string | null>(null);
   const [tujuanFilter, setTujuanFilter] = useState<string | null>(null);
   const [layananFilter, setLayananFilter] = useState<string | null>(null);
-  const [searchCust, setSearchCust] = useState("");
-  const [showFilterModal, setShowFilterModal] = useState(false);
+  // const ["", ] = useState(""); // removed - dropdown uses native <select>
   const [refreshing, setRefreshing] = useState(false);
 
   function loadShipments() {
@@ -334,28 +333,48 @@ export default function DriverDashboard() {
             Pengiriman yang belum ditugaskan ke driver manapun - klik "Ambil Pesanan" untuk mengajukan
             klaim, lalu tunggu admin konfirmasi. Atau scan barcode/QR pada resi.
           </p>
-          {/* Smart filter button */}
-          <div className="mb-3 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowFilterModal(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3 py-2.5 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50"
-            >
-              <Search size={16} /> Filter
-              {(custFilter || tujuanFilter || layananFilter) ? (
-                <span className="ml-0.5 rounded-full bg-blue-900 px-1.5 py-0.5 text-[10px] font-bold text-white">{[custFilter, tujuanFilter, layananFilter].filter(Boolean).length}</span>
-              ) : null}
-            </button>
-            {(custFilter || tujuanFilter || layananFilter) && (
-              <button
-                onClick={() => { setCustFilter(null); setTujuanFilter(null); setLayananFilter(null); setSearchCust(""); }}
-                className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200"
+          {/* Compact 3-select filter directly on page */}
+          <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div>
+              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Customer</label>
+              <select
+                value={custFilter ?? ""}
+                onChange={(e) => setCustFilter(e.target.value || null)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
               >
-                <X size={12} /> Reset Semua
-              </button>
-            )}
+                <option value="">Semua Customer</option>
+                {availableCustomers.map((c) => (
+                  <option key={c.id} value={c.id}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Tujuan</label>
+              <select
+                value={tujuanFilter ?? ""}
+                onChange={(e) => setTujuanFilter(e.target.value || null)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              >
+                <option value="">Semua Tujuan</option>
+                {smartTujuanOptions.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Service</label>
+              <select
+                value={layananFilter ?? ""}
+                onChange={(e) => setLayananFilter(e.target.value || null)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              >
+                <option value="">Semua Service</option>
+                {smartLayananOptions.map((l) => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          {/* Active filter chips */}
           {(custFilter || tujuanFilter || layananFilter) && (
             <div className="mb-3 flex flex-wrap items-center gap-2">
               {custFilter && (
@@ -376,6 +395,12 @@ export default function DriverDashboard() {
                   <button onClick={() => setLayananFilter(null)} className="text-violet-500 hover:text-violet-800" title="Hapus filter service"><X size={12} /></button>
                 </span>
               )}
+              <button
+                onClick={() => { setCustFilter(null); setTujuanFilter(null); setLayananFilter(null); (""); }}
+                className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 hover:bg-slate-200"
+              >
+                <X size={11} /> Reset
+              </button>
             </div>
           )}
 
@@ -422,7 +447,7 @@ export default function DriverDashboard() {
 
           {openShipments !== null && filteredOpen.length === 0 && (
             <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-400">
-              {[].length > 0 ? "Tidak ada pesanan terbuka yang cocok dengan filter." : "Tidak ada pesanan terbuka saat ini."}
+              {(custFilter || tujuanFilter || layananFilter) ? "Tidak ada pesanan terbuka yang cocok dengan filter." : "Tidak ada pesanan terbuka saat ini."}
             </div>
           )}
 
@@ -475,110 +500,6 @@ export default function DriverDashboard() {
           <ShipmentGrid shipments={{ aktif: active, kendala, selesai }[filter]} />
         </>
       )}
-
-      {/* Filter Bottom Sheet */}
-      {showFilterModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={() => setShowFilterModal(false)}>
-          <div
-            className="absolute bottom-0 left-0 right-0 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl animate-[slideUp_0.2s_ease-out]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-900">Filter Pesanan</h3>
-              <button onClick={() => setShowFilterModal(false)} className="rounded-full p-1 hover:bg-slate-100" title="Tutup"><X size={18} /></button>
-            </div>
-
-            <div className="mb-4">
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">Customer</label>
-              <input
-                type="text"
-                placeholder="Cari customer..."
-                value={searchCust}
-                onChange={(e) => setSearchCust(e.target.value)}
-                className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-              />
-              <div className="max-h-40 overflow-y-auto rounded-lg border border-slate-200">
-                <button
-                  onClick={() => { setCustFilter(null); setSearchCust(""); }}
-                  className={`w-full px-3 py-2 text-left text-sm hover:bg-blue-50 ${!custFilter ? "bg-blue-50 font-semibold text-blue-900" : "text-slate-700"}`}
-                >
-                  Semua Customer
-                </button>
-                {availableCustomers.filter(c => {
-                  const q = searchCust.toLowerCase();
-                  return !q || c.id.toLowerCase().includes(q) || c.label.toLowerCase().includes(q);
-                }).map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => { setCustFilter(c.id); setShowFilterModal(false); }}
-                    className={`w-full px-3 py-2 text-left text-sm hover:bg-blue-50 ${custFilter === c.id ? "bg-blue-50 font-semibold text-blue-900" : "text-slate-700"}`}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">Tujuan</label>
-              <div className="max-h-32 overflow-y-auto rounded-lg border border-slate-200">
-                <button
-                  onClick={() => setTujuanFilter(null)}
-                  className={`w-full px-3 py-2 text-left text-sm hover:bg-emerald-50 ${!tujuanFilter ? "bg-emerald-50 font-semibold text-emerald-800" : "text-slate-700"}`}
-                >
-                  Semua Tujuan
-                </button>
-                {smartTujuanOptions.map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setTujuanFilter(t)}
-                    className={`w-full px-3 py-2 text-left text-sm hover:bg-emerald-50 ${tujuanFilter === t ? "bg-emerald-50 font-semibold text-emerald-800" : "text-slate-700"}`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-5">
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">Service / Layanan</label>
-              <div className="max-h-32 overflow-y-auto rounded-lg border border-slate-200">
-                <button
-                  onClick={() => setLayananFilter(null)}
-                  className={`w-full px-3 py-2 text-left text-sm hover:bg-violet-50 ${!layananFilter ? "bg-violet-50 font-semibold text-violet-800" : "text-slate-700"}`}
-                >
-                  Semua Service
-                </button>
-                {smartLayananOptions.map((l) => (
-                  <button
-                    key={l}
-                    onClick={() => setLayananFilter(l)}
-                    className={`w-full px-3 py-2 text-left text-sm hover:bg-violet-50 ${layananFilter === l ? "bg-violet-50 font-semibold text-violet-800" : "text-slate-700"}`}
-                  >
-                    {l}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => { setCustFilter(null); setTujuanFilter(null); setLayananFilter(null); setSearchCust(""); setShowFilterModal(false); }}
-                className="flex-1 rounded-lg border border-slate-300 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Reset Semua
-              </button>
-              <button
-                onClick={() => setShowFilterModal(false)}
-                className="flex-1 rounded-lg bg-blue-900 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"
-              >
-                Tampilkan
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
 
       {scannerOpen && <BarcodeScannerModal onClose={() => setScannerOpen(false)} onDetected={handleScanned} />}
     </DriverLayout>

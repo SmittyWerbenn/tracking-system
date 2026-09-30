@@ -33,6 +33,8 @@ function shipmentSummary(row: Record<string, unknown>) {
     jumlahKoli: row.jumlah_koli,
     truckNomorUnit: row.truck_nomor_unit ?? null,
     estimasiTiba: row.estimasi_tiba ?? null,
+    customerId: row.customer_id ?? null,
+    customerName: row.customer_nama ? String(row.customer_nama) : (row.customer_id ? String(row.customer_id) : null),
   };
 }
 
@@ -62,7 +64,8 @@ export function registerDriverRoutes(router: Router) {
   router.get("/api/driver/shipments", async (ctx: Ctx) => {
     const driverId = await requireDriverId(ctx);
     const rows = await ctx.env.DB.prepare(
-      `SELECT s.*, t.nomor_unit as truck_nomor_unit
+      `SELECT s.*, s.customer_id as customer_id, s.customer_nama as customer_nama,
+              t.nomor_unit as truck_nomor_unit
        FROM shipments s
        JOIN trucks t ON t.id = s.truck_id
        WHERE t.driver_id = ? AND s.status != 'Dibatalkan'
@@ -79,7 +82,8 @@ export function registerDriverRoutes(router: Router) {
   router.get("/api/driver/open-shipments", async (ctx: Ctx) => {
     const driverId = await requireDriverId(ctx);
     const rows = await ctx.env.DB.prepare(
-      `SELECT s.* FROM shipments s
+      `SELECT s.*, s.customer_id as customer_id, s.customer_nama as customer_nama
+       FROM shipments s
        WHERE s.truck_id IS NULL
          AND s.status != 'Dibatalkan'
          AND (s.claim_status IS NULL OR s.claim_driver_id = ?)

@@ -349,14 +349,14 @@ export default function DriverDashboard() {
           <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="min-w-0">
               <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                Nomor Pelanggan
+                Client
               </label>
               <SearchableSelect
-                options={[{ value: "", label: "Semua Nomor Pelanggan" }, ...customerOptions]}
+                options={[{ value: "", label: "Semua Client" }, ...customerOptions]}
                 value={custFilter ?? ""}
                 onChange={(v) => setCustFilter(v || null)}
-                placeholder="Semua Nomor Pelanggan"
-                emptyLabel="Tidak ada nomor pelanggan."
+                placeholder="Semua Client"
+                emptyLabel="Tidak ada client."
               />
             </div>
             <div className="min-w-0">
@@ -563,7 +563,7 @@ function OpenShipmentCard({
           <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
             <Building2 size={12} className="shrink-0 text-slate-400" />
             <span className="min-w-0 truncate" title={item.customerName}>
-              Customer: {item.customerName}
+              Client: {item.customerName}
             </span>
           </p>
         )}

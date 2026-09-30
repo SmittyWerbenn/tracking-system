@@ -130,36 +130,39 @@ export default function DriverDashboard() {
 
   return (
     <DriverLayout wide>
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-7">
-        <div>
-          <p className="text-sm text-slate-500">Halo,</p>
-          <h1 className="text-lg font-semibold text-slate-900">{profile?.nama}</h1>
-          <p className="text-xs text-slate-400">Driver</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2.5">
+      <div className="mb-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm text-slate-500">Halo,</p>
+            <h1 className="text-lg font-semibold text-slate-900">{profile?.nama}</h1>
+            <p className="text-xs text-slate-400">Driver</p>
+          </div>
           <button
             type="button"
             onClick={handleRefresh}
             disabled={refreshing}
             title="Muat ulang data"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 border-blue-900 bg-white text-blue-900 shadow-sm hover:bg-blue-50 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3.5 py-2.5 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50 disabled:opacity-60"
           >
-            <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
-          </button>
-          <Link
-            to={driverPath("/riwayat")}
-            className="inline-flex items-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3.5 py-2.5 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50"
-          >
-            <FileSpreadsheet size={16} /> Data Pengiriman
-          </Link>
-          <button
-            type="button"
-            onClick={() => setScannerOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-          >
-            <ScanLine size={18} /> Scan AWB
+            <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} /> Refresh
           </button>
         </div>
+      </div>
+
+      <div className="mb-6 flex flex-wrap items-center gap-2.5">
+        <Link
+          to={driverPath("/riwayat")}
+          className="inline-flex items-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3.5 py-2.5 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50"
+        >
+          <FileSpreadsheet size={16} /> Data Pengiriman
+        </Link>
+        <button
+          type="button"
+          onClick={() => setScannerOpen(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+        >
+          <ScanLine size={18} /> Scan AWB
+        </button>
       </div>
 
       {trucks.length > 0 && (

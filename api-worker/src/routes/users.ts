@@ -55,6 +55,7 @@ export function registerUserRoutes(router: Router) {
   // Client IDs for dropdowns (Tambah User, Buat Pengiriman). Comes from the
   // clients master table; ids that only exist on old users/shipments are
   // included too so a dropdown never hides a Client ID that is in use.
+  // Deactivated Clients are left out - nothing new should be tied to them.
   router.get("/api/customer-ids", async (ctx: Ctx) => {
     requireAuth(ctx);
     const rows = await ctx.env.DB.prepare(
@@ -63,6 +64,7 @@ export function registerUserRoutes(router: Router) {
          UNION SELECT customer_id FROM users WHERE customer_id IS NOT NULL
          UNION SELECT customer_id FROM shipments WHERE customer_id IS NOT NULL
        ) ids LEFT JOIN clients c ON c.customer_id = ids.customer_id
+       WHERE COALESCE(c.aktif, 1) = 1
        ORDER BY ids.customer_id`,
     ).all<{ customer_id: string; nama: string | null; kota: string | null }>();
     const list = rows.results ?? [];
@@ -77,7 +79,7 @@ export function registerUserRoutes(router: Router) {
   router.get("/api/customers", async (ctx: Ctx) => {
     requirePermission(ctx, "users.manage");
     const [clients, accounts, shipmentCounts] = await Promise.all([
-      ctx.env.DB.prepare(`SELECT customer_id, nama, kota, created_at FROM clients`).all<{ customer_id: string; nama: string; kota: string | null; created_at: string }>(),
+      ctx.env.DB.prepare(`SELECT customer_id, nama, kota, aktif, created_at FROM clients`).all<{ customer_id: string; nama: string; kota: string | null; aktif: number; created_at: string }>(),
       ctx.env.DB.prepare(
         `SELECT id, nama, email, aktif, created_at, customer_id, role
          FROM users WHERE customer_id IS NOT NULL ORDER BY created_at ASC`,
@@ -92,17 +94,17 @@ export function registerUserRoutes(router: Router) {
     for (const row of shipmentCounts.results ?? []) shipmentCountByClient.set(key(row.customer_id), row.c);
 
     type Row = {
-      customerId: string; nama: string | null; kota: string | null; createdAt: string | null; shipmentCount: number;
+      customerId: string; nama: string | null; kota: string | null; aktif: boolean; createdAt: string | null; shipmentCount: number;
       accounts: { id: string; nama: string; email: string; aktif: boolean; role: string; createdAt: string }[];
     };
     const byClient = new Map<string, Row>();
-    const ensure = (id: string, nama: string | null, kota: string | null, createdAt: string | null) => {
+    const ensure = (id: string, nama: string | null, kota: string | null, createdAt: string | null, aktif = true) => {
       if (!byClient.has(key(id))) {
-        byClient.set(key(id), { customerId: id, nama, kota, createdAt, shipmentCount: shipmentCountByClient.get(key(id)) ?? 0, accounts: [] });
+        byClient.set(key(id), { customerId: id, nama, kota, aktif, createdAt, shipmentCount: shipmentCountByClient.get(key(id)) ?? 0, accounts: [] });
       }
       return byClient.get(key(id))!;
     };
-    for (const r of clients.results ?? []) ensure(r.customer_id, r.nama, r.kota, r.created_at);
+    for (const r of clients.results ?? []) ensure(r.customer_id, r.nama, r.kota, r.created_at, r.aktif === 1);
     for (const a of accounts.results ?? []) {
       ensure(a.customer_id, null, null, null).accounts.push({
         id: a.id, nama: a.nama, email: a.email, aktif: a.aktif === 1, role: a.role, createdAt: a.created_at,
@@ -153,6 +155,64 @@ export function registerUserRoutes(router: Router) {
     return ok({ customerId, nama, kota }, {}, 201);
   });
 
+  // Edit a Client (name / city) and/or switch it on/off. The Client ID itself
+  // is never changed. Deactivating freezes every linked account: login is
+  // refused and live sessions stop working (see authMiddleware/auth).
+  router.patch("/api/customers/:id", async (ctx: Ctx, params) => {
+    const actor = requirePermission(ctx, "users.manage");
+    const body = await parseJsonBody(ctx.request);
+    const client = await ctx.env.DB.prepare(`SELECT customer_id, nama, kota, aktif FROM clients WHERE customer_id = ?`)
+      .bind(params.id)
+      .first<{ customer_id: string; nama: string; kota: string | null; aktif: number }>();
+    if (!client) throw Errors.notFound("Client tidak ditemukan.");
+
+    const sets: string[] = [];
+    const values: unknown[] = [];
+    let nama: string | undefined;
+    if (body.nama !== undefined) {
+      nama = reqString(body, "nama", { max: 100 }).trim();
+      if (!nama) throw Errors.badRequest("Nama Client wajib diisi.");
+      sets.push("nama = ?"); values.push(nama);
+    }
+    let kota: string | null | undefined;
+    if (Object.prototype.hasOwnProperty.call(body, "kota")) {
+      kota = (optString(body, "kota") ?? "").trim().slice(0, 100) || null;
+      sets.push("kota = ?"); values.push(kota);
+    }
+    const aktif = optBool(body, "aktif");
+    if (aktif !== undefined) { sets.push("aktif = ?"); values.push(aktif ? 1 : 0); }
+    if (sets.length === 0) throw Errors.badRequest("Tidak ada perubahan yang dikirim.");
+
+    await ctx.env.DB.prepare(`UPDATE clients SET ${sets.join(", ")} WHERE customer_id = ?`)
+      .bind(...values, client.customer_id)
+      .run();
+
+    // Kill live sessions of a just-deactivated Client so nobody stays logged in.
+    if (aktif === false && client.aktif === 1) {
+      await ctx.env.DB.prepare(
+        `UPDATE sessions SET revoked_at = ? WHERE revoked_at IS NULL
+         AND user_id IN (SELECT id FROM users WHERE customer_id = ?)`,
+      ).bind(new Date().toISOString(), client.customer_id).run();
+    }
+
+    const toggled = aktif !== undefined && (aktif ? 1 : 0) !== client.aktif;
+    await writeAuditLog(ctx.env, actor, {
+      action: toggled ? (aktif ? "ACTIVATE_CLIENT" : "DEACTIVATE_CLIENT") : "UPDATE_CLIENT",
+      actionLabel: toggled ? (aktif ? "ACTIVATE CLIENT" : "DEACTIVATE CLIENT") : "UPDATE CLIENT",
+      module: "Client",
+      description: toggled
+        ? `Client ${client.customer_id} ${aktif ? "diaktifkan" : "dinonaktifkan"}.`
+        : `Data Client ${client.customer_id} diperbarui.`,
+    });
+
+    return ok({
+      customerId: client.customer_id,
+      nama: nama ?? client.nama,
+      kota: kota === undefined ? client.kota : kota,
+      aktif: aktif === undefined ? client.aktif === 1 : aktif,
+    });
+  });
+
   router.post("/api/users", async (ctx: Ctx) => {
     const actor = requirePermission(ctx, "users.manage");
     const body = await parseJsonBody(ctx.request);
@@ -175,10 +235,11 @@ export function registerUserRoutes(router: Router) {
       throw Errors.badRequest("Client ID hanya berlaku untuk role Client dan Viewer.");
     }
     if (customerId) {
-      const known = await ctx.env.DB.prepare(`SELECT customer_id FROM clients WHERE customer_id = ?`)
+      const known = await ctx.env.DB.prepare(`SELECT customer_id, aktif FROM clients WHERE customer_id = ?`)
         .bind(customerId)
-        .first<{ customer_id: string }>();
+        .first<{ customer_id: string; aktif: number }>();
       if (!known) throw Errors.badRequest("Client ID belum terdaftar. Tambahkan dulu di menu Clients.");
+      if (known.aktif !== 1) throw Errors.badRequest("Client nonaktif. Aktifkan dulu di menu Clients.");
       customerId = known.customer_id; // canonical spelling from the master table
     }
 

@@ -43,6 +43,19 @@ export function registerAuthRoutes(router: Router) {
       }>();
 
     const validPassword = user ? await verifyPassword(password, user.password_hash) : false;
+    // Accounts of a deactivated Client are frozen: no login until reactivated.
+    const clientFrozen = user?.customer_id
+      ? !!(await ctx.env.DB.prepare(`SELECT 1 FROM clients WHERE customer_id = ? AND aktif = 0`).bind(user.customer_id).first())
+      : false;
+    if (user && validPassword && user.aktif === 1 && clientFrozen) {
+      await writeAuditLog(ctx.env, null, {
+        action: "LOGIN_FAILED",
+        actionLabel: "LOGIN FAILED",
+        module: "Auth",
+        description: `Login ditolak untuk ${email}: Client ${user.customer_id} nonaktif.`,
+      }, ip);
+      throw Errors.forbidden("Akun Client Anda dinonaktifkan. Hubungi admin GMS.");
+    }
     if (!user || !validPassword || user.aktif !== 1) {
       await writeAuditLog(ctx.env, null, {
         action: "LOGIN_FAILED",

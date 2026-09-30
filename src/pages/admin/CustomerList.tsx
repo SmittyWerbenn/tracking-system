@@ -1,4 +1,4 @@
-import { Building2, Plus, X } from "lucide-react";
+import { Building2, Pencil, Plus, Power, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { RefreshButton } from "../../components/RefreshButton";
@@ -17,6 +17,7 @@ interface CustomerRow {
   customerId: string;
   nama: string | null;
   kota: string | null;
+  aktif: boolean;
   shipmentCount: number;
   accounts: CustomerAccount[];
 }
@@ -37,6 +38,60 @@ export default function CustomerList() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Edit modal: the Client ID is fixed, only name/city change.
+  const [editing, setEditing] = useState<CustomerRow | null>(null);
+  const [editNama, setEditNama] = useState("");
+  const [editKota, setEditKota] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  function openEdit(c: CustomerRow) {
+    setEditing(c);
+    setEditNama(c.nama ?? "");
+    setEditKota(c.kota ?? "");
+    setEditError(null);
+  }
+
+  async function handleEditClient(e: FormEvent) {
+    e.preventDefault();
+    if (!editing) return;
+    const nama = editNama.trim();
+    if (!nama) {
+      setEditError("Nama Client wajib diisi.");
+      return;
+    }
+    setSaving(true);
+    setEditError(null);
+    try {
+      await api.patch(`/api/customers/${encodeURIComponent(editing.customerId)}`, { nama, kota: editKota.trim() });
+      setEditing(null);
+      setNotice(`Data Client ${editing.customerId} berhasil diperbarui.`);
+      await fetchCustomers();
+    } catch (err) {
+      setEditError(err instanceof ApiError ? err.message : "Gagal memperbarui client.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleToggleActive(c: CustomerRow) {
+    const next = !c.aktif;
+    const msg = next
+      ? `Aktifkan kembali Client ${c.customerId}? Semua akun user Client ini bisa login lagi.`
+      : `Nonaktifkan Client ${c.customerId}? Semua akun user Client ini akan dibekukan dan tidak bisa login.`;
+    if (!window.confirm(msg)) return;
+    setTogglingId(c.customerId);
+    setError(null);
+    try {
+      await api.patch(`/api/customers/${encodeURIComponent(c.customerId)}`, { aktif: next });
+      setNotice(`Client ${c.customerId} ${next ? "diaktifkan" : "dinonaktifkan"}.`);
+      await fetchCustomers();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Gagal mengubah status client.");
+    } finally {
+      setTogglingId(null);
+    }
+  }
 
   function openModal() {
     setNewId("");
@@ -136,17 +191,19 @@ export default function CustomerList() {
       ) : (
         <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1060px] text-left text-sm">
+            <table className="w-full min-w-[1240px] text-left text-sm">
               <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-4 py-3 font-medium">Client ID</th>
                   <th className="px-4 py-3 font-medium">Nama Client</th>
                   <th className="px-4 py-3 font-medium">Kota</th>
+                  <th className="px-4 py-3 font-medium">Status Client</th>
                   <th className="px-4 py-3 font-medium">Nama Akun</th>
                   <th className="px-4 py-3 font-medium">Email</th>
                   <th className="px-4 py-3 font-medium">Status Akun</th>
                   <th className="px-4 py-3 font-medium">Dibuat</th>
                   <th className="px-4 py-3 font-medium">Jumlah Pengiriman</th>
+                  <th className="px-4 py-3 font-medium">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -167,6 +224,15 @@ export default function CustomerList() {
                           </td>
                           <td rowSpan={rows.length} className="px-4 py-3 align-top text-slate-800">
                             {c.kota ?? "-"}
+                          </td>
+                          <td rowSpan={rows.length} className="whitespace-nowrap px-4 py-3 align-top">
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                                c.aktif ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                              }`}
+                            >
+                              {c.aktif ? "Aktif" : "Nonaktif"}
+                            </span>
                           </td>
                         </>
                       )}
@@ -195,11 +261,104 @@ export default function CustomerList() {
                           {c.shipmentCount}
                         </td>
                       )}
+                      {i === 0 && (
+                        <td rowSpan={rows.length} className="whitespace-nowrap px-4 py-3 align-top">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openEdit(c)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            >
+                              <Pencil size={13} /> Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleActive(c)}
+                              disabled={togglingId === c.customerId}
+                              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium disabled:opacity-50 ${
+                                c.aktif
+                                  ? "border-red-200 text-red-600 hover:bg-red-50"
+                                  : "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                              }`}
+                            >
+                              <Power size={13} /> {c.aktif ? "Nonaktifkan" : "Aktifkan"}
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ));
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {editing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+            <form onSubmit={handleEditClient} className="p-6">
+              <div className="mb-5 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-slate-900">Edit Client</h2>
+                <button
+                  type="button"
+                  onClick={() => setEditing(null)}
+                  className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Client ID</span>
+                  <input
+                    value={editing.customerId}
+                    disabled
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-sm text-slate-500"
+                  />
+                  <span className="mt-1.5 block text-[11px] text-slate-400">Client ID tidak bisa diubah.</span>
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Client</span>
+                  <input
+                    required
+                    autoFocus
+                    value={editNama}
+                    onChange={(e) => setEditNama(e.target.value)}
+                    maxLength={100}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota</span>
+                  <input
+                    value={editKota}
+                    onChange={(e) => setEditKota(e.target.value)}
+                    placeholder="Contoh: Jakarta Barat"
+                    maxLength={100}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+              </div>
+              {editError && <p className="mt-4 text-sm font-medium text-red-600">{editError}</p>}
+              <div className="mt-6 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditing(null)}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-lg bg-blue-900 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60"
+                >
+                  {saving ? "Menyimpan..." : "Simpan"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

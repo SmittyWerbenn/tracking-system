@@ -169,7 +169,7 @@ export default function CreateShipment() {
       return;
     }
     if (!form.customerId?.trim()) {
-      setFormError("Customer ID wajib diisi.");
+      setFormError("Client ID wajib diisi.");
       return;
     }
     setFormError(null);
@@ -402,7 +402,7 @@ export default function CreateShipment() {
               ))}
             </select>
           </Field>
-          <Field label="Customer ID">
+          <Field label="Client ID">
             <input
               required
               disabled={isCustAdmin}
@@ -420,7 +420,7 @@ export default function CreateShipment() {
             </datalist>
             {isCustAdmin && (
               <p className="mt-1.5 text-[11px] text-slate-400">
-                Terkunci ke Customer ID akun Anda.
+                Terkunci ke Client ID akun Anda.
               </p>
             )}
           </Field>

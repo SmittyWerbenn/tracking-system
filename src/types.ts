@@ -79,7 +79,7 @@ export interface Shipment {
   fotoSuratJalan?: string;
   truck: TruckInfo;
   truckId?: string; // links to Truck master data
-  /** Customer ID this shipment is tagged to - mandatory on every
+  /** Client ID this shipment is tagged to - mandatory on every
    * shipment, scopes visibility for Client accounts server-side. */
   customerId?: string | null;
   timeline: TimelineEvent[];
@@ -117,7 +117,7 @@ export interface ShipmentFormData {
   truckId?: string;
   /** SLA in business days; ETA is calculated server-side from this. */
   slaValue?: number;
-  /** Customer ID - mandatory. A Client's value is ignored by the
+  /** Client ID - mandatory. A Client's value is ignored by the
    * server and force-replaced with its own; other creator roles must
    * supply one explicitly. */
   customerId?: string;
@@ -229,7 +229,7 @@ export interface AppUser {
   /** File id of the user's avatar (see api-worker's `files` table) -
    * resolve to a viewable URL with `useFileUrl`, never a raw image itself. */
   foto?: string;
-  /** Customer ID - set only for role "Client", scopes that account
+  /** Client ID - set only for role "Client", scopes that account
    * to just its own customer's shipments. */
   customerId?: string | null;
 }

@@ -129,7 +129,7 @@ export function BulkShipmentImport() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ created: CreatedShipmentSummary[]; skipped: number } | null>(null);
   const [hoveredStatusRowId, setHoveredStatusRowId] = useState<string | null>(null);
-  // Bulk import applies one Customer ID to the whole batch, rather than
+  // Bulk import applies one Client ID to the whole batch, rather than
   // a per-row column - keeps the import table/template unchanged.
   const [customerId, setCustomerId] = useState(isCustAdmin ? profile?.customerId ?? "" : "");
   const [customerIds, setCustomerIds] = useState<string[]>([]);
@@ -206,7 +206,7 @@ export function BulkShipmentImport() {
 
   async function handleSubmitAll() {
     if (!customerId.trim()) {
-      setImportError("Customer ID wajib diisi sebelum menerbitkan resi.");
+      setImportError("Client ID wajib diisi sebelum menerbitkan resi.");
       return;
     }
     const withErrors = rows.map((r) => ({ row: r, errors: rowErrors(r) }));
@@ -285,7 +285,7 @@ export function BulkShipmentImport() {
         </div>
         <label className="mt-4 block max-w-xs">
           <span className="mb-1.5 block text-xs font-medium text-slate-600">
-            Customer ID (berlaku untuk semua baris)
+            Client ID (berlaku untuk semua baris)
           </span>
           <input
             required

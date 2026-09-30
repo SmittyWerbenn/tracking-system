@@ -57,8 +57,8 @@ export default function CustomerList() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Master Data Customer</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Daftar Customer ID yang pernah dibuat lewat akun Client di Manajemen User, beserta jumlah
-            pengiriman yang tertaut ke masing-masing Customer ID.
+            Daftar Client ID yang pernah dibuat lewat akun Client di Manajemen User, beserta jumlah
+            pengiriman yang tertaut ke masing-masing Client ID.
           </p>
         </div>
         <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
@@ -74,7 +74,7 @@ export default function CustomerList() {
         </div>
       ) : customers.length === 0 ? (
         <div className="mt-8 rounded-xl border border-dashed border-slate-300 bg-white py-14 text-center text-sm text-slate-400">
-          Belum ada Customer ID. Buat akun Client lewat Manajemen User untuk menambahkan customer baru.
+          Belum ada Client ID. Buat akun Client lewat Manajemen User untuk menambahkan customer baru.
         </div>
       ) : (
         <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -82,7 +82,7 @@ export default function CustomerList() {
             <table className="w-full min-w-[860px] text-left text-sm">
               <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Customer ID</th>
+                  <th className="px-4 py-3 font-medium">Client ID</th>
                   <th className="px-4 py-3 font-medium">Nama Akun</th>
                   <th className="px-4 py-3 font-medium">Email</th>
                   <th className="px-4 py-3 font-medium">Status Akun</th>

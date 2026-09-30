@@ -53,7 +53,7 @@ export function registerUserRoutes(router: Router) {
   });
 
   // Distinct customer_id values already in use (from Client accounts)
-  // - powers the "Customer ID" autocomplete on Buat Pengiriman and
+  // - powers the "Client ID" autocomplete on Buat Pengiriman and
   // Manajemen User, so the same customer keeps a consistent ID instead of
   // near-duplicate free-text typos. Any authenticated role may call this.
   router.get("/api/customer-ids", async (ctx: Ctx) => {
@@ -64,7 +64,7 @@ export function registerUserRoutes(router: Router) {
     return ok({ items: (rows.results ?? []).map((r) => r.customer_id) });
   });
 
-  // Master Data Customer: read-only view of every Customer ID that exists
+  // Master Data Customer: read-only view of every Client ID that exists
   // because a Client account was created for it in Manajemen User -
   // there's no separate "customers" table, this is derived straight from
   // users + shipments. Superadmin/Admin only, same gate as GET /api/users.
@@ -124,10 +124,10 @@ export function registerUserRoutes(router: Router) {
     }
 
     if (role === "Client" && !customerId) {
-      throw Errors.badRequest("Customer ID wajib diisi untuk role Client.");
+      throw Errors.badRequest("Client ID wajib diisi untuk role Client.");
     }
     if (customerId && role !== "Client") {
-      throw Errors.badRequest("Customer ID hanya berlaku untuk role Client.");
+      throw Errors.badRequest("Client ID hanya berlaku untuk role Client.");
     }
 
     if (driverId && role !== "Driver") {
@@ -207,10 +207,10 @@ export function registerUserRoutes(router: Router) {
       throw Errors.badRequest("driverId hanya berlaku untuk role Driver.");
     }
     if (effectiveRole === "Client" && !effectiveCustomerId) {
-      throw Errors.badRequest("Customer ID wajib diisi untuk role Client.");
+      throw Errors.badRequest("Client ID wajib diisi untuk role Client.");
     }
     if (effectiveCustomerId && effectiveRole !== "Client") {
-      throw Errors.badRequest("Customer ID hanya berlaku untuk role Client.");
+      throw Errors.badRequest("Client ID hanya berlaku untuk role Client.");
     }
     if (driverId) {
       const driver = await ctx.env.DB.prepare(`SELECT id, user_id FROM drivers WHERE id = ?`)
@@ -242,7 +242,7 @@ export function registerUserRoutes(router: Router) {
       values.push(customerId);
     } else if (role && role !== "Client" && target.role === "Client") {
       // Role moved away from Client without explicitly clearing the
-      // Customer ID - clear it so a re-promotion later doesn't inherit
+      // Client ID - clear it so a re-promotion later doesn't inherit
       // a stale customer scope.
       sets.push("customer_id = ?");
       values.push(null);

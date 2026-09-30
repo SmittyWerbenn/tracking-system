@@ -48,7 +48,7 @@ const ROLE_DESCRIPTION: Record<UserRole, string> = {
   Driver: "Hanya dapat membuka Update Tracking untuk melaporkan status/serah terima.",
   Viewer: "Hanya dapat melihat data (read-only), tidak bisa mengubah apa pun.",
   "Client":
-    "Setara Viewer, ditambah bisa Buat Pengiriman. Hanya melihat data pengiriman dengan Customer ID miliknya sendiri.",
+    "Setara Viewer, ditambah bisa Buat Pengiriman. Hanya melihat data pengiriman dengan Client ID miliknya sendiri.",
 };
 
 function formatLastLogin(iso?: string): string {
@@ -129,7 +129,7 @@ export default function UserManagement() {
     e.preventDefault();
     setSubmitError(null);
     if (form.role === "Client" && !form.customerId?.trim()) {
-      setSubmitError("Customer ID wajib diisi untuk role Client.");
+      setSubmitError("Client ID wajib diisi untuk role Client.");
       return;
     }
     const data: UserFormData = {
@@ -393,12 +393,12 @@ export default function UserManagement() {
 
                 {form.role === "Client" && (
                   <label className="block">
-                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Customer ID</span>
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Client ID</span>
                     <input
                       required
                       list="customer-id-suggestions"
                       className={inputClass}
-                      placeholder="Contoh: IDCUST001"
+                      placeholder="Contoh: IDCLIENT001"
                       value={form.customerId ?? ""}
                       onChange={(e) => setForm({ ...form, customerId: e.target.value })}
                       autoComplete="off"
@@ -409,7 +409,7 @@ export default function UserManagement() {
                       ))}
                     </datalist>
                     <span className="mt-1.5 block text-[11px] text-slate-400">
-                      Akun ini hanya akan melihat data pengiriman dengan Customer ID yang sama.
+                      Akun ini hanya akan melihat data pengiriman dengan Client ID yang sama.
                     </span>
                   </label>
                 )}

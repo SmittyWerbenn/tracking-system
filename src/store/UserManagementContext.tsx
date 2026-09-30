@@ -72,7 +72,7 @@ export interface UserFormData {
    * to it. Only meaningful when role is "Driver". Pass null to unlink,
    * omit to leave the current link untouched on an edit. */
   driverId?: string | null;
-  /** Customer ID - mandatory when role is "Client", ignored/cleared
+  /** Client ID - mandatory when role is "Client", ignored/cleared
    * for every other role. */
   customerId?: string | null;
 }

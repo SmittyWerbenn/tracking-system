@@ -338,7 +338,7 @@ export default function ShipmentDetail() {
             <div className="mt-6 flex flex-wrap gap-6 border-t border-slate-100 pt-5">
               {shipment.customerId && (
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Customer ID</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Client ID</p>
                   <p className="text-sm font-medium text-slate-800">{shipment.customerId}</p>
                 </div>
               )}

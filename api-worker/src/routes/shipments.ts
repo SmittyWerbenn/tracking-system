@@ -143,7 +143,7 @@ export function registerShipmentRoutes(router: Router) {
     // creator role must supply one explicitly.
     const customerId = actor.role === "Client" ? actor.customerId : optString(body, "customerId");
     if (!customerId) {
-      throw Errors.badRequest("Customer ID wajib diisi.");
+      throw Errors.badRequest("Client ID wajib diisi.");
     }
 
     if (truckId) {

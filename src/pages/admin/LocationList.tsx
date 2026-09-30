@@ -24,7 +24,7 @@ const JENIS_STYLE: Record<TitikJenis, string> = {
 };
 
 export default function LocationList() {
-  const { titikLokasi, refresh, createTitik, updateTitik, setTitikAktif } = useLocations();
+  const { titikLokasi, isLoading, refresh, createTitik, updateTitik, setTitikAktif } = useLocations();
   const { profile } = useAuth();
   const canEdit = profile?.role === "Superadmin" || profile?.role === "Admin";
 
@@ -269,6 +269,34 @@ export default function LocationList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
+              {titikLokasi.length === 0 && (
+                <tr>
+                  <td colSpan={canEdit ? 6 : 5} className="px-4 py-14 text-center">
+                    {isLoading ? (
+                      <span className="text-sm text-slate-400">Memuat data lokasi...</span>
+                    ) : (
+                      <div className="mx-auto flex max-w-sm flex-col items-center gap-2">
+                        <MapPinned size={28} className="text-slate-300" />
+                        <p className="text-sm font-semibold text-slate-700">Belum ada data kota & titik transit</p>
+                        <p className="text-xs text-slate-500">
+                          {canEdit
+                            ? "Tambahkan kota atau titik transit terlebih dahulu. Data ini dipakai sebagai pilihan lokasi pada pembuatan pengiriman dan update tracking."
+                            : "Data ini dikelola oleh Admin dan dipakai sebagai pilihan lokasi pada pengiriman dan update tracking."}
+                        </p>
+                        {canEdit && (
+                          <button
+                            type="button"
+                            onClick={() => setExpanded(true)}
+                            className="mt-2 inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+                          >
+                            <Plus size={15} /> Tambah Titik
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              )}
               {titikLokasi.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-50">
                   <td className="whitespace-nowrap px-4 py-3">

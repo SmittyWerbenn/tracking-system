@@ -7,7 +7,7 @@ import { requireAuth, requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta } from "../pagination";
 
-const ROLES = ["Admin", "Driver", "Viewer", "Cust-Admin"] as const;
+const ROLES = ["Admin", "Driver", "Viewer", "Client"] as const;
 
 export function registerUserRoutes(router: Router) {
   // Driver master data (drivers table, keyed by truck assignment) is
@@ -52,7 +52,7 @@ export function registerUserRoutes(router: Router) {
     return ok({ items: rows.results, meta: pageMeta(page, limit, total?.c ?? 0) });
   });
 
-  // Distinct customer_id values already in use (from Cust-Admin accounts)
+  // Distinct customer_id values already in use (from Client accounts)
   // - powers the "Customer ID" autocomplete on Buat Pengiriman and
   // Manajemen User, so the same customer keeps a consistent ID instead of
   // near-duplicate free-text typos. Any authenticated role may call this.
@@ -65,7 +65,7 @@ export function registerUserRoutes(router: Router) {
   });
 
   // Master Data Customer: read-only view of every Customer ID that exists
-  // because a Cust-Admin account was created for it in Manajemen User -
+  // because a Client account was created for it in Manajemen User -
   // there's no separate "customers" table, this is derived straight from
   // users + shipments. Superadmin/Admin only, same gate as GET /api/users.
   router.get("/api/customers", async (ctx: Ctx) => {
@@ -73,7 +73,7 @@ export function registerUserRoutes(router: Router) {
     const [accounts, shipmentCounts] = await Promise.all([
       ctx.env.DB.prepare(
         `SELECT id, nama, email, aktif, created_at, customer_id
-         FROM users WHERE role = 'Cust-Admin' AND customer_id IS NOT NULL
+         FROM users WHERE role = 'Client' AND customer_id IS NOT NULL
          ORDER BY customer_id, created_at ASC`,
       ).all<{ id: string; nama: string; email: string; aktif: number; created_at: string; customer_id: string }>(),
       ctx.env.DB.prepare(
@@ -123,11 +123,11 @@ export function registerUserRoutes(router: Router) {
       throw Errors.forbidden("Admin tidak dapat menambah akun dengan role Admin. Hubungi Superadmin.");
     }
 
-    if (role === "Cust-Admin" && !customerId) {
-      throw Errors.badRequest("Customer ID wajib diisi untuk role Cust-Admin.");
+    if (role === "Client" && !customerId) {
+      throw Errors.badRequest("Customer ID wajib diisi untuk role Client.");
     }
-    if (customerId && role !== "Cust-Admin") {
-      throw Errors.badRequest("Customer ID hanya berlaku untuk role Cust-Admin.");
+    if (customerId && role !== "Client") {
+      throw Errors.badRequest("Customer ID hanya berlaku untuk role Client.");
     }
 
     if (driverId && role !== "Driver") {
@@ -206,11 +206,11 @@ export function registerUserRoutes(router: Router) {
     if (driverId && effectiveRole !== "Driver") {
       throw Errors.badRequest("driverId hanya berlaku untuk role Driver.");
     }
-    if (effectiveRole === "Cust-Admin" && !effectiveCustomerId) {
-      throw Errors.badRequest("Customer ID wajib diisi untuk role Cust-Admin.");
+    if (effectiveRole === "Client" && !effectiveCustomerId) {
+      throw Errors.badRequest("Customer ID wajib diisi untuk role Client.");
     }
-    if (effectiveCustomerId && effectiveRole !== "Cust-Admin") {
-      throw Errors.badRequest("Customer ID hanya berlaku untuk role Cust-Admin.");
+    if (effectiveCustomerId && effectiveRole !== "Client") {
+      throw Errors.badRequest("Customer ID hanya berlaku untuk role Client.");
     }
     if (driverId) {
       const driver = await ctx.env.DB.prepare(`SELECT id, user_id FROM drivers WHERE id = ?`)
@@ -240,8 +240,8 @@ export function registerUserRoutes(router: Router) {
     if (customerIdProvided) {
       sets.push("customer_id = ?");
       values.push(customerId);
-    } else if (role && role !== "Cust-Admin" && target.role === "Cust-Admin") {
-      // Role moved away from Cust-Admin without explicitly clearing the
+    } else if (role && role !== "Client" && target.role === "Client") {
+      // Role moved away from Client without explicitly clearing the
       // Customer ID - clear it so a re-promotion later doesn't inherit
       // a stale customer scope.
       sets.push("customer_id = ?");

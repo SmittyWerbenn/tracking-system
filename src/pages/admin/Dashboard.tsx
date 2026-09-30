@@ -41,7 +41,7 @@ export default function Dashboard() {
   const { shipments, refresh: refreshShipments } = useShipments();
   const { profile } = useAuth();
   const canCreateShipment =
-    profile?.role === "Superadmin" || profile?.role === "Admin" || profile?.role === "Cust-Admin";
+    profile?.role === "Superadmin" || profile?.role === "Admin" || profile?.role === "Client";
   const { notifications, refresh: refreshNotifications } = useNotifications();
   const { feedback, refresh: refreshFeedback } = useFeedback();
   const { settings } = useSettings();

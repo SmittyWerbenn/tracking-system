@@ -29,7 +29,7 @@ export default function ShipmentList() {
   const { settings } = useSettings();
   const { profile } = useAuth();
   const canCreateShipment =
-    profile?.role === "Superadmin" || profile?.role === "Admin" || profile?.role === "Cust-Admin";
+    profile?.role === "Superadmin" || profile?.role === "Admin" || profile?.role === "Client";
   const canManageClaims = profile?.role === "Superadmin" || profile?.role === "Admin";
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -49,7 +49,7 @@ export default function ShipmentList() {
   function canCancelRow(s: { status: ShipmentStatus }): boolean {
     if (s.status === "Selesai / Terkirim" || s.status === "Dibatalkan") return false;
     if (profile?.role === "Superadmin" || profile?.role === "Admin") return true;
-    if (profile?.role === "Cust-Admin") return s.status === "Dalam Persiapan";
+    if (profile?.role === "Client") return s.status === "Dalam Persiapan";
     return false;
   }
 
@@ -82,7 +82,7 @@ export default function ShipmentList() {
   const [alamatError, setAlamatError] = useState<string | null>(null);
 
   function canEditAlamatRow(s: { status: ShipmentStatus }): boolean {
-    return profile?.role === "Cust-Admin" && s.status === "Dalam Persiapan";
+    return profile?.role === "Client" && s.status === "Dalam Persiapan";
   }
 
   function openAlamatModal(s: { awb: string; alamatAsal: string; kotaAsal: string; alamatTujuan: string; kotaTujuan: string }) {
@@ -495,7 +495,7 @@ export default function ShipmentList() {
                       >
                         <MapPin size={16} />
                       </Link>
-                      {profile?.role !== "Viewer" && profile?.role !== "Cust-Admin" && (
+                      {profile?.role !== "Viewer" && profile?.role !== "Client" && (
                         <Link
                           to={adminPath(`/update-tracking/${s.awb}`)}
                           title="Update"

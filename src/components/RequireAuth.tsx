@@ -53,8 +53,8 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-/** For Buat Pengiriman specifically - Superadmin, Admin and Cust-Admin
- * qualify (a Cust-Admin creates shipments tagged to its own Nomor
+/** For Buat Pengiriman specifically - Superadmin, Admin and Client
+ * qualify (a Client creates shipments tagged to its own Nomor
  * Pelanggan). Driver and Viewer are both bounced to the Dashboard. */
 export function RequireShipmentCreator({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading, profile } = useAuth();
@@ -66,7 +66,7 @@ export function RequireShipmentCreator({ children }: { children: ReactNode }) {
   }
   const redirect = driverRedirect(profile);
   if (redirect) return redirect;
-  if (profile?.role !== "Superadmin" && profile?.role !== "Admin" && profile?.role !== "Cust-Admin") {
+  if (profile?.role !== "Superadmin" && profile?.role !== "Admin" && profile?.role !== "Client") {
     return <Navigate to={adminPath("/")} replace />;
   }
 

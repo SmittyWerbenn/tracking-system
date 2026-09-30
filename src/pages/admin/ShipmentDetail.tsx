@@ -220,8 +220,8 @@ export default function ShipmentDetail() {
     !isTerminalStatus &&
     (profile?.role === "Superadmin" ||
       profile?.role === "Admin" ||
-      (profile?.role === "Cust-Admin" && shipment.status === "Dalam Persiapan"));
-  const canEditAlamat = profile?.role === "Cust-Admin" && shipment.status === "Dalam Persiapan";
+      (profile?.role === "Client" && shipment.status === "Dalam Persiapan"));
+  const canEditAlamat = profile?.role === "Client" && shipment.status === "Dalam Persiapan";
 
   function printResi() {
     // The browser's print/"Save as PDF" dialog suggests document.title as the
@@ -556,7 +556,7 @@ export default function ShipmentDetail() {
               Scan QR untuk membuka halaman tracking publik AWB ini.
             </p>
           </div>
-          {profile?.role !== "Viewer" && profile?.role !== "Cust-Admin" && (
+          {profile?.role !== "Viewer" && profile?.role !== "Client" && (
             <Link
               to={adminPath(`/update-tracking/${shipment.awb}`)}
               className="block rounded-xl border border-dashed border-blue-300 bg-blue-50 p-4 text-center text-sm font-semibold text-blue-800 hover:bg-blue-100 no-print"

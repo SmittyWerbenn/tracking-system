@@ -39,7 +39,7 @@ const ROLE_BADGE_STYLE: Record<UserRole, string> = {
   Admin: "bg-blue-100 text-blue-700",
   Driver: "bg-amber-100 text-amber-700",
   Viewer: "bg-violet-100 text-violet-700",
-  "Cust-Admin": "bg-teal-100 text-teal-700",
+  "Client": "bg-teal-100 text-teal-700",
 };
 
 const ROLE_DESCRIPTION: Record<UserRole, string> = {
@@ -47,7 +47,7 @@ const ROLE_DESCRIPTION: Record<UserRole, string> = {
   Admin: "Dapat membuat/mengubah data pengiriman, armada, lokasi, dan pengaturan.",
   Driver: "Hanya dapat membuka Update Tracking untuk melaporkan status/serah terima.",
   Viewer: "Hanya dapat melihat data (read-only), tidak bisa mengubah apa pun.",
-  "Cust-Admin":
+  "Client":
     "Setara Viewer, ditambah bisa Buat Pengiriman. Hanya melihat data pengiriman dengan Customer ID miliknya sendiri.",
 };
 
@@ -128,8 +128,8 @@ export default function UserManagement() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitError(null);
-    if (form.role === "Cust-Admin" && !form.customerId?.trim()) {
-      setSubmitError("Customer ID wajib diisi untuk role Cust-Admin.");
+    if (form.role === "Client" && !form.customerId?.trim()) {
+      setSubmitError("Customer ID wajib diisi untuk role Client.");
       return;
     }
     const data: UserFormData = {
@@ -138,7 +138,7 @@ export default function UserManagement() {
       role: form.role,
       fotoDataUrl: form.fotoDataUrl,
       driverId: form.role === "Driver" ? form.driverId ?? null : null,
-      customerId: form.role === "Cust-Admin" ? form.customerId?.trim() ?? null : null,
+      customerId: form.role === "Client" ? form.customerId?.trim() ?? null : null,
       ...(form.password ? { password: form.password } : {}),
     };
     try {
@@ -159,9 +159,9 @@ export default function UserManagement() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Manajemen User</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Kelola akun internal dan peran akses (GMS-Admin / Driver / Viewer / Cust-Admin).
+            Kelola akun internal dan peran akses (GMS-Admin / Driver / Viewer / Client).
             {isAdminActor
-              ? " Sebagai GMS-Admin, Anda hanya dapat menambah/mengubah akun Driver, Viewer, dan Cust-Admin."
+              ? " Sebagai GMS-Admin, Anda hanya dapat menambah/mengubah akun Driver, Viewer, dan Client."
               : ""}
           </p>
         </div>
@@ -208,7 +208,7 @@ export default function UserManagement() {
                       <Shield size={12} />
                       {roleLabel(u.role)}
                     </span>
-                    {u.role === "Cust-Admin" && u.customerId && (
+                    {u.role === "Client" && u.customerId && (
                       <span className="mt-1 block text-[11px] text-slate-400">{u.customerId}</span>
                     )}
                   </td>
@@ -391,7 +391,7 @@ export default function UserManagement() {
                   </label>
                 )}
 
-                {form.role === "Cust-Admin" && (
+                {form.role === "Client" && (
                   <label className="block">
                     <span className="mb-1.5 block text-xs font-medium text-slate-600">Customer ID</span>
                     <input

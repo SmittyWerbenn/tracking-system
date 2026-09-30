@@ -121,7 +121,7 @@ export function BulkShipmentImport() {
   const { activeTitikLokasi } = useLocations();
   const { profile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isCustAdmin = profile?.role === "Cust-Admin";
+  const isCustAdmin = profile?.role === "Client";
 
   const [rows, setRows] = useState<BulkRow[]>(() => [emptyRow(), emptyRow(), emptyRow()]);
   const [importError, setImportError] = useState<string | null>(null);

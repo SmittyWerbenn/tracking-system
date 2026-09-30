@@ -9,10 +9,10 @@ export function registerDashboardRoutes(router: Router) {
     const url = new URL(ctx.request.url);
     const stagnantDays = Number(url.searchParams.get("stagnantDays") ?? "3") || 3;
     const stagnantCutoff = new Date(Date.now() - stagnantDays * 24 * 60 * 60 * 1000).toISOString();
-    // Cust-Admin's dashboard numbers must only reflect its own customer's
+    // Client's dashboard numbers must only reflect its own customer's
     // shipments - trucks/feedback stats stay global since those aren't
     // customer-scoped data.
-    const custScope = actor.role === "Cust-Admin";
+    const custScope = actor.role === "Client";
     const custWhere = custScope ? `AND customer_id = ?` : "";
     const custBind = (...extra: unknown[]) => (custScope ? [...extra, actor.customerId] : extra);
     // Cancelled orders are internal-admin/owning-customer data only - never

@@ -22,7 +22,7 @@ export interface DriverShipmentSummary {
   /** Free-text "Nomor Pelanggan" entered when the order was created
    * (e.g. "IDTMDI001") - not an internal database id. */
   customerId?: string | null;
-  /** Display name derived from the Cust-Admin account owning that
+  /** Display name derived from the Client account owning that
    * customer id, when one exists. */
   customerName?: string | null;
 }

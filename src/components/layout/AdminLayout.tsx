@@ -42,7 +42,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
         label: "Buat Pengiriman",
         icon: PackagePlus,
         end: true,
-        roles: ["Superadmin", "Admin", "Cust-Admin"],
+        roles: ["Superadmin", "Admin", "Client"],
       },
       { to: adminPath("/pengiriman"), label: "Data Pengiriman", icon: Package, end: true },
     ],

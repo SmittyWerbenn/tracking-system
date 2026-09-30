@@ -75,7 +75,7 @@ const ROLE_PERMISSIONS: Record<Role, Set<Permission>> = {
   // shipments - visibility is further narrowed to just its own
   // customer_id inside routes/shipments.ts (rbac alone can't express that
   // row-level scoping).
-  "Cust-Admin": new Set([
+  "Client": new Set([
     "shipments.view",
     "shipments.create",
     "fleet.view",

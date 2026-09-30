@@ -57,7 +57,7 @@ export default function CustomerList() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Master Data Customer</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Daftar Customer ID yang pernah dibuat lewat akun Cust-Admin di Manajemen User, beserta jumlah
+            Daftar Customer ID yang pernah dibuat lewat akun Client di Manajemen User, beserta jumlah
             pengiriman yang tertaut ke masing-masing Customer ID.
           </p>
         </div>
@@ -74,7 +74,7 @@ export default function CustomerList() {
         </div>
       ) : customers.length === 0 ? (
         <div className="mt-8 rounded-xl border border-dashed border-slate-300 bg-white py-14 text-center text-sm text-slate-400">
-          Belum ada Customer ID. Buat akun Cust-Admin lewat Manajemen User untuk menambahkan customer baru.
+          Belum ada Customer ID. Buat akun Client lewat Manajemen User untuk menambahkan customer baru.
         </div>
       ) : (
         <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

@@ -97,7 +97,7 @@ export default function CreateShipment() {
   const { settings } = useSettings();
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const isCustAdmin = profile?.role === "Cust-Admin";
+  const isCustAdmin = profile?.role === "Client";
 
   const [mode, setMode] = useState<"single" | "bulk">("bulk");
   const [form, setForm] = useState<ShipmentFormData>(() => ({

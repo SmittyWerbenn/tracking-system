@@ -64,16 +64,16 @@ export function registerShipmentRoutes(router: Router) {
     const where: string[] = [];
     const params: unknown[] = [];
     if (status) { where.push("s.status = ?"); params.push(status); }
-    // Cust-Admin only ever sees its own customer's shipments - forced
+    // Client only ever sees its own customer's shipments - forced
     // server-side, regardless of any status/search filters the client sends.
-    if (actor.role === "Cust-Admin") {
+    if (actor.role === "Client") {
       where.push("s.customer_id = ?");
       params.push(actor.customerId);
     }
     // Cancelled orders are "data batal order" - a separate bucket, not part
     // of the everyday Data Pengiriman view. They're excluded from the
     // default ("Semua") list for every role, including Superadmin/Admin/
-    // Cust-Admin, and only surface when explicitly filtered by
+    // Client, and only surface when explicitly filtered by
     // status=Dibatalkan. Viewer/Driver never see them, even then.
     if (!status) {
       where.push("s.status != 'Dibatalkan'");
@@ -138,10 +138,10 @@ export function registerShipmentRoutes(router: Router) {
     const jumlahKoli = reqNumber(body, "jumlahKoli", { min: 1, max: 100000 });
     const truckId = optString(body, "truckId");
     const slaValue = optNumber(body, "slaValue", { min: 1, max: 365 });
-    // Cust-Admin can only ever create shipments tagged with its own
+    // Client can only ever create shipments tagged with its own
     // customer_id - any value it sends in the body is ignored. Every other
     // creator role must supply one explicitly.
-    const customerId = actor.role === "Cust-Admin" ? actor.customerId : optString(body, "customerId");
+    const customerId = actor.role === "Client" ? actor.customerId : optString(body, "customerId");
     if (!customerId) {
       throw Errors.badRequest("Customer ID wajib diisi.");
     }
@@ -218,7 +218,7 @@ export function registerShipmentRoutes(router: Router) {
     if ((actor.role === "Viewer" || actor.role === "Driver") && row.status === "Dibatalkan") {
       throw Errors.notFound("AWB tidak ditemukan.");
     }
-    if (actor.role === "Cust-Admin" && row.customer_id !== actor.customerId) {
+    if (actor.role === "Client" && row.customer_id !== actor.customerId) {
       throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
     }
 
@@ -262,7 +262,7 @@ export function registerShipmentRoutes(router: Router) {
     if ((actor.role === "Viewer" || actor.role === "Driver") && row.status === "Dibatalkan") {
     throw Errors.notFound("AWB tidak ditemukan.");
     }
-    if (actor.role === "Cust-Admin" && row.customer_id !== actor.customerId) {
+    if (actor.role === "Client" && row.customer_id !== actor.customerId) {
     throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
     }
 
@@ -344,21 +344,21 @@ export function registerShipmentRoutes(router: Router) {
     return ok({ updated: true });
   });
 
-  // Narrow, self-service address correction for Cust-Admin - unlike the
+  // Narrow, self-service address correction for Client - unlike the
   // full PATCH /api/shipments/:awb above (Superadmin/Admin only, any
   // field), this only ever touches alamat/kota asal & tujuan, only while
   // the shipment is still "Dalam Persiapan" (before a truck has actually
-  // departed), and only for the Cust-Admin's own customer_id.
+  // departed), and only for the Client's own customer_id.
   router.patch("/api/shipments/:awb/alamat", async (ctx: Ctx, params) => {
     const actor = requireAuth(ctx);
-    if (actor.role !== "Cust-Admin" && actor.role !== "Superadmin" && actor.role !== "Admin") {
+    if (actor.role !== "Client" && actor.role !== "Superadmin" && actor.role !== "Admin") {
       throw Errors.forbidden();
     }
     const shipment = await ctx.env.DB.prepare(`SELECT status, customer_id FROM shipments WHERE awb = ?`)
       .bind(params.awb)
       .first<{ status: string; customer_id: string | null }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
-    if (actor.role === "Cust-Admin") {
+    if (actor.role === "Client") {
       if (shipment.customer_id !== actor.customerId) throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
       if (shipment.status !== "Dalam Persiapan") {
         throw Errors.unprocessable("Alamat hanya bisa diubah selama status masih Dalam Persiapan.");
@@ -391,12 +391,12 @@ export function registerShipmentRoutes(router: Router) {
   });
 
   // Cancel order - Superadmin/Admin may cancel from any not-yet-terminal
-  // status; Cust-Admin only its own customer's shipments and only while
+  // status; Client only its own customer's shipments and only while
   // still "Dalam Persiapan" (mirrors the alamat-edit restriction above -
   // once a truck is actually moving, cancellation goes through ops).
   router.post("/api/shipments/:awb/cancel", async (ctx: Ctx, params) => {
     const actor = requireAuth(ctx);
-    if (actor.role !== "Cust-Admin" && actor.role !== "Superadmin" && actor.role !== "Admin") {
+    if (actor.role !== "Client" && actor.role !== "Superadmin" && actor.role !== "Admin") {
       throw Errors.forbidden();
     }
     const shipment = await ctx.env.DB.prepare(`SELECT status, customer_id, kota_asal FROM shipments WHERE awb = ?`)
@@ -409,7 +409,7 @@ export function registerShipmentRoutes(router: Router) {
     if (shipment.status === "Dibatalkan") {
       throw Errors.unprocessable("Pengiriman ini sudah dibatalkan.");
     }
-    if (actor.role === "Cust-Admin") {
+    if (actor.role === "Client") {
       if (shipment.customer_id !== actor.customerId) throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
       if (shipment.status !== "Dalam Persiapan") {
         throw Errors.unprocessable("Hanya pengiriman dengan status Dalam Persiapan yang bisa dibatalkan.");

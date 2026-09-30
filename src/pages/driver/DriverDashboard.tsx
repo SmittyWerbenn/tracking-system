@@ -250,17 +250,17 @@ export default function DriverDashboard() {
         </div>
       </div>
 
-      <div className="mb-6 flex flex-wrap items-center gap-2.5">
+      <div className="mb-6 grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
         <Link
           to={driverPath("/riwayat")}
-          className="inline-flex items-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3.5 py-2.5 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50"
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3.5 py-3 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50 sm:py-2.5"
         >
           <FileSpreadsheet size={16} /> Data Pengiriman
         </Link>
         <button
           type="button"
           onClick={() => setScannerOpen(true)}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+          className="inline-flex items-center justify-center gap-2 rounded-lg border-2 border-blue-900 bg-blue-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 sm:py-2.5"
         >
           <ScanLine size={18} /> Scan AWB
         </button>

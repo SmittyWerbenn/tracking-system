@@ -1,10 +1,11 @@
 import { driverPath } from "../../utils/urls";
 import { LogOut } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
 import { useAuth } from "../../store/AuthContext";
 import { HeaderClock } from "../HeaderClock";
+import { LogoutConfirm } from "../LogoutConfirm";
 
 /** Layout for the driver portal (/driver/*) - deliberately separate from
  * both the public site header and AdminLayout's sidebar. Mobile-first (a
@@ -13,8 +14,10 @@ import { HeaderClock } from "../HeaderClock";
 export function DriverLayout({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   const { profile, logout } = useAuth();
   const navigate = useNavigate();
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
   function handleLogout() {
+    setLogoutOpen(false);
     logout();
     navigate(driverPath("/login"), { replace: true });
   }
@@ -31,7 +34,7 @@ export function DriverLayout({ children, wide = false }: { children: ReactNode; 
             <HeaderClock />
             {profile && <span className="hidden text-sm text-slate-500 sm:block">{profile.nama}</span>}
             <button
-              onClick={handleLogout}
+              onClick={() => setLogoutOpen(true)}
               title="Keluar"
               className="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
             >
@@ -40,6 +43,13 @@ export function DriverLayout({ children, wide = false }: { children: ReactNode; 
           </div>
         </div>
       </header>
+
+      <LogoutConfirm
+        open={logoutOpen}
+        nama={profile?.nama}
+        onConfirm={handleLogout}
+        onCancel={() => setLogoutOpen(false)}
+      />
       <main className={`mx-auto px-4 py-4 sm:px-6 ${wide ? "max-w-4xl" : "max-w-2xl"}`}>{children}</main>
     </div>
   );

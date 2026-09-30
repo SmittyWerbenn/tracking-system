@@ -23,6 +23,7 @@ import { initials } from "../../utils/initials";
 import { useFileUrl } from "../../utils/useFileUrl";
 import { NotificationBell } from "./NotificationBell";
 import { HeaderClock } from "../HeaderClock";
+import { LogoutConfirm } from "../LogoutConfirm";
 
 interface NavItem {
   to: string;
@@ -84,6 +85,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const { logout, profile } = useAuth();
   const avatarUrl = useFileUrl(profile?.fotoFileId);
   const navigate = useNavigate();
@@ -91,6 +93,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   if (!profile) return null;
 
   function handleLogout() {
+    setLogoutOpen(false);
     logout();
     navigate(adminPath("/login"), { replace: true });
   }
@@ -133,7 +136,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             </div>
           </NavLink>
           <button
-            onClick={handleLogout}
+            onClick={() => setLogoutOpen(true)}
             title="Keluar"
             className="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
           >
@@ -141,6 +144,13 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           </button>
         </div>
       </header>
+
+      <LogoutConfirm
+        open={logoutOpen}
+        nama={profile?.nama}
+        onConfirm={handleLogout}
+        onCancel={() => setLogoutOpen(false)}
+      />
 
       <div className="flex">
         {/* Sidebar */}

@@ -1,8 +1,7 @@
 import {
-  ArrowRight,
-  Building2,
-  Calculator,
-  Camera,
+ ArrowRight,
+ Building2,
+ Camera,
   FileText,
   Gauge,
   Headset,
@@ -88,10 +87,10 @@ export default function Home() {
               <ArrowRight size={16} />
             </button>
             <button
-              onClick={() => navigate("/cek-ongkir")}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800"
+            onClick={() => navigate("/tracking")}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800"
             >
-              <Calculator size={16} />
+            <MapPinned size={16} />
               {t.home.ctaCheckPrice}
             </button>
             <button

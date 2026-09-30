@@ -55,7 +55,7 @@ export default function CustomerList() {
     <AdminLayout>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Master Data Customer</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">Clients</h1>
           <p className="mt-1 text-sm text-slate-500">
             Daftar Client ID yang pernah dibuat lewat akun Client di Manajemen User, beserta jumlah
             pengiriman yang tertaut ke masing-masing Client ID.

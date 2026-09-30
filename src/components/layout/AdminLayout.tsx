@@ -54,7 +54,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
       { to: adminPath("/kota"), label: "Kota & Titik Transit", icon: MapPinned, end: true },
       {
         to: adminPath("/customer"),
-        label: "Master Data Customer",
+        label: "Clients",
         icon: Building2,
         end: true,
         roles: ["Superadmin", "Admin"],

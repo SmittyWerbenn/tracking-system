@@ -16,14 +16,13 @@ async function requireDriverId(ctx: Ctx): Promise<string> {
   return row.id;
 }
 
-// The customer's display name for a shipment's "Nomor Pelanggan" tag.
-// There is no customers master table - the name is derived from the
-// Client account that owns that customer_id (same mapping used by
-// GET /api/customers), hence the correlated subquery. LIMIT 1 keeps this
-// from fanning out if a customer_id ever has several accounts.
-const CUSTOMER_NAME_SQL = `(SELECT u.nama FROM users u
-        WHERE u.role = 'Client' AND u.customer_id = s.customer_id
-        ORDER BY u.created_at ASC LIMIT 1) as customer_nama`;
+// Display name for a shipment's Client ID: the clients master table first,
+// falling back to the first Client account with that ID for old data.
+const CUSTOMER_NAME_SQL = `COALESCE(
+        (SELECT c.nama FROM clients c WHERE c.customer_id = s.customer_id),
+        (SELECT u.nama FROM users u
+          WHERE u.role = 'Client' AND u.customer_id = s.customer_id
+          ORDER BY u.created_at ASC LIMIT 1)) as customer_nama`;
 
 function shipmentSummary(row: Record<string, unknown>) {
   return {

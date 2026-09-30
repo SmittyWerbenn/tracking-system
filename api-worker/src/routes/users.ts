@@ -52,60 +52,98 @@ export function registerUserRoutes(router: Router) {
     return ok({ items: rows.results, meta: pageMeta(page, limit, total?.c ?? 0) });
   });
 
-  // Distinct customer_id values already in use (from Client accounts)
-  // - powers the "Client ID" autocomplete on Buat Pengiriman and
-  // Manajemen User, so the same customer keeps a consistent ID instead of
-  // near-duplicate free-text typos. Any authenticated role may call this.
+  // Client IDs for dropdowns (Tambah User, Buat Pengiriman). Comes from the
+  // clients master table; ids that only exist on old users/shipments are
+  // included too so a dropdown never hides a Client ID that is in use.
   router.get("/api/customer-ids", async (ctx: Ctx) => {
     requireAuth(ctx);
     const rows = await ctx.env.DB.prepare(
-      `SELECT DISTINCT customer_id FROM users WHERE customer_id IS NOT NULL ORDER BY customer_id`,
+      `SELECT customer_id FROM clients
+       UNION SELECT customer_id FROM users WHERE customer_id IS NOT NULL
+       UNION SELECT customer_id FROM shipments WHERE customer_id IS NOT NULL
+       ORDER BY 1`,
     ).all<{ customer_id: string }>();
     return ok({ items: (rows.results ?? []).map((r) => r.customer_id) });
   });
 
-  // Master Data Customer: read-only view of every Client ID that exists
-  // because a Client account was created for it in Manajemen User -
-  // there's no separate "customers" table, this is derived straight from
-  // users + shipments. Superadmin/Admin only, same gate as GET /api/users.
+  // Master Data Clients: every Client ID with its name, the accounts linked
+  // to it and its shipment count. Superadmin/Admin only.
   router.get("/api/customers", async (ctx: Ctx) => {
     requirePermission(ctx, "users.manage");
-    const [accounts, shipmentCounts] = await Promise.all([
+    const [clients, accounts, shipmentCounts] = await Promise.all([
+      ctx.env.DB.prepare(`SELECT customer_id, nama, created_at FROM clients`).all<{ customer_id: string; nama: string; created_at: string }>(),
       ctx.env.DB.prepare(
-        `SELECT id, nama, email, aktif, created_at, customer_id
-         FROM users WHERE role = 'Client' AND customer_id IS NOT NULL
-         ORDER BY customer_id, created_at ASC`,
-      ).all<{ id: string; nama: string; email: string; aktif: number; created_at: string; customer_id: string }>(),
+        `SELECT id, nama, email, aktif, created_at, customer_id, role
+         FROM users WHERE customer_id IS NOT NULL ORDER BY created_at ASC`,
+      ).all<{ id: string; nama: string; email: string; aktif: number; created_at: string; customer_id: string; role: string }>(),
       ctx.env.DB.prepare(
         `SELECT customer_id, COUNT(*) as c FROM shipments WHERE customer_id IS NOT NULL GROUP BY customer_id`,
       ).all<{ customer_id: string; c: number }>(),
     ]);
 
-    const shipmentCountByCustomer = new Map<string, number>();
-    for (const row of shipmentCounts.results ?? []) shipmentCountByCustomer.set(row.customer_id, row.c);
+    const key = (id: string) => id.toLowerCase();
+    const shipmentCountByClient = new Map<string, number>();
+    for (const row of shipmentCounts.results ?? []) shipmentCountByClient.set(key(row.customer_id), row.c);
 
-    const byCustomer = new Map<
-      string,
-      { customerId: string; shipmentCount: number; accounts: { id: string; nama: string; email: string; aktif: boolean; createdAt: string }[] }
-    >();
-    for (const row of accounts.results ?? []) {
-      if (!byCustomer.has(row.customer_id)) {
-        byCustomer.set(row.customer_id, {
-          customerId: row.customer_id,
-          shipmentCount: shipmentCountByCustomer.get(row.customer_id) ?? 0,
-          accounts: [],
-        });
+    type Row = {
+      customerId: string; nama: string | null; createdAt: string | null; shipmentCount: number;
+      accounts: { id: string; nama: string; email: string; aktif: boolean; role: string; createdAt: string }[];
+    };
+    const byClient = new Map<string, Row>();
+    const ensure = (id: string, nama: string | null, createdAt: string | null) => {
+      if (!byClient.has(key(id))) {
+        byClient.set(key(id), { customerId: id, nama, createdAt, shipmentCount: shipmentCountByClient.get(key(id)) ?? 0, accounts: [] });
       }
-      byCustomer.get(row.customer_id)!.accounts.push({
-        id: row.id,
-        nama: row.nama,
-        email: row.email,
-        aktif: row.aktif === 1,
-        createdAt: row.created_at,
+      return byClient.get(key(id))!;
+    };
+    for (const r of clients.results ?? []) ensure(r.customer_id, r.nama, r.created_at);
+    for (const a of accounts.results ?? []) {
+      ensure(a.customer_id, null, null).accounts.push({
+        id: a.id, nama: a.nama, email: a.email, aktif: a.aktif === 1, role: a.role, createdAt: a.created_at,
       });
     }
+    for (const id of shipmentCountByClient.keys()) {
+      if (!byClient.has(id)) {
+        const orig = (shipmentCounts.results ?? []).find((r) => key(r.customer_id) === id)!.customer_id;
+        ensure(orig, null, null);
+      }
+    }
 
-    return ok({ items: Array.from(byCustomer.values()).sort((a, b) => a.customerId.localeCompare(b.customerId)) });
+    return ok({ items: Array.from(byClient.values()).sort((a, b) => a.customerId.localeCompare(b.customerId)) });
+  });
+
+  // Add a Client. The Client ID is what later gets picked in Tambah User.
+  router.post("/api/customers", async (ctx: Ctx) => {
+    const actor = requirePermission(ctx, "users.manage");
+    const body = await parseJsonBody(ctx.request);
+    const customerId = reqString(body, "customerId", { max: 50 }).trim().toUpperCase();
+    const nama = reqString(body, "nama", { max: 100 }).trim();
+    if (!/^[A-Z0-9][A-Z0-9._-]*$/.test(customerId)) {
+      throw Errors.badRequest("Client ID hanya boleh berisi huruf, angka, titik, minus, dan garis bawah (tanpa spasi).");
+    }
+    if (!nama) throw Errors.badRequest("Nama Client wajib diisi.");
+
+    // Also reject an ID already used by old users/shipments that never got
+    // a clients row, so the same Client can't be created twice.
+    const exists = await ctx.env.DB.prepare(
+      `SELECT 1 FROM clients WHERE customer_id = ?
+       UNION SELECT 1 FROM users WHERE customer_id = ? COLLATE NOCASE
+       UNION SELECT 1 FROM shipments WHERE customer_id = ? COLLATE NOCASE LIMIT 1`,
+    ).bind(customerId, customerId, customerId).first();
+    if (exists) throw Errors.conflict(`Client ID "${customerId}" sudah terdaftar.`);
+
+    await ctx.env.DB.prepare(`INSERT INTO clients (customer_id, nama, created_at, created_by) VALUES (?, ?, ?, ?)`)
+      .bind(customerId, nama, new Date().toISOString(), actor.id)
+      .run();
+
+    await writeAuditLog(ctx.env, actor, {
+      action: "CREATE_CLIENT",
+      actionLabel: "CREATE CLIENT",
+      module: "Client",
+      description: `Client "${nama}" (${customerId}) ditambahkan.`,
+    });
+
+    return ok({ customerId, nama }, {}, 201);
   });
 
   router.post("/api/users", async (ctx: Ctx) => {
@@ -117,7 +155,7 @@ export function registerUserRoutes(router: Router) {
     const password = reqString(body, "password", { min: 8 });
     const fotoFileId = optString(body, "fotoFileId");
     const driverId = optString(body, "driverId");
-    const customerId = optString(body, "customerId");
+    let customerId = optString(body, "customerId");
 
     if (actor.role === "Admin" && role === "Admin") {
       throw Errors.forbidden("Admin tidak dapat menambah akun dengan role Admin. Hubungi Superadmin.");
@@ -128,6 +166,13 @@ export function registerUserRoutes(router: Router) {
     }
     if (customerId && role !== "Client") {
       throw Errors.badRequest("Client ID hanya berlaku untuk role Client.");
+    }
+    if (customerId) {
+      const known = await ctx.env.DB.prepare(`SELECT customer_id FROM clients WHERE customer_id = ?`)
+        .bind(customerId)
+        .first<{ customer_id: string }>();
+      if (!known) throw Errors.badRequest("Client ID belum terdaftar. Tambahkan dulu di menu Clients.");
+      customerId = known.customer_id; // canonical spelling from the master table
     }
 
     if (driverId && role !== "Driver") {
@@ -199,7 +244,14 @@ export function registerUserRoutes(router: Router) {
     const driverIdProvided = Object.prototype.hasOwnProperty.call(body, "driverId");
     const driverId = driverIdProvided ? optString(body, "driverId") ?? null : undefined;
     const customerIdProvided = Object.prototype.hasOwnProperty.call(body, "customerId");
-    const customerId = customerIdProvided ? optString(body, "customerId") ?? null : undefined;
+    let customerId = customerIdProvided ? optString(body, "customerId") ?? null : undefined;
+    if (customerId && customerId !== target.customer_id) {
+      const known = await ctx.env.DB.prepare(`SELECT customer_id FROM clients WHERE customer_id = ?`)
+        .bind(customerId)
+        .first<{ customer_id: string }>();
+      if (!known) throw Errors.badRequest("Client ID belum terdaftar. Tambahkan dulu di menu Clients.");
+      customerId = known.customer_id;
+    }
     const effectiveRole = role ?? target.role;
     const effectiveCustomerId = customerIdProvided ? customerId : target.customer_id;
 

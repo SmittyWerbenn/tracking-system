@@ -394,22 +394,21 @@ export default function UserManagement() {
                 {form.role === "Client" && (
                   <label className="block">
                     <span className="mb-1.5 block text-xs font-medium text-slate-600">Client ID</span>
-                    <input
+                    <select
                       required
-                      list="customer-id-suggestions"
                       className={inputClass}
-                      placeholder="Contoh: IDCLIENT001"
                       value={form.customerId ?? ""}
                       onChange={(e) => setForm({ ...form, customerId: e.target.value })}
-                      autoComplete="off"
-                    />
-                    <datalist id="customer-id-suggestions">
+                    >
+                      <option value="">Pilih Client...</option>
                       {customerIds.map((c) => (
-                        <option key={c} value={c} />
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
                       ))}
-                    </datalist>
+                    </select>
                     <span className="mt-1.5 block text-[11px] text-slate-400">
-                      Akun ini hanya akan melihat data pengiriman dengan Client ID yang sama.
+                      Akun ini hanya akan melihat data pengiriman dengan Client ID yang sama. Client belum ada di daftar? Tambahkan dulu di menu Clients.
                     </span>
                   </label>
                 )}

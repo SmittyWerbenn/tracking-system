@@ -1,6 +1,6 @@
 import { driverPath } from "../../utils/urls";
 import { AlertTriangle, ArrowRight, CalendarClock, FileSpreadsheet, Loader2, MessageCircle, Package, PackageSearch, RefreshCw, ScanLine, Truck, Weight, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { BarcodeScannerModal } from "../../components/BarcodeScannerModal";
 import { DriverLayout } from "../../components/layout/DriverLayout";
@@ -23,6 +23,12 @@ const SELESAI_STATUS = "Selesai / Terkirim";
 
 type StatusFilter = "aktif" | "kendala" | "selesai" | "terbuka";
 
+interface OpenFilter {
+  tujuan?: string;
+  layanan?: string;
+  awb?: string;
+}
+
 export default function DriverDashboard() {
   const { profile } = useAuth();
   const { helpWhatsAppNumber } = useHelpContact();
@@ -36,6 +42,7 @@ export default function DriverDashboard() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanResultAwb, setScanResultAwb] = useState<string | null>(null);
   const [scanNotFound, setScanNotFound] = useState<string | null>(null);
+  const [openFilters, setOpenFilters] = useState<OpenFilter>({});
   const [refreshing, setRefreshing] = useState(false);
 
   function loadShipments() {
@@ -127,6 +134,35 @@ export default function DriverDashboard() {
   const selesai = (shipments ?? []).filter((s) => s.status === SELESAI_STATUS);
   const terbuka = openShipments ?? [];
   const scanResult = scanResultAwb ? terbuka.find((s) => s.awb === scanResultAwb) ?? null : null;
+
+  const filteredTerbuka = useMemo(() => {
+    return terbuka.filter((s) => {
+      if (openFilters.awb && !s.awb.toLowerCase().includes(openFilters.awb.toLowerCase())) return false;
+      if (openFilters.tujuan && !s.kotaTujuan.toLowerCase().includes(openFilters.tujuan.toLowerCase())) return false;
+      if (openFilters.layanan && !s.layanan.toLowerCase().includes(openFilters.layanan.toLowerCase())) return false;
+      return true;
+    });
+  }, [terbuka, openFilters]);
+
+  const filterChips = useMemo(() => {
+    const chips: { key: string; label: string; value: string }[] = [];
+    if (openFilters.awb) chips.push({ key: "awb", label: `AWB: ${openFilters.awb}`, value: openFilters.awb });
+    if (openFilters.tujuan) chips.push({ key: "tujuan", label: `Tujuan: ${openFilters.tujuan}`, value: openFilters.tujuan });
+    if (openFilters.layanan) chips.push({ key: "layanan", label: `Layanan: ${openFilters.layanan}`, value: openFilters.layanan });
+    return chips;
+  }, [openFilters]);
+
+  function removeFilter(key: keyof OpenFilter) {
+    setOpenFilters((prev) => {
+      const next = { ...prev };
+      delete (next as Record<string, unknown>)[key];
+      return next;
+    });
+  }
+
+  function resetOpenFilters() {
+    setOpenFilters({});
+  }
 
   return (
     <DriverLayout wide>
@@ -261,12 +297,63 @@ export default function DriverDashboard() {
       {filter === "terbuka" ? (
         <>
           <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Pesanan Terbuka
+            Pesanan Terbuka · {filteredTerbuka.length} hasil
           </h2>
           <p className="mb-3 text-xs text-slate-400">
             Pengiriman yang belum ditugaskan ke driver manapun - klik "Ambil Pesanan" untuk mengajukan
             klaim, lalu tunggu admin konfirmasi. Atau scan barcode/QR pada resi.
           </p>
+          {/* Filter inputs */}
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              placeholder="Tujuan (kota tujuan)"
+              value={openFilters.tujuan || ""}
+              onChange={(e) => setOpenFilters((prev) => ({ ...prev, tujuan: e.target.value || undefined }))}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            />
+            <input
+              type="text"
+              placeholder="Layanan"
+              value={openFilters.layanan || ""}
+              onChange={(e) => setOpenFilters((prev) => ({ ...prev, layanan: e.target.value || undefined }))}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            />
+            <input
+              type="text"
+              placeholder="AWB"
+              value={openFilters.awb || ""}
+              onChange={(e) => setOpenFilters((prev) => ({ ...prev, awb: e.target.value || undefined }))}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            />
+            {(openFilters.tujuan || openFilters.layanan || openFilters.awb) && (
+              <button
+                onClick={resetOpenFilters}
+                className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200"
+              >
+                <X size={12} /> Reset
+              </button>
+            )}
+          </div>
+          {filterChips.length > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              {filterChips.map((chip) => (
+                <span
+                  key={chip.key}
+                  className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700"
+                >
+                  {chip.label}
+                  <button
+                    onClick={() => removeFilter(chip.key as keyof OpenFilter)}
+                    className="text-blue-500 hover:text-blue-800"
+                    title="Hapus filter"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
 
           {scanNotFound && (
             <div className="mb-3 flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-700">
@@ -309,14 +396,14 @@ export default function DriverDashboard() {
             </div>
           )}
 
-          {openShipments !== null && terbuka.length === 0 && (
+          {openShipments !== null && filteredTerbuka.length === 0 && (
             <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-400">
-              Tidak ada pesanan terbuka saat ini.
+              {filterChips.length > 0 ? "Tidak ada pesanan terbuka yang cocok dengan filter." : "Tidak ada pesanan terbuka saat ini."}
             </div>
           )}
 
           <div className="grid grid-cols-1 gap-7 sm:grid-cols-2 lg:grid-cols-3">
-            {terbuka
+            {filteredTerbuka
               .filter((s) => s.awb !== scanResultAwb)
               .map((s) => (
                 <OpenShipmentCard

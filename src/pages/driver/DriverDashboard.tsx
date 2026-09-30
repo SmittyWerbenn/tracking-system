@@ -231,23 +231,31 @@ export default function DriverDashboard() {
 
   return (
     <DriverLayout wide>
+      {/* Refresh: a subtle utility card under the header, above the greeting.
+          Secondary to the primary "Scan AWB" action (soft blue, no heavy border). */}
+      <button
+        type="button"
+        onClick={handleRefresh}
+        disabled={refreshing}
+        aria-busy={refreshing}
+        title="Muat ulang data"
+        className="mb-5 flex min-h-[56px] w-full items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/60 px-3 py-2 text-left transition-colors hover:bg-blue-50 active:bg-blue-100/70 disabled:cursor-wait disabled:opacity-80 sm:w-auto sm:min-w-[300px]"
+      >
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-900">
+          <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
+        </span>
+        <span className="min-w-0 leading-tight">
+          <span className="block text-sm font-semibold text-blue-950">Refresh Data</span>
+          <span className="mt-0.5 block truncate text-xs text-slate-500">
+            {refreshing ? "Memperbarui data..." : "Perbarui data pengiriman terbaru"}
+          </span>
+        </span>
+      </button>
+
       <div className="mb-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-sm text-slate-500">Halo,</p>
-            <h1 className="text-lg font-semibold text-slate-900">{profile?.nama}</h1>
-            <p className="text-xs text-slate-400">Driver</p>
-          </div>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            title="Muat ulang data"
-            className="inline-flex items-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3.5 py-2.5 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50 disabled:opacity-60"
-          >
-            <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} /> Refresh
-          </button>
-        </div>
+        <p className="text-sm text-slate-500">Halo,</p>
+        <h1 className="text-lg font-semibold text-slate-900">{profile?.nama}</h1>
+        <p className="text-xs text-slate-400">Driver</p>
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center">

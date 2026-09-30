@@ -130,13 +130,13 @@ export default function DriverDashboard() {
 
   return (
     <DriverLayout wide>
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm text-slate-500">Halo,</p>
           <h1 className="text-lg font-semibold text-slate-900">{profile?.nama}</h1>
           <p className="text-xs text-slate-400">Driver</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-4">
           <button
             type="button"
             onClick={handleRefresh}
@@ -212,7 +212,7 @@ export default function DriverDashboard() {
         </div>
       )}
 
-      <div className="mb-6 grid grid-cols-4 gap-2 sm:gap-3">
+      <div className="mb-8 grid grid-cols-4 gap-3 sm:gap-4">
         <button
           type="button"
           onClick={() => setFilter("aktif")}
@@ -257,7 +257,7 @@ export default function DriverDashboard() {
 
       {filter === "terbuka" ? (
         <>
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Pesanan Terbuka
           </h2>
           <p className="mb-3 text-xs text-slate-400">
@@ -312,7 +312,7 @@ export default function DriverDashboard() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {terbuka
               .filter((s) => s.awb !== scanResultAwb)
               .map((s) => (
@@ -328,7 +328,7 @@ export default function DriverDashboard() {
         </>
       ) : (
         <>
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Pengiriman Saya · {filter === "aktif" ? "Aktif" : filter === "kendala" ? "Kendala" : "Selesai"}
           </h2>
 
@@ -439,7 +439,7 @@ function OpenShipmentCard({
 
 function ShipmentGrid({ shipments }: { shipments: DriverShipmentSummary[] }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {shipments.map((s) => (
         <Link
           key={s.awb}

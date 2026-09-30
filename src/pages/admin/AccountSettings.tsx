@@ -167,7 +167,7 @@ export default function AccountSettings() {
               className={inputClass}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="nama@gangsarmitrasuatama.co.id"
+              placeholder="nama@gms-logistics.id"
             />
           </label>
 

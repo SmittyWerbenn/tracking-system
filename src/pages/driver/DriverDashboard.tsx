@@ -17,6 +17,7 @@ import {
   type DriverTruckInfo,
   type OpenShipmentSummary,
 } from "../../utils/driverApi";
+import { ApiError } from "../../utils/apiClient";
 import { formatTanggalPanjang } from "../../utils/format";
 
 const KENDALA_STATUS = "Kendala";
@@ -32,6 +33,10 @@ export default function DriverDashboard() {
   const [trucks, setTrucks] = useState<DriverTruckInfo[]>([]);
   const [openShipments, setOpenShipments] = useState<OpenShipmentSummary[] | null>(null);
   const [openError, setOpenError] = useState<string | null>(null);
+  // The API answers 403 when this Driver account is not linked to a driver
+  // record / truck yet. That is "no data", not a failure, so it is shown as
+  // an empty state instead of an error banner.
+  const [unlinked, setUnlinked] = useState(false);
   const [claimingAwb, setClaimingAwb] = useState<string | null>(null);
   const [filter, setFilter] = useState<StatusFilter>("aktif");
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -43,16 +48,35 @@ export default function DriverDashboard() {
   // const ["", ] = useState(""); // removed - dropdown uses native <select>
   const [refreshing, setRefreshing] = useState(false);
 
+  function onShipmentsError(err: unknown) {
+    if (err instanceof ApiError && err.status === 403) {
+      setShipments([]);
+      setUnlinked(true);
+    } else {
+      setError("Gagal memuat pengiriman. Coba muat ulang halaman.");
+    }
+  }
+
+  function onOpenShipmentsError(err: unknown) {
+    if (err instanceof ApiError && err.status === 403) {
+      setOpenShipments([]);
+      setUnlinked(true);
+    } else {
+      setOpenError("Gagal memuat pesanan terbuka. Coba muat ulang halaman.");
+    }
+  }
+
   function loadShipments() {
     fetchDriverShipments()
-      .then(setShipments)
-      .catch(() => setError("Gagal memuat pengiriman. Coba muat ulang halaman."));
+      .then((items) => {
+        setShipments(items);
+        setUnlinked(false);
+      })
+      .catch(onShipmentsError);
   }
 
   function loadOpenShipments() {
-    fetchOpenShipments()
-      .then(setOpenShipments)
-      .catch(() => setOpenError("Gagal memuat pesanan terbuka. Coba muat ulang halaman."));
+    fetchOpenShipments().then(setOpenShipments).catch(onOpenShipmentsError);
   }
 
   useEffect(() => {
@@ -71,11 +95,12 @@ export default function DriverDashboard() {
     try {
       await Promise.all([
         fetchDriverShipments()
-          .then(setShipments)
-          .catch(() => setError("Gagal memuat pengiriman. Coba muat ulang halaman.")),
-        fetchOpenShipments()
-          .then(setOpenShipments)
-          .catch(() => setOpenError("Gagal memuat pesanan terbuka. Coba muat ulang halaman.")),
+          .then((items) => {
+            setShipments(items);
+            setUnlinked(false);
+          })
+          .catch(onShipmentsError),
+        fetchOpenShipments().then(setOpenShipments).catch(onOpenShipmentsError),
         fetchDriverTrucks().then(setTrucks).catch(() => {}),
       ]);
     } finally {
@@ -504,8 +529,14 @@ export default function DriverDashboard() {
           )}
 
           {shipments !== null && shipments.length === 0 && (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-400">
-              Belum ada pengiriman yang ditugaskan ke Anda.
+            <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+              <PackageSearch size={30} className="text-slate-300" />
+              <p className="text-sm font-semibold text-slate-700">Belum ada data pengiriman</p>
+              <p className="max-w-xs text-xs text-slate-500">
+                {unlinked
+                  ? "Akun Anda belum ditautkan ke data driver dan unit truk. Hubungi admin untuk dihubungkan."
+                  : "Pengiriman yang ditugaskan kepada Anda akan muncul di sini. Anda juga bisa mengambil pesanan di tab Terbuka."}
+              </p>
             </div>
           )}
 

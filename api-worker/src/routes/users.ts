@@ -58,17 +58,17 @@ export function registerUserRoutes(router: Router) {
   router.get("/api/customer-ids", async (ctx: Ctx) => {
     requireAuth(ctx);
     const rows = await ctx.env.DB.prepare(
-      `SELECT ids.customer_id, c.nama FROM (
+      `SELECT ids.customer_id, c.nama, c.kota FROM (
          SELECT customer_id FROM clients
          UNION SELECT customer_id FROM users WHERE customer_id IS NOT NULL
          UNION SELECT customer_id FROM shipments WHERE customer_id IS NOT NULL
        ) ids LEFT JOIN clients c ON c.customer_id = ids.customer_id
        ORDER BY ids.customer_id`,
-    ).all<{ customer_id: string; nama: string | null }>();
+    ).all<{ customer_id: string; nama: string | null; kota: string | null }>();
     const list = rows.results ?? [];
     return ok({
       items: list.map((r) => r.customer_id),
-      clients: list.map((r) => ({ customerId: r.customer_id, nama: r.nama })),
+      clients: list.map((r) => ({ customerId: r.customer_id, nama: r.nama, kota: r.kota })),
     });
   });
 
@@ -77,7 +77,7 @@ export function registerUserRoutes(router: Router) {
   router.get("/api/customers", async (ctx: Ctx) => {
     requirePermission(ctx, "users.manage");
     const [clients, accounts, shipmentCounts] = await Promise.all([
-      ctx.env.DB.prepare(`SELECT customer_id, nama, created_at FROM clients`).all<{ customer_id: string; nama: string; created_at: string }>(),
+      ctx.env.DB.prepare(`SELECT customer_id, nama, kota, created_at FROM clients`).all<{ customer_id: string; nama: string; kota: string | null; created_at: string }>(),
       ctx.env.DB.prepare(
         `SELECT id, nama, email, aktif, created_at, customer_id, role
          FROM users WHERE customer_id IS NOT NULL ORDER BY created_at ASC`,
@@ -92,26 +92,26 @@ export function registerUserRoutes(router: Router) {
     for (const row of shipmentCounts.results ?? []) shipmentCountByClient.set(key(row.customer_id), row.c);
 
     type Row = {
-      customerId: string; nama: string | null; createdAt: string | null; shipmentCount: number;
+      customerId: string; nama: string | null; kota: string | null; createdAt: string | null; shipmentCount: number;
       accounts: { id: string; nama: string; email: string; aktif: boolean; role: string; createdAt: string }[];
     };
     const byClient = new Map<string, Row>();
-    const ensure = (id: string, nama: string | null, createdAt: string | null) => {
+    const ensure = (id: string, nama: string | null, kota: string | null, createdAt: string | null) => {
       if (!byClient.has(key(id))) {
-        byClient.set(key(id), { customerId: id, nama, createdAt, shipmentCount: shipmentCountByClient.get(key(id)) ?? 0, accounts: [] });
+        byClient.set(key(id), { customerId: id, nama, kota, createdAt, shipmentCount: shipmentCountByClient.get(key(id)) ?? 0, accounts: [] });
       }
       return byClient.get(key(id))!;
     };
-    for (const r of clients.results ?? []) ensure(r.customer_id, r.nama, r.created_at);
+    for (const r of clients.results ?? []) ensure(r.customer_id, r.nama, r.kota, r.created_at);
     for (const a of accounts.results ?? []) {
-      ensure(a.customer_id, null, null).accounts.push({
+      ensure(a.customer_id, null, null, null).accounts.push({
         id: a.id, nama: a.nama, email: a.email, aktif: a.aktif === 1, role: a.role, createdAt: a.created_at,
       });
     }
     for (const id of shipmentCountByClient.keys()) {
       if (!byClient.has(id)) {
         const orig = (shipmentCounts.results ?? []).find((r) => key(r.customer_id) === id)!.customer_id;
-        ensure(orig, null, null);
+        ensure(orig, null, null, null);
       }
     }
 
@@ -128,6 +128,7 @@ export function registerUserRoutes(router: Router) {
       throw Errors.badRequest("Client ID hanya boleh berisi huruf, angka, titik, minus, dan garis bawah (tanpa spasi).");
     }
     if (!nama) throw Errors.badRequest("Nama Client wajib diisi.");
+    const kota = (optString(body, "kota") ?? "").trim().slice(0, 100) || null;
 
     // Also reject an ID already used by old users/shipments that never got
     // a clients row, so the same Client can't be created twice.
@@ -138,18 +139,18 @@ export function registerUserRoutes(router: Router) {
     ).bind(customerId, customerId, customerId).first();
     if (exists) throw Errors.conflict(`Client ID "${customerId}" sudah terdaftar.`);
 
-    await ctx.env.DB.prepare(`INSERT INTO clients (customer_id, nama, created_at, created_by) VALUES (?, ?, ?, ?)`)
-      .bind(customerId, nama, new Date().toISOString(), actor.id)
+    await ctx.env.DB.prepare(`INSERT INTO clients (customer_id, nama, kota, created_at, created_by) VALUES (?, ?, ?, ?, ?)`)
+      .bind(customerId, nama, kota, new Date().toISOString(), actor.id)
       .run();
 
     await writeAuditLog(ctx.env, actor, {
       action: "CREATE_CLIENT",
       actionLabel: "CREATE CLIENT",
       module: "Client",
-      description: `Client "${nama}" (${customerId}) ditambahkan.`,
+      description: `Client "${nama}" (${customerId})${kota ? ` di ${kota}` : ""} ditambahkan.`,
     });
 
-    return ok({ customerId, nama }, {}, 201);
+    return ok({ customerId, nama, kota }, {}, 201);
   });
 
   router.post("/api/users", async (ctx: Ctx) => {

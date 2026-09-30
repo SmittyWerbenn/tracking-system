@@ -16,6 +16,7 @@ interface CustomerAccount {
 interface CustomerRow {
   customerId: string;
   nama: string | null;
+  kota: string | null;
   shipmentCount: number;
   accounts: CustomerAccount[];
 }
@@ -32,6 +33,7 @@ export default function CustomerList() {
   const [modalOpen, setModalOpen] = useState(false);
   const [newId, setNewId] = useState("");
   const [newNama, setNewNama] = useState("");
+  const [newKota, setNewKota] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -39,6 +41,7 @@ export default function CustomerList() {
   function openModal() {
     setNewId("");
     setNewNama("");
+    setNewKota("");
     setFormError(null);
     setModalOpen(true);
   }
@@ -54,7 +57,7 @@ export default function CustomerList() {
     setSaving(true);
     setFormError(null);
     try {
-      await api.post("/api/customers", { customerId, nama });
+      await api.post("/api/customers", { customerId, nama, kota: newKota.trim() });
       setModalOpen(false);
       setNotice(`Client ${customerId} berhasil ditambahkan. Sekarang bisa dipilih di Manajemen User > Tambah User.`);
       await fetchCustomers();
@@ -133,11 +136,12 @@ export default function CustomerList() {
       ) : (
         <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] text-left text-sm">
+            <table className="w-full min-w-[1060px] text-left text-sm">
               <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-4 py-3 font-medium">Client ID</th>
                   <th className="px-4 py-3 font-medium">Nama Client</th>
+                  <th className="px-4 py-3 font-medium">Kota</th>
                   <th className="px-4 py-3 font-medium">Nama Akun</th>
                   <th className="px-4 py-3 font-medium">Email</th>
                   <th className="px-4 py-3 font-medium">Status Akun</th>
@@ -160,6 +164,9 @@ export default function CustomerList() {
                           </td>
                           <td rowSpan={rows.length} className="px-4 py-3 align-top text-slate-800">
                             {c.nama ?? "-"}
+                          </td>
+                          <td rowSpan={rows.length} className="px-4 py-3 align-top text-slate-800">
+                            {c.kota ?? "-"}
                           </td>
                         </>
                       )}
@@ -235,6 +242,16 @@ export default function CustomerList() {
                     value={newNama}
                     onChange={(e) => setNewNama(e.target.value)}
                     placeholder="Contoh: PT Megah Jaya"
+                    maxLength={100}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota</span>
+                  <input
+                    value={newKota}
+                    onChange={(e) => setNewKota(e.target.value)}
+                    placeholder="Contoh: Jakarta Barat"
                     maxLength={100}
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />

@@ -22,6 +22,7 @@ import { roleLabel, type UserRole } from "../../types";
 import { initials } from "../../utils/initials";
 import { useFileUrl } from "../../utils/useFileUrl";
 import { NotificationBell } from "./NotificationBell";
+import { HeaderClock } from "../HeaderClock";
 
 interface NavItem {
   to: string;
@@ -115,6 +116,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
+          <HeaderClock />
           <NotificationBell />
           <NavLink
             to={adminPath("/pengaturan/akun")}

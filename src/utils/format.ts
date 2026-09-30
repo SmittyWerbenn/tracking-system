@@ -38,6 +38,8 @@ export function formatTanggalJam(tanggal: string, jam: string): string {
 // All dates/times in the app are Western Indonesia Time (WIB, UTC+7),
 // regardless of the browser's timezone. Timestamps from the API are UTC ISO
 // strings, so they are converted here before being shown as "... WIB".
+const HARI = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+
 const WIB_FORMAT = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Jakarta",
   year: "numeric",
@@ -45,6 +47,7 @@ const WIB_FORMAT = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
   hour: "2-digit",
   minute: "2-digit",
+  second: "2-digit",
   hourCycle: "h23",
 });
 
@@ -52,6 +55,15 @@ function wibParts(d: Date): { tanggal: string; jam: string } {
   const p: Record<string, string> = {};
   for (const part of WIB_FORMAT.formatToParts(d)) p[part.type] = part.value;
   return { tanggal: `${p.year}-${p.month}-${p.day}`, jam: `${p.hour}:${p.minute}` };
+}
+
+/** A moment in WIB with seconds and weekday, for the live header clock. */
+export function wibClock(d: Date = new Date()): { tanggal: string; jam: string; detik: string; hari: string } {
+  const p: Record<string, string> = {};
+  for (const part of WIB_FORMAT.formatToParts(d)) p[part.type] = part.value;
+  const tanggal = `${p.year}-${p.month}-${p.day}`;
+  const dow = new Date(Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day))).getUTCDay();
+  return { tanggal, jam: `${p.hour}:${p.minute}`, detik: p.second, hari: HARI[dow] };
 }
 
 /** UTC ISO timestamp -> WIB { tanggal: "YYYY-MM-DD", jam: "HH:mm" }. */

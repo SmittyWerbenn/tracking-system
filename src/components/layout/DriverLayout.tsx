@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
 import { useAuth } from "../../store/AuthContext";
+import { HeaderClock } from "../HeaderClock";
 
 /** Layout for the driver portal (/driver/*) - deliberately separate from
  * both the public site header and AdminLayout's sidebar. Mobile-first (a
@@ -26,7 +27,8 @@ export function DriverLayout({ children, wide = false }: { children: ReactNode; 
             <img src={logoIcon} alt="GMS Logistics" className="h-7 w-7 shrink-0 object-contain" />
             <span className="truncate text-sm font-semibold text-slate-900">GMS Logistics</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <HeaderClock />
             {profile && <span className="hidden text-sm text-slate-500 sm:block">{profile.nama}</span>}
             <button
               onClick={handleLogout}

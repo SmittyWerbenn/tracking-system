@@ -136,15 +136,15 @@ export default function DriverDashboard() {
           <h1 className="text-lg font-semibold text-slate-900">{profile?.nama}</h1>
           <p className="text-xs text-slate-400">Driver</p>
         </div>
-        <div className="flex flex-wrap items-center gap-7">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
             onClick={handleRefresh}
             disabled={refreshing}
             title="Muat ulang data"
-            className="inline-flex items-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3.5 py-2.5 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50 disabled:opacity-60"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 border-blue-900 bg-white text-blue-900 shadow-sm hover:bg-blue-50 disabled:opacity-60"
           >
-            <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} /> Refresh
+            <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
           </button>
           <Link
             to={driverPath("/riwayat")}

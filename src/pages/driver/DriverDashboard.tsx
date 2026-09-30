@@ -1,5 +1,5 @@
 import { driverPath } from "../../utils/urls";
-import { AlertTriangle, ArrowRight, CalendarClock, FileSpreadsheet, Loader2, MessageCircle, Package, PackageSearch, RefreshCw, ScanLine, Truck, Weight, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, FileSpreadsheet, Loader2, MessageCircle, Package, PackageSearch, RefreshCw, ScanLine, Search, Truck, Weight, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { BarcodeScannerModal } from "../../components/BarcodeScannerModal";
@@ -23,12 +23,6 @@ const SELESAI_STATUS = "Selesai / Terkirim";
 
 type StatusFilter = "aktif" | "kendala" | "selesai" | "terbuka";
 
-interface OpenFilter {
-  tujuan?: string;
-  layanan?: string;
-  awb?: string;
-}
-
 export default function DriverDashboard() {
   const { profile } = useAuth();
   const { helpWhatsAppNumber } = useHelpContact();
@@ -42,7 +36,11 @@ export default function DriverDashboard() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanResultAwb, setScanResultAwb] = useState<string | null>(null);
   const [scanNotFound, setScanNotFound] = useState<string | null>(null);
-  const [openFilters, setOpenFilters] = useState<OpenFilter>({});
+  const [custFilter, setCustFilter] = useState<string | null>(null);
+  const [tujuanFilter, setTujuanFilter] = useState<string | null>(null);
+  const [layananFilter, setLayananFilter] = useState<string | null>(null);
+  const [searchCust, setSearchCust] = useState("");
+  const [showFilterModal, setShowFilterModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   function loadShipments() {
@@ -135,34 +133,67 @@ export default function DriverDashboard() {
   const terbuka = openShipments ?? [];
   const scanResult = scanResultAwb ? terbuka.find((s) => s.awb === scanResultAwb) ?? null : null;
 
-  const filteredTerbuka = useMemo(() => {
+  function getAvailableCustomers() {
+    const map = new Map<string, string>();
+    for (const s of terbuka) {
+      const cid = (s as OpenShipmentSummary).customerId ?? null;
+      const cname = (s as OpenShipmentSummary).customerName ?? (cid ? "Unknown" : "Tanpa Customer");
+      if (cid) map.set(cid, `${cid} - ${cname}`);
+      else if (cname && cname !== "Unknown") map.set(cname, cname);
+    }
+    return Array.from(map.entries()).map(([id, label]) => ({ id, label }));
+  }
+
+  function getAvailableTujuan() {
+    const set = new Set<string>();
+    for (const s of terbuka) set.add(s.kotaTujuan);
+    return Array.from(set).sort();
+  }
+
+  function getAvailableLayanan() {
+    const set = new Set<string>();
+    for (const s of terbuka) set.add(s.layanan);
+    return Array.from(set).sort();
+  }
+
+  const availableCustomers = useMemo(() => getAvailableCustomers(), [terbuka]);
+  const availableTujuan = useMemo(() => getAvailableTujuan(), [terbuka]);
+  const availableLayanan = useMemo(() => getAvailableLayanan(), [terbuka]);
+
+  const smartTujuanOptions = useMemo(() => {
+    if (!custFilter) return availableTujuan;
+    const cid = custFilter.split(" - ")[0] || custFilter;
+    const set = new Set<string>();
+    for (const s of terbuka) {
+      const sCid = (s as OpenShipmentSummary).customerId ?? null;
+      if ((custFilter ? (sCid === cid || custFilter === sCid) : true) && sCid) set.add(s.kotaTujuan);
+    }
+    return Array.from(set).sort();
+  }, [terbuka, custFilter, availableTujuan]);
+
+  const smartLayananOptions = useMemo(() => {
+    if (!custFilter) return availableLayanan;
+    const cid = custFilter.split(" - ")[0] || custFilter;
+    const set = new Set<string>();
+    for (const s of terbuka) {
+      const sCid = (s as OpenShipmentSummary).customerId ?? null;
+      if ((custFilter ? (sCid === cid || custFilter === sCid) : true) && sCid) set.add(s.layanan);
+    }
+    return Array.from(set).sort();
+  }, [terbuka, custFilter, availableLayanan]);
+
+  const filteredOpen = useMemo(() => {
     return terbuka.filter((s) => {
-      if (openFilters.awb && !s.awb.toLowerCase().includes(openFilters.awb.toLowerCase())) return false;
-      if (openFilters.tujuan && !s.kotaTujuan.toLowerCase().includes(openFilters.tujuan.toLowerCase())) return false;
-      if (openFilters.layanan && !s.layanan.toLowerCase().includes(openFilters.layanan.toLowerCase())) return false;
-      return true;
+      const sCid = (s as OpenShipmentSummary).customerId ?? null;
+      const customerMatch = !custFilter || sCid === (custFilter.split(" - ")[0] || custFilter) || custFilter === sCid || (custFilter === "Tanpa Customer" && !sCid);
+      const tujuanMatch = !tujuanFilter || s.kotaTujuan === tujuanFilter;
+      const layananMatch = !layananFilter || s.layanan === layananFilter;
+      return customerMatch && tujuanMatch && layananMatch;
     });
-  }, [terbuka, openFilters]);
+  }, [terbuka, custFilter, tujuanFilter, layananFilter]);
 
-  const filterChips = useMemo(() => {
-    const chips: { key: string; label: string; value: string }[] = [];
-    if (openFilters.awb) chips.push({ key: "awb", label: `AWB: ${openFilters.awb}`, value: openFilters.awb });
-    if (openFilters.tujuan) chips.push({ key: "tujuan", label: `Tujuan: ${openFilters.tujuan}`, value: openFilters.tujuan });
-    if (openFilters.layanan) chips.push({ key: "layanan", label: `Layanan: ${openFilters.layanan}`, value: openFilters.layanan });
-    return chips;
-  }, [openFilters]);
+  // Smart filter options based on selected customer
 
-  function removeFilter(key: keyof OpenFilter) {
-    setOpenFilters((prev) => {
-      const next = { ...prev };
-      delete (next as Record<string, unknown>)[key];
-      return next;
-    });
-  }
-
-  function resetOpenFilters() {
-    setOpenFilters({});
-  }
 
   return (
     <DriverLayout wide>
@@ -297,61 +328,54 @@ export default function DriverDashboard() {
       {filter === "terbuka" ? (
         <>
           <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Pesanan Terbuka · {filteredTerbuka.length} hasil
+            Pesanan Terbuka · {filteredOpen.length} hasil
           </h2>
           <p className="mb-3 text-xs text-slate-400">
             Pengiriman yang belum ditugaskan ke driver manapun - klik "Ambil Pesanan" untuk mengajukan
             klaim, lalu tunggu admin konfirmasi. Atau scan barcode/QR pada resi.
           </p>
-          {/* Filter inputs */}
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <input
-              type="text"
-              placeholder="Tujuan (kota tujuan)"
-              value={openFilters.tujuan || ""}
-              onChange={(e) => setOpenFilters((prev) => ({ ...prev, tujuan: e.target.value || undefined }))}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            />
-            <input
-              type="text"
-              placeholder="Layanan"
-              value={openFilters.layanan || ""}
-              onChange={(e) => setOpenFilters((prev) => ({ ...prev, layanan: e.target.value || undefined }))}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            />
-            <input
-              type="text"
-              placeholder="AWB"
-              value={openFilters.awb || ""}
-              onChange={(e) => setOpenFilters((prev) => ({ ...prev, awb: e.target.value || undefined }))}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            />
-            {(openFilters.tujuan || openFilters.layanan || openFilters.awb) && (
+          {/* Smart filter button */}
+          <div className="mb-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowFilterModal(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3 py-2.5 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50"
+            >
+              <Search size={16} /> Filter
+              {(custFilter || tujuanFilter || layananFilter) ? (
+                <span className="ml-0.5 rounded-full bg-blue-900 px-1.5 py-0.5 text-[10px] font-bold text-white">{[custFilter, tujuanFilter, layananFilter].filter(Boolean).length}</span>
+              ) : null}
+            </button>
+            {(custFilter || tujuanFilter || layananFilter) && (
               <button
-                onClick={resetOpenFilters}
+                onClick={() => { setCustFilter(null); setTujuanFilter(null); setLayananFilter(null); setSearchCust(""); }}
                 className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200"
               >
-                <X size={12} /> Reset
+                <X size={12} /> Reset Semua
               </button>
             )}
           </div>
-          {filterChips.length > 0 && (
+          {/* Active filter chips */}
+          {(custFilter || tujuanFilter || layananFilter) && (
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              {filterChips.map((chip) => (
-                <span
-                  key={chip.key}
-                  className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700"
-                >
-                  {chip.label}
-                  <button
-                    onClick={() => removeFilter(chip.key as keyof OpenFilter)}
-                    className="text-blue-500 hover:text-blue-800"
-                    title="Hapus filter"
-                  >
-                    <X size={12} />
-                  </button>
+              {custFilter && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                  {custFilter}
+                  <button onClick={() => setCustFilter(null)} className="text-blue-500 hover:text-blue-800" title="Hapus filter customer"><X size={12} /></button>
                 </span>
-              ))}
+              )}
+              {tujuanFilter && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                  Tujuan: {tujuanFilter}
+                  <button onClick={() => setTujuanFilter(null)} className="text-emerald-500 hover:text-emerald-800" title="Hapus filter tujuan"><X size={12} /></button>
+                </span>
+              )}
+              {layananFilter && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700">
+                  Service: {layananFilter}
+                  <button onClick={() => setLayananFilter(null)} className="text-violet-500 hover:text-violet-800" title="Hapus filter service"><X size={12} /></button>
+                </span>
+              )}
             </div>
           )}
 
@@ -396,14 +420,14 @@ export default function DriverDashboard() {
             </div>
           )}
 
-          {openShipments !== null && filteredTerbuka.length === 0 && (
+          {openShipments !== null && filteredOpen.length === 0 && (
             <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-400">
-              {filterChips.length > 0 ? "Tidak ada pesanan terbuka yang cocok dengan filter." : "Tidak ada pesanan terbuka saat ini."}
+              {[].length > 0 ? "Tidak ada pesanan terbuka yang cocok dengan filter." : "Tidak ada pesanan terbuka saat ini."}
             </div>
           )}
 
           <div className="grid grid-cols-1 gap-7 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredTerbuka
+            {filteredOpen
               .filter((s) => s.awb !== scanResultAwb)
               .map((s) => (
                 <OpenShipmentCard
@@ -451,6 +475,110 @@ export default function DriverDashboard() {
           <ShipmentGrid shipments={{ aktif: active, kendala, selesai }[filter]} />
         </>
       )}
+
+      {/* Filter Bottom Sheet */}
+      {showFilterModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={() => setShowFilterModal(false)}>
+          <div
+            className="absolute bottom-0 left-0 right-0 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl animate-[slideUp_0.2s_ease-out]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900">Filter Pesanan</h3>
+              <button onClick={() => setShowFilterModal(false)} className="rounded-full p-1 hover:bg-slate-100" title="Tutup"><X size={18} /></button>
+            </div>
+
+            <div className="mb-4">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">Customer</label>
+              <input
+                type="text"
+                placeholder="Cari customer..."
+                value={searchCust}
+                onChange={(e) => setSearchCust(e.target.value)}
+                className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              />
+              <div className="max-h-40 overflow-y-auto rounded-lg border border-slate-200">
+                <button
+                  onClick={() => { setCustFilter(null); setSearchCust(""); }}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-blue-50 ${!custFilter ? "bg-blue-50 font-semibold text-blue-900" : "text-slate-700"}`}
+                >
+                  Semua Customer
+                </button>
+                {availableCustomers.filter(c => {
+                  const q = searchCust.toLowerCase();
+                  return !q || c.id.toLowerCase().includes(q) || c.label.toLowerCase().includes(q);
+                }).map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => { setCustFilter(c.id); setShowFilterModal(false); }}
+                    className={`w-full px-3 py-2 text-left text-sm hover:bg-blue-50 ${custFilter === c.id ? "bg-blue-50 font-semibold text-blue-900" : "text-slate-700"}`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">Tujuan</label>
+              <div className="max-h-32 overflow-y-auto rounded-lg border border-slate-200">
+                <button
+                  onClick={() => setTujuanFilter(null)}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-emerald-50 ${!tujuanFilter ? "bg-emerald-50 font-semibold text-emerald-800" : "text-slate-700"}`}
+                >
+                  Semua Tujuan
+                </button>
+                {smartTujuanOptions.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTujuanFilter(t)}
+                    className={`w-full px-3 py-2 text-left text-sm hover:bg-emerald-50 ${tujuanFilter === t ? "bg-emerald-50 font-semibold text-emerald-800" : "text-slate-700"}`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-5">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">Service / Layanan</label>
+              <div className="max-h-32 overflow-y-auto rounded-lg border border-slate-200">
+                <button
+                  onClick={() => setLayananFilter(null)}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-violet-50 ${!layananFilter ? "bg-violet-50 font-semibold text-violet-800" : "text-slate-700"}`}
+                >
+                  Semua Service
+                </button>
+                {smartLayananOptions.map((l) => (
+                  <button
+                    key={l}
+                    onClick={() => setLayananFilter(l)}
+                    className={`w-full px-3 py-2 text-left text-sm hover:bg-violet-50 ${layananFilter === l ? "bg-violet-50 font-semibold text-violet-800" : "text-slate-700"}`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { setCustFilter(null); setTujuanFilter(null); setLayananFilter(null); setSearchCust(""); setShowFilterModal(false); }}
+                className="flex-1 rounded-lg border border-slate-300 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Reset Semua
+              </button>
+              <button
+                onClick={() => setShowFilterModal(false)}
+                className="flex-1 rounded-lg bg-blue-900 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"
+              >
+                Tampilkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {scannerOpen && <BarcodeScannerModal onClose={() => setScannerOpen(false)} onDetected={handleScanned} />}
     </DriverLayout>

@@ -46,6 +46,8 @@ export interface OpenShipmentSummary extends DriverShipmentSummary {
   claimStatus: "pending" | null;
   /** True when THIS driver is the one with the pending claim on it. */
   isMine: boolean;
+  customerId?: string | null;
+  customerName?: string | null;
 }
 
 export interface DriverLastPosition {

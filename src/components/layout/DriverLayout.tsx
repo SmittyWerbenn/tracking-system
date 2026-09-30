@@ -24,7 +24,7 @@ export function DriverLayout({ children, wide = false }: { children: ReactNode; 
         <div className={`mx-auto flex h-14 items-center justify-between ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
           <div className="flex min-w-0 items-center gap-2">
             <img src={logoIcon} alt="GMS Logistics" className="h-7 w-7 shrink-0 object-contain" />
-            <span className="truncate text-sm font-semibold text-slate-900">Portal Driver</span>
+            <span className="truncate text-sm font-semibold text-slate-900">GMS Logistics</span>
           </div>
           <div className="flex items-center gap-3">
             {profile && <span className="hidden text-sm text-slate-500 sm:block">{profile.nama}</span>}

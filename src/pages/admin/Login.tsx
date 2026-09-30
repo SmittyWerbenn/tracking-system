@@ -1,12 +1,14 @@
 import { adminPath } from "../../utils/urls";
-import { AlertTriangle, Loader2, Lock, Mail } from "lucide-react";
+import { AlertTriangle, Loader2, Lock, Mail, MessageCircle } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocation, useNavigate, type Location } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
 import { useAuth } from "../../store/AuthContext";
+import { useHelpContact } from "../../store/HelpContactContext";
 
 export default function Login() {
   const { login, logout, profile } = useAuth();
+  const { helpWhatsAppNumber } = useHelpContact();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -15,6 +17,10 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [awaitingRoleCheck, setAwaitingRoleCheck] = useState(false);
+
+  // Backend refuses login for accounts of a deactivated Client with this
+  // message; in that case offer a WhatsApp shortcut to the admin.
+  const clientFrozen = !!error && error.includes("Client Anda dinonaktifkan");
 
   const from = (location.state as { from?: Location } | null)?.from?.pathname ?? adminPath("/");
 
@@ -91,6 +97,18 @@ export default function Login() {
               <AlertTriangle size={14} />
               {error}
             </div>
+          )}
+          {clientFrozen && (
+            <a
+              href={`https://wa.me/${helpWhatsAppNumber}?text=${encodeURIComponent(
+                `Halo Admin GMS, akun Client saya (${email}) dinonaktifkan. Mohon bantuannya.`,
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+            >
+              <MessageCircle size={16} /> Hubungi Admin
+            </a>
           )}
 
           <button

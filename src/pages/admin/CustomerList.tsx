@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { RefreshButton } from "../../components/RefreshButton";
 import { api, ApiError } from "../../utils/apiClient";
-import { formatTanggalPanjang } from "../../utils/format";
+import { formatTanggalPanjang, isoToWib } from "../../utils/format";
 
 interface CustomerAccount {
   id: string;
@@ -23,7 +23,7 @@ interface CustomerRow {
 }
 
 function formatCreatedAt(iso: string): string {
-  return formatTanggalPanjang(iso.slice(0, 10));
+  return formatTanggalPanjang(isoToWib(iso).tanggal);
 }
 
 export default function CustomerList() {

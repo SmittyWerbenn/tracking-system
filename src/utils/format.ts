@@ -35,13 +35,46 @@ export function formatTanggalJam(tanggal: string, jam: string): string {
   return `${formatTanggalPanjang(tanggal)} · ${formatJam(jam)}`;
 }
 
-export function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+// All dates/times in the app are Western Indonesia Time (WIB, UTC+7),
+// regardless of the browser's timezone. Timestamps from the API are UTC ISO
+// strings, so they are converted here before being shown as "... WIB".
+const WIB_FORMAT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Jakarta",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+function wibParts(d: Date): { tanggal: string; jam: string } {
+  const p: Record<string, string> = {};
+  for (const part of WIB_FORMAT.formatToParts(d)) p[part.type] = part.value;
+  return { tanggal: `${p.year}-${p.month}-${p.day}`, jam: `${p.hour}:${p.minute}` };
 }
 
+/** UTC ISO timestamp -> WIB { tanggal: "YYYY-MM-DD", jam: "HH:mm" }. */
+export function isoToWib(iso: string): { tanggal: string; jam: string } {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return { tanggal: iso.slice(0, 10), jam: iso.slice(11, 16) };
+  return wibParts(d);
+}
+
+/** UTC ISO timestamp -> "30 September 2026, 14:05 WIB". */
+export function formatTimestampWib(iso: string): string {
+  const { tanggal, jam } = isoToWib(iso);
+  return `${formatTanggalPanjang(tanggal)}, ${jam} WIB`;
+}
+
+/** Today's date in WIB as YYYY-MM-DD. */
+export function todayISO(): string {
+  return wibParts(new Date()).tanggal;
+}
+
+/** Current time in WIB as HH:mm. */
 export function nowHHMM(): string {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return wibParts(new Date()).jam;
 }
 
 export function nowISO(): string {

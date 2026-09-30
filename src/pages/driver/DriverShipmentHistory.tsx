@@ -7,7 +7,7 @@ import { RefreshButton } from "../../components/RefreshButton";
 import { useAuth } from "../../store/AuthContext";
 import { fetchDriverShipments, type DriverShipmentSummary } from "../../utils/driverApi";
 import { exportDriverShipmentsCsv } from "../../utils/exportCsv";
-import { formatTanggalPanjang } from "../../utils/format";
+import { formatTanggalPanjang, todayISO } from "../../utils/format";
 import { SHIPMENT_STATUS_OPTIONS } from "../../utils/status";
 
 const KENDALA_STATUS = "Kendala";
@@ -21,10 +21,7 @@ function statusStyle(status: string): string {
 
 /** "Eko Prasetyo" -> "data-kiriman-2026_09_28-eko-prasetyo.pdf" */
 function buildExportFilename(driverNama: string, ext: string): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
+  const [y, m, d] = todayISO().split("-");
   const slug =
     driverNama
       .trim()

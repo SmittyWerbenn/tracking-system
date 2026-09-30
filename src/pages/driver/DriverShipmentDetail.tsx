@@ -33,7 +33,7 @@ import {
   type DriverLastPosition,
   type DriverShipmentDetail as DriverShipmentDetailData,
 } from "../../utils/driverApi";
-import { formatJam, formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
+import { formatJam, formatTanggalPanjang, nowHHMM, todayISO, isoToWib } from "../../utils/format";
 import { getAllowedNextEvents } from "../../utils/status";
 
 function formatCoord(n: number): string {
@@ -626,8 +626,8 @@ export default function DriverShipmentDetail() {
               <p className="mb-3 text-xs text-slate-500">
                 Posisi terakhir: {formatCoord(lastPosition.latitude)}, {formatCoord(lastPosition.longitude)}
                 <br />
-                {formatTanggalPanjang(lastPosition.created_at.slice(0, 10))} &middot;{" "}
-                {formatJam(lastPosition.created_at.slice(11, 16))}
+                {formatTanggalPanjang(isoToWib(lastPosition.created_at).tanggal)} &middot;{" "}
+                {formatJam(isoToWib(lastPosition.created_at).jam)}
               </p>
             )}
 

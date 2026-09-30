@@ -21,7 +21,7 @@ export function getStagnantShipments(
     .filter((s) => s.status !== "Selesai / Terkirim")
     .map((s) => {
       const last = s.timeline[s.timeline.length - 1];
-      const lastDate = new Date(`${last.tanggal}T${last.jam}:00`);
+      const lastDate = new Date(`${last.tanggal}T${last.jam}:00+07:00`);
       const daysSinceUpdate = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
       return { shipment: s, daysSinceUpdate, lastUpdateDate: last.tanggal, lastUpdateTime: last.jam };
     })

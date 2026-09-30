@@ -7,6 +7,7 @@ import { requireAuth, requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta } from "../pagination";
 import { generateAwb } from "../awb";
+import { wibNow } from "../wib";
 import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, type TimelineEventType } from "../status";
 import { addBusinessDays } from "../sla";
 
@@ -154,8 +155,7 @@ export function registerShipmentRoutes(router: Router) {
     const awb = await generateAwb(ctx.env.DB);
     const now = new Date();
     const nowIso = now.toISOString();
-    const tanggalDibuat = nowIso.slice(0, 10);
-    const jamDibuat = nowIso.slice(11, 16);
+    const { tanggal: tanggalDibuat, jam: jamDibuat } = wibNow(now);
     // ETA is always derived from SLA + the shipment's own start date - never
     // entered directly, and never fabricated when no SLA was given.
     const slaUnit = slaValue !== undefined ? "hari_kerja" : null;
@@ -419,8 +419,7 @@ export function registerShipmentRoutes(router: Router) {
     const body = await parseJsonBody(ctx.request).catch(() => ({}) as Record<string, unknown>);
     const alasan = optString(body, "alasan") ?? "";
     const nowIso = new Date().toISOString();
-    const tanggal = nowIso.slice(0, 10);
-    const jam = nowIso.slice(11, 16);
+    const { tanggal, jam } = wibNow();
 
     const seqRow = await ctx.env.DB.prepare(`SELECT COALESCE(MAX(seq), 0) + 1 as next FROM shipment_timeline_events WHERE awb = ?`)
       .bind(params.awb)

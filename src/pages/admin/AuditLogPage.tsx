@@ -4,13 +4,13 @@ import { AdminLayout } from "../../components/layout/AdminLayout";
 import { RefreshButton } from "../../components/RefreshButton";
 import { useAuditLog } from "../../store/AuditLogContext";
 import { roleLabel, type AuditAction } from "../../types";
-import { formatTanggalPanjang } from "../../utils/format";
+import { formatTimestampWib, isoToWib } from "../../utils/format";
 
 const inputClass =
   "rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
 
 function formatTimestamp(iso: string): string {
-  return `${formatTanggalPanjang(iso.slice(0, 10))}, ${iso.slice(11, 16)} WIB`;
+  return formatTimestampWib(iso);
 }
 
 const ACTION_STYLE: Record<AuditAction, string> = {
@@ -67,7 +67,7 @@ export default function AuditLogPage() {
       if (actionFilter !== "Semua" && e.action !== actionFilter) return false;
       if (moduleFilter !== "Semua" && e.module !== moduleFilter) return false;
       if (awbQuery && !e.awb?.toLowerCase().includes(awbQuery.toLowerCase())) return false;
-      const date = e.timestamp.slice(0, 10);
+      const date = isoToWib(e.timestamp).tanggal;
       if (dateFrom && date < dateFrom) return false;
       if (dateTo && date > dateTo) return false;
       return true;

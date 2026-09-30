@@ -6,7 +6,7 @@ import { AdminLayout } from "../../components/layout/AdminLayout";
 import { RefreshButton } from "../../components/RefreshButton";
 import { useNotifications } from "../../store/NotificationContext";
 import type { NotificationTrigger } from "../../types";
-import { formatTanggalPanjang } from "../../utils/format";
+import { formatTimestampWib } from "../../utils/format";
 
 const TRIGGER_META: Record<NotificationTrigger, { icon: typeof Bell; style: string; label: string }> = {
   AWB_CREATED: { icon: PackagePlus, style: "bg-blue-100 text-blue-700", label: "Resi Diterbitkan" },
@@ -15,7 +15,7 @@ const TRIGGER_META: Record<NotificationTrigger, { icon: typeof Bell; style: stri
 };
 
 function formatTimestamp(iso: string): string {
-  return `${formatTanggalPanjang(iso.slice(0, 10))}, ${iso.slice(11, 16)} WIB`;
+  return formatTimestampWib(iso);
 }
 
 export default function NotificationCenter() {

@@ -6,7 +6,7 @@ import { StatCard } from "../../components/StatCard";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { RefreshButton } from "../../components/RefreshButton";
 import { useFeedback } from "../../store/FeedbackContext";
-import { formatTanggalPendek } from "../../utils/format";
+import { formatTanggalPendek, isoToWib } from "../../utils/format";
 
 function StarRow({ rating }: { rating: number }) {
   return (
@@ -104,7 +104,7 @@ export default function FeedbackAdmin() {
                     {f.comment ?? <span className="text-slate-300">-</span>}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
-                    {formatTanggalPendek(f.submittedAt.slice(0, 10))}
+                    {formatTanggalPendek(isoToWib(f.submittedAt).tanggal)}
                   </td>
                 </tr>
               ))}

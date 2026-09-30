@@ -27,7 +27,7 @@ import { useLocations } from "../../store/LocationContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment } from "../../types";
 import { api } from "../../utils/apiClient";
-import { formatJam, formatTanggalJam, formatTanggalPanjang } from "../../utils/format";
+import { formatJam, formatTanggalJam, formatTanggalPanjang, isoToWib } from "../../utils/format";
 import { adminPath, trackingUrl as publicTrackingUrl } from "../../utils/urls";
 
 /** Last row of driver_position_reports (raw DB shape) - the driver portal's
@@ -414,7 +414,7 @@ export default function ShipmentDetail() {
                     konfirmasi.
                     {shipment.claimRequestedAt && (
                       <span className="mt-0.5 block text-xs text-violet-600">
-                        Diajukan {formatTanggalJam(shipment.claimRequestedAt.slice(0, 10), shipment.claimRequestedAt.slice(11, 16))}
+                        Diajukan {formatTanggalJam(isoToWib(shipment.claimRequestedAt).tanggal, isoToWib(shipment.claimRequestedAt).jam)}
                       </span>
                     )}
                   </p>
@@ -520,8 +520,8 @@ export default function ShipmentDetail() {
               </p>
               <p className="mt-1 text-xs text-slate-500">
                 {formatTanggalJam(
-                  driverPosition.created_at.slice(0, 10),
-                  driverPosition.created_at.slice(11, 16),
+                  isoToWib(driverPosition.created_at).tanggal,
+                  isoToWib(driverPosition.created_at).jam,
                 )}
               </p>
               <p className="text-xs text-slate-500">

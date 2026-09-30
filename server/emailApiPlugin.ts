@@ -79,7 +79,7 @@ function createHandler(env: Record<string, string>): Connect.NextHandleFunction 
         kotaAsal: data.kotaAsal ?? "-",
         kotaTujuan: data.kotaTujuan ?? "-",
         status: data.status ?? "Dalam Proses",
-        tanggalDibuat: data.tanggalDibuat ?? new Date().toISOString().slice(0, 10),
+        tanggalDibuat: data.tanggalDibuat ?? new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10),
         trackingUrl: data.trackingUrl,
         senderName,
         pengirimNama: data.pengirimNama ?? "-",

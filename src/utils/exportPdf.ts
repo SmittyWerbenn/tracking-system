@@ -44,7 +44,7 @@ export function exportDriverShipmentsPdf(
   const printedAtY = filterParts.length > 0 ? 32 : 27;
   doc.setFontSize(8);
   doc.setTextColor(120);
-  doc.text(`Dicetak: ${new Date().toLocaleString("id-ID")}`, 14, printedAtY);
+  doc.text(`Dicetak: ${`${new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })} WIB`}`, 14, printedAtY);
   doc.setTextColor(0);
 
   autoTable(doc, {

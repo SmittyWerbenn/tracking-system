@@ -10,7 +10,7 @@ import { useSettings } from "../../store/SettingsContext";
 import { useShipments, type PendingClaim } from "../../store/ShipmentContext";
 import type { ShipmentStatus } from "../../types";
 import { exportShipmentsCsv } from "../../utils/exportCsv";
-import { formatTanggalJam, formatTanggalPendek, stripKeteranganMeta, todayISO } from "../../utils/format";
+import { formatTanggalJam, formatTanggalPendek, stripKeteranganMeta, todayISO, isoToWib } from "../../utils/format";
 import { getStagnantShipments } from "../../utils/stagnant";
 import { SHIPMENT_STATUS_OPTIONS } from "../../utils/status";
 
@@ -298,7 +298,7 @@ export default function ShipmentList() {
                   <p className="text-xs text-slate-500">
                     Diajukan oleh <span className="font-medium text-slate-700">{c.driver.nama}</span> (
                     {c.driver.telepon}) ·{" "}
-                    {formatTanggalJam(c.claimRequestedAt.slice(0, 10), c.claimRequestedAt.slice(11, 16))}
+                    {formatTanggalJam(isoToWib(c.claimRequestedAt).tanggal, isoToWib(c.claimRequestedAt).jam)}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">

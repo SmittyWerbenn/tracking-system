@@ -6,7 +6,7 @@ import { useAuth } from "../../store/AuthContext";
 import { useUserManagement, type UserFormData } from "../../store/UserManagementContext";
 import { ASSIGNABLE_USER_ROLES, roleLabel, type AppUser, type UserRole } from "../../types";
 import { checkPhotoSize, compressImage, MAX_PHOTO_SIZE_MB } from "../../utils/compressImage";
-import { formatTanggalPanjang } from "../../utils/format";
+import { formatTimestampWib } from "../../utils/format";
 import { initials } from "../../utils/initials";
 import { useFileUrl } from "../../utils/useFileUrl";
 
@@ -53,9 +53,7 @@ const ROLE_DESCRIPTION: Record<UserRole, string> = {
 
 function formatLastLogin(iso?: string): string {
   if (!iso) return "-";
-  const date = iso.slice(0, 10);
-  const time = iso.slice(11, 16);
-  return `${formatTanggalPanjang(date)}, ${time} WIB`;
+  return formatTimestampWib(iso);
 }
 
 export default function UserManagement() {

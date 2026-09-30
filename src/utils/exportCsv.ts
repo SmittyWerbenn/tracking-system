@@ -30,6 +30,7 @@ function receivedAtText(s: Shipment): string {
 
 const COLUMNS = [
   "AWB",
+  "Client ID",
   "Tanggal",
   "Pengirim",
   "Penerima",
@@ -53,6 +54,7 @@ const COLUMNS = [
 export function exportShipmentsCsv(shipments: Shipment[], filename = "data-pengiriman.csv") {
   const rows = shipments.map((s) => [
     s.awb,
+    s.customerId ?? "-",
     formatTanggalDDMMYYYY(s.tanggalDibuat),
     s.pengirim.nama,
     s.penerima.nama,

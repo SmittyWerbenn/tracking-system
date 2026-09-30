@@ -1,5 +1,5 @@
 import { adminPath } from "../../utils/urls";
-import { AlertTriangle, Ban, CheckCircle2, Download, Eye, FileEdit, LayoutList, ListTree, Loader2, MapPin, PackageSearch, Pencil, Printer, RefreshCw, Search, X, XCircle } from "lucide-react";
+import { AlertTriangle, Ban, CheckCircle2, ChevronDown, Download, Eye, FileEdit, LayoutList, ListTree, Loader2, MapPin, PackageSearch, Pencil, Printer, RefreshCw, Search, X, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -13,6 +13,8 @@ import { exportShipmentsCsv } from "../../utils/exportCsv";
 import { formatTanggalJam, formatTanggalPendek, stripKeteranganMeta, todayISO } from "../../utils/format";
 import { getStagnantShipments } from "../../utils/stagnant";
 import { SHIPMENT_STATUS_OPTIONS } from "../../utils/status";
+
+const NO_CLIENT = "__none__";
 
 function isShipmentStatus(value: string): value is ShipmentStatus {
   return (SHIPMENT_STATUS_OPTIONS as string[]).includes(value);
@@ -36,6 +38,8 @@ export default function ShipmentList() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [clientFilter, setClientFilter] = useState("");
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"ringkas" | "detail">("ringkas");
   const [pendingClaims, setPendingClaims] = useState<PendingClaim[]>([]);
   const [claimActionAwb, setClaimActionAwb] = useState<string | null>(null);
@@ -194,16 +198,59 @@ export default function ShipmentList() {
     });
   }
 
+  // Client ID options come from the shipments actually loaded, so a client
+  // with no shipment in the current result never shows up. A Client-role
+  // account only ever sees its own client, so the picker is pointless there.
+  const showClientPicker = profile?.role !== "Client";
+  const clientOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const s of shipments) {
+      const id = s.customerId ?? NO_CLIENT;
+      counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => (a[0] === NO_CLIENT ? 1 : b[0] === NO_CLIENT ? -1 : a[0].localeCompare(b[0])))
+      .map(([value, count]) => ({ value, count, label: value === NO_CLIENT ? "Tanpa Client ID" : value }));
+  }, [shipments]);
+
+  // A selection can go stale after a refresh (that client no longer has any
+  // shipment in view) - drop it instead of showing an empty table.
+  useEffect(() => {
+    if (clientFilter && !clientOptions.some((o) => o.value === clientFilter)) setClientFilter("");
+  }, [clientFilter, clientOptions]);
+
   const filtered = useMemo(() => {
     return shipments
       .filter((s) => {
+        if (clientFilter && (s.customerId ?? NO_CLIENT) !== clientFilter) return false;
         if (stagnantAwbs && !stagnantAwbs.has(s.awb)) return false;
         if (dateFrom && s.tanggalDibuat < dateFrom) return false;
         if (dateTo && s.tanggalDibuat > dateTo) return false;
         return true;
       })
       .sort((a, b) => (a.tanggalDibuat + a.jamDibuat < b.tanggalDibuat + b.jamDibuat ? 1 : -1));
-  }, [shipments, stagnantAwbs, dateFrom, dateTo]);
+  }, [shipments, stagnantAwbs, dateFrom, dateTo, clientFilter]);
+
+  // Export choices are built from the rows currently shown (status/search/
+  // date filters applied), so every entry exports at least one row.
+  const exportClientOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const s of filtered) {
+      const id = s.customerId ?? NO_CLIENT;
+      counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => (a[0] === NO_CLIENT ? 1 : b[0] === NO_CLIENT ? -1 : a[0].localeCompare(b[0])))
+      .map(([value, count]) => ({ value, count, label: value === NO_CLIENT ? "Tanpa Client ID" : value }));
+  }, [filtered]);
+
+  function handleExport(client: string | null) {
+    const rows = client === null ? filtered : filtered.filter((s) => (s.customerId ?? NO_CLIENT) === client);
+    if (rows.length === 0) return;
+    const slug = client === null ? "" : `-${client === NO_CLIENT ? "tanpa-client" : client.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+    exportShipmentsCsv(rows, `data-pengiriman${slug}-${todayISO()}.csv`);
+    setExportMenuOpen(false);
+  }
 
   function lastUpdate(awb: string) {
     const s = shipments.find((x) => x.awb === awb);
@@ -326,6 +373,21 @@ export default function ShipmentList() {
             </option>
           ))}
         </select>
+        {showClientPicker && (
+          <select
+            value={clientFilter}
+            onChange={(e) => setClientFilter(e.target.value)}
+            aria-label="Filter Client ID"
+            className="max-w-[14rem] rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+          >
+            <option value="">Semua Client ID</option>
+            {clientOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label} ({o.count})
+              </option>
+            ))}
+          </select>
+        )}
         <div className="flex items-center gap-1.5">
           <input
             type="date"
@@ -341,12 +403,13 @@ export default function ShipmentList() {
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
           />
         </div>
-        {(query || statusFilter !== "Semua" || dateFrom || dateTo || macetOnly) && (
+        {(query || statusFilter !== "Semua" || dateFrom || dateTo || macetOnly || clientFilter) && (
           <button
             onClick={() => {
               setQuery("");
               setDateFrom("");
               setDateTo("");
+              setClientFilter("");
               setSearchParams((prev) => {
                 const next = new URLSearchParams(prev);
                 next.delete("status");
@@ -359,12 +422,56 @@ export default function ShipmentList() {
             Reset
           </button>
         )}
-        <button
-          onClick={() => exportShipmentsCsv(filtered, `data-pengiriman-${todayISO()}.csv`)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          <Download size={15} /> Export CSV
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => (showClientPicker ? setExportMenuOpen((v) => !v) : handleExport(null))}
+            disabled={filtered.length === 0}
+            aria-haspopup={showClientPicker ? "menu" : undefined}
+            aria-expanded={showClientPicker ? exportMenuOpen : undefined}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
+            <Download size={15} /> Export CSV
+            {showClientPicker && <ChevronDown size={14} className="text-slate-400" />}
+          </button>
+          {showClientPicker && exportMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-20" onClick={() => setExportMenuOpen(false)} />
+              <div role="menu" className="absolute right-0 z-30 mt-1.5 w-64 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => handleExport(null)}
+                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                >
+                  <span>{clientFilter ? "Sesuai tampilan saat ini" : "Semua Client"}</span>
+                  <span className="text-xs font-normal text-slate-400">{filtered.length}</span>
+                </button>
+                {exportClientOptions.length > 1 && (
+                  <>
+                    <p className="border-t border-slate-100 px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      Per Client ID
+                    </p>
+                    <div className="max-h-56 overflow-y-auto">
+                      {exportClientOptions.map((o) => (
+                        <button
+                          key={o.value}
+                          type="button"
+                          role="menuitem"
+                          onClick={() => handleExport(o.value)}
+                          className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                        >
+                          <span className="min-w-0 truncate">{o.label}</span>
+                          <span className="shrink-0 text-xs text-slate-400">{o.count}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <span className="hidden text-xs text-slate-400 sm:inline">{filtered.length} pengiriman</span>
           <div className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5">

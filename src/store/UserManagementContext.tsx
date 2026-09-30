@@ -81,6 +81,8 @@ interface UserManagementContextValue {
   users: AppUser[];
   drivers: DriverOption[];
   customerIds: string[];
+  /** Client ID + name for the Tambah User dropdown. */
+  clientOptions: { customerId: string; nama: string | null }[];
   isLoading: boolean;
   refresh: () => Promise<void>;
   createUser: (data: UserFormData) => Promise<void>;
@@ -95,6 +97,7 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [drivers, setDrivers] = useState<DriverOption[]>([]);
   const [customerIds, setCustomerIds] = useState<string[]>([]);
+  const [clientOptions, setClientOptions] = useState<{ customerId: string; nama: string | null }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   async function refresh() {
@@ -104,15 +107,17 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
       const [usersRes, driversRes, customerIdsRes] = await Promise.all([
         api.get<{ items: UserRow[] }>("/api/users?limit=100"),
         api.get<{ items: DriverRow[] }>("/api/drivers"),
-        api.get<{ items: string[] }>("/api/customer-ids"),
+        api.get<{ items: string[]; clients?: { customerId: string; nama: string | null }[] }>("/api/customer-ids"),
       ]);
       setUsers(usersRes.items.map(toAppUser));
       setDrivers(driversRes.items.map(toDriverOption));
       setCustomerIds(customerIdsRes.items);
+      setClientOptions(customerIdsRes.clients ?? customerIdsRes.items.map((id) => ({ customerId: id, nama: null })));
     } catch {
       setUsers([]);
       setDrivers([]);
       setCustomerIds([]);
+      setClientOptions([]);
     } finally {
       setIsLoading(false);
     }
@@ -168,7 +173,7 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
 
   return (
     <UserManagementContext.Provider
-      value={{ users, drivers, customerIds, isLoading, refresh, createUser, updateUser, setUserActive }}
+      value={{ users, drivers, customerIds, clientOptions, isLoading, refresh, createUser, updateUser, setUserActive }}
     >
       {children}
     </UserManagementContext.Provider>

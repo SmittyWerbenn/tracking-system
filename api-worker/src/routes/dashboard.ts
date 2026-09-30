@@ -12,7 +12,7 @@ export function registerDashboardRoutes(router: Router) {
     // Client's dashboard numbers must only reflect its own customer's
     // shipments - trucks/feedback stats stay global since those aren't
     // customer-scoped data.
-    const custScope = actor.role === "Client";
+    const custScope = actor.role === "Client" || (actor.role === "Viewer" && !!actor.customerId);
     const custWhere = custScope ? `AND customer_id = ?` : "";
     const custBind = (...extra: unknown[]) => (custScope ? [...extra, actor.customerId] : extra);
     // Cancelled orders are internal-admin/owning-customer data only - never

@@ -66,7 +66,7 @@ export function registerShipmentRoutes(router: Router) {
     if (status) { where.push("s.status = ?"); params.push(status); }
     // Client only ever sees its own customer's shipments - forced
     // server-side, regardless of any status/search filters the client sends.
-    if (actor.role === "Client") {
+    if (actor.role === "Client" || (actor.role === "Viewer" && actor.customerId)) {
       where.push("s.customer_id = ?");
       params.push(actor.customerId);
     }
@@ -218,7 +218,7 @@ export function registerShipmentRoutes(router: Router) {
     if ((actor.role === "Viewer" || actor.role === "Driver") && row.status === "Dibatalkan") {
       throw Errors.notFound("AWB tidak ditemukan.");
     }
-    if (actor.role === "Client" && row.customer_id !== actor.customerId) {
+    if ((actor.role === "Client" || (actor.role === "Viewer" && actor.customerId)) && row.customer_id !== actor.customerId) {
       throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
     }
 
@@ -262,7 +262,7 @@ export function registerShipmentRoutes(router: Router) {
     if ((actor.role === "Viewer" || actor.role === "Driver") && row.status === "Dibatalkan") {
     throw Errors.notFound("AWB tidak ditemukan.");
     }
-    if (actor.role === "Client" && row.customer_id !== actor.customerId) {
+    if ((actor.role === "Client" || (actor.role === "Viewer" && actor.customerId)) && row.customer_id !== actor.customerId) {
     throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
     }
 

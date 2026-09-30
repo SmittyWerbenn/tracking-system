@@ -59,7 +59,7 @@ function formatLastLogin(iso?: string): string {
 }
 
 export default function UserManagement() {
-  const { users, drivers, customerIds, refresh, createUser, updateUser, setUserActive } = useUserManagement();
+  const { users, drivers, clientOptions, refresh, createUser, updateUser, setUserActive } = useUserManagement();
   const [refreshing, setRefreshing] = useState(false);
   async function handleRefresh() {
     setRefreshing(true);
@@ -82,6 +82,7 @@ export default function UserManagement() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   function openAdd() {
+    void refresh();
     setEditingId(null);
     setForm(emptyForm(assignableRoles[0]));
     setPhotoError(null);
@@ -90,6 +91,7 @@ export default function UserManagement() {
   }
 
   function openEdit(u: AppUser) {
+    void refresh();
     setEditingId(u.id);
     const linkedDriver = drivers.find((d) => d.linkedUserId === u.id);
     setForm({
@@ -128,8 +130,9 @@ export default function UserManagement() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitError(null);
-    if (form.role === "Client" && !form.customerId?.trim()) {
-      setSubmitError("Client ID wajib diisi untuk role Client.");
+    const needsClient = form.role === "Client" || (form.role === "Viewer" && !editingId);
+    if (needsClient && !form.customerId?.trim()) {
+      setSubmitError(`Client wajib dipilih untuk role ${form.role}.`);
       return;
     }
     const data: UserFormData = {
@@ -138,7 +141,7 @@ export default function UserManagement() {
       role: form.role,
       fotoDataUrl: form.fotoDataUrl,
       driverId: form.role === "Driver" ? form.driverId ?? null : null,
-      customerId: form.role === "Client" ? form.customerId?.trim() ?? null : null,
+      customerId: form.role === "Client" || form.role === "Viewer" ? form.customerId?.trim() || null : null,
       ...(form.password ? { password: form.password } : {}),
     };
     try {
@@ -208,7 +211,7 @@ export default function UserManagement() {
                       <Shield size={12} />
                       {roleLabel(u.role)}
                     </span>
-                    {u.role === "Client" && u.customerId && (
+                    {(u.role === "Client" || u.role === "Viewer") && u.customerId && (
                       <span className="mt-1 block text-[11px] text-slate-400">{u.customerId}</span>
                     )}
                   </td>
@@ -391,24 +394,24 @@ export default function UserManagement() {
                   </label>
                 )}
 
-                {form.role === "Client" && (
+                {(form.role === "Client" || form.role === "Viewer") && (
                   <label className="block">
-                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Client ID</span>
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Client</span>
                     <select
-                      required
+                      required={form.role === "Client" || !editingId}
                       className={inputClass}
                       value={form.customerId ?? ""}
                       onChange={(e) => setForm({ ...form, customerId: e.target.value })}
                     >
                       <option value="">Pilih Client...</option>
-                      {customerIds.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
+                      {clientOptions.map((c) => (
+                        <option key={c.customerId} value={c.customerId}>
+                          {c.nama && c.nama !== c.customerId ? `${c.customerId} - ${c.nama}` : c.customerId}
                         </option>
                       ))}
                     </select>
                     <span className="mt-1.5 block text-[11px] text-slate-400">
-                      Akun ini hanya akan melihat data pengiriman dengan Client ID yang sama. Client belum ada di daftar? Tambahkan dulu di menu Clients.
+                      Akun ini hanya akan melihat data pengiriman milik Client yang dipilih. Client belum ada di daftar? Tambahkan dulu di menu Clients.
                     </span>
                   </label>
                 )}

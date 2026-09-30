@@ -58,12 +58,18 @@ export function registerUserRoutes(router: Router) {
   router.get("/api/customer-ids", async (ctx: Ctx) => {
     requireAuth(ctx);
     const rows = await ctx.env.DB.prepare(
-      `SELECT customer_id FROM clients
-       UNION SELECT customer_id FROM users WHERE customer_id IS NOT NULL
-       UNION SELECT customer_id FROM shipments WHERE customer_id IS NOT NULL
-       ORDER BY 1`,
-    ).all<{ customer_id: string }>();
-    return ok({ items: (rows.results ?? []).map((r) => r.customer_id) });
+      `SELECT ids.customer_id, c.nama FROM (
+         SELECT customer_id FROM clients
+         UNION SELECT customer_id FROM users WHERE customer_id IS NOT NULL
+         UNION SELECT customer_id FROM shipments WHERE customer_id IS NOT NULL
+       ) ids LEFT JOIN clients c ON c.customer_id = ids.customer_id
+       ORDER BY ids.customer_id`,
+    ).all<{ customer_id: string; nama: string | null }>();
+    const list = rows.results ?? [];
+    return ok({
+      items: list.map((r) => r.customer_id),
+      clients: list.map((r) => ({ customerId: r.customer_id, nama: r.nama })),
+    });
   });
 
   // Master Data Clients: every Client ID with its name, the accounts linked
@@ -161,11 +167,11 @@ export function registerUserRoutes(router: Router) {
       throw Errors.forbidden("Admin tidak dapat menambah akun dengan role Admin. Hubungi Superadmin.");
     }
 
-    if (role === "Client" && !customerId) {
-      throw Errors.badRequest("Client ID wajib diisi untuk role Client.");
+    if ((role === "Client" || role === "Viewer") && !customerId) {
+      throw Errors.badRequest(`Client ID wajib diisi untuk role ${role}.`);
     }
-    if (customerId && role !== "Client") {
-      throw Errors.badRequest("Client ID hanya berlaku untuk role Client.");
+    if (customerId && role !== "Client" && role !== "Viewer") {
+      throw Errors.badRequest("Client ID hanya berlaku untuk role Client dan Viewer.");
     }
     if (customerId) {
       const known = await ctx.env.DB.prepare(`SELECT customer_id FROM clients WHERE customer_id = ?`)
@@ -258,11 +264,17 @@ export function registerUserRoutes(router: Router) {
     if (driverId && effectiveRole !== "Driver") {
       throw Errors.badRequest("driverId hanya berlaku untuk role Driver.");
     }
+    // Client always needs a Client ID. Viewer needs one when the account is
+    // being turned into a Viewer; older Viewer accounts (internal, no Client
+    // ID) can still be edited without one.
     if (effectiveRole === "Client" && !effectiveCustomerId) {
       throw Errors.badRequest("Client ID wajib diisi untuk role Client.");
     }
-    if (effectiveCustomerId && effectiveRole !== "Client") {
-      throw Errors.badRequest("Client ID hanya berlaku untuk role Client.");
+    if (effectiveRole === "Viewer" && !effectiveCustomerId && role && role !== target.role) {
+      throw Errors.badRequest("Client ID wajib diisi untuk role Viewer.");
+    }
+    if (effectiveCustomerId && effectiveRole !== "Client" && effectiveRole !== "Viewer") {
+      throw Errors.badRequest("Client ID hanya berlaku untuk role Client dan Viewer.");
     }
     if (driverId) {
       const driver = await ctx.env.DB.prepare(`SELECT id, user_id FROM drivers WHERE id = ?`)
@@ -292,7 +304,7 @@ export function registerUserRoutes(router: Router) {
     if (customerIdProvided) {
       sets.push("customer_id = ?");
       values.push(customerId);
-    } else if (role && role !== "Client" && target.role === "Client") {
+    } else if (role && role !== "Client" && role !== "Viewer" && (target.role === "Client" || target.role === "Viewer")) {
       // Role moved away from Client without explicitly clearing the
       // Client ID - clear it so a re-promotion later doesn't inherit
       // a stale customer scope.

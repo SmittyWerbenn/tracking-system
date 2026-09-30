@@ -73,7 +73,7 @@ export default function DriverLogin() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-lg border border-slate-300 py-3 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                placeholder="email@gangsarmitrasuatama.co.id"
+                placeholder="nama@gms-logistics.id"
               />
             </div>
           </label>

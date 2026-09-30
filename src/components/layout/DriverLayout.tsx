@@ -35,10 +35,11 @@ export function DriverLayout({ children, wide = false }: { children: ReactNode; 
             {profile && <span className="hidden text-sm text-slate-500 sm:block">{profile.nama}</span>}
             <button
               onClick={() => setLogoutOpen(true)}
-              title="Keluar"
-              className="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              title="Logout"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-2 text-xs font-semibold text-slate-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200 sm:px-3 sm:text-sm"
             >
-              <LogOut size={18} />
+              <LogOut size={15} />
+              Logout
             </button>
           </div>
         </div>

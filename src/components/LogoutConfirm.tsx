@@ -43,7 +43,7 @@ export function LogoutConfirm({
           <LogOut size={22} />
         </div>
         <h2 id="logout-title" className="mt-4 text-lg font-semibold text-slate-900">
-          Keluar dari akun?
+          Logout dari akun?
         </h2>
         <p id="logout-desc" className="mt-1.5 text-sm text-slate-500">
           {nama ? `${nama}, Anda` : "Anda"} akan keluar dari sesi ini dan perlu login lagi untuk melanjutkan.
@@ -62,7 +62,7 @@ export function LogoutConfirm({
             onClick={onConfirm}
             className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700"
           >
-            Ya, Keluar
+            Ya, Logout
           </button>
         </div>
       </div>

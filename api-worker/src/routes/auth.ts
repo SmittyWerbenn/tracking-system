@@ -1,6 +1,6 @@
 import type { Router } from "../router";
 import type { Ctx } from "../types";
-import { ok, Errors } from "../http";
+import { ok, Errors, HttpError } from "../http";
 import { parseJsonBody, reqString, reqEmail, optString } from "../validate";
 import { hashPassword, verifyPassword, randomToken, sha256Hex, newId } from "../crypto";
 import { requireAuth } from "../authMiddleware";
@@ -63,7 +63,13 @@ export function registerAuthRoutes(router: Router) {
         module: "Auth",
         description: `Percobaan login gagal untuk ${email}.`,
       }, ip);
-      throw Errors.unauthenticated("Email atau password salah.");
+      // Same message for every failure. Only the error code differs, so the
+      // login pages know whether to offer "Hubungi Admin" after repeated
+      // wrong passwords: not for Admin/Superadmin, Driver portal only for
+      // Driver accounts, admin portal for everyone else (Client/Viewer/
+      // unknown email).
+      const group = user?.role === "Admin" || user?.role === "Superadmin" ? "STAFF" : user?.role === "Driver" ? "DRIVER" : "OTHER";
+      throw new HttpError(401, `BAD_CREDENTIALS_${group}`, "Email atau password salah.");
     }
 
     const token = randomToken();

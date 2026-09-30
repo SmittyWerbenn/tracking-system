@@ -32,7 +32,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   profile: AdminProfile | null;
-  login: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  login: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: string; code?: string }>;
   logout: () => void;
   updateProfile: (data: { nama: string; email: string; fotoFileId?: string }) => Promise<{ ok: true } | { ok: false; error: string }>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ ok: boolean; error?: string }>;
@@ -81,7 +81,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile({ ...res.user });
       return { ok: true as const };
     } catch (err) {
-      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal login." };
+      return {
+        ok: false as const,
+        error: err instanceof ApiError ? err.message : "Gagal login.",
+        code: err instanceof ApiError ? err.code : undefined,
+      };
     }
   }
 

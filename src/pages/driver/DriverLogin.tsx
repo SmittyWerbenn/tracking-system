@@ -23,7 +23,10 @@ export default function DriverLogin() {
   // when the page is reloaded.
   const [failedCount, setFailedCount] = useState(0);
   const [failedEmail, setFailedEmail] = useState("");
-  const wrongPasswordWarning = failedCount >= MAX_WRONG_PASSWORD && failedEmail === email.trim().toLowerCase();
+  const [failedCode, setFailedCode] = useState("");
+  // Not offered for accounts this portal is not meant for (see backend login).
+  const wrongPasswordWarning =
+    failedCount >= MAX_WRONG_PASSWORD && failedEmail === email.trim().toLowerCase() && failedCode === "BAD_CREDENTIALS_DRIVER";
 
   const from = (location.state as { from?: Location } | null)?.from?.pathname ?? driverPath("/");
 
@@ -56,10 +59,11 @@ export default function DriverLogin() {
     setSubmitting(false);
     if (!result.ok) {
       setError(result.error);
-      if (result.error.includes("password salah")) {
+      if (result.code?.startsWith("BAD_CREDENTIALS")) {
         const key = email.trim().toLowerCase();
         setFailedCount((n) => (failedEmail === key ? n + 1 : 1));
         setFailedEmail(key);
+        setFailedCode(result.code);
       }
       return;
     }

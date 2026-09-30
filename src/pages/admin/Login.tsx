@@ -23,7 +23,10 @@ export default function Login() {
   // when the page is reloaded.
   const [failedCount, setFailedCount] = useState(0);
   const [failedEmail, setFailedEmail] = useState("");
-  const wrongPasswordWarning = failedCount >= MAX_WRONG_PASSWORD && failedEmail === email.trim().toLowerCase();
+  const [failedCode, setFailedCode] = useState("");
+  // Not offered for accounts this portal is not meant for (see backend login).
+  const wrongPasswordWarning =
+    failedCount >= MAX_WRONG_PASSWORD && failedEmail === email.trim().toLowerCase() && failedCode === "BAD_CREDENTIALS_OTHER";
 
   // Backend refuses login for accounts of a deactivated Client with this
   // message; in that case offer a WhatsApp shortcut to the admin.
@@ -54,10 +57,11 @@ export default function Login() {
     setSubmitting(false);
     if (!result.ok) {
       setError(result.error);
-      if (result.error.includes("password salah")) {
+      if (result.code?.startsWith("BAD_CREDENTIALS")) {
         const key = email.trim().toLowerCase();
         setFailedCount((n) => (failedEmail === key ? n + 1 : 1));
         setFailedEmail(key);
+        setFailedCode(result.code);
       }
       return;
     }

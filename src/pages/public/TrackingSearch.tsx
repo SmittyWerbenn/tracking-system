@@ -57,12 +57,6 @@ export default function TrackingSearch() {
     <div className="min-h-screen bg-[#071B41]">
       <Navbar overlay={false} />
       <main className="mx-auto max-w-6xl px-4 pt-24 pb-8 sm:px-6">
-        <button
-          onClick={() => navigate("/")}
-          className="mb-4 relative z-10 inline-flex items-center gap-1.5 text-sm font-medium text-blue-200 hover:text-white"
-        >
-          ← Kembali
-        </button>
 
       {/* Hero band - full-bleed, breaks out of the centered content container */}
       <div className="relative left-1/2 right-1/2 -mx-[50vw] -mt-6 w-screen min-h-[300px] overflow-hidden bg-[#071B41]">
@@ -91,28 +85,12 @@ export default function TrackingSearch() {
                   placeholder={t.trackingSearch.placeholder}
                   className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 sm:border-0 sm:bg-transparent sm:pl-5 sm:focus:bg-transparent sm:focus:ring-0"
                 />
-                <button
-                  type="submit"
-                  disabled={checking}
-                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-900 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-800 disabled:opacity-60 sm:rounded-full"
-                >
-                  <Search size={16} />
-                  {t.trackingSearch.submitButton}
-                </button>
               </div>
               {notFound && (
                 <p className="mt-2 text-left text-xs font-medium text-red-200">{t.trackingSearch.notFound}</p>
               )}
             </form>
 
-            <button
-              type="button"
-              onClick={() => setScannerOpen(true)}
-              className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition-colors hover:border-white/40 hover:bg-white/20 lg:mx-0"
-            >
-              <QrCode size={18} />
-              {t.trackingSearch.scanButton}
-            </button>
           </div>
 
           <div className="hidden flex-col items-center justify-center gap-3 lg:col-span-2 lg:flex">
@@ -134,12 +112,6 @@ export default function TrackingSearch() {
                 <History size={13} />
                 {t.trackingSearch.historyTitle}
               </p>
-              <button
-                onClick={() => setHistory(clearAwbHistory())}
-                className="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-red-600"
-              >
-                <Trash2 size={12} /> {t.trackingSearch.clearAll}
-              </button>
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {history.map((h) => (
@@ -147,25 +119,6 @@ export default function TrackingSearch() {
                   key={h.awb}
                   className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-50"
                 >
-                  <button
-                    onClick={() => navigate(`/tracking/${h.awb}`)}
-                    className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-mono text-sm font-medium text-slate-800">{h.awb}</p>
-                      <p className="text-xs text-slate-400">
-                        {t.trackingSearch.lastViewed}: {formatRelativeView(h.lastViewedAt, language)}
-                      </p>
-                    </div>
-                    <StatusBadge status={h.status as ShipmentStatus} size="sm" />
-                  </button>
-                  <button
-                    onClick={() => setHistory(removeAwbHistory(h.awb))}
-                    title={t.trackingSearch.removeFromHistory}
-                    className="shrink-0 rounded-md p-1 text-slate-300 hover:bg-slate-100 hover:text-red-600"
-                  >
-                    <X size={14} />
-                  </button>
                 </div>
               ))}
             </div>

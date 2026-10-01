@@ -71,7 +71,7 @@ export default function CekOngkir() {
       <main className="mx-auto max-w-3xl px-4 pt-28 pb-8 sm:px-6">
       <button
         onClick={() => navigate(-1)}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-blue-200 hover:text-white"
       >
         <ArrowLeft size={15} /> {t.trackingResult.back}
       </button>

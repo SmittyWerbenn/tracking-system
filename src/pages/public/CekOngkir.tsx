@@ -1,7 +1,8 @@
 import { ArrowLeft, ArrowLeftRight, Boxes, Calculator, Clock3, MapPin, Truck } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { PublicLayout } from "../../components/layout/PublicLayout";
+import { Navbar } from "../../components/compro/Navbar";
+import { Footer } from "../../components/compro/Footer";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { useLanguage } from "../../store/LanguageContext";
 import { useLocations } from "../../store/LocationContext";
@@ -65,7 +66,9 @@ export default function CekOngkir() {
   }
 
   return (
-    <PublicLayout>
+    <div className="min-h-screen bg-[#071B41]">
+      <Navbar overlay={false} />
+      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <button
         onClick={() => navigate(-1)}
         className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800"
@@ -222,6 +225,8 @@ export default function CekOngkir() {
           </div>
         </div>
       )}
-    </PublicLayout>
+    </main>
+      <Footer />
+    </div>
   );
 }

@@ -3,7 +3,8 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import heroImage from "../../assets/hero-package-handoff.jpg";
 import { BarcodeScannerModal } from "../../components/BarcodeScannerModal";
-import { PublicLayout } from "../../components/layout/PublicLayout";
+import { Navbar } from "../../components/compro/Navbar";
+import { Footer } from "../../components/compro/Footer";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useLanguage } from "../../store/LanguageContext";
 import type { ShipmentStatus } from "../../types";
@@ -53,7 +54,9 @@ export default function TrackingSearch() {
   }
 
   return (
-    <PublicLayout wide>
+    <div className="min-h-screen bg-[#071B41]">
+      <Navbar overlay={false} />
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       {/* Hero band - full-bleed, breaks out of the centered content container */}
       <div className="relative left-1/2 right-1/2 -mx-[50vw] -mt-6 w-screen overflow-hidden bg-blue-950">
         <img
@@ -167,6 +170,8 @@ export default function TrackingSearch() {
       {scannerOpen && (
         <BarcodeScannerModal onClose={() => setScannerOpen(false)} onDetected={handleScanned} />
       )}
-    </PublicLayout>
+    </main>
+      <Footer />
+    </div>
   );
 }

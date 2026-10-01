@@ -14,8 +14,6 @@ export const NAV_SECTIONS = [
   { id: "layanan", key: "services" },
   { id: "armada", key: "fleet" },
   { id: "coverage", key: "coverage" },
-  { id: "tracking", key: "tracking" },
-  { id: "clients", key: "clients" },
   { id: "kontak", key: "contact" },
 ] as const;
 
@@ -64,6 +62,7 @@ function LangSwitch({ solid }: { solid: boolean }) {
 
 export function Navbar({ overlay }: { overlay: boolean }) {
   const l = useL();
+  const { language } = useLanguage();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState("home");
@@ -166,13 +165,15 @@ export function Navbar({ overlay }: { overlay: boolean }) {
 
         <div className="flex items-center gap-2">
           <LangSwitch solid={solid} />
-          <Link
-            to="/tracking"
+          <a
+            href="https://gms-logistics.id/cek-ongkir"
+            target="_blank"
+            rel="noopener noreferrer"
             className="hidden items-center gap-1.5 whitespace-nowrap rounded-lg bg-gms-gold px-4 py-2 text-sm font-bold text-gms-deep transition-colors hover:bg-gms-bright 2xl:inline-flex"
           >
-            {l(C.hero.ctaTrack)}
+            {language === "id" ? "Cek Ongkir" : "Check Rates"}
             <ArrowRight size={14} />
-          </Link>
+          </a>
           <button
             type="button"
             className={`rounded-md p-2 xl:hidden ${solid ? "text-gms-corp hover:bg-gms-sky" : "text-white hover:bg-white/10"}`}
@@ -208,13 +209,15 @@ export function Navbar({ overlay }: { overlay: boolean }) {
             ))}
           </nav>
           <div className="mt-5 grid gap-2.5">
-            <Link
-              to="/tracking"
+            <a
+              href="https://gms-logistics.id/cek-ongkir"
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={() => setOpen(false)}
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-gms-gold font-bold text-gms-deep"
             >
-              {l(C.hero.ctaTrack)} <ArrowRight size={16} />
-            </Link>
+              {language === "id" ? "Cek Ongkir" : "Check Rates"} <ArrowRight size={16} />
+            </a>
             <button
               type="button"
               onClick={() => go("kontak")}

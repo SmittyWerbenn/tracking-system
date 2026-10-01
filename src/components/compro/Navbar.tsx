@@ -168,8 +168,6 @@ export function Navbar({ overlay }: { overlay: boolean }) {
           <div className="hidden gap-2 2xl:flex">
             <a
               href="https://gms-logistics.id/cek-ongkir"
-              target="_blank"
-              rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-gms-gold px-4 py-2 text-sm font-bold text-gms-deep transition-colors hover:bg-gms-bright"
             >
               <Truck size={16} />
@@ -220,8 +218,6 @@ export function Navbar({ overlay }: { overlay: boolean }) {
           <div className="mt-5 grid gap-2.5">
             <a
               href="https://gms-logistics.id/cek-ongkir"
-              target="_blank"
-              rel="noopener noreferrer"
               onClick={() => setOpen(false)}
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-gms-gold font-bold text-gms-deep"
             >

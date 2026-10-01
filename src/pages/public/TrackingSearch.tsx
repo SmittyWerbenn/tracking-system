@@ -56,7 +56,7 @@ export default function TrackingSearch() {
   return (
     <div className="min-h-screen bg-[#071B41]">
       <Navbar overlay={false} />
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-6xl px-4 pt-24 pb-8 sm:px-6">
       {/* Hero band - full-bleed, breaks out of the centered content container */}
       <div className="relative left-1/2 right-1/2 -mx-[50vw] -mt-6 w-screen overflow-hidden bg-blue-950">
         <img

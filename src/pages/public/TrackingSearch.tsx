@@ -59,7 +59,7 @@ export default function TrackingSearch() {
       <main className="mx-auto max-w-6xl px-4 pt-24 pb-8 sm:px-6">
 
       {/* Hero band - full-bleed, breaks out of the centered content container */}
-      <div className="relative left-1/2 right-1/2 -mx-[50vw] -mt-6 w-screen min-h-[300px] overflow-hidden bg-[#071B41]">
+      <div className="relative left-1/2 right-1/2 -mx-[50vw] -mt-6 w-screen min-h-[520px] overflow-hidden bg-[#071B41] sm:min-h-[300px]">
         <img
           src={heroImage}
           alt=""

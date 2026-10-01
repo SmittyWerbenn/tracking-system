@@ -176,7 +176,7 @@ export function Navbar({ overlay }: { overlay: boolean }) {
               {language === "id" ? "Cek Ongkir" : "Check Rates"}
             </a>
             <a
-              href="/"
+              href="https://gms-logistics.id/cek-ongkir"
               className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border-2 border-gms-gold px-4 py-2 text-sm font-bold text-gms-gold transition-colors hover:bg-gms-gold/10"
             >
               <Package size={16} />
@@ -229,7 +229,7 @@ export function Navbar({ overlay }: { overlay: boolean }) {
               {language === "id" ? "Cek Ongkir" : "Check Rates"}
             </a>
             <a
-              href="/"
+              href="https://gms-logistics.id/tracking"
               onClick={() => setOpen(false)}
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border-2 border-gms-gold font-bold text-gms-gold"
             >

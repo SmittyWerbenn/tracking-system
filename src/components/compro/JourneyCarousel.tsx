@@ -108,6 +108,48 @@ export function JourneyCarousel() {
             </p>
           </div>
 
+          {/* Step Navigator - Top Bar with Numbered Circles */}
+          <div className="mb-10 overflow-x-auto">
+            <div className="flex gap-2 md:gap-3 px-2 pb-2 min-w-min md:justify-center">
+              {journeySteps.map((s, idx) => {
+                const isActive = idx === currentIdx;
+                const isPassed = idx < currentIdx;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setCurrentIdx(idx);
+                      setIsAutoPlay(false);
+                      setTimeout(() => setIsAutoPlay(true), 8000);
+                    }}
+                    className="flex flex-col items-center gap-2 transition-all duration-300"
+                  >
+                    {/* Numbered Circle */}
+                    <div
+                      className={`flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full font-bold text-sm md:text-base font-display transition-all duration-300 ${
+                        isActive
+                          ? "bg-[#D4A72C] text-[#071B41] scale-110 shadow-lg ring-2 ring-[#D4A72C] ring-offset-2"
+                          : isPassed
+                            ? "bg-[#0B2553] text-white shadow-md"
+                            : "bg-[#EAF0F8] text-[#0B2553] border-2 border-[#D4A72C]/30 hover:border-[#D4A72C] hover:bg-[#D4A72C]/10"
+                      }`}
+                    >
+                      {idx + 1}
+                    </div>
+                    {/* Step Name */}
+                    <span
+                      className={`text-xs md:text-sm font-bold uppercase tracking-wide whitespace-nowrap transition-all duration-300 ${
+                        isActive ? "text-[#D4A72C] scale-105" : isPassed ? "text-[#0B2553]" : "text-gray-500"
+                      }`}
+                    >
+                      {s.short[language]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Main Carousel */}
           <div className="relative overflow-hidden rounded-2xl shadow-xl">
             {/* Slide Container - Landscape 16:9 aspect ratio */}
@@ -187,53 +229,15 @@ export function JourneyCarousel() {
             </div>
           </div>
 
-          {/* Step Counter & Timeline Indicator */}
+          {/* Timeline Progress Bar */}
           <div className="mt-8 md:mt-10">
-            {/* Timeline bar */}
             <div className="relative h-2 bg-[#EAF0F8] rounded-full overflow-hidden border border-[#D4A72C]/20">
               <div
                 className="h-full bg-gradient-to-r from-[#D4A72C] to-[#E5B83B] transition-all duration-700 rounded-full"
                 style={{ width: `${((currentIdx + 1) / totalSteps) * 100}%` }}
               />
             </div>
-
-            {/* Step labels */}
-            <div className="mt-6 grid grid-cols-3 gap-2 md:grid-cols-6">
-              {journeySteps.map((s, idx) => {
-                const isPassed = idx < currentIdx;
-                const isCurrent = idx === currentIdx;
-
-                return (
-                  <div key={s.id} className="text-center">
-                    <button
-                      onClick={() => {
-                        setCurrentIdx(idx);
-                        setIsAutoPlay(false);
-                        setTimeout(() => setIsAutoPlay(true), 8000);
-                      }}
-                      className={`text-xs font-bold uppercase tracking-wider transition-all duration-300 hover:text-[#D4A72C] ${
-                        isCurrent
-                          ? "text-[#D4A72C] scale-110"
-                          : isPassed
-                            ? "text-[#0B2553]"
-                            : "text-gray-400"
-                      }`}
-                    >
-                      {s.short[language]}
-                    </button>
-                    <div
-                      className={`mt-1 h-1 rounded-full mx-auto transition-all duration-300 ${
-                        isPassed || isCurrent ? "w-full bg-[#D4A72C]" : "w-0 bg-gray-300"
-                      }`}
-                    />
-                  </div>
-                );
-              })}
-            </div>
           </div>
-
-          {/* Auto-play indicator */}
-          {/* Removed - no need to show indicator */}
         </div>
       </div>
     </>

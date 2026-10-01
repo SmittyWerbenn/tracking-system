@@ -6,13 +6,29 @@ interface Settings {
   stagnantThresholdDays: number;
   emailSendingEnabled: boolean;
   helpPhoneNumber: string;
+  contactPhone: string;
+  contactEmail: string;
+  contactAddress: string;
+  contactHours: string;
 }
 
 const DEFAULT_SETTINGS: Settings = {
   stagnantThresholdDays: 3,
   emailSendingEnabled: true,
   helpPhoneNumber: "0812-0000-8899",
+  contactPhone: "021-2200-8899",
+  contactEmail: "cs@gms-logistics.co.id",
+  contactAddress: "Jl. Raya Cakung No. 88, Cakung, Jakarta Timur, DKI Jakarta",
+  contactHours: "Senin - Sabtu, 08.00 - 18.00 WIB",
 };
+
+export interface ContactInfoInput {
+  helpPhoneNumber: string;
+  contactPhone: string;
+  contactEmail: string;
+  contactAddress: string;
+  contactHours: string;
+}
 
 interface SettingsContextValue {
   settings: Settings;
@@ -21,6 +37,8 @@ interface SettingsContextValue {
   setEmailSendingEnabled: (enabled: boolean) => Promise<void>;
   /** Superadmin-only - the backend rejects this from any other role. */
   setHelpPhoneNumber: (phone: string) => Promise<void>;
+  /** Superadmin-only: details shown on the public Contact page. */
+  setContactInfo: (info: ContactInfoInput) => Promise<void>;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -55,9 +73,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setSettings((s) => ({ ...s, helpPhoneNumber: phone }));
   }
 
+  async function setContactInfo(info: ContactInfoInput) {
+    await api.patch("/api/settings", info);
+    setSettings((s) => ({ ...s, ...info }));
+  }
+
   return (
     <SettingsContext.Provider
-      value={{ settings, isLoading, setStagnantThresholdDays, setEmailSendingEnabled, setHelpPhoneNumber }}
+      value={{ settings, isLoading, setStagnantThresholdDays, setEmailSendingEnabled, setHelpPhoneNumber, setContactInfo }}
     >
       {children}
     </SettingsContext.Provider>

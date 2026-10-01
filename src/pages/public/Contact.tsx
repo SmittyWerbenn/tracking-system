@@ -1,7 +1,7 @@
 import { ArrowLeft, Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { PublicLayout } from "../../components/layout/PublicLayout";
-import { useHelpContact } from "../../store/HelpContactContext";
+import { toTelHref, useHelpContact } from "../../store/HelpContactContext";
 import { useLanguage } from "../../store/LanguageContext";
 import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
@@ -11,12 +11,13 @@ export default function Contact() {
   const { t } = useLanguage();
   useDocumentTitle(t.contact.title);
   const navigate = useNavigate();
-  const { helpPhoneDisplay, helpWhatsAppNumber } = useHelpContact();
+  const { helpPhoneDisplay, helpWhatsAppNumber, contactPhone, contactEmail, contactAddress, contactHours } =
+    useHelpContact();
   const channelLabels = [t.contact.channelPhone, t.contact.channelWhatsapp, t.contact.channelEmail];
   const CHANNEL_VALUES = [
-    { value: "021-2200-8899", href: "tel:0212200899" },
+    { value: contactPhone, href: toTelHref(contactPhone) },
     { value: helpPhoneDisplay, href: `https://wa.me/${helpWhatsAppNumber}` },
-    { value: "cs@gms-logistics.co.id", href: "mailto:cs@gms-logistics.co.id" },
+    { value: contactEmail, href: `mailto:${contactEmail}` },
   ];
 
   return (
@@ -59,16 +60,14 @@ export default function Contact() {
             <MapPin size={18} className="mt-0.5 shrink-0 text-slate-400" />
             <div>
               <p className="text-xs font-medium text-slate-400">{t.contact.hqLabel}</p>
-              <p className="text-sm text-slate-700">
-                Jl. Raya Cakung No. 88, Cakung, Jakarta Timur, DKI Jakarta
-              </p>
+              <p className="text-sm text-slate-700">{contactAddress}</p>
             </div>
           </div>
           <div className="flex gap-3">
             <Clock size={18} className="mt-0.5 shrink-0 text-slate-400" />
             <div>
               <p className="text-xs font-medium text-slate-400">{t.contact.hoursLabel}</p>
-              <p className="text-sm text-slate-700">{t.contact.hoursValue}</p>
+              <p className="text-sm text-slate-700">{contactHours}</p>
             </div>
           </div>
         </div>

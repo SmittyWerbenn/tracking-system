@@ -1,4 +1,5 @@
 import type { Router } from "../router";
+import { loadContactInfo } from "./settings";
 import type { Ctx } from "../types";
 import { ok, Errors } from "../http";
 import { parseJsonBody, reqString, reqNumber, optString } from "../validate";
@@ -86,10 +87,9 @@ export function registerPublicRoutes(router: Router) {
   // portal's "Butuh Bantuan" links, neither of which has settings.view.
   // No auth - the number is meant to be publicly visible anyway.
   router.get("/api/public/settings", async (ctx: Ctx) => {
-    const row = await ctx.env.DB.prepare(`SELECT value FROM settings WHERE key = 'help_phone_number'`).first<{
-      value: string;
-    }>();
-    return ok({ helpPhoneNumber: row?.value ?? "0812-0000-8899" });
+    // helpPhoneNumber (the WhatsApp number) is unchanged; the other fields are
+    // the details shown on the public Contact page.
+    return ok(await loadContactInfo(ctx.env.DB));
   });
 
   router.get("/api/public/locations", async (ctx: Ctx) => {

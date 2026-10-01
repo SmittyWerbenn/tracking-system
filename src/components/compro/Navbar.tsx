@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Menu, Package, Truck, X } from "lucide-react";
+import { Calculator, Check, ChevronDown, Menu, Package, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
@@ -170,7 +170,7 @@ export function Navbar({ overlay }: { overlay: boolean }) {
               href="https://gms-logistics.id/cek-ongkir"
               className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-gms-gold px-4 py-2 text-sm font-bold text-gms-deep transition-colors hover:bg-gms-bright"
             >
-              <Truck size={16} />
+              <Calculator size={16} />
               {language === "id" ? "Cek Ongkir" : "Check Rates"}
             </a>
             <a
@@ -221,7 +221,7 @@ export function Navbar({ overlay }: { overlay: boolean }) {
               onClick={() => setOpen(false)}
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-gms-gold font-bold text-gms-deep"
             >
-              <Truck size={18} />
+              <Calculator size={18} />
               {language === "id" ? "Cek Ongkir" : "Check Rates"}
             </a>
             <a

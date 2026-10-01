@@ -6,7 +6,7 @@ import { newId } from "../crypto";
 import { requireAuth, requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta } from "../pagination";
-import { generateAwb } from "../awb";
+import { generateClientAwb, isDuplicateAwbError } from "../awb";
 import { wibNow } from "../wib";
 import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, type TimelineEventType } from "../status";
 import { addBusinessDays } from "../sla";
@@ -152,7 +152,6 @@ export function registerShipmentRoutes(router: Router) {
       if (!truck) throw Errors.badRequest("Truck yang dipilih tidak ditemukan.");
     }
 
-    const awb = await generateAwb(ctx.env.DB);
     const now = new Date();
     const nowIso = now.toISOString();
     const { tanggal: tanggalDibuat, jam: jamDibuat } = wibNow(now);
@@ -161,34 +160,48 @@ export function registerShipmentRoutes(router: Router) {
     const slaUnit = slaValue !== undefined ? "hari_kerja" : null;
     const estimasiTiba = slaValue !== undefined ? addBusinessDays(tanggalDibuat, slaValue) : null;
 
-    await ctx.env.DB.prepare(
-      `INSERT INTO shipments (
-        awb, tanggal_dibuat, jam_dibuat, status,
-        pengirim_nama, pengirim_telepon, pengirim_email,
-        penerima_nama, penerima_telepon, penerima_email,
-        alamat_asal, kota_asal, alamat_tujuan, kota_tujuan,
-        deskripsi_barang, layanan, berat_kg, jumlah_koli, truck_id,
-        sla_value, sla_unit, estimasi_tiba, customer_id,
-        email_terkirim, created_at, updated_at, created_by, updated_by
-      ) VALUES (?, ?, ?, 'Dalam Persiapan', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
-    )
-      .bind(
-        awb, tanggalDibuat, jamDibuat,
-        pengirimNama, pengirimTelepon, pengirimEmail,
-        penerimaNama, penerimaTelepon, penerimaEmail,
-        alamatAsal, kotaAsal, alamatTujuan, kotaTujuan,
-        deskripsiBarang, layanan, beratKg, jumlahKoli, truckId ?? null,
-        slaValue ?? null, slaUnit, estimasiTiba, customerId,
-        nowIso, nowIso, actor.id, actor.id,
-      )
-      .run();
-
-    await ctx.env.DB.prepare(
-      `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, truck_id, input_by_user_id, input_by_name, input_at, created_at)
-       VALUES (?, ?, 1, 'Barang Diterima', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-      .bind(newId(), awb, `Gudang ${kotaAsal}`, tanggalDibuat, jamDibuat, "Barang diterima dan siap dikirim.", truckId ?? null, actor.id, actor.nama, nowIso, nowIso)
-      .run();
+    // The AWB number comes from the Client ID resolved on the server (never
+    // from the request body for a Client account). Shipment + first timeline
+    // event are written in one transaction, and a duplicate AWB - which the
+    // shipments.awb PRIMARY KEY would reject - is retried with the next number.
+    let awb = "";
+    let saved = false;
+    for (let attempt = 0; attempt < 5 && !saved; attempt++) {
+      awb = await generateClientAwb(ctx.env.DB, customerId);
+      try {
+        await ctx.env.DB.batch([
+          ctx.env.DB.prepare(
+            `INSERT INTO shipments (
+              awb, tanggal_dibuat, jam_dibuat, status,
+              pengirim_nama, pengirim_telepon, pengirim_email,
+              penerima_nama, penerima_telepon, penerima_email,
+              alamat_asal, kota_asal, alamat_tujuan, kota_tujuan,
+              deskripsi_barang, layanan, berat_kg, jumlah_koli, truck_id,
+              sla_value, sla_unit, estimasi_tiba, customer_id,
+              email_terkirim, created_at, updated_at, created_by, updated_by
+            ) VALUES (?, ?, ?, 'Dalam Persiapan', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+          ).bind(
+            awb, tanggalDibuat, jamDibuat,
+            pengirimNama, pengirimTelepon, pengirimEmail,
+            penerimaNama, penerimaTelepon, penerimaEmail,
+            alamatAsal, kotaAsal, alamatTujuan, kotaTujuan,
+            deskripsiBarang, layanan, beratKg, jumlahKoli, truckId ?? null,
+            slaValue ?? null, slaUnit, estimasiTiba, customerId,
+            nowIso, nowIso, actor.id, actor.id,
+          ),
+          ctx.env.DB.prepare(
+            `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, truck_id, input_by_user_id, input_by_name, input_at, created_at)
+             VALUES (?, ?, 1, 'Barang Diterima', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ).bind(newId(), awb, `Gudang ${kotaAsal}`, tanggalDibuat, jamDibuat, "Barang diterima dan siap dikirim.", truckId ?? null, actor.id, actor.nama, nowIso, nowIso),
+        ]);
+        saved = true;
+      } catch (err) {
+        if (!isDuplicateAwbError(err)) throw err;
+      }
+    }
+    if (!saved) {
+      throw Errors.internal("Gagal membuat nomor AWB yang unik. Silakan coba lagi.");
+    }
 
     await writeAuditLog(ctx.env, actor, {
       action: "CREATE_AWB",

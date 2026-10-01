@@ -31,7 +31,7 @@ function LanguageSwitcher() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-[#0B2553]/ px-2.5 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-white"
         aria-label="Pilih bahasa / Choose language"
       >
         <CurrentFlag className="h-3.5 w-5 shrink-0 rounded-[2px]" />
@@ -39,7 +39,7 @@ function LanguageSwitcher() {
         <ChevronDown size={13} />
       </button>
       {open && (
-        <div className="absolute right-0 z-20 mt-1.5 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+        <div className="absolute right-0 z-20 mt-1.5 w-40 overflow-hidden rounded-lg border border-[#0B2553]/ p-3 bg-[#0B2553]/ py-1 shadow-lg">
           {LANGUAGE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -48,7 +48,7 @@ function LanguageSwitcher() {
                 setLanguage(opt.value);
                 setOpen(false);
               }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-[#071B41]"
             >
               <opt.Flag className="h-3.5 w-5 shrink-0 rounded-[2px]" />
               <span className="flex-1">{opt.label}</span>
@@ -94,13 +94,13 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+    <div className="flex min-h-screen flex-col bg-[#071B41]">
+      <header className="sticky top-0 z-30 border-b border-[#0B2553]/60 bg-[#071B41]/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <NavLink to="/" className="flex items-center gap-2.5" onClick={() => setMobileOpen(false)}>
             <img src={logoIcon} alt="GMS Logistics" className="h-9 w-9 shrink-0 object-contain" />
             <div className="leading-tight">
-              <p className="text-sm font-semibold text-slate-900 sm:text-base">GMS Logistics</p>
+              <p className="text-sm font-semibold text-white sm:text-base">GMS Logistics</p>
               <p className="text-[11px] text-slate-500 sm:text-xs">{t.nav.tagline}</p>
             </div>
           </NavLink>
@@ -114,7 +114,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
                   end={item.end}
                   className={({ isActive }) =>
                     `rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                      isActive ? "bg-blue-50 text-blue-900" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      isActive ? "bg-[#102F63]/ text-blue-900" : "text-slate-600 hover:bg-slate-100 hover:text-white"
                     }`
                   }
                 >
@@ -124,7 +124,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
                 <button
                   key={item.sectionId}
                   onClick={() => goToSection(item.sectionId)}
-                  className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                  className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-white"
                 >
                   {item.label}
                 </button>
@@ -132,7 +132,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
             )}
             <NavLink
               to="/cek-ongkir"
-              className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100"
+              className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-[#102F63]/ px-3.5 py-2 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100"
             >
               <Calculator size={14} />
               {t.nav.checkPrice}
@@ -173,7 +173,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
                   onClick={() => setMobileOpen(false)}
                   className={({ isActive }) =>
                     `rounded-md px-3 py-2.5 text-left text-sm font-medium transition-colors ${
-                      isActive ? "bg-blue-50 text-blue-900" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      isActive ? "bg-[#102F63]/ text-blue-900" : "text-slate-600 hover:bg-slate-100 hover:text-white"
                     }`
                   }
                 >
@@ -183,7 +183,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
                 <button
                   key={item.sectionId}
                   onClick={() => goToSection(item.sectionId)}
-                  className="rounded-md px-3 py-2.5 text-left text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                  className="rounded-md px-3 py-2.5 text-left text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-white"
                 >
                   {item.label}
                 </button>
@@ -193,7 +193,7 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
               <NavLink
                 to="/cek-ongkir"
                 onClick={() => setMobileOpen(false)}
-                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2.5 text-sm font-semibold text-blue-900"
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-[#102F63]/ px-3.5 py-2.5 text-sm font-semibold text-blue-900"
               >
                 <Calculator size={14} />
                 {t.nav.checkPrice}
@@ -215,13 +215,13 @@ export function PublicLayout({ children, wide = false }: PublicLayoutProps) {
         {children}
       </main>
 
-      <footer className="border-t border-slate-200 bg-white">
+      <footer className="border-t border-[#0B2553]/ p-3 bg-[#0B2553]/">
         <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
             <div>
               <div className="flex items-center gap-2.5">
                 <img src={logoIcon} alt="GMS Logistics" className="h-9 w-9 shrink-0 object-contain" />
-                <p className="text-sm font-semibold text-slate-900">{t.footer.tagline}</p>
+                <p className="text-sm font-semibold text-white">{t.footer.tagline}</p>
               </div>
               <p className="mt-3 max-w-xs text-xs leading-relaxed text-slate-500">{t.footer.description}</p>
             </div>

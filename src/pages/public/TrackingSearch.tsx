@@ -57,12 +57,6 @@ export default function TrackingSearch() {
     <div className="min-h-screen bg-[#071B41]">
       <Navbar overlay={false} />
       <main className="mx-auto max-w-6xl px-4 pt-24 pb-8 sm:px-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="mb-4 relative z-10 inline-flex items-center gap-1.5 text-sm font-medium text-blue-200 hover:text-white"
-        >
-          <ArrowLeft size={15} /> {t.trackingResult.back}
-        </button>
 
       {/* Hero band - full-bleed, breaks out of the centered content container */}
       <div className="relative left-1/2 right-1/2 -mx-[50vw] -mt-6 w-screen min-h-[300px] overflow-hidden bg-[#071B41]">
@@ -73,7 +67,15 @@ export default function TrackingSearch() {
           className="absolute inset-0 h-full w-full object-cover opacity-20"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#071B41] via-[#0B2553] to-[#071B41]" />
-        <div className="relative mx-auto grid max-w-5xl grid-cols-1 items-center gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-5 lg:gap-10">
+        <div className="relative mx-auto max-w-5xl px-4 sm:px-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="relative z-10 inline-flex items-center gap-1.5 pt-4 text-sm font-medium text-blue-200 hover:text-white sm:pt-6"
+          >
+            <ArrowLeft size={15} /> {t.trackingResult.back}
+          </button>
+
+        <div className="grid grid-cols-1 items-center gap-8 py-8 sm:py-10 lg:grid-cols-5 lg:gap-10">
           <div className="text-center lg:col-span-3 lg:text-left">
             <h1 className="text-2xl font-bold text-white sm:text-3xl">{t.trackingSearch.heroTitle}</h1>
             <p className="mx-auto mt-2 max-w-sm text-sm text-blue-100 sm:text-base lg:mx-0">
@@ -123,6 +125,7 @@ export default function TrackingSearch() {
               {t.trackingSearch.taglineImage}
             </p>
           </div>
+        </div>
         </div>
       </div>
 

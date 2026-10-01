@@ -1,4 +1,4 @@
-import { History, QrCode, Search, Trash2, Truck, X } from "lucide-react";
+import { ArrowLeft, History, QrCode, Search, Trash2, Truck, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import heroImage from "../../assets/hero-package-handoff.jpg";
@@ -57,6 +57,13 @@ export default function TrackingSearch() {
     <div className="min-h-screen bg-[#071B41]">
       <Navbar overlay={false} />
       <main className="mx-auto max-w-6xl px-4 pt-24 pb-8 sm:px-6">
+        <button
+          onClick={() => navigate("/")}
+          className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-blue-200 hover:text-white"
+        >
+          <ArrowLeft size={15} /> Kembali ke Beranda
+        </button>
+
       {/* Hero band - full-bleed, breaks out of the centered content container */}
       <div className="relative left-1/2 right-1/2 -mx-[50vw] -mt-6 w-screen overflow-hidden bg-blue-950">
         <img

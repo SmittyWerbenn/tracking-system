@@ -59,7 +59,7 @@ export default function TrackingSearch() {
       <main className="mx-auto max-w-6xl px-4 pt-24 pb-8 sm:px-6">
         <button
           onClick={() => navigate("/")}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-blue-200 hover:text-white"
+          className="mb-4 relative z-10 inline-flex items-center gap-1.5 text-sm font-medium text-blue-200 hover:text-white"
         >
           ← Kembali
         </button>

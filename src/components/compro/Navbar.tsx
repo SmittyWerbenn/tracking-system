@@ -1,4 +1,4 @@
-import { ArrowRight, Check, ChevronDown, Menu, X } from "lucide-react";
+import { Check, ChevronDown, Menu, Package, Truck, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
@@ -165,15 +165,24 @@ export function Navbar({ overlay }: { overlay: boolean }) {
 
         <div className="flex items-center gap-2">
           <LangSwitch solid={solid} />
-          <a
-            href="https://gms-logistics.id/cek-ongkir"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden items-center gap-1.5 whitespace-nowrap rounded-lg bg-gms-gold px-4 py-2 text-sm font-bold text-gms-deep transition-colors hover:bg-gms-bright 2xl:inline-flex"
-          >
-            {language === "id" ? "Cek Ongkir" : "Check Rates"}
-            <ArrowRight size={14} />
-          </a>
+          <div className="hidden gap-2 2xl:flex">
+            <a
+              href="https://gms-logistics.id/cek-ongkir"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-gms-gold px-4 py-2 text-sm font-bold text-gms-deep transition-colors hover:bg-gms-bright"
+            >
+              <Truck size={16} />
+              {language === "id" ? "Cek Ongkir" : "Check Rates"}
+            </a>
+            <a
+              href="/"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border-2 border-gms-gold px-4 py-2 text-sm font-bold text-gms-gold transition-colors hover:bg-gms-gold/10"
+            >
+              <Package size={16} />
+              {language === "id" ? "Lacak Paket" : "Track Package"}
+            </a>
+          </div>
           <button
             type="button"
             className={`rounded-md p-2 xl:hidden ${solid ? "text-gms-corp hover:bg-gms-sky" : "text-white hover:bg-white/10"}`}
@@ -216,7 +225,16 @@ export function Navbar({ overlay }: { overlay: boolean }) {
               onClick={() => setOpen(false)}
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-gms-gold font-bold text-gms-deep"
             >
-              {language === "id" ? "Cek Ongkir" : "Check Rates"} <ArrowRight size={16} />
+              <Truck size={18} />
+              {language === "id" ? "Cek Ongkir" : "Check Rates"}
+            </a>
+            <a
+              href="/"
+              onClick={() => setOpen(false)}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border-2 border-gms-gold font-bold text-gms-gold"
+            >
+              <Package size={18} />
+              {language === "id" ? "Lacak Paket" : "Track Package"}
             </a>
             <button
               type="button"

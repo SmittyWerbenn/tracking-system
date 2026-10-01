@@ -80,8 +80,8 @@ export default function CekOngkir() {
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-blue-900 text-white">
           <Calculator size={22} />
         </div>
-        <h1 className="mt-4 text-xl font-bold text-slate-900 sm:text-2xl">{t.cekOngkir.title}</h1>
-        <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">{t.cekOngkir.desc}</p>
+        <h1 className="mt-4 text-xl font-bold text-white sm:text-2xl">{t.cekOngkir.title}</h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-blue-200">{t.cekOngkir.desc}</p>
       </div>
 
       <form

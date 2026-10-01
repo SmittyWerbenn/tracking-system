@@ -29,6 +29,21 @@
   --color-amber-950: #291d07;
 }
 
+/* Company Profile (COMPRO) brand tokens */
+@theme {
+  --color-gms-deep: #071b41;
+  --color-gms-corp: #0b2553;
+  --color-gms-navy: #102f63;
+  --color-gms-gold: #d4a72c;
+  --color-gms-bright: #e5b83b;
+  --color-gms-light: #f0c75e;
+  --color-gms-soft: #f7e9b5;
+  --color-gms-sky: #eaf0f8;
+  --color-gms-mist: #f4f7fc;
+  --color-gms-ink: #14213d;
+  --font-display: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+}
+
 :root {
   color-scheme: light;
 }
@@ -100,3 +115,41 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* COMPRO scroll reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  transition-delay: var(--d, 0ms);
+}
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes dashMove {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+@keyframes pulseRing {
+  0% { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(2); opacity: 0; }
+}
+.compro-focus:focus-visible,
+.compro button:focus-visible,
+.compro a:focus-visible,
+.compro input:focus-visible,
+.compro select:focus-visible,
+.compro textarea:focus-visible {
+  outline: 2px solid #d4a72c;
+  outline-offset: 2px;
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }

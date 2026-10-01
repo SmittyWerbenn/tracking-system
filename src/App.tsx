@@ -35,9 +35,7 @@ import DriverDashboard from "./pages/driver/DriverDashboard";
 import DriverLogin from "./pages/driver/DriverLogin";
 import DriverShipmentDetail from "./pages/driver/DriverShipmentDetail";
 import DriverShipmentHistory from "./pages/driver/DriverShipmentHistory";
-import About from "./pages/public/About";
 import CekOngkir from "./pages/public/CekOngkir";
-import Contact from "./pages/public/Contact";
 import Home from "./pages/public/Home";
 import TrackingResult from "./pages/public/TrackingResult";
 import TrackingSearch from "./pages/public/TrackingSearch";
@@ -105,8 +103,8 @@ export default function App() {
           {!isAdmin && !isDriver && (
             <>
               <Route path="/" element={<Home />} />
-              <Route path="/tentang" element={<About />} />
-              <Route path="/kontak" element={<Contact />} />
+              <Route path="/tentang" element={<Navigate to="/" state={{ scrollTo: "tentang" }} replace />} />
+              <Route path="/kontak" element={<Navigate to="/" state={{ scrollTo: "kontak" }} replace />} />
               <Route path="/cek-ongkir" element={<CekOngkir />} />
               <Route path="/tracking" element={<TrackingSearch />} />
               <Route path="/tracking/:awb" element={<TrackingResult />} />

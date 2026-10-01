@@ -20,7 +20,7 @@ import type { L } from "./fleetData";
 /** All Company Profile copy, bilingual (ID/EN). Edit text here. */
 export const C = {
   nav: {
-    home: { id: "Home", en: "Home" },
+    home: { id: "Beranda", en: "Home" },
     about: { id: "Tentang Kami", en: "About Us" },
     services: { id: "Layanan", en: "Services" },
     fleet: { id: "Armada", en: "Fleet" },

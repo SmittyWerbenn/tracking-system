@@ -65,14 +65,14 @@ export default function TrackingSearch() {
         </button>
 
       {/* Hero band - full-bleed, breaks out of the centered content container */}
-      <div className="relative left-1/2 right-1/2 -mx-[50vw] -mt-6 w-screen overflow-hidden bg-blue-950">
+      <div className="relative left-1/2 right-1/2 -mx-[50vw] -mt-6 w-screen h-screen overflow-hidden bg-[#071B41]">
         <img
           src={heroImage}
           alt=""
           aria-hidden
           className="absolute inset-0 h-full w-full object-cover opacity-20"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-950 via-blue-950/95 to-blue-900/90" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#071B41] via-[#0B2553] to-[#071B41]" />
         <div className="relative mx-auto grid max-w-5xl grid-cols-1 items-center gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-5 lg:gap-10">
           <div className="text-center lg:col-span-3 lg:text-left">
             <h1 className="text-2xl font-bold text-white sm:text-3xl">{t.trackingSearch.heroTitle}</h1>

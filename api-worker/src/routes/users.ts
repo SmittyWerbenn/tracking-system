@@ -74,12 +74,25 @@ export function registerUserRoutes(router: Router) {
     });
   });
 
+  // "Kontrak Kerja Sama / No. Pelanggan" is Superadmin-only. Any attempt to
+  // set it by another role is refused here (server-side), so hiding the input
+  // in the UI is not what protects it.
+  function readKontrak(actor: { role: string }, body: Record<string, unknown>): { provided: boolean; value: string | null } {
+    const provided = Object.prototype.hasOwnProperty.call(body, "kontrakNoPelanggan");
+    if (!provided) return { provided: false, value: null };
+    const raw = (optString(body, "kontrakNoPelanggan") ?? "").trim().slice(0, 100);
+    if (actor.role !== "Superadmin") {
+      throw Errors.forbidden("Hanya Superadmin yang dapat mengubah Kontrak Kerja Sama / No. Pelanggan.");
+    }
+    return { provided: true, value: raw || null };
+  }
+
   // Master Data Clients: every Client ID with its name, the accounts linked
   // to it and its shipment count. Superadmin/Admin only.
   router.get("/api/customers", async (ctx: Ctx) => {
     requirePermission(ctx, "users.manage");
     const [clients, accounts, shipmentCounts] = await Promise.all([
-      ctx.env.DB.prepare(`SELECT customer_id, nama, kota, aktif, created_at FROM clients`).all<{ customer_id: string; nama: string; kota: string | null; aktif: number; created_at: string }>(),
+      ctx.env.DB.prepare(`SELECT customer_id, nama, kota, kontrak_no_pelanggan, aktif, created_at FROM clients`).all<{ customer_id: string; nama: string; kota: string | null; kontrak_no_pelanggan: string | null; aktif: number; created_at: string }>(),
       ctx.env.DB.prepare(
         `SELECT id, nama, email, aktif, created_at, customer_id, role
          FROM users WHERE customer_id IS NOT NULL ORDER BY created_at ASC`,
@@ -94,26 +107,26 @@ export function registerUserRoutes(router: Router) {
     for (const row of shipmentCounts.results ?? []) shipmentCountByClient.set(key(row.customer_id), row.c);
 
     type Row = {
-      customerId: string; nama: string | null; kota: string | null; aktif: boolean; createdAt: string | null; shipmentCount: number;
+      customerId: string; nama: string | null; kota: string | null; kontrakNoPelanggan: string | null; aktif: boolean; createdAt: string | null; shipmentCount: number;
       accounts: { id: string; nama: string; email: string; aktif: boolean; role: string; createdAt: string }[];
     };
     const byClient = new Map<string, Row>();
-    const ensure = (id: string, nama: string | null, kota: string | null, createdAt: string | null, aktif = true) => {
+    const ensure = (id: string, nama: string | null, kota: string | null, kontrakNoPelanggan: string | null, createdAt: string | null, aktif = true) => {
       if (!byClient.has(key(id))) {
-        byClient.set(key(id), { customerId: id, nama, kota, aktif, createdAt, shipmentCount: shipmentCountByClient.get(key(id)) ?? 0, accounts: [] });
+        byClient.set(key(id), { customerId: id, nama, kota, kontrakNoPelanggan, aktif, createdAt, shipmentCount: shipmentCountByClient.get(key(id)) ?? 0, accounts: [] });
       }
       return byClient.get(key(id))!;
     };
-    for (const r of clients.results ?? []) ensure(r.customer_id, r.nama, r.kota, r.created_at, r.aktif === 1);
+    for (const r of clients.results ?? []) ensure(r.customer_id, r.nama, r.kota, r.kontrak_no_pelanggan, r.created_at, r.aktif === 1);
     for (const a of accounts.results ?? []) {
-      ensure(a.customer_id, null, null, null).accounts.push({
+      ensure(a.customer_id, null, null, null, null).accounts.push({
         id: a.id, nama: a.nama, email: a.email, aktif: a.aktif === 1, role: a.role, createdAt: a.created_at,
       });
     }
     for (const id of shipmentCountByClient.keys()) {
       if (!byClient.has(id)) {
         const orig = (shipmentCounts.results ?? []).find((r) => key(r.customer_id) === id)!.customer_id;
-        ensure(orig, null, null, null);
+        ensure(orig, null, null, null, null);
       }
     }
 
@@ -131,6 +144,7 @@ export function registerUserRoutes(router: Router) {
     }
     if (!nama) throw Errors.badRequest("Nama Client wajib diisi.");
     const kota = (optString(body, "kota") ?? "").trim().slice(0, 100) || null;
+    const kontrak = readKontrak(actor, body);
 
     // Also reject an ID already used by old users/shipments that never got
     // a clients row, so the same Client can't be created twice.
@@ -141,18 +155,18 @@ export function registerUserRoutes(router: Router) {
     ).bind(customerId, customerId, customerId).first();
     if (exists) throw Errors.conflict(`Client ID "${customerId}" sudah terdaftar.`);
 
-    await ctx.env.DB.prepare(`INSERT INTO clients (customer_id, nama, kota, created_at, created_by) VALUES (?, ?, ?, ?, ?)`)
-      .bind(customerId, nama, kota, new Date().toISOString(), actor.id)
+    await ctx.env.DB.prepare(`INSERT INTO clients (customer_id, nama, kota, kontrak_no_pelanggan, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)`)
+      .bind(customerId, nama, kota, kontrak.value, new Date().toISOString(), actor.id)
       .run();
 
     await writeAuditLog(ctx.env, actor, {
       action: "CREATE_CLIENT",
       actionLabel: "CREATE CLIENT",
       module: "Client",
-      description: `Client "${nama}" (${customerId})${kota ? ` di ${kota}` : ""} ditambahkan.`,
+      description: `Client "${nama}" (${customerId})${kota ? ` di ${kota}` : ""} ditambahkan${kontrak.value ? ` · Kontrak/No. Pelanggan: ${kontrak.value}` : ""}.`,
     });
 
-    return ok({ customerId, nama, kota }, {}, 201);
+    return ok({ customerId, nama, kota, kontrakNoPelanggan: kontrak.value }, {}, 201);
   });
 
   // Edit a Client (name / city) and/or switch it on/off. The Client ID itself
@@ -161,9 +175,9 @@ export function registerUserRoutes(router: Router) {
   router.patch("/api/customers/:id", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "users.manage");
     const body = await parseJsonBody(ctx.request);
-    const client = await ctx.env.DB.prepare(`SELECT customer_id, nama, kota, aktif FROM clients WHERE customer_id = ?`)
+    const client = await ctx.env.DB.prepare(`SELECT customer_id, nama, kota, kontrak_no_pelanggan, aktif FROM clients WHERE customer_id = ?`)
       .bind(params.id)
-      .first<{ customer_id: string; nama: string; kota: string | null; aktif: number }>();
+      .first<{ customer_id: string; nama: string; kota: string | null; kontrak_no_pelanggan: string | null; aktif: number }>();
     if (!client) throw Errors.notFound("Client tidak ditemukan.");
 
     const sets: string[] = [];
@@ -179,6 +193,8 @@ export function registerUserRoutes(router: Router) {
       kota = (optString(body, "kota") ?? "").trim().slice(0, 100) || null;
       sets.push("kota = ?"); values.push(kota);
     }
+    const kontrak = readKontrak(actor, body);
+    if (kontrak.provided) { sets.push("kontrak_no_pelanggan = ?"); values.push(kontrak.value); }
     const aktif = optBool(body, "aktif");
     if (aktif !== undefined) { sets.push("aktif = ?"); values.push(aktif ? 1 : 0); }
     if (sets.length === 0) throw Errors.badRequest("Tidak ada perubahan yang dikirim.");
@@ -195,20 +211,37 @@ export function registerUserRoutes(router: Router) {
       ).bind(new Date().toISOString(), client.customer_id).run();
     }
 
+    // The contract number is sensitive enough to deserve its own audit entry
+    // that spells out the previous and the new value.
+    if (kontrak.provided && kontrak.value !== client.kontrak_no_pelanggan) {
+      await writeAuditLog(ctx.env, actor, {
+        action: "UPDATE_CLIENT_KONTRAK",
+        actionLabel: "UPDATE CLIENT KONTRAK",
+        module: "Client",
+        description: `Kontrak Kerja Sama / No. Pelanggan Client ${client.customer_id} diubah dari "${client.kontrak_no_pelanggan ?? "-"}" menjadi "${kontrak.value ?? "-"}".`,
+      });
+    }
+
     const toggled = aktif !== undefined && (aktif ? 1 : 0) !== client.aktif;
-    await writeAuditLog(ctx.env, actor, {
-      action: toggled ? (aktif ? "ACTIVATE_CLIENT" : "DEACTIVATE_CLIENT") : "UPDATE_CLIENT",
-      actionLabel: toggled ? (aktif ? "ACTIVATE CLIENT" : "DEACTIVATE CLIENT") : "UPDATE CLIENT",
-      module: "Client",
-      description: toggled
-        ? `Client ${client.customer_id} ${aktif ? "diaktifkan" : "dinonaktifkan"}.`
-        : `Data Client ${client.customer_id} diperbarui.`,
-    });
+    // When the only change was the contract number, the entry above already
+    // describes it - no need for a second, vaguer "data diperbarui" line.
+    const onlyKontrak = kontrak.provided && sets.length === 1;
+    if (!onlyKontrak) {
+      await writeAuditLog(ctx.env, actor, {
+        action: toggled ? (aktif ? "ACTIVATE_CLIENT" : "DEACTIVATE_CLIENT") : "UPDATE_CLIENT",
+        actionLabel: toggled ? (aktif ? "ACTIVATE CLIENT" : "DEACTIVATE CLIENT") : "UPDATE CLIENT",
+        module: "Client",
+        description: toggled
+          ? `Client ${client.customer_id} ${aktif ? "diaktifkan" : "dinonaktifkan"}.`
+          : `Data Client ${client.customer_id} diperbarui.`,
+      });
+    }
 
     return ok({
       customerId: client.customer_id,
       nama: nama ?? client.nama,
       kota: kota === undefined ? client.kota : kota,
+      kontrakNoPelanggan: kontrak.provided ? kontrak.value : client.kontrak_no_pelanggan,
       aktif: aktif === undefined ? client.aktif === 1 : aktif,
     });
   });

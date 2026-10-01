@@ -2,6 +2,7 @@ import { Building2, Pencil, Plus, Power, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { RefreshButton } from "../../components/RefreshButton";
+import { useAuth } from "../../store/AuthContext";
 import { api, ApiError } from "../../utils/apiClient";
 import { formatTanggalPanjang, isoToWib } from "../../utils/format";
 
@@ -17,6 +18,7 @@ interface CustomerRow {
   customerId: string;
   nama: string | null;
   kota: string | null;
+  kontrakNoPelanggan: string | null;
   aktif: boolean;
   shipmentCount: number;
   accounts: CustomerAccount[];
@@ -27,6 +29,10 @@ function formatCreatedAt(iso: string): string {
 }
 
 export default function CustomerList() {
+  // Only Superadmin may change "Kontrak Kerja Sama / No. Pelanggan" - the
+  // server refuses it for anyone else too, this just keeps the form honest.
+  const { profile } = useAuth();
+  const canEditKontrak = profile?.role === "Superadmin";
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -35,6 +41,7 @@ export default function CustomerList() {
   const [newId, setNewId] = useState("");
   const [newNama, setNewNama] = useState("");
   const [newKota, setNewKota] = useState("");
+  const [newKontrak, setNewKontrak] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -42,6 +49,7 @@ export default function CustomerList() {
   const [editing, setEditing] = useState<CustomerRow | null>(null);
   const [editNama, setEditNama] = useState("");
   const [editKota, setEditKota] = useState("");
+  const [editKontrak, setEditKontrak] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -49,6 +57,7 @@ export default function CustomerList() {
     setEditing(c);
     setEditNama(c.nama ?? "");
     setEditKota(c.kota ?? "");
+    setEditKontrak(c.kontrakNoPelanggan ?? "");
     setEditError(null);
   }
 
@@ -63,7 +72,11 @@ export default function CustomerList() {
     setSaving(true);
     setEditError(null);
     try {
-      await api.patch(`/api/customers/${encodeURIComponent(editing.customerId)}`, { nama, kota: editKota.trim() });
+      await api.patch(`/api/customers/${encodeURIComponent(editing.customerId)}`, {
+        nama,
+        kota: editKota.trim(),
+        ...(canEditKontrak ? { kontrakNoPelanggan: editKontrak.trim() } : {}),
+      });
       setEditing(null);
       setNotice(`Data Client ${editing.customerId} berhasil diperbarui.`);
       await fetchCustomers();
@@ -97,6 +110,7 @@ export default function CustomerList() {
     setNewId("");
     setNewNama("");
     setNewKota("");
+    setNewKontrak("");
     setFormError(null);
     setModalOpen(true);
   }
@@ -112,7 +126,13 @@ export default function CustomerList() {
     setSaving(true);
     setFormError(null);
     try {
-      await api.post("/api/customers", { customerId, nama, kota: newKota.trim() });
+      await api.post("/api/customers", {
+        customerId,
+        nama,
+        kota: newKota.trim(),
+        // Omitted for non-Superadmin: the field is theirs to read only.
+        ...(canEditKontrak ? { kontrakNoPelanggan: newKontrak.trim() } : {}),
+      });
       setModalOpen(false);
       setNotice(`Client ${customerId} berhasil ditambahkan. Sekarang bisa dipilih di Manajemen User > Tambah User.`);
       await fetchCustomers();
@@ -191,12 +211,13 @@ export default function CustomerList() {
       ) : (
         <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1240px] text-left text-sm">
+            <table className="w-full min-w-[1440px] text-left text-sm">
               <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-4 py-3 font-medium">Client ID</th>
                   <th className="px-4 py-3 font-medium">Nama Client</th>
                   <th className="px-4 py-3 font-medium">Kota</th>
+                  <th className="px-4 py-3 font-medium">Kontrak Kerja Sama / No. Pelanggan</th>
                   <th className="px-4 py-3 font-medium">Status Client</th>
                   <th className="px-4 py-3 font-medium">Nama Akun</th>
                   <th className="px-4 py-3 font-medium">Email</th>
@@ -224,6 +245,11 @@ export default function CustomerList() {
                           </td>
                           <td rowSpan={rows.length} className="px-4 py-3 align-top text-slate-800">
                             {c.kota ?? "-"}
+                          </td>
+                          <td rowSpan={rows.length} className="px-4 py-3 align-top">
+                            <span className={c.kontrakNoPelanggan ? "font-mono text-slate-800" : "text-slate-400"}>
+                              {c.kontrakNoPelanggan ?? "-"}
+                            </span>
                           </td>
                           <td rowSpan={rows.length} className="whitespace-nowrap px-4 py-3 align-top">
                             <span
@@ -340,6 +366,28 @@ export default function CustomerList() {
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
                 </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                    Kontrak Kerja Sama / No. Pelanggan
+                  </span>
+                  <input
+                    value={editKontrak}
+                    onChange={(e) => setEditKontrak(e.target.value)}
+                    disabled={!canEditKontrak}
+                    placeholder="Contoh: CTR/TATA/2026/001"
+                    maxLength={100}
+                    className={`w-full rounded-lg border px-3 py-2 text-sm ${
+                      canEditKontrak
+                        ? "border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        : "border-slate-200 bg-slate-50 text-slate-500"
+                    }`}
+                  />
+                  <span className="mt-1.5 block text-[11px] text-slate-400">
+                    {canEditKontrak
+                      ? "Boleh nomor kontrak kerja sama atau nomor pelanggan. Opsional."
+                      : "Hanya Superadmin yang dapat mengubah field ini."}
+                  </span>
+                </label>
               </div>
               {editError && <p className="mt-4 text-sm font-medium text-red-600">{editError}</p>}
               <div className="mt-6 flex justify-end gap-2">
@@ -415,6 +463,23 @@ export default function CustomerList() {
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
                 </label>
+                {canEditKontrak && (
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                      Kontrak Kerja Sama / No. Pelanggan
+                    </span>
+                    <input
+                      value={newKontrak}
+                      onChange={(e) => setNewKontrak(e.target.value)}
+                      placeholder="Contoh: CTR/TATA/2026/001"
+                      maxLength={100}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    />
+                    <span className="mt-1.5 block text-[11px] text-slate-400">
+                      Boleh nomor kontrak kerja sama atau nomor pelanggan. Opsional.
+                    </span>
+                  </label>
+                )}
               </div>
               {formError && <p className="mt-4 text-sm font-medium text-red-600">{formError}</p>}
               <div className="mt-6 flex justify-end gap-2">

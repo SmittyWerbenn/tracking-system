@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { journeySteps } from "../../data/compro/journeySteps";
 import { useLanguage } from "../../store/LanguageContext";
 import { journeyAssets } from "../../data/compro/assetsMap";
 
-// Inline animation styles untuk carousel
+// Inline animation styles untuk carousel & stepper
 const carouselStyles = `
   @keyframes scaleIn {
     from {
@@ -37,6 +37,15 @@ const carouselStyles = `
     }
   }
 
+  @keyframes glowPulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(212, 167, 44, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 6px rgba(212, 167, 44, 0);
+    }
+  }
+
   .animate-scaleIn {
     animation: scaleIn 0.6s ease-out forwards;
   }
@@ -51,6 +60,15 @@ const carouselStyles = `
 
   .animate-fadeIn {
     animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .animate-glowPulse {
+    animation: glowPulse 2s infinite;
+  }
+
+  .stepper-line {
+    background: linear-gradient(to right, #0B2553 0%, #0B2553 var(--progress, 0%), #D4C5A9 var(--progress, 0%), #D4C5A9 100%);
+    transition: --progress 0.7s ease-out;
   }
 `;
 
@@ -76,8 +94,8 @@ export function JourneyCarousel() {
 
   const handleNext = () => {
     setCurrentIdx(nextIdx);
-    setIsAutoPlay(false); // Pause auto-play ketika user interact
-    setTimeout(() => setIsAutoPlay(true), 8000); // Resume setelah 8 detik
+    setIsAutoPlay(false);
+    setTimeout(() => setIsAutoPlay(true), 8000);
   };
 
   const handlePrev = () => {
@@ -86,13 +104,15 @@ export function JourneyCarousel() {
     setTimeout(() => setIsAutoPlay(true), 8000);
   };
 
+  const progressPercent = ((currentIdx + 1) / totalSteps) * 100;
+
   return (
     <>
       <style>{carouselStyles}</style>
       <div className="relative w-full bg-gradient-to-b from-[#EAF0F8] to-white py-12 md:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Header */}
-          <div className="text-center mb-8 md:mb-12">
+          <div className="text-center mb-12 md:mb-14">
             <p className="text-sm font-semibold text-[#D4A72C] uppercase tracking-widest mb-2">
               {language === "id" ? "Proses Pengiriman" : "Delivery Process"}
             </p>
@@ -108,45 +128,104 @@ export function JourneyCarousel() {
             </p>
           </div>
 
-          {/* Step Navigator - Top Bar with Numbered Circles */}
-          <div className="mb-10 overflow-x-auto">
-            <div className="flex gap-2 md:gap-3 px-2 pb-2 min-w-min md:justify-center">
-              {journeySteps.map((s, idx) => {
-                const isActive = idx === currentIdx;
-                const isPassed = idx < currentIdx;
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => {
-                      setCurrentIdx(idx);
-                      setIsAutoPlay(false);
-                      setTimeout(() => setIsAutoPlay(true), 8000);
+          {/* Professional Stepper - Logistics Journey Timeline */}
+          <div className="mb-12 md:mb-14">
+            <div className="overflow-x-auto pb-4">
+              <div className="min-w-min md:flex md:justify-center px-2">
+                {/* Main stepper container */}
+                <div className="relative inline-flex items-start gap-0 md:gap-0">
+                  {/* Progress connector line - background */}
+                  <div className="absolute top-5 left-0 h-1 bg-[#D4C5A9] transition-all duration-700"
+                    style={{
+                      right: 0,
+                      width: 'calc(100% - 24px)',
+                      marginLeft: '12px',
                     }}
-                    className="flex flex-col items-center gap-2 transition-all duration-300"
-                  >
-                    {/* Numbered Circle */}
-                    <div
-                      className={`flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full font-bold text-sm md:text-base font-display transition-all duration-300 ${
-                        isActive
-                          ? "bg-[#D4A72C] text-[#071B41] scale-110 shadow-lg ring-2 ring-[#D4A72C] ring-offset-2"
-                          : isPassed
-                            ? "bg-[#0B2553] text-white shadow-md"
-                            : "bg-[#EAF0F8] text-[#0B2553] border-2 border-[#D4A72C]/30 hover:border-[#D4A72C] hover:bg-[#D4A72C]/10"
-                      }`}
-                    >
-                      {idx + 1}
-                    </div>
-                    {/* Step Name */}
-                    <span
-                      className={`text-xs md:text-sm font-bold uppercase tracking-wide whitespace-nowrap transition-all duration-300 ${
-                        isActive ? "text-[#D4A72C] scale-105" : isPassed ? "text-[#0B2553]" : "text-gray-500"
-                      }`}
-                    >
-                      {s.short[language]}
-                    </span>
-                  </button>
-                );
-              })}
+                  />
+
+                  {/* Progress connector line - active */}
+                  <div 
+                    className="absolute top-5 left-0 h-1 bg-gradient-to-r from-[#0B2553] to-[#D4A72C] transition-all duration-700"
+                    style={{
+                      width: `calc(${progressPercent}% - ${(100 - progressPercent) * 0.24}px)`,
+                      marginLeft: '12px',
+                    }}
+                  />
+
+                  {/* Step Items */}
+                  {journeySteps.map((s, idx) => {
+                    const isActive = idx === currentIdx;
+                    const isPassed = idx < currentIdx;
+                    
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => {
+                          setCurrentIdx(idx);
+                          setIsAutoPlay(false);
+                          setTimeout(() => setIsAutoPlay(true), 8000);
+                        }}
+                        className="relative z-10 flex flex-col items-center transition-all duration-300 hover:scale-105 active:scale-95"
+                        style={{
+                          minWidth: idx === journeySteps.length - 1 ? 'auto' : 'calc(16.666% - 4px)',
+                          width: 'auto',
+                          paddingRight: idx === journeySteps.length - 1 ? 0 : '0px',
+                        }}
+                      >
+                        {/* Circle Container */}
+                        <div className="relative mb-3 md:mb-4">
+                          {/* Glow effect for active */}
+                          {isActive && (
+                            <div className="absolute inset-0 rounded-full animate-glowPulse"
+                              style={{
+                                width: '56px',
+                                height: '56px',
+                                left: '-2px',
+                                top: '-2px',
+                              }}
+                            />
+                          )}
+
+                          {/* Circle itself */}
+                          <div
+                            className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center font-bold font-display transition-all duration-300 ${
+                              isActive
+                                ? "bg-[#071B41] text-white ring-4 ring-[#D4A72C] shadow-lg scale-110"
+                                : isPassed
+                                  ? "bg-[#0B2553] text-white shadow-md"
+                                  : "bg-white border-2 border-[#D4C5A9] text-[#071B41] shadow-sm"
+                            }`}
+                          >
+                            {isPassed ? (
+                              <Check size={20} className="md:w-6 md:h-6" strokeWidth={3} />
+                            ) : (
+                              <span className="text-sm md:text-base">{idx + 1}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Step Label */}
+                        <span
+                          className={`text-xs md:text-sm font-bold uppercase tracking-wider leading-tight text-center transition-all duration-300 ${
+                            isActive
+                              ? "text-[#071B41] scale-105 font-display"
+                              : isPassed
+                                ? "text-[#0B2553] font-semibold"
+                                : "text-[#7A8A9E] font-semibold"
+                          }`}
+                          style={{
+                            maxWidth: '90px',
+                            wordBreak: 'break-word',
+                            lineHeight: '1.2',
+                          }}
+                        >
+                          {s.short[language]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -226,16 +305,6 @@ export function JourneyCarousel() {
                   aria-label={`Go to step ${idx + 1}`}
                 />
               ))}
-            </div>
-          </div>
-
-          {/* Timeline Progress Bar */}
-          <div className="mt-8 md:mt-10">
-            <div className="relative h-2 bg-[#EAF0F8] rounded-full overflow-hidden border border-[#D4A72C]/20">
-              <div
-                className="h-full bg-gradient-to-r from-[#D4A72C] to-[#E5B83B] transition-all duration-700 rounded-full"
-                style={{ width: `${((currentIdx + 1) / totalSteps) * 100}%` }}
-              />
             </div>
           </div>
         </div>

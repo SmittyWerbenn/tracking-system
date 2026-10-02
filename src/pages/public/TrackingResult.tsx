@@ -12,7 +12,7 @@ import type { Shipment } from "../../types";
 import { recordAwbView } from "../../utils/awbHistory";
 import { formatTanggalPanjang, todayISO } from "../../utils/format";
 import { fetchPublicShipment } from "../../utils/publicTracking";
-import { useDocumentTitle } from "../../utils/useDocumentTitle";
+import { useSeo } from "../../utils/seo";
 
 export default function TrackingResult() {
   const { t } = useLanguage();
@@ -38,7 +38,18 @@ export default function TrackingResult() {
     };
   }, [awb]);
 
-  useDocumentTitle(shipment ? `Tracking ${shipment.awb}` : `AWB ${awb} ${t.trackingResult.notFoundTitle}`);
+  // Per-AWB dynamic result page - no standalone search value, and should
+  // never surface shipment details in search results, so always noindex.
+  useSeo({
+    title: shipment
+      ? `Tracking ${shipment.awb} | GMS Logistics`
+      : `AWB ${awb} - ${t.trackingResult.notFoundTitle} | GMS Logistics`,
+    description: shipment
+      ? `Status pengiriman AWB ${shipment.awb}: ${shipment.status}. Dari ${shipment.kotaAsal} ke ${shipment.kotaTujuan}.`
+      : t.trackingResult.notFoundDesc,
+    path: `/tracking/${awb ?? ""}`,
+    robots: "noindex,follow",
+  });
 
   const [query, setQuery] = useState("");
   const [notFound, setNotFound] = useState(false);

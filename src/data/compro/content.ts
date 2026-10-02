@@ -292,10 +292,13 @@ export const C = {
     copyright: { id: "PT Gangsar Mitra Suatama · GMS Logistics. Hak cipta dilindungi.", en: "PT Gangsar Mitra Suatama · GMS Logistics. All rights reserved." },
   },
   seo: {
-    title: { id: "GMS Logistics - Jasa Logistik, Pengiriman & Trucking Indonesia", en: "GMS Logistics - Logistics, Shipping & Trucking Indonesia" },
+    title: {
+      id: "GMS Logistics | Jasa Logistik & Pengiriman Barang Indonesia",
+      en: "GMS Logistics | Logistics & Freight Shipping Services Indonesia",
+    },
     description: {
-      id: "GMS Logistics: jasa logistik, jasa pengiriman dan trucking Indonesia. Armada trucking lengkap, project cargo, heavy haulage, container transportation, dan tracking shipment real-time.",
-      en: "GMS Logistics: logistics, shipping and trucking services in Indonesia. Complete trucking fleet, project cargo, heavy haulage, container transportation, and real-time shipment tracking.",
+      id: "GMS Logistics (PT Gangsar Mitra Suatama) menyediakan layanan logistik dan pengiriman barang antar kota dengan layanan FTL, LTL, FCL, LCL, Air Express, dan Project Cargo.",
+      en: "GMS Logistics (PT Gangsar Mitra Suatama) provides intercity logistics and freight shipping services with FTL, LTL, FCL, LCL, Air Express, and Project Cargo.",
     },
   },
   backToTop: { id: "Kembali ke atas", en: "Back to top" },

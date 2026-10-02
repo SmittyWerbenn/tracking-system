@@ -28,8 +28,11 @@ export function Hero() {
           <p className="inline-flex items-center gap-2 rounded-full border border-gms-gold/40 bg-gms-gold/10 px-3.5 py-1.5 text-sm font-bold uppercase tracking-[0.16em] text-gms-light animate-[fadeIn_0.5s_ease-out]">
             <Gauge size={14} aria-hidden /> {l(C.hero.eyebrow)}
           </p>
-          <h1 className="mt-6 font-display text-5xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl lg:text-7xl animate-[fadeIn_0.6s_ease-out]">
-            {l(C.hero.titleA)} <span className="text-gms-bright">{l(C.hero.titleB)}</span> {l(C.hero.titleC)}
+          <h1 className="mt-6 font-display leading-[1.1] tracking-tight animate-[fadeIn_0.6s_ease-out]">
+            <span className="block text-xl font-bold text-gms-gold sm:text-2xl">GMS Logistics</span>
+            <span className="mt-1 block text-5xl font-extrabold sm:text-6xl lg:text-7xl">
+              {l(C.hero.titleA)} <span className="text-gms-bright">{l(C.hero.titleB)}</span> {l(C.hero.titleC)}
+            </span>
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-blue-100/85 sm:text-xl animate-[fadeIn_0.7s_ease-out]">
             {l(C.hero.sub)}

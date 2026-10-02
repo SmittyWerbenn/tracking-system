@@ -121,7 +121,7 @@ export function Navbar({ overlay }: { overlay: boolean }) {
     >
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:h-24 lg:px-8">
         <Link to="/" onClick={() => setOpen(false)} className="flex items-center gap-2.5">
-          <img src={logoIcon} alt="GMS Logistics" className="h-12 w-12 shrink-0 object-contain" />
+          <img src={logoIcon} alt="GMS Logistics - PT Gangsar Mitra Suatama" className="h-12 w-12 shrink-0 object-contain" />
           <span className="shrink-0 leading-tight">
             <span className={`block whitespace-nowrap font-display text-3xl font-extrabold ${solid ? "text-gms-corp" : "text-white"}`}>
               GMS Logistics

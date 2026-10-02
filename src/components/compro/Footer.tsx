@@ -50,7 +50,7 @@ export function Footer() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1.15fr_1.3fr]">
           <div>
             <div className="flex items-center gap-2.5">
-              <img src={logoIcon} alt="GMS Logistics" className="h-10 w-10 object-contain" />
+              <img src={logoIcon} alt="GMS Logistics - PT Gangsar Mitra Suatama" className="h-10 w-10 object-contain" />
               <span className="font-display text-2xl font-extrabold">GMS Logistics</span>
             </div>
             <p className="mt-4 max-w-sm text-lg leading-relaxed text-blue-100/75">{l(C.footer.desc)}</p>

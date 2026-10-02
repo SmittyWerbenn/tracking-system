@@ -9,7 +9,7 @@ import { useLanguage } from "../../store/LanguageContext";
 import { useLocations } from "../../store/LocationContext";
 import type { LayananPengiriman } from "../../types";
 import { estimateOngkir, formatRupiah, type OngkirEstimate } from "../../utils/ongkir";
-import { useDocumentTitle } from "../../utils/useDocumentTitle";
+import { useSeo } from "../../utils/seo";
 
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:border-gms-gold focus:bg-white focus:outline-none focus:ring-2 focus:ring-gms-gold/20";
@@ -18,7 +18,11 @@ const LAYANAN_KEYS: LayananPengiriman[] = ["Darat", "Express", "Kargo", "Regular
 
 export default function CekOngkir() {
   const { t, language } = useLanguage();
-  useDocumentTitle(t.nav.checkPrice);
+  useSeo({
+    title: language === "id" ? "Cek Ongkir | GMS Logistics" : "Check Shipping Cost | GMS Logistics",
+    description: t.cekOngkir.desc,
+    path: "/cek-ongkir",
+  });
   const navigate = useNavigate();
   const { activeTitikLokasi } = useLocations();
 

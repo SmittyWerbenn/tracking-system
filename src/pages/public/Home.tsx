@@ -14,55 +14,29 @@ import { ServicesExplorer } from "../../components/compro/ServicesExplorer";
 import { scrollToSection, useL } from "../../components/compro/utils";
 import { WhyUs } from "../../components/compro/WhyUs";
 import { C } from "../../data/compro/content";
-import { SITE_URL } from "../../data/compro/config";
+import { buildOrganizationSchema, buildWebsiteSchema } from "../../data/compro/seoSchema";
 import type { FleetGroup, FleetItem } from "../../data/compro/fleetData";
 import { useHelpContact } from "../../store/HelpContactContext";
 import { useLanguage } from "../../store/LanguageContext";
+import { useSeo } from "../../utils/seo";
 
-function setMeta(sel: string, attr: string, key: string, value: string) {
-  let el = document.head.querySelector<HTMLMetaElement>(sel);
-  if (!el) {
-    el = document.createElement("meta");
-    el.setAttribute(attr, key);
-    document.head.appendChild(el);
-  }
-  el.setAttribute("content", value);
-}
-
-function useSeo() {
+function useHomeSeo() {
   const { language } = useLanguage();
   const { contactPhone, contactEmail, contactAddress } = useHelpContact();
-  useEffect(() => {
-    const title = C.seo.title[language];
-    const desc = C.seo.description[language];
-    document.title = title;
-    document.documentElement.lang = language;
-    setMeta('meta[name="description"]', "name", "description", desc);
-    setMeta('meta[property="og:title"]', "property", "og:title", title);
-    setMeta('meta[property="og:description"]', "property", "og:description", desc);
-    setMeta('meta[property="og:type"]', "property", "og:type", "website");
-    setMeta('meta[property="og:url"]', "property", "og:url", SITE_URL);
-    setMeta('meta[property="og:locale"]', "property", "og:locale", language === "id" ? "id_ID" : "en_US");
-    setMeta('meta[name="twitter:card"]', "name", "twitter:card", "summary_large_image");
-    const ld = document.createElement("script");
-    ld.type = "application/ld+json";
-    ld.id = "compro-jsonld";
-    ld.text = JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      name: "GMS Logistics",
-      legalName: "PT Gangsar Mitra Suatama",
-      url: SITE_URL,
-      description: desc,
-      telephone: contactPhone,
-      email: contactEmail,
-      address: { "@type": "PostalAddress", streetAddress: contactAddress, addressCountry: "ID" },
-      areaServed: "ID",
-    });
-    document.getElementById("compro-jsonld")?.remove();
-    document.head.appendChild(ld);
-    return () => ld.remove();
-  }, [language, contactPhone, contactEmail, contactAddress]);
+  useSeo({
+    title: C.seo.title[language],
+    description: C.seo.description[language],
+    path: "/",
+    jsonLd: [
+      buildOrganizationSchema({
+        description: C.seo.description[language],
+        telephone: contactPhone,
+        email: contactEmail,
+        address: contactAddress,
+      }),
+      buildWebsiteSchema(),
+    ],
+  });
 }
 
 export default function Home() {
@@ -71,7 +45,7 @@ export default function Home() {
   const [group, setGroup] = useState<"all" | FleetGroup>("all");
   const [prefill, setPrefill] = useState("");
   const { language } = useLanguage();
-  useSeo();
+  useHomeSeo();
 
   useEffect(() => {
     const id = (location.state as { scrollTo?: string } | null)?.scrollTo;

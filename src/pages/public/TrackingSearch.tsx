@@ -16,11 +16,15 @@ import {
   type AwbHistoryEntry,
 } from "../../utils/awbHistory";
 import { fetchPublicShipment } from "../../utils/publicTracking";
-import { useDocumentTitle } from "../../utils/useDocumentTitle";
+import { useSeo } from "../../utils/seo";
 
 export default function TrackingSearch() {
   const { t, language } = useLanguage();
-  useDocumentTitle(t.nav.trackPackage);
+  useSeo({
+    title: language === "id" ? "Tracking Pengiriman | GMS Logistics" : "Shipment Tracking | GMS Logistics",
+    description: t.trackingSearch.heroDesc,
+    path: "/tracking",
+  });
   const [awb, setAwb] = useState("");
   const [notFound, setNotFound] = useState(false);
   const [checking, setChecking] = useState(false);

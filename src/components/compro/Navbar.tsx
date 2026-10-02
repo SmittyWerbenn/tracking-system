@@ -123,7 +123,7 @@ export function Navbar({ overlay }: { overlay: boolean }) {
         <Link to="/" onClick={() => setOpen(false)} className="flex items-center gap-2.5">
           <img src={logoIcon} alt="GMS Logistics" className="h-9 w-9 shrink-0 object-contain" />
           <span className="leading-tight">
-            <span className={`block font-display text-lg font-extrabold ${solid ? "text-gms-corp" : "text-white"}`}>
+            <span className={`block whitespace-nowrap font-display text-lg font-extrabold ${solid ? "text-gms-corp" : "text-white"}`}>
               GMS Logistics
             </span>
             <span className={`hidden text-xs sm:block ${solid ? "text-slate-500" : "text-white/70"}`}>

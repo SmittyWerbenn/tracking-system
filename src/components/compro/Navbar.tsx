@@ -119,9 +119,9 @@ export function Navbar({ overlay }: { overlay: boolean }) {
         solid ? "bg-white/95 shadow-sm backdrop-blur" : "bg-transparent"
       }`}
     >
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:h-20 lg:px-8">
+      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:h-24 lg:px-8">
         <Link to="/" onClick={() => setOpen(false)} className="flex items-center gap-2.5">
-          <img src={logoIcon} alt="GMS Logistics" className="h-10 w-10 shrink-0 object-contain" />
+          <img src={logoIcon} alt="GMS Logistics" className="h-12 w-12 shrink-0 object-contain" />
           <span className="shrink-0 leading-tight">
             <span className={`block whitespace-nowrap font-display text-3xl font-extrabold ${solid ? "text-gms-corp" : "text-white"}`}>
               GMS Logistics
@@ -198,7 +198,7 @@ export function Navbar({ overlay }: { overlay: boolean }) {
         <div
           id="compro-mobile-menu"
           ref={menuRef}
-          className="fixed inset-x-0 top-16 z-50 max-h-[calc(100vh-64px)] overflow-y-auto bg-white px-4 pb-8 pt-3 shadow-lg xl:hidden"
+          className="fixed inset-x-0 top-20 z-50 max-h-[calc(100vh-80px)] overflow-y-auto bg-white px-4 pb-8 pt-3 shadow-lg xl:hidden"
         >
           <nav aria-label="Mobile" className="flex flex-col">
             {NAV_SECTIONS.map((s) => (

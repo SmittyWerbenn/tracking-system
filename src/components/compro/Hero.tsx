@@ -10,7 +10,7 @@ const TRUST_ICONS = [Radar, Camera, Users, Truck];
 export function Hero() {
   const l = useL();
   return (
-    <section id="home" className="relative isolate overflow-hidden bg-gms-deep pt-16 text-white lg:pt-[72px]">
+    <section id="home" className="relative isolate overflow-hidden bg-gms-deep pt-20 text-white lg:pt-24">
       <img
         src={COMPRO_IMAGES.hero.url}
         alt={COMPRO_IMAGES.hero.alt}

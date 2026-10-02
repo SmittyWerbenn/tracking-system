@@ -23,7 +23,7 @@ export function Footer() {
   return (
     <footer className="bg-gms-deep text-white">
       <div aria-hidden className="h-1 bg-gradient-to-r from-gms-gold via-gms-light to-gms-gold" />
-      <Container className="py-14">
+      <Container className="pt-14 pb-6">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <div className="flex items-center gap-2.5">

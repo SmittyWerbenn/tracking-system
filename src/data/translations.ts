@@ -76,6 +76,7 @@ interface Translations {
   };
   trackingSearch: {
     heroTitle: string;
+    heroTitleGold: string;
     heroDesc: string;
     placeholder: string;
     submitButton: string;
@@ -87,6 +88,12 @@ interface Translations {
     removeFromHistory: string;
     exampleTitle: string;
     taglineImage: string;
+    feature1Title: string;
+    feature1Desc: string;
+    feature2Title: string;
+    feature2Desc: string;
+    feature3Title: string;
+    feature3Desc: string;
   };
   trackingResult: {
     back: string;
@@ -117,7 +124,11 @@ interface Translations {
   };
   cekOngkir: {
     title: string;
+    heroTitle: string;
+    heroTitleGold: string;
     desc: string;
+    formTitle: string;
+    formDesc: string;
     originCity: string;
     destinationCity: string;
     swapCities: string;
@@ -135,6 +146,12 @@ interface Translations {
     estimatedArrival: string;
     weightKoli: string;
     serviceOptions: { label: string; desc: string }[];
+    benefit1Title: string;
+    benefit1Desc: string;
+    benefit2Title: string;
+    benefit2Desc: string;
+    benefit3Title: string;
+    benefit3Desc: string;
   };
   pod: {
     title: string;
@@ -330,7 +347,8 @@ const id: Translations = {
     footNoteLink: "Lacak Kiriman",
   },
   trackingSearch: {
-    heroTitle: "Lacak Pengiriman Anda",
+    heroTitle: "Lacak",
+    heroTitleGold: "Pengiriman Anda",
     heroDesc:
       "Masukkan nomor AWB (resi) yang tertera pada email atau resi fisik Anda untuk melihat status pengiriman secara real-time.",
     placeholder: "Contoh: G260911001",
@@ -343,6 +361,12 @@ const id: Translations = {
     removeFromHistory: "Hapus dari riwayat",
     exampleTitle: "Contoh AWB (demo)",
     taglineImage: "Setiap pengiriman, sampai tujuan.",
+    feature1Title: "Update Real-time",
+    feature1Desc: "Pantau status pengiriman kapan saja.",
+    feature2Title: "Aman & Terpercaya",
+    feature2Desc: "Data pengiriman Anda selalu aman.",
+    feature3Title: "Notifikasi",
+    feature3Desc: "Dapatkan informasi setiap perubahan status.",
   },
   trackingResult: {
     back: "Kembali",
@@ -374,7 +398,11 @@ const id: Translations = {
   },
   cekOngkir: {
     title: "Cek Ongkir",
-    desc: "Hitung perkiraan biaya dan estimasi waktu pengiriman antar kota sebelum Anda mengirim barang.",
+    heroTitle: "Hitung Ongkir",
+    heroTitleGold: "dengan Mudah",
+    desc: "Dapatkan estimasi biaya dan waktu pengiriman antar kota sebelum Anda mengirim barang.",
+    formTitle: "Cek Estimasi Ongkir",
+    formDesc: "Isi data pengiriman untuk mengetahui estimasi biaya dan waktu.",
     originCity: "Kota Asal",
     destinationCity: "Kota Tujuan",
     swapCities: "Tukar kota asal & tujuan",
@@ -398,6 +426,12 @@ const id: Translations = {
       { label: "Regular", desc: "Pilihan standar dengan waktu tempuh normal." },
       { label: "Charter", desc: "Sewa unit khusus untuk pengiriman Anda sendiri, tercepat dan eksklusif." },
     ],
+    benefit1Title: "Estimasi Akurat",
+    benefit1Desc: "Dapatkan perhitungan biaya yang transparan.",
+    benefit2Title: "Informasi Waktu",
+    benefit2Desc: "Estimasi waktu pengiriman yang jelas.",
+    benefit3Title: "Berbagai Pilihan Layanan",
+    benefit3Desc: "Pilih layanan sesuai kebutuhan Anda.",
   },
   pod: {
     title: "Proof of Delivery",
@@ -594,7 +628,8 @@ const en: Translations = {
     footNoteLink: "Track Shipment",
   },
   trackingSearch: {
-    heroTitle: "Track Your Shipment",
+    heroTitle: "Track Your",
+    heroTitleGold: "Shipment",
     heroDesc: "Enter the AWB (receipt) number shown on your email or physical receipt to see the delivery status in real time.",
     placeholder: "e.g. G260911001",
     submitButton: "Track Now",
@@ -606,6 +641,12 @@ const en: Translations = {
     removeFromHistory: "Remove from history",
     exampleTitle: "Example AWB (demo)",
     taglineImage: "Every shipment, delivered.",
+    feature1Title: "Real-time Updates",
+    feature1Desc: "Monitor your shipment status anytime.",
+    feature2Title: "Safe & Trusted",
+    feature2Desc: "Your shipment data is always protected.",
+    feature3Title: "Notifications",
+    feature3Desc: "Get notified on every status change.",
   },
   trackingResult: {
     back: "Back",
@@ -636,7 +677,11 @@ const en: Translations = {
   },
   cekOngkir: {
     title: "Check Shipping Cost",
-    desc: "Calculate the estimated cost and delivery time between cities before you send your package.",
+    heroTitle: "Calculate Shipping",
+    heroTitleGold: "Made Easy",
+    desc: "Get an estimated cost and delivery time between cities before you send your package.",
+    formTitle: "Check Estimated Cost",
+    formDesc: "Fill in your shipment details to see the estimated cost and time.",
     originCity: "Origin City",
     destinationCity: "Destination City",
     swapCities: "Swap origin & destination",
@@ -660,6 +705,12 @@ const en: Translations = {
       { label: "Regular", desc: "The standard option with normal transit time." },
       { label: "Charter", desc: "Charter your own dedicated unit - fastest and exclusive." },
     ],
+    benefit1Title: "Accurate Estimate",
+    benefit1Desc: "Get a transparent cost calculation.",
+    benefit2Title: "Time Information",
+    benefit2Desc: "Clear delivery time estimates.",
+    benefit3Title: "Multiple Service Options",
+    benefit3Desc: "Choose the service that fits your needs.",
   },
   pod: {
     title: "Proof of Delivery",

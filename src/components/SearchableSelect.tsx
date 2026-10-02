@@ -14,6 +14,10 @@ interface SearchableSelectProps {
   placeholder?: string;
   emptyLabel?: string;
   disabled?: boolean;
+  /** Extra classes merged onto the trigger button, for pages that need a
+   * different visual theme (e.g. gold focus ring) without affecting every
+   * other caller's default look. */
+  className?: string;
 }
 
 /** A dropdown with a built-in search box, used for pickers backed by master
@@ -26,6 +30,7 @@ export function SearchableSelect({
   placeholder = "Pilih...",
   emptyLabel = "Tidak ada hasil.",
   disabled,
+  className = "",
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -59,7 +64,7 @@ export function SearchableSelect({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+        className={`flex w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ${className}`}
       >
         <span className={`min-w-0 flex-1 truncate ${selected ? "" : "text-slate-400"}`}>
           {selected ? selected.label : placeholder}

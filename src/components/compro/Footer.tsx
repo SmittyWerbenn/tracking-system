@@ -21,11 +21,34 @@ export function Footer() {
   const link = "text-left text-lg text-blue-100/75 transition-colors hover:text-gms-light";
 
   return (
-    <footer className="bg-gms-deep text-white">
-      <div aria-hidden className="h-1 bg-gradient-to-r from-gms-gold via-gms-light to-gms-gold" />
+    <footer className="relative bg-gms-deep text-white">
+      {/* Gold divider as a subtle wave instead of a straight bar, so the
+          section above doesn't look like it's cut off flat. */}
+      <svg
+        aria-hidden
+        viewBox="0 0 1440 48"
+        preserveAspectRatio="none"
+        className="pointer-events-none absolute inset-x-0 top-0 h-7 w-full -translate-y-1/2 sm:h-9"
+      >
+        <defs>
+          <linearGradient id="footerWaveGradient" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#D4A72C" />
+            <stop offset="50%" stopColor="#F0C75E" />
+            <stop offset="100%" stopColor="#D4A72C" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M0,26 C220,4 380,46 620,26 C860,6 1040,46 1260,24 C1340,16 1400,20 1440,24"
+          fill="none"
+          stroke="url(#footerWaveGradient)"
+          strokeWidth="5"
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
       <Container className="pt-14 pb-6">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="lg:col-span-2">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1.15fr_1.3fr]">
+          <div>
             <div className="flex items-center gap-2.5">
               <img src={logoIcon} alt="GMS Logistics" className="h-10 w-10 object-contain" />
               <span className="font-display text-2xl font-extrabold">GMS Logistics</span>

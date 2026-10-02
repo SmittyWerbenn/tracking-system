@@ -115,8 +115,8 @@ export const services: Service[] = [
   },
   {
     id: "procargo",
-    name: "ProCargo",
-    fullName: { id: "ProCargo", en: "ProCargo" },
+    name: "Project Cargo",
+    fullName: { id: "Project Cargo", en: "Project Cargo" },
     icon: Zap,
     mode: { id: "Darat/Laut/Udara", en: "Land/Sea/Air" },
     capacity: { id: "Oversize/Heavy Lift", en: "Oversize/Heavy Lift" },

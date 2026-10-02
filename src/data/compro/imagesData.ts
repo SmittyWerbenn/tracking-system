@@ -74,7 +74,7 @@ export const COMPRO_IMAGES = {
     },
     procargo: {
       url: "https://images.unsplash.com/photo-1578362996442-48f60103fc96?w=800&h=600&fit=crop&q=90",
-      alt: "Lowbed dan heavy truck untuk layanan ProCargo project cargo",
+      alt: "Lowbed dan heavy truck untuk layanan Project Cargo",
     },
   },
 

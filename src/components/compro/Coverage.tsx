@@ -7,7 +7,7 @@ export function Coverage() {
   return (
     <section id="coverage" className="scroll-mt-16 bg-gms-mist py-20 sm:py-24">
       <Container>
-        <SectionHeader eyebrow={l(C.coverage.eyebrow)} title={l(C.coverage.title)} sub={l(C.coverage.sub)} accentLine={false} large />
+        <SectionHeader eyebrow={l(C.coverage.eyebrow)} title={l(C.coverage.title)} sub={l(C.coverage.sub)} large />
         <div className="mt-12 flex justify-center">
           <Reveal className="w-full max-w-4xl">
             <div className="relative overflow-hidden rounded-3xl bg-white shadow-lg">

@@ -2,7 +2,7 @@ import { Quote, Target } from "lucide-react";
 import { C } from "../../data/compro/content";
 import { ABOUT_STATS, SITE_IMAGES } from "../../data/compro/config";
 import { COMPRO_IMAGES } from "../../data/compro/imagesData";
-import { SectionHeader, Container } from "./SectionHeader";
+import { SectionHeader, Container, SECTION_EYEBROW_CLASS } from "./SectionHeader";
 import { CountUp, Reveal, useL } from "./utils";
 
 export function About() {
@@ -61,7 +61,7 @@ export function About() {
           </Reveal>
         </div>
 
-        <p className="mt-12 text-center text-sm font-bold uppercase tracking-[0.16em] text-gms-gold">{l(C.about.valuesLabel)}</p>
+        <p className={`mt-12 text-center ${SECTION_EYEBROW_CLASS}`}>{l(C.about.valuesLabel)}</p>
         <div className="mt-5 grid gap-4 md:grid-cols-3">
           {C.about.values.map((v, i) => (
             <Reveal key={v.title.en} delay={i * 80} className="rounded-xl border border-slate-200 p-6 transition-colors hover:border-gms-gold">

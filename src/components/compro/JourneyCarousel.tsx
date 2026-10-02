@@ -3,6 +3,7 @@ import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { journeySteps } from "../../data/compro/journeySteps";
 import { useLanguage } from "../../store/LanguageContext";
 import { journeyAssets } from "../../data/compro/assetsMap";
+import { SECTION_EYEBROW_CLASS } from "./SectionHeader";
 
 const carouselStyles = `
   @keyframes glowPulse {
@@ -57,7 +58,7 @@ export function JourneyCarousel() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="text-center mb-10 md:mb-12">
-            <p className="text-base font-semibold text-[#D4A72C] uppercase tracking-widest mb-2">
+            <p className={`${SECTION_EYEBROW_CLASS} mb-2`}>
               {language === "id" ? "Proses Pengiriman" : "Delivery Process"}
             </p>
             <h2 className="text-4xl md:text-5xl font-bold text-[#071B41] mb-3">

@@ -145,7 +145,7 @@ export function ContactSection({ prefillMessage }: { prefillMessage: string }) {
   return (
     <section id="kontak" className="scroll-mt-16 bg-gms-sky py-20 sm:py-24">
       <Container>
-        <SectionHeader eyebrow={l(C.contact.eyebrow)} title={l(C.contact.title)} sub={l(C.contact.sub)} accentLine={false} large />
+        <SectionHeader eyebrow={l(C.contact.eyebrow)} title={l(C.contact.title)} sub={l(C.contact.sub)} large />
         <div className="mt-12 grid gap-8 lg:grid-cols-5">
           <Reveal className="lg:col-span-2">
             <ul className="grid gap-3">

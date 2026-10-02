@@ -59,7 +59,7 @@ export default function TrackingSearch() {
       <main className="mx-auto max-w-6xl px-4 pt-24 pb-8 sm:px-6">
 
       {/* Hero band - full-bleed, breaks out of the centered content container */}
-      <div className="relative left-1/2 right-1/2 -mx-[50vw] -mt-6 w-screen min-h-[520px] overflow-hidden bg-[#071B41] sm:min-h-[300px]">
+      <div className="relative left-1/2 right-1/2 -mx-[50vw] -mt-4 w-screen min-h-[520px] overflow-hidden bg-[#071B41] sm:min-h-[300px]">
         <img
           src={heroImage}
           alt=""
@@ -70,9 +70,9 @@ export default function TrackingSearch() {
         <div className="relative mx-auto max-w-5xl px-4 sm:px-6">
           <button
             onClick={() => navigate(-1)}
-            className="relative z-10 inline-flex items-center gap-1.5 pt-4 text-sm font-medium text-blue-200 hover:text-white sm:pt-6"
+            className="relative z-10 inline-flex items-center gap-2 pt-8 text-base font-semibold text-blue-200 hover:text-white sm:pt-10"
           >
-            <ArrowLeft size={15} /> {t.trackingResult.back}
+            <ArrowLeft size={18} /> {t.trackingResult.back}
           </button>
 
         <div className="grid grid-cols-1 items-center gap-8 py-8 sm:py-10 lg:grid-cols-5 lg:gap-10">

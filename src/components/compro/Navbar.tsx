@@ -30,7 +30,7 @@ function LangSwitch({ solid }: { solid: boolean }) {
     <div
       role="group"
       aria-label={l(C.nav.langLabel)}
-      className={`inline-flex items-center rounded-full border p-0.5 text-sm font-bold ${
+      className={`inline-flex items-center rounded-full border p-0.5 text-base font-bold ${
         solid ? "border-slate-200 bg-gms-mist" : "border-white/25 bg-white/10"
       }`}
     >
@@ -119,14 +119,14 @@ export function Navbar({ overlay }: { overlay: boolean }) {
         solid ? "bg-white/95 shadow-sm backdrop-blur" : "bg-transparent"
       }`}
     >
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:h-[72px] lg:px-8">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:h-20 lg:px-8">
         <Link to="/" onClick={() => setOpen(false)} className="flex items-center gap-2.5">
-          <img src={logoIcon} alt="GMS Logistics" className="h-9 w-9 shrink-0 object-contain" />
+          <img src={logoIcon} alt="GMS Logistics" className="h-10 w-10 shrink-0 object-contain" />
           <span className="shrink-0 leading-tight">
-            <span className={`block whitespace-nowrap font-display text-2xl font-extrabold ${solid ? "text-gms-corp" : "text-white"}`}>
+            <span className={`block whitespace-nowrap font-display text-3xl font-extrabold ${solid ? "text-gms-corp" : "text-white"}`}>
               GMS Logistics
             </span>
-            <span className={`hidden whitespace-nowrap text-base sm:block ${solid ? "text-slate-500" : "text-white/70"}`}>
+            <span className={`hidden whitespace-nowrap text-lg sm:block ${solid ? "text-slate-500" : "text-white/70"}`}>
               {l(C.hero.eyebrow)}
             </span>
           </span>
@@ -141,7 +141,7 @@ export function Navbar({ overlay }: { overlay: boolean }) {
                 type="button"
                 onClick={() => go(s.id)}
                 aria-current={isActive ? "true" : undefined}
-                className={`relative whitespace-nowrap rounded-md px-2.5 py-2 text-lg font-semibold transition-colors ${
+                className={`relative whitespace-nowrap rounded-md px-2.5 py-2 text-xl font-semibold transition-colors ${
                   isActive
                     ? solid
                       ? "text-gms-gold"
@@ -168,14 +168,14 @@ export function Navbar({ overlay }: { overlay: boolean }) {
           <div className="hidden gap-2 2xl:flex">
             <a
               href="https://gms-logistics.id/cek-ongkir"
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-gms-gold px-4 py-2 text-lg font-bold text-gms-deep transition-colors hover:bg-gms-bright"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-gms-gold px-4 py-2 text-xl font-bold text-gms-deep transition-colors hover:bg-gms-bright"
             >
               <Calculator size={16} />
               {language === "id" ? "Cek Ongkir" : "Check Rates"}
             </a>
             <a
               href="https://gms-logistics.id/cek-ongkir"
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border-2 border-gms-gold px-4 py-2 text-lg font-bold text-gms-gold transition-colors hover:bg-gms-gold/10"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border-2 border-gms-gold px-4 py-2 text-xl font-bold text-gms-gold transition-colors hover:bg-gms-gold/10"
             >
               <Package size={16} />
               {language === "id" ? "Lacak Paket" : "Track Package"}
@@ -206,7 +206,7 @@ export function Navbar({ overlay }: { overlay: boolean }) {
                 key={s.id}
                 type="button"
                 onClick={() => go(s.id)}
-                className={`flex min-h-12 items-center justify-between border-b border-slate-100 px-2 text-left text-xl font-semibold ${
+                className={`flex min-h-12 items-center justify-between border-b border-slate-100 px-2 text-left text-2xl font-semibold ${
                   onHome && active === s.id ? "text-gms-gold" : "text-gms-corp"
                 }`}
               >

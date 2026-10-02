@@ -79,7 +79,7 @@ export function Footer() {
             </ul>
           </div>
         </div>
-        <div className="mt-12 border-t border-white/10 pt-6 text-center text-xs text-blue-100/60">
+        <div className="mt-12 border-t border-white/10 pt-6 text-center text-sm text-blue-100/60">
           © {new Date().getFullYear()} {l(C.footer.copyright)}
         </div>
       </Container>

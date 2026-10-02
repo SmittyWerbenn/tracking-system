@@ -301,7 +301,7 @@ export function Fleet({
   return (
     <section id="armada" className="scroll-mt-16 bg-white py-20 sm:py-24">
       <Container>
-        <SectionHeader eyebrow={l(C.fleet.eyebrow)} title={l(C.fleet.title)} sub={l(C.fleet.sub)} />
+        <SectionHeader eyebrow={l(C.fleet.eyebrow)} title={l(C.fleet.title)} sub={l(C.fleet.sub)} accentLine={false} large />
         <div className="mt-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <FleetFilter value={group} onChange={setGroup} />
           <div className="relative w-full lg:max-w-xs">

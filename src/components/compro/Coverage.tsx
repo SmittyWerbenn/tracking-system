@@ -12,7 +12,7 @@ export function Coverage() {
           <Reveal className="w-full max-w-4xl">
             <div className="relative overflow-hidden rounded-3xl bg-white shadow-lg">
               <img 
-                src="/assets/coverage.png"
+                src="/assets/coverage.webp"
                 alt={l(C.coverage.mapLabel)}
                 loading="lazy"
                 className="w-full h-auto object-contain"

@@ -27,7 +27,7 @@ export function Clients() {
               {CLIENT_LOGOS.map((c) => <ClientLogo key={c.name} {...c} />)}
             </ul>
           ) : (
-            <p className="mx-auto max-w-xl rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">{l(C.clients.empty)}</p>
+            <p className="mx-auto max-w-xl rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center text-base text-slate-500">{l(C.clients.empty)}</p>
           )}
         </Reveal>
       </Container>
@@ -44,15 +44,15 @@ export function CTASection() {
       <div aria-hidden className="absolute -right-16 top-0 -z-10 h-full w-72 skew-x-[-18deg] bg-gms-navy" />
       <Container className="text-center">
         <Reveal>
-          <h2 id="cta-title" className="mx-auto max-w-3xl font-display text-3xl font-extrabold leading-tight sm:text-5xl">
+          <h2 id="cta-title" className="mx-auto max-w-3xl font-display text-4xl font-extrabold leading-tight sm:text-6xl">
             {l(C.cta.title)}
           </h2>
-          <p className="mx-auto mt-5 max-w-xl text-lg text-blue-100/85">{l(C.cta.sub)}</p>
+          <p className="mx-auto mt-5 max-w-xl text-xl text-blue-100/85">{l(C.cta.sub)}</p>
           <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-            <button type="button" onClick={() => scrollToSection("kontak")} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-lg bg-gms-gold px-8 text-base font-bold text-gms-deep shadow-lg transition-all hover:-translate-y-0.5 hover:bg-gms-bright">
+            <button type="button" onClick={() => scrollToSection("kontak")} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-lg bg-gms-gold px-8 text-lg font-bold text-gms-deep shadow-lg transition-all hover:-translate-y-0.5 hover:bg-gms-bright">
               {l(C.cta.quote)} <ArrowRight size={18} aria-hidden />
             </button>
-            <button type="button" onClick={() => scrollToSection("kontak")} className="inline-flex min-h-14 items-center justify-center rounded-lg border-2 border-white/70 px-8 text-base font-bold transition-colors hover:border-gms-light hover:text-gms-light">
+            <button type="button" onClick={() => scrollToSection("kontak")} className="inline-flex min-h-14 items-center justify-center rounded-lg border-2 border-white/70 px-8 text-lg font-bold transition-colors hover:border-gms-light hover:text-gms-light">
               {l(C.cta.contact)}
             </button>
           </div>

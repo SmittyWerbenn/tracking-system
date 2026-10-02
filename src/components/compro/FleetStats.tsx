@@ -6,8 +6,8 @@ import { CountUp, Reveal, useL } from "./utils";
 export function StatisticCard({ value, label, delay }: { value: string; label: string; delay: number }) {
   return (
     <Reveal delay={delay} className="border-l-2 border-gms-gold/60 pl-5">
-      <p className="font-display text-4xl font-extrabold text-gms-gold sm:text-5xl"><CountUp value={value} /></p>
-      <p className="mt-1 text-sm font-semibold uppercase tracking-wider text-blue-100/80">{label}</p>
+      <p className="font-display text-5xl font-extrabold text-gms-gold sm:text-6xl"><CountUp value={value} /></p>
+      <p className="mt-1 text-base font-semibold uppercase tracking-wider text-blue-100/80">{label}</p>
     </Reveal>
   );
 }

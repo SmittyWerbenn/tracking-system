@@ -29,13 +29,13 @@ export function ServicesExplorer() {
       {/* Header */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mb-12">
         <div className="text-center space-y-2 mb-8">
-          <p className="text-sm font-semibold text-[#D4A72C] uppercase tracking-widest">
+          <p className="text-base font-semibold text-[#D4A72C] uppercase tracking-widest">
             {language === "id" ? "Layanan" : "Services"}
           </p>
-          <h2 className="text-3xl md:text-4xl font-bold text-[#071B41]">
+          <h2 className="text-4xl md:text-5xl font-bold text-[#071B41]">
             {language === "id" ? "Layanan Logistik Modern" : "Modern Logistics Services"}
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             {language === "id"
               ? "Solusi transportasi lengkap untuk setiap kebutuhan pengiriman Anda"
               : "Complete transportation solutions for all your shipping needs"}
@@ -48,7 +48,7 @@ export function ServicesExplorer() {
             <button
               key={svc.id}
               onClick={() => setActiveId(svc.id)}
-              className={`px-4 md:px-5 py-2.5 md:py-3 rounded-lg font-semibold text-sm md:text-base transition-all duration-300 ${
+              className={`px-4 md:px-5 py-2.5 md:py-3 rounded-lg font-semibold text-base md:text-lg transition-all duration-300 ${
                 activeId === svc.id
                   ? "bg-[#0B2553] text-white shadow-lg scale-105"
                   : "bg-[#EAF0F8] text-[#0B2553] hover:bg-[#D4A72C] hover:text-white"
@@ -90,14 +90,14 @@ export function ServicesExplorer() {
                   <active.icon size={24} className="text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-2xl md:text-3xl font-bold text-[#071B41]">{active.name}</h3>
-                  <p className="text-sm text-[#0B2553] font-semibold">
+                  <h3 className="text-3xl md:text-4xl font-bold text-[#071B41]">{active.name}</h3>
+                  <p className="text-base text-[#0B2553] font-semibold">
                     {tr(active.fullName, language)}
                   </p>
                 </div>
               </div>
 
-              <p className="text-gray-700 leading-relaxed mt-4">
+              <p className="text-gray-700 text-lg leading-relaxed mt-4">
                 {tr(active.description, language)}
               </p>
             </div>
@@ -111,22 +111,22 @@ export function ServicesExplorer() {
                 { label: language === "id" ? "Biaya" : "Cost", value: active.cost },
               ].map((info, idx) => (
                 <div key={idx} className="bg-[#EAF0F8] p-4 rounded-lg border border-[#D4A72C] border-opacity-20">
-                  <p className="text-xs font-semibold text-[#0B2553] uppercase tracking-wide mb-1">
+                  <p className="text-sm font-semibold text-[#0B2553] uppercase tracking-wide mb-1">
                     {info.label}
                   </p>
-                  <p className="text-sm font-bold text-[#071B41]">{tr(info.value, language)}</p>
+                  <p className="text-base font-bold text-[#071B41]">{tr(info.value, language)}</p>
                 </div>
               ))}
             </div>
 
             {/* Use Cases */}
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-[#0B2553] uppercase tracking-wide">
+              <p className="text-base font-semibold text-[#0B2553] uppercase tracking-wide">
                 {language === "id" ? "Cocok untuk" : "Ideal for"}
               </p>
               <ul className="space-y-2">
                 {active.useCases.map((uc, idx) => (
-                  <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
+                  <li key={idx} className="flex items-start gap-2 text-base text-gray-700">
                     <Check size={18} className="text-[#D4A72C] flex-shrink-0 mt-0.5" />
                     <span>{tr(uc, language)}</span>
                   </li>
@@ -155,10 +155,10 @@ export function ServicesExplorer() {
       {/* Comparison Table - Desktop */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-16 hidden md:block">
         <div className="text-center mb-8">
-          <h3 className="text-2xl font-bold text-[#071B41] mb-2">
+          <h3 className="text-3xl font-bold text-[#071B41] mb-2">
             {language === "id" ? "Bandingkan Semua Layanan" : "Compare All Services"}
           </h3>
-          <p className="text-gray-600">
+          <p className="text-gray-600 text-lg">
             {language === "id"
               ? "Pilih layanan yang paling sesuai dengan kebutuhan Anda"
               : "Choose the service that best suits your needs"}
@@ -169,19 +169,19 @@ export function ServicesExplorer() {
           <table className="w-full bg-white">
             <thead>
               <tr className="bg-[#0B2553] text-white">
-                <th className="px-6 py-4 text-left font-semibold text-sm">
+                <th className="px-6 py-4 text-left font-semibold text-base">
                   {language === "id" ? "Layanan" : "Service"}
                 </th>
-                <th className="px-6 py-4 text-left font-semibold text-sm">
+                <th className="px-6 py-4 text-left font-semibold text-base">
                   {language === "id" ? "Moda" : "Mode"}
                 </th>
-                <th className="px-6 py-4 text-left font-semibold text-sm">
+                <th className="px-6 py-4 text-left font-semibold text-base">
                   {language === "id" ? "Kapasitas" : "Capacity"}
                 </th>
-                <th className="px-6 py-4 text-left font-semibold text-sm">
+                <th className="px-6 py-4 text-left font-semibold text-base">
                   {language === "id" ? "Kecepatan" : "Speed"}
                 </th>
-                <th className="px-6 py-4 text-left font-semibold text-sm">
+                <th className="px-6 py-4 text-left font-semibold text-base">
                   {language === "id" ? "Biaya" : "Cost"}
                 </th>
               </tr>
@@ -195,14 +195,14 @@ export function ServicesExplorer() {
                   }`}
                   onClick={() => setActiveId(svc.id)}
                 >
-                  <td className="px-6 py-4 font-semibold text-[#071B41] flex items-center gap-2">
+                  <td className="px-6 py-4 font-semibold text-base text-[#071B41] flex items-center gap-2">
                     <svc.icon size={18} className="text-[#D4A72C]" />
                     {svc.name}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{tr(svc.mode, language)}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{tr(svc.capacity, language)}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{tr(svc.speed, language)}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{tr(svc.cost, language)}</td>
+                  <td className="px-6 py-4 text-base text-gray-700">{tr(svc.mode, language)}</td>
+                  <td className="px-6 py-4 text-base text-gray-700">{tr(svc.capacity, language)}</td>
+                  <td className="px-6 py-4 text-base text-gray-700">{tr(svc.speed, language)}</td>
+                  <td className="px-6 py-4 text-base text-gray-700">{tr(svc.cost, language)}</td>
                 </tr>
               ))}
             </tbody>

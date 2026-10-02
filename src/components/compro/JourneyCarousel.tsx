@@ -57,15 +57,15 @@ export function JourneyCarousel() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="text-center mb-10 md:mb-12">
-            <p className="text-sm font-semibold text-[#D4A72C] uppercase tracking-widest mb-2">
+            <p className="text-base font-semibold text-[#D4A72C] uppercase tracking-widest mb-2">
               {language === "id" ? "Proses Pengiriman" : "Delivery Process"}
             </p>
-            <h2 className="text-3xl md:text-4xl font-bold text-[#071B41] mb-3">
+            <h2 className="text-4xl md:text-5xl font-bold text-[#071B41] mb-3">
               {language === "id"
                 ? "Perjalanan Pengiriman Bersama GMS Logistics"
                 : "Shipping Journey with GMS Logistics"}
             </h2>
-            <p className="text-gray-600 text-base md:text-lg max-w-2xl mx-auto">
+            <p className="text-gray-600 text-lg md:text-xl max-w-2xl mx-auto">
               {language === "id"
                 ? "Dari proses administrasi hingga serah terima, setiap pengiriman dipantau dan dikelola secara terkoordinasi."
                 : "From administrative process to delivery handoff, every shipment is monitored and managed in a coordinated manner."}
@@ -146,7 +146,7 @@ export function JourneyCarousel() {
                         {/* Step Label - Proper spacing and alignment */}
                         <div className="mt-3 md:mt-4 w-full px-1 text-center flex-shrink-0 min-h-12 flex items-center justify-center">
                           <span
-                            className={`text-xs md:text-sm font-bold uppercase tracking-wider transition-all duration-300 leading-tight ${
+                            className={`text-sm md:text-base font-bold uppercase tracking-wider transition-all duration-300 leading-tight ${
                               isActive
                                 ? "text-[#071B41] scale-105 font-display"
                                 : isPassed

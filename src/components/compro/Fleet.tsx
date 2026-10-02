@@ -47,8 +47,8 @@ export function FleetCard({ item, onOpen, delay }: { item: FleetItem; onOpen: (i
           )}
         </div>
         <div className="flex flex-1 flex-col p-5">
-          <h3 className={`font-display text-xl font-extrabold ${heavy ? "text-white" : "text-gms-corp"}`}>{item.name}</h3>
-          <p className={`mt-0.5 text-sm font-semibold ${heavy ? "text-gms-light" : "text-gms-gold"}`}>
+          <h3 className={`font-display text-2xl font-extrabold ${heavy ? "text-white" : "text-gms-corp"}`}>{item.name}</h3>
+          <p className={`mt-0.5 text-base font-semibold ${heavy ? "text-gms-light" : "text-gms-gold"}`}>
             {item.length ? l(item.length) : cap ? `${l(C.fleet.capRange)} ${cap}` : "\u00A0"}
           </p>
           <ul className="mt-3 flex flex-wrap gap-1.5" aria-label={l(C.fleet.body)}>
@@ -67,7 +67,7 @@ export function FleetCard({ item, onOpen, delay }: { item: FleetItem; onOpen: (i
             type="button"
             onClick={() => onOpen(item)}
             aria-haspopup="dialog"
-            className={`mt-auto inline-flex items-center gap-1.5 pt-5 text-sm font-bold ${
+            className={`mt-auto inline-flex items-center gap-1.5 pt-5 text-base font-bold ${
               heavy ? "text-gms-light hover:text-white" : "text-gms-corp hover:text-gms-gold"
             }`}
           >
@@ -92,7 +92,7 @@ export function FleetFilter({ value, onChange }: { value: "all" | FleetGroup; on
             type="button"
             aria-pressed={active}
             onClick={() => onChange(f.id)}
-            className={`min-h-10 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors ${
+            className={`min-h-10 shrink-0 rounded-full border px-4 text-base font-semibold transition-colors ${
               active
                 ? "border-gms-corp bg-gms-corp text-white"
                 : "border-slate-300 bg-white text-gms-corp hover:border-gms-gold hover:text-gms-gold"
@@ -157,20 +157,20 @@ export function FleetDetailModal({ item, onClose, onRequest }: { item: FleetItem
           </button>
         </div>
         <div className="overflow-y-auto p-6 sm:p-8">
-          <h3 id="fleet-dialog-title" className="font-display text-2xl font-extrabold text-gms-corp">{item.name}</h3>
+          <h3 id="fleet-dialog-title" className="font-display text-3xl font-extrabold text-gms-corp">{item.name}</h3>
           {item.length && <p className="mt-0.5 font-semibold text-gms-gold">{l(item.length)}</p>}
-          <p className="mt-3 text-slate-600">{l(item.description)}</p>
+          <p className="mt-3 text-base text-slate-600">{l(item.description)}</p>
 
-          <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-gms-gold">{l(C.fleet.body)}</p>
+          <p className="mt-6 text-sm font-bold uppercase tracking-[0.16em] text-gms-gold">{l(C.fleet.body)}</p>
           <ul className="mt-2 flex flex-wrap gap-2">
             {item.bodyTypes.map((b) => (
-              <li key={b} className="rounded-md bg-gms-corp px-2.5 py-1 text-xs font-semibold text-white">{b}</li>
+              <li key={b} className="rounded-md bg-gms-corp px-2.5 py-1 text-sm font-semibold text-white">{b}</li>
             ))}
           </ul>
 
-          <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-gms-gold">{l(C.fleet.specs)}</p>
+          <p className="mt-6 text-sm font-bold uppercase tracking-[0.16em] text-gms-gold">{l(C.fleet.specs)}</p>
           {item.specs.length === 0 ? (
-            <p className="mt-2 rounded-xl bg-gms-soft/60 p-4 text-sm text-gms-ink">{l(C.fleet.noSpec)}</p>
+            <p className="mt-2 rounded-xl bg-gms-soft/60 p-4 text-base text-gms-ink">{l(C.fleet.noSpec)}</p>
           ) : (
             <div className="mt-2 grid gap-3 sm:grid-cols-2">
               {item.specs.map((s) => (
@@ -187,8 +187,8 @@ export function FleetDetailModal({ item, onClose, onRequest }: { item: FleetItem
             </div>
           )}
 
-          <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-gms-gold">{l(C.fleet.useCase)}</p>
-          <ul className="mt-2 grid gap-1.5 text-sm text-gms-ink sm:grid-cols-2">
+          <p className="mt-6 text-sm font-bold uppercase tracking-[0.16em] text-gms-gold">{l(C.fleet.useCase)}</p>
+          <ul className="mt-2 grid gap-1.5 text-base text-gms-ink sm:grid-cols-2">
             {item.useCases.map((u) => (
               <li key={u.en} className="flex items-center gap-2"><span aria-hidden className="h-1.5 w-1.5 rounded-full bg-gms-gold" />{l(u)}</li>
             ))}
@@ -220,7 +220,7 @@ export function FleetFinder({ onPick }: { onPick: (g: FleetGroup) => void }) {
       <Container>
         <SectionHeader eyebrow={l(C.finder.eyebrow)} title={l(C.finder.title)} sub={l(C.finder.sub)} />
         <Reveal className="mx-auto mt-10 max-w-4xl rounded-3xl bg-white p-6 shadow-lg sm:p-8">
-          <p id="finder-label" className="text-sm font-bold text-gms-corp">{l(C.finder.label)}</p>
+          <p id="finder-label" className="text-base font-bold text-gms-corp">{l(C.finder.label)}</p>
           <div role="radiogroup" aria-labelledby="finder-label" className="mt-3 flex flex-wrap gap-2">
             {cargoTypes.map((c) => (
               <button
@@ -229,7 +229,7 @@ export function FleetFinder({ onPick }: { onPick: (g: FleetGroup) => void }) {
                 role="radio"
                 aria-checked={sel === c.id}
                 onClick={() => setSel(c.id)}
-                className={`min-h-11 rounded-full border-2 px-4 text-sm font-semibold transition-colors ${
+                className={`min-h-11 rounded-full border-2 px-4 text-base font-semibold transition-colors ${
                   sel === c.id ? "border-gms-gold bg-gms-corp text-white" : "border-slate-200 text-gms-corp hover:border-gms-gold"
                 }`}
               >
@@ -239,10 +239,10 @@ export function FleetFinder({ onPick }: { onPick: (g: FleetGroup) => void }) {
           </div>
           <div className="mt-6 border-t border-slate-100 pt-6" aria-live="polite">
             {!cargo ? (
-              <p className="text-sm text-slate-500">{l(C.finder.hint)}</p>
+              <p className="text-base text-slate-500">{l(C.finder.hint)}</p>
             ) : (
               <>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-gms-gold">{l(C.finder.result)}</p>
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-gms-gold">{l(C.finder.result)}</p>
                 <ul className="mt-3 grid gap-3 sm:grid-cols-2">
                   {results.map((f) => (
                     <li key={f.id}>
@@ -262,7 +262,7 @@ export function FleetFinder({ onPick }: { onPick: (g: FleetGroup) => void }) {
                     </li>
                   ))}
                 </ul>
-                <p className="mt-4 text-xs text-slate-500">{l(C.finder.note)}</p>
+                <p className="mt-4 text-sm text-slate-500">{l(C.finder.note)}</p>
               </>
             )}
           </div>
@@ -313,19 +313,19 @@ export function Fleet({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={l(C.fleet.searchPlaceholder)}
-              className="min-h-11 w-full rounded-full border border-slate-300 bg-white pl-10 pr-4 text-sm text-gms-ink focus:border-gms-gold focus:outline-none focus:ring-2 focus:ring-gms-gold/30"
+              className="min-h-11 w-full rounded-full border border-slate-300 bg-white pl-10 pr-4 text-base text-gms-ink focus:border-gms-gold focus:outline-none focus:ring-2 focus:ring-gms-gold/30"
             />
           </div>
         </div>
-        <p className="mt-4 text-xs text-slate-500" aria-live="polite">{list.length} {l(C.fleet.count)}</p>
+        <p className="mt-4 text-sm text-slate-500" aria-live="polite">{list.length} {l(C.fleet.count)}</p>
 
         {list.length === 0 ? (
           <div className="mt-8 rounded-2xl bg-gms-mist p-10 text-center">
-            <p className="text-slate-600">{l(C.fleet.empty)}</p>
+            <p className="text-base text-slate-600">{l(C.fleet.empty)}</p>
             <button
               type="button"
               onClick={() => { setQuery(""); setGroup("all"); }}
-              className="mt-4 rounded-lg bg-gms-corp px-5 py-2.5 text-sm font-bold text-white hover:bg-gms-navy"
+              className="mt-4 rounded-lg bg-gms-corp px-5 py-2.5 text-base font-bold text-white hover:bg-gms-navy"
             >
               {l(C.fleet.reset)}
             </button>

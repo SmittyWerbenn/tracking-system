@@ -25,26 +25,26 @@ export function Hero() {
 
       <Container className="py-20 sm:py-28 lg:py-36">
         <div className="max-w-3xl">
-          <p className="inline-flex items-center gap-2 rounded-full border border-gms-gold/40 bg-gms-gold/10 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-gms-light animate-[fadeIn_0.5s_ease-out]">
+          <p className="inline-flex items-center gap-2 rounded-full border border-gms-gold/40 bg-gms-gold/10 px-3.5 py-1.5 text-sm font-bold uppercase tracking-[0.16em] text-gms-light animate-[fadeIn_0.5s_ease-out]">
             <Gauge size={14} aria-hidden /> {l(C.hero.eyebrow)}
           </p>
-          <h1 className="mt-6 font-display text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl animate-[fadeIn_0.6s_ease-out]">
+          <h1 className="mt-6 font-display text-5xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl lg:text-7xl animate-[fadeIn_0.6s_ease-out]">
             {l(C.hero.titleA)} <span className="text-gms-bright">{l(C.hero.titleB)}</span> {l(C.hero.titleC)}
           </h1>
-          <p className="mt-6 max-w-2xl text-base leading-relaxed text-blue-100/85 sm:text-lg animate-[fadeIn_0.7s_ease-out]">
+          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-blue-100/85 sm:text-xl animate-[fadeIn_0.7s_ease-out]">
             {l(C.hero.sub)}
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row animate-[fadeIn_0.8s_ease-out]">
             <Link
               to="/tracking"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-gms-gold px-7 text-base font-bold text-gms-deep shadow-lg shadow-black/20 transition-all hover:-translate-y-0.5 hover:bg-gms-bright"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-gms-gold px-7 text-lg font-bold text-gms-deep shadow-lg shadow-black/20 transition-all hover:-translate-y-0.5 hover:bg-gms-bright"
             >
               {l(C.hero.ctaTrack)} <ArrowRight size={18} aria-hidden />
             </Link>
             <button
               type="button"
               onClick={() => scrollToSection("kontak")}
-              className="inline-flex min-h-12 items-center justify-center rounded-lg border-2 border-white/70 px-7 text-base font-bold text-white transition-colors hover:border-gms-light hover:text-gms-light"
+              className="inline-flex min-h-12 items-center justify-center rounded-lg border-2 border-white/70 px-7 text-lg font-bold text-white transition-colors hover:border-gms-light hover:text-gms-light"
             >
               {l(C.hero.ctaQuote)}
             </button>
@@ -59,7 +59,7 @@ export function Hero() {
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gms-gold/15 text-gms-light">
                   <Icon size={18} aria-hidden />
                 </span>
-                <span className="text-sm font-semibold leading-tight">{l(t)}</span>
+                <span className="text-base font-semibold leading-tight">{l(t)}</span>
               </li>
             );
           })}

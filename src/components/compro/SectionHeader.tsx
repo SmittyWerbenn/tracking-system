@@ -21,7 +21,7 @@ export function SectionHeader({
   return (
     <Reveal className={`${center ? "mx-auto text-center" : ""} max-w-3xl`}>
       <p
-        className={`inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] ${
+        className={`inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.18em] ${
           dark ? "text-gms-light" : "text-gms-gold"
         }`}
       >
@@ -29,14 +29,14 @@ export function SectionHeader({
         {eyebrow}
       </p>
       <H
-        className={`mt-3 font-display text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl ${
+        className={`mt-3 font-display text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl ${
           dark ? "text-white" : "text-gms-corp"
         }`}
       >
         {title}
       </H>
       {sub && (
-        <p className={`mt-4 text-base leading-relaxed ${dark ? "text-blue-100/80" : "text-slate-600"}`}>{sub}</p>
+        <p className={`mt-4 text-lg leading-relaxed ${dark ? "text-blue-100/80" : "text-slate-600"}`}>{sub}</p>
       )}
     </Reveal>
   );

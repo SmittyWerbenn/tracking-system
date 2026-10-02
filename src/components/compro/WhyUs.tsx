@@ -13,8 +13,8 @@ export function BenefitCard({ n, icon: Icon, title, desc, delay }: {
         </span>
         <span className="font-display text-4xl font-extrabold text-gms-gold/80">{String(n).padStart(2, "0")}</span>
       </div>
-      <h3 className="mt-5 font-display text-lg font-bold text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-blue-100/75">{desc}</p>
+      <h3 className="mt-5 font-display text-xl font-bold text-white">{title}</h3>
+      <p className="mt-2 text-base leading-relaxed text-blue-100/75">{desc}</p>
     </Reveal>
   );
 }

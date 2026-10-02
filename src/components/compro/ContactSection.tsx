@@ -75,7 +75,7 @@ export function ContactForm({ prefillMessage }: { prefillMessage: string }) {
     const msg = err ? (err === "required" ? `${label} ${l(f.errors.required)}` : l(f.errors[err])) : "";
     return (
       <div>
-        <label htmlFor={`cf-${k}`} className="mb-1 block text-sm font-semibold text-gms-corp">
+        <label htmlFor={`cf-${k}`} className="mb-1 block text-base font-semibold text-gms-corp">
           {label}{" "}
           {opts.optional ? <span className="font-normal text-slate-400">({l(f.optional)})</span> : <span className="text-red-600" aria-hidden>*</span>}
         </label>
@@ -104,7 +104,7 @@ export function ContactForm({ prefillMessage }: { prefillMessage: string }) {
         {field("phone", l(f.phone), { type: "tel", autoComplete: "tel" })}
       </div>
       <div>
-        <label htmlFor="cf-type" className="mb-1 block text-sm font-semibold text-gms-corp">{l(f.type)} <span className="text-red-600" aria-hidden>*</span></label>
+        <label htmlFor="cf-type" className="mb-1 block text-base font-semibold text-gms-corp">{l(f.type)} <span className="text-red-600" aria-hidden>*</span></label>
         <select id="cf-type" value={v.type} onChange={set("type")} aria-invalid={!!typeErr} aria-describedby={typeErr ? "cf-type-err" : undefined}
           className={`min-h-11 w-full rounded-lg border bg-white px-3 text-base text-gms-ink focus:outline-none focus:ring-2 ${typeErr ? "border-red-500 focus:ring-red-200" : "border-slate-300 focus:border-gms-gold focus:ring-gms-gold/30"}`}>
           <option value="">{l(f.choose)}</option>
@@ -117,7 +117,7 @@ export function ContactForm({ prefillMessage }: { prefillMessage: string }) {
         {field("destination", l(f.destination))}
       </div>
       <div>
-        <label htmlFor="cf-message" className="mb-1 block text-sm font-semibold text-gms-corp">{l(f.message)} <span className="font-normal text-slate-400">({l(f.optional)})</span></label>
+        <label htmlFor="cf-message" className="mb-1 block text-base font-semibold text-gms-corp">{l(f.message)} <span className="font-normal text-slate-400">({l(f.optional)})</span></label>
         <textarea id="cf-message" rows={4} value={v.message} onChange={set("message")} className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-base text-gms-ink focus:border-gms-gold focus:outline-none focus:ring-2 focus:ring-gms-gold/30" />
       </div>
       {Object.keys(errors).length > 0 && (
@@ -154,8 +154,8 @@ export function ContactSection({ prefillMessage }: { prefillMessage: string }) {
                   <>
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gms-corp text-gms-light"><it.icon size={19} aria-hidden /></span>
                     <span className="min-w-0">
-                      <span className="block text-xs font-bold uppercase tracking-wider text-gms-gold">{l(it.label)}</span>
-                      <span className="block break-words font-semibold text-gms-corp">{it.value}</span>
+                      <span className="block text-sm font-bold uppercase tracking-wider text-gms-gold">{l(it.label)}</span>
+                      <span className="block break-words text-lg font-semibold text-gms-corp">{it.value}</span>
                     </span>
                   </>
                 );

@@ -66,7 +66,7 @@ export function TrackingSection() {
     <section id="tracking" className="relative scroll-mt-16 overflow-hidden bg-gms-corp py-20 sm:py-24">
       <div aria-hidden className="absolute -right-16 top-0 h-full w-32 skew-x-[-18deg] bg-gms-gold/15" />
       <Container className="relative">
-        <SectionHeader dark eyebrow={l(C.tracking.eyebrow)} title={l(C.tracking.title)} sub={l(C.tracking.sub)} />
+        <SectionHeader dark title={l(C.tracking.title)} sub={l(C.tracking.sub)} />
         <Reveal><TrackingForm /></Reveal>
         <ul className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-semibold text-blue-100/85">
           {C.tracking.feats.map((f) => (

@@ -1,12 +1,8 @@
 import type { ReactNode } from "react";
 import { Reveal } from "./utils";
 
-/** Shared gold section-eyebrow style: same color, font, size and weight everywhere. */
-export const SECTION_EYEBROW_CLASS = "text-lg font-bold uppercase tracking-widest text-gms-gold";
-
-/** Section eyebrow (small gold uppercase) + heading + subtitle. */
+/** Section heading + subtitle. */
 export function SectionHeader({
-  eyebrow,
   title,
   sub,
   dark = false,
@@ -14,7 +10,6 @@ export function SectionHeader({
   as: H = "h2",
   large = false,
 }: {
-  eyebrow: string;
   title: ReactNode;
   sub?: string;
   dark?: boolean;
@@ -25,9 +20,8 @@ export function SectionHeader({
   const center = align === "center";
   return (
     <Reveal className={`${center ? "mx-auto text-center" : ""} max-w-3xl`}>
-      <p className={SECTION_EYEBROW_CLASS}>{eyebrow}</p>
       <H
-        className={`mt-3 font-display font-extrabold leading-tight tracking-tight ${large ? "text-5xl sm:text-6xl" : "text-4xl sm:text-5xl"} ${
+        className={`font-display font-extrabold leading-tight tracking-tight ${large ? "text-5xl sm:text-6xl" : "text-4xl sm:text-5xl"} ${
           dark ? "text-white" : "text-gms-corp"
         }`}
       >

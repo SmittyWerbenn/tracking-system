@@ -25,7 +25,7 @@ export function WhyUs() {
     <section id="keunggulan" className="relative scroll-mt-16 overflow-hidden bg-gms-corp py-20 sm:py-24">
       <div aria-hidden className="absolute -left-20 top-0 h-full w-40 skew-x-[-18deg] bg-gms-navy/60" />
       <Container className="relative">
-        <SectionHeader dark eyebrow={l(C.why.eyebrow)} title={l(C.why.title)} sub={l(C.why.sub)} />
+        <SectionHeader dark title={l(C.why.title)} sub={l(C.why.sub)} />
         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {C.why.items.map((it, i) => (
             <BenefitCard key={it.title.en} n={i + 1} icon={it.icon} title={l(it.title)} desc={l(it.desc)} delay={(i % 3) * 70} />

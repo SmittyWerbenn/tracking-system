@@ -33,7 +33,7 @@ export function Services({ onPickFleet }: { onPickFleet: (cargoOrGroup: string) 
   return (
     <section id="layanan" className="scroll-mt-16 bg-gms-sky py-20 sm:py-24">
       <Container>
-        <SectionHeader eyebrow={l(C.services.eyebrow)} title={l(C.services.title)} sub={l(C.services.sub)} />
+        <SectionHeader title={l(C.services.title)} sub={l(C.services.sub)} />
         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {C.services.items.map((s, i) => (
             <ServiceCard

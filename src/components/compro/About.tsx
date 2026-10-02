@@ -2,7 +2,7 @@ import { Quote, Target } from "lucide-react";
 import { C } from "../../data/compro/content";
 import { ABOUT_STATS, SITE_IMAGES } from "../../data/compro/config";
 import { COMPRO_IMAGES } from "../../data/compro/imagesData";
-import { SectionHeader, Container, SECTION_EYEBROW_CLASS } from "./SectionHeader";
+import { SectionHeader, Container } from "./SectionHeader";
 import { CountUp, Reveal, useL } from "./utils";
 
 export function About() {
@@ -18,7 +18,7 @@ export function About() {
             <div aria-hidden className="absolute -right-3 -top-3 -z-10 h-24 w-24 rounded-2xl bg-gms-gold" />
           </Reveal>
           <div>
-            <SectionHeader align="left" eyebrow={l(C.about.eyebrow)} title={l(C.about.title)} />
+            <SectionHeader align="left" title={l(C.about.title)} />
             <Reveal delay={80}>
               <p className="mt-5 text-lg leading-relaxed text-slate-600">{l(C.about.p1)}</p>
               <p className="mt-3 text-lg leading-relaxed text-slate-600">{l(C.about.p2)}</p>
@@ -61,8 +61,7 @@ export function About() {
           </Reveal>
         </div>
 
-        <p className={`mt-12 text-center ${SECTION_EYEBROW_CLASS}`}>{l(C.about.valuesLabel)}</p>
-        <div className="mt-5 grid gap-4 md:grid-cols-3">
+        <div className="mt-16 grid gap-4 md:grid-cols-3">
           {C.about.values.map((v, i) => (
             <Reveal key={v.title.en} delay={i * 80} className="rounded-xl border border-slate-200 p-6 transition-colors hover:border-gms-gold">
               <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-gms-corp text-gms-light">

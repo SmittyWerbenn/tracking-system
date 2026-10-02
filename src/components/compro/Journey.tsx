@@ -16,7 +16,7 @@ export function Journey() {
   return (
     <section id="proses" className="scroll-mt-16 bg-white py-20 sm:py-24">
       <Container>
-        <SectionHeader eyebrow={l(C.journey.eyebrow)} title={l(C.journey.title)} sub={l(C.journey.sub)} />
+        <SectionHeader title={l(C.journey.title)} sub={l(C.journey.sub)} />
 
         {/* Desktop/tablet horizontal timeline */}
         <div className="mt-14 hidden md:block" role="tablist" aria-label={l(C.journey.timeline)}>

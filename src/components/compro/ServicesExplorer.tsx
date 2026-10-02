@@ -4,7 +4,6 @@ import { services, type ServiceId } from "../../data/compro/servicesData";
 import { tr } from "../../data/compro/servicesData";
 import { useLanguage } from "../../store/LanguageContext";
 import { serviceAssets } from "../../data/compro/assetsMap";
-import { SECTION_EYEBROW_CLASS } from "./SectionHeader";
 
 function scrollToSection(id: string) {
   const el = document.getElementById(id);
@@ -30,9 +29,6 @@ export function ServicesExplorer() {
       {/* Header */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mb-12">
         <div className="text-center space-y-2 mb-8">
-          <p className={SECTION_EYEBROW_CLASS}>
-            {language === "id" ? "Layanan" : "Services"}
-          </p>
           <h2 className="text-5xl md:text-6xl font-bold text-[#071B41]">
             {language === "id" ? "Layanan Logistik Modern" : "Modern Logistics Services"}
           </h2>

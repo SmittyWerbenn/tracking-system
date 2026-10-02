@@ -20,7 +20,7 @@ export function Clients() {
   return (
     <section id="clients" className="scroll-mt-16 bg-white py-20 sm:py-24">
       <Container>
-        <SectionHeader eyebrow={l(C.clients.eyebrow)} title={l(C.clients.title)} sub={l(C.clients.sub)} />
+        <SectionHeader title={l(C.clients.title)} sub={l(C.clients.sub)} />
         <Reveal className="mt-10">
           {CLIENT_LOGOS.length ? (
             <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">

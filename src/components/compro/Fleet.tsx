@@ -218,7 +218,7 @@ export function FleetFinder({ onPick }: { onPick: (g: FleetGroup) => void }) {
   return (
     <section id="finder" className="scroll-mt-16 bg-gms-sky py-20 sm:py-24">
       <Container>
-        <SectionHeader eyebrow={l(C.finder.eyebrow)} title={l(C.finder.title)} sub={l(C.finder.sub)} />
+        <SectionHeader title={l(C.finder.title)} sub={l(C.finder.sub)} />
         <Reveal className="mx-auto mt-10 max-w-4xl rounded-3xl bg-white p-6 shadow-lg sm:p-8">
           <p id="finder-label" className="text-base font-bold text-gms-corp">{l(C.finder.label)}</p>
           <div role="radiogroup" aria-labelledby="finder-label" className="mt-3 flex flex-wrap gap-2">
@@ -301,7 +301,7 @@ export function Fleet({
   return (
     <section id="armada" className="scroll-mt-16 bg-white py-20 sm:py-24">
       <Container>
-        <SectionHeader eyebrow={l(C.fleet.eyebrow)} title={l(C.fleet.title)} sub={l(C.fleet.sub)} large />
+        <SectionHeader title={l(C.fleet.title)} sub={l(C.fleet.sub)} large />
         <div className="mt-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <FleetFilter value={group} onChange={setGroup} />
           <div className="relative w-full lg:max-w-xs">

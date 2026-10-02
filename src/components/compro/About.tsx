@@ -50,7 +50,7 @@ export function About() {
             <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.16em] text-gms-corp">
               <Target size={14} aria-hidden /> {l(C.about.missionLabel)}
             </p>
-            <ol className="mt-3 space-y-2 text-base leading-relaxed text-gms-ink">
+            <ol className="mt-3 space-y-2 text-xl leading-relaxed text-gms-ink">
               {C.about.mission.map((m, i) => (
                 <li key={i} className="flex gap-3">
                   <span className="font-display font-extrabold text-gms-corp">{i + 1}.</span>

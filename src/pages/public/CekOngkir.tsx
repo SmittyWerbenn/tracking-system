@@ -66,27 +66,32 @@ export default function CekOngkir() {
   }
 
   return (
-    <div className="min-h-screen bg-[#071B41]">
+    <div className="min-h-screen bg-slate-50">
       <Navbar overlay={false} />
-      <main className="mx-auto max-w-3xl px-4 pt-28 pb-8 sm:px-6">
-      <button
-        onClick={() => navigate(-1)}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-blue-200 hover:text-white"
-      >
-        <ArrowLeft size={15} /> {t.trackingResult.back}
-      </button>
+      <main className="pb-10">
+        <div className="bg-[#071B41] pb-10 pt-28">
+          <div className="mx-auto max-w-3xl px-4 sm:px-6">
+            <button
+              onClick={() => navigate(-1)}
+              className="inline-flex items-center gap-2 text-base font-semibold text-blue-200 hover:text-white"
+            >
+              <ArrowLeft size={18} /> {t.trackingResult.back}
+            </button>
 
-      <div className="text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-blue-900 text-white">
-          <Calculator size={22} />
+            <div className="mt-6 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-blue-900 text-white">
+                <Calculator size={22} />
+              </div>
+              <h1 className="mt-4 text-xl font-bold text-white sm:text-2xl">{t.cekOngkir.title}</h1>
+              <p className="mx-auto mt-2 max-w-md text-sm text-blue-200">{t.cekOngkir.desc}</p>
+            </div>
+          </div>
         </div>
-        <h1 className="mt-4 text-xl font-bold text-white sm:text-2xl">{t.cekOngkir.title}</h1>
-        <p className="mx-auto mt-2 max-w-md text-sm text-blue-200">{t.cekOngkir.desc}</p>
-      </div>
 
+        <div className="mx-auto -mt-6 max-w-3xl px-4 sm:px-6">
       <form
         onSubmit={handleSubmit}
-        className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-lg sm:p-6"
       >
         <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-[1fr_auto_1fr]">
           <div>
@@ -225,7 +230,8 @@ export default function CekOngkir() {
           </div>
         </div>
       )}
-    </main>
+        </div>
+      </main>
       <Footer />
     </div>
   );

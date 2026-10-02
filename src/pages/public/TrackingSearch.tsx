@@ -54,7 +54,7 @@ export default function TrackingSearch() {
   }
 
   return (
-    <div className="min-h-screen bg-[#071B41]">
+    <div className="min-h-screen bg-slate-50">
       <Navbar overlay={false} />
       <main className="mx-auto max-w-6xl px-4 pt-24 pb-8 sm:px-6">
 

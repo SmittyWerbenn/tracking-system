@@ -123,16 +123,16 @@ export function Navbar({ overlay }: { overlay: boolean }) {
         <Link to="/" onClick={() => setOpen(false)} className="flex items-center gap-2.5">
           <img src={logoIcon} alt="GMS Logistics" className="h-9 w-9 shrink-0 object-contain" />
           <span className="shrink-0 leading-tight">
-            <span className={`block whitespace-nowrap font-display text-xl font-extrabold ${solid ? "text-gms-corp" : "text-white"}`}>
+            <span className={`block whitespace-nowrap font-display text-2xl font-extrabold ${solid ? "text-gms-corp" : "text-white"}`}>
               GMS Logistics
             </span>
-            <span className={`hidden whitespace-nowrap text-sm sm:block ${solid ? "text-slate-500" : "text-white/70"}`}>
+            <span className={`hidden whitespace-nowrap text-base sm:block ${solid ? "text-slate-500" : "text-white/70"}`}>
               {l(C.hero.eyebrow)}
             </span>
           </span>
         </Link>
 
-        <nav aria-label="Main" className="hidden items-center gap-0.5 xl:flex">
+        <nav aria-label="Main" className="hidden items-center gap-0.5 xl:ml-8 xl:flex">
           {NAV_SECTIONS.map((s) => {
             const isActive = onHome && active === s.id;
             return (

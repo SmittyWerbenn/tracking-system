@@ -165,22 +165,6 @@ export function Navbar({ overlay }: { overlay: boolean }) {
 
         <div className="flex items-center gap-2">
           <LangSwitch solid={solid} />
-          <div className="hidden gap-2 2xl:flex">
-            <a
-              href="https://gms-logistics.id/cek-ongkir"
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-gms-gold px-4 py-2 text-xl font-bold text-gms-deep transition-colors hover:bg-gms-bright"
-            >
-              <Calculator size={16} />
-              {language === "id" ? "Cek Ongkir" : "Check Rates"}
-            </a>
-            <a
-              href="https://gms-logistics.id/cek-ongkir"
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border-2 border-gms-gold px-4 py-2 text-xl font-bold text-gms-gold transition-colors hover:bg-gms-gold/10"
-            >
-              <Package size={16} />
-              {language === "id" ? "Lacak Paket" : "Track Package"}
-            </a>
-          </div>
           <button
             type="button"
             className={`rounded-md p-2 xl:hidden ${solid ? "text-gms-corp hover:bg-gms-sky" : "text-white hover:bg-white/10"}`}

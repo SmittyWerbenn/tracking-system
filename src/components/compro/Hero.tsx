@@ -1,4 +1,4 @@
-import { ArrowRight, Camera, Gauge, Radar, Users, Truck } from "lucide-react";
+import { ArrowRight, Calculator, Camera, Gauge, Radar, Users, Truck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { C } from "../../data/compro/content";
 import { COMPRO_IMAGES } from "../../data/compro/imagesData";
@@ -34,13 +34,19 @@ export function Hero() {
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-blue-100/85 sm:text-xl animate-[fadeIn_0.7s_ease-out]">
             {l(C.hero.sub)}
           </p>
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row animate-[fadeIn_0.8s_ease-out]">
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap animate-[fadeIn_0.8s_ease-out]">
             <Link
               to="/tracking"
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-gms-gold px-7 text-lg font-bold text-gms-deep shadow-lg shadow-black/20 transition-all hover:-translate-y-0.5 hover:bg-gms-bright"
             >
               {l(C.hero.ctaTrack)} <ArrowRight size={18} aria-hidden />
             </Link>
+            <a
+              href="https://gms-logistics.id/cek-ongkir"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border-2 border-gms-gold px-7 text-lg font-bold text-gms-light transition-colors hover:bg-gms-gold/10"
+            >
+              <Calculator size={18} aria-hidden /> {l(C.nav.checkPrice)}
+            </a>
             <button
               type="button"
               onClick={() => scrollToSection("kontak")}

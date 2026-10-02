@@ -84,6 +84,19 @@ const ROLE_PERMISSIONS: Record<Role, Set<Permission>> = {
     "notifications.view",
     "settings.view",
   ]),
+  // Partner agent account, logging in through the same admin dashboard as
+  // everyone else (no separate portal) - base permissions mirror Driver,
+  // visibility is further narrowed to just its own mitra_id inside
+  // routes/shipments.ts (rbac alone can't express that row-level scoping).
+  Mitra: new Set([
+    "shipments.view",
+    "tracking.update",
+    "fleet.view",
+    "locations.view",
+    "feedback.view",
+    "notifications.view",
+    "files.upload",
+  ]),
 };
 
 export function hasPermission(role: Role, permission: Permission): boolean {

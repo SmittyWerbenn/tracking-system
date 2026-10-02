@@ -1,6 +1,7 @@
 import { adminPath } from "../../utils/urls";
 import {
   Building2,
+  Handshake,
   History,
   LayoutDashboard,
   LogOut,
@@ -34,54 +35,68 @@ interface NavItem {
   roles?: UserRole[];
 }
 
-const navGroups: { title: string; items: NavItem[] }[] = [
-  {
-    title: "Operasional",
-    items: [
-      { to: adminPath("/"), label: "Dashboard", icon: LayoutDashboard, end: true },
-      {
-        to: adminPath("/pengiriman/baru"),
-        label: "Buat Pengiriman",
-        icon: PackagePlus,
-        end: true,
-        roles: ["Superadmin", "Admin", "Client"],
-      },
-      { to: adminPath("/pengiriman"), label: "Data Pengiriman", icon: Package, end: true },
-    ],
-  },
-  {
-    title: "Master Data",
-    items: [
-      { to: adminPath("/armada"), label: "Master Armada", icon: Truck, end: false },
-      { to: adminPath("/kota"), label: "Kota & Titik Transit", icon: MapPinned, end: true },
-      {
-        to: adminPath("/customer"),
-        label: "Clients",
-        icon: Building2,
-        end: true,
-        roles: ["Superadmin", "Admin"],
-      },
-    ],
-  },
-  {
-    title: "Layanan",
-    items: [{ to: adminPath("/feedback"), label: "Feedback Customer", icon: MessageSquare, end: true }],
-  },
-  {
-    title: "Sistem",
-    items: [
-      { to: adminPath("/users"), label: "Manajemen User", icon: Users, end: true, roles: ["Superadmin", "Admin"] },
-      { to: adminPath("/audit-log"), label: "Audit Log", icon: History, end: true, roles: ["Superadmin", "Admin"] },
-      {
-        to: adminPath("/pengaturan/tracking"),
-        label: "Pengaturan",
-        icon: Settings,
-        end: true,
-        roles: ["Superadmin", "Admin"],
-      },
-    ],
-  },
-];
+// Every role except Mitra - used for items a Mitra account shouldn't see
+// but that stay open to everyone else (no admin-only intent otherwise).
+const NON_MITRA_ROLES: UserRole[] = ["Superadmin", "Admin", "Driver", "Viewer", "Client"];
+
+function getNavGroups(role: UserRole): { title: string; items: NavItem[] }[] {
+  const isMitra = role === "Mitra";
+  return [
+    {
+      title: "Operasional",
+      items: [
+        { to: adminPath("/"), label: "Dashboard", icon: LayoutDashboard, end: true },
+        {
+          to: adminPath("/pengiriman/baru"),
+          label: "Buat Pengiriman",
+          icon: PackagePlus,
+          end: true,
+          roles: ["Superadmin", "Admin", "Client"],
+        },
+        { to: adminPath("/pengiriman"), label: isMitra ? "Paket Saya" : "Data Pengiriman", icon: Package, end: true },
+      ],
+    },
+    {
+      title: "Master Data",
+      items: [
+        { to: adminPath("/armada"), label: "Master Armada", icon: Truck, end: false, roles: NON_MITRA_ROLES },
+        { to: adminPath("/kota"), label: "Kota & Titik Transit", icon: MapPinned, end: true, roles: NON_MITRA_ROLES },
+        {
+          to: adminPath("/customer"),
+          label: "Clients",
+          icon: Building2,
+          end: true,
+          roles: ["Superadmin", "Admin"],
+        },
+        {
+          to: adminPath("/mitra"),
+          label: "Master Mitra",
+          icon: Handshake,
+          end: true,
+          roles: ["Superadmin", "Admin"],
+        },
+      ],
+    },
+    {
+      title: "Layanan",
+      items: [{ to: adminPath("/feedback"), label: "Feedback Customer", icon: MessageSquare, end: true, roles: NON_MITRA_ROLES }],
+    },
+    {
+      title: "Sistem",
+      items: [
+        { to: adminPath("/users"), label: "Manajemen User", icon: Users, end: true, roles: ["Superadmin", "Admin"] },
+        { to: adminPath("/audit-log"), label: "Audit Log", icon: History, end: true, roles: ["Superadmin", "Admin"] },
+        {
+          to: adminPath("/pengaturan/tracking"),
+          label: "Pengaturan",
+          icon: Settings,
+          end: true,
+          roles: ["Superadmin", "Admin"],
+        },
+      ],
+    },
+  ];
+}
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -161,7 +176,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           }`}
         >
           <nav className="flex flex-col gap-4 p-4">
-            {navGroups.map((group) => {
+            {getNavGroups(profile.role).map((group) => {
               const items = group.items.filter((item) => !item.roles || item.roles.includes(profile.role));
               if (items.length === 0) return null;
               return (

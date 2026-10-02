@@ -11,13 +11,15 @@ export function registerDashboardRoutes(router: Router) {
     const stagnantCutoff = new Date(Date.now() - stagnantDays * 24 * 60 * 60 * 1000).toISOString();
     // Client's dashboard numbers must only reflect its own customer's
     // shipments - trucks/feedback stats stay global since those aren't
-    // customer-scoped data.
+    // customer-scoped data. Mitra is scoped the same way, by mitra_id.
     const custScope = actor.role === "Client" || (actor.role === "Viewer" && !!actor.customerId);
-    const custWhere = custScope ? `AND customer_id = ?` : "";
-    const custBind = (...extra: unknown[]) => (custScope ? [...extra, actor.customerId] : extra);
+    const mitraScope = actor.role === "Mitra";
+    const custWhere = custScope ? `AND customer_id = ?` : mitraScope ? `AND mitra_id = ?` : "";
+    const custBind = (...extra: unknown[]) =>
+      custScope ? [...extra, actor.customerId] : mitraScope ? [...extra, actor.mitraId] : extra;
     // Cancelled orders are internal-admin/owning-customer data only - never
-    // counted or listed for Viewer/Driver, even in aggregate stats.
-    const hideCancelled = actor.role === "Viewer" || actor.role === "Driver";
+    // counted or listed for Viewer/Driver/Mitra, even in aggregate stats.
+    const hideCancelled = actor.role === "Viewer" || actor.role === "Driver" || actor.role === "Mitra";
     const cancelWhere = hideCancelled ? `AND status != 'Dibatalkan'` : "";
 
     const [byStatus, total, stagnant, trucks, avgRating, recent] = await Promise.all([

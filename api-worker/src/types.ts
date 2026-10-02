@@ -8,7 +8,7 @@ export interface Env {
   SESSION_TTL_HOURS: string;
 }
 
-export type Role = "Superadmin" | "Admin" | "Driver" | "Viewer" | "Client";
+export type Role = "Superadmin" | "Admin" | "Driver" | "Viewer" | "Client" | "Mitra";
 
 export interface AuthedUser {
   id: string;
@@ -19,6 +19,9 @@ export interface AuthedUser {
   /** Set only for role "Client" - scopes every shipment-visibility
    * check to just this customer's own data. */
   customerId: string | null;
+  /** Set only for role "Mitra" - scopes every shipment-visibility
+   * check to just the shipments forwarded/assigned to this Mitra. */
+  mitraId: string | null;
 }
 
 export interface Ctx {

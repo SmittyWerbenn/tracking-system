@@ -7,7 +7,7 @@ import { requireAuth, requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta } from "../pagination";
 
-const ROLES = ["Admin", "Driver", "Viewer", "Client"] as const;
+const ROLES = ["Admin", "Driver", "Viewer", "Client", "Mitra"] as const;
 
 export function registerUserRoutes(router: Router) {
   // Driver master data (drivers table, keyed by truck assignment) is
@@ -43,7 +43,7 @@ export function registerUserRoutes(router: Router) {
 
     const total = await ctx.env.DB.prepare(`SELECT COUNT(*) as c FROM users`).first<{ c: number }>();
     const rows = await ctx.env.DB.prepare(
-      `SELECT id, nama, email, role, aktif, foto_file_id, last_login_at, created_at, customer_id
+      `SELECT id, nama, email, role, aktif, foto_file_id, last_login_at, created_at, customer_id, mitra_id
        FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?`,
     )
       .bind(limit, offset)
@@ -256,6 +256,7 @@ export function registerUserRoutes(router: Router) {
     const fotoFileId = optString(body, "fotoFileId");
     const driverId = optString(body, "driverId");
     let customerId = optString(body, "customerId");
+    let mitraId = optString(body, "mitraId");
 
     if (actor.role === "Admin" && role === "Admin") {
       throw Errors.forbidden("Admin tidak dapat menambah akun dengan role Admin. Hubungi Superadmin.");
@@ -274,6 +275,21 @@ export function registerUserRoutes(router: Router) {
       if (!known) throw Errors.badRequest("Client ID belum terdaftar. Tambahkan dulu di menu Clients.");
       if (known.aktif !== 1) throw Errors.badRequest("Client nonaktif. Aktifkan dulu di menu Clients.");
       customerId = known.customer_id; // canonical spelling from the master table
+    }
+
+    if (role === "Mitra" && !mitraId) {
+      throw Errors.badRequest("Mitra wajib dipilih untuk role Mitra.");
+    }
+    if (mitraId && role !== "Mitra") {
+      throw Errors.badRequest("Mitra hanya berlaku untuk role Mitra.");
+    }
+    if (mitraId) {
+      const known = await ctx.env.DB.prepare(`SELECT kode_mitra, aktif FROM mitras WHERE kode_mitra = ?`)
+        .bind(mitraId)
+        .first<{ kode_mitra: string; aktif: number }>();
+      if (!known) throw Errors.badRequest("Mitra belum terdaftar. Tambahkan dulu di menu Master Mitra.");
+      if (known.aktif !== 1) throw Errors.badRequest("Mitra nonaktif. Aktifkan dulu di menu Master Mitra.");
+      mitraId = known.kode_mitra;
     }
 
     if (driverId && role !== "Driver") {
@@ -295,10 +311,10 @@ export function registerUserRoutes(router: Router) {
     const passwordHash = await hashPassword(password);
 
     await ctx.env.DB.prepare(
-      `INSERT INTO users (id, nama, email, password_hash, role, aktif, foto_file_id, created_at, updated_at, created_by, updated_by, customer_id)
-       VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (id, nama, email, password_hash, role, aktif, foto_file_id, created_at, updated_at, created_by, updated_by, customer_id, mitra_id)
+       VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`,
     )
-      .bind(id, nama, email, passwordHash, role, fotoFileId ?? null, now, now, actor.id, actor.id, customerId ?? null)
+      .bind(id, nama, email, passwordHash, role, fotoFileId ?? null, now, now, actor.id, actor.id, customerId ?? null, mitraId ?? null)
       .run();
 
     if (driverId) {
@@ -314,15 +330,16 @@ export function registerUserRoutes(router: Router) {
       description: `User "${nama}" (${role}) ditambahkan.`,
     });
 
-    return ok({ id, nama, email, role, aktif: 1, customerId: customerId ?? null }, {}, 201);
+    return ok({ id, nama, email, role, aktif: 1, customerId: customerId ?? null, mitraId: mitraId ?? null }, {}, 201);
   });
 
   router.patch("/api/users/:id", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "users.manage");
-    const target = await ctx.env.DB.prepare(`SELECT id, role, customer_id FROM users WHERE id = ?`).bind(params.id).first<{
+    const target = await ctx.env.DB.prepare(`SELECT id, role, customer_id, mitra_id FROM users WHERE id = ?`).bind(params.id).first<{
       id: string;
       role: string;
       customer_id: string | null;
+      mitra_id: string | null;
     }>();
     if (!target) throw Errors.notFound("User tidak ditemukan.");
     if (target.role === "Superadmin") {
@@ -353,8 +370,18 @@ export function registerUserRoutes(router: Router) {
       if (!known) throw Errors.badRequest("Client ID belum terdaftar. Tambahkan dulu di menu Clients.");
       customerId = known.customer_id;
     }
+    const mitraIdProvided = Object.prototype.hasOwnProperty.call(body, "mitraId");
+    let mitraId = mitraIdProvided ? optString(body, "mitraId") ?? null : undefined;
+    if (mitraId && mitraId !== target.mitra_id) {
+      const known = await ctx.env.DB.prepare(`SELECT kode_mitra FROM mitras WHERE kode_mitra = ?`)
+        .bind(mitraId)
+        .first<{ kode_mitra: string }>();
+      if (!known) throw Errors.badRequest("Mitra belum terdaftar. Tambahkan dulu di menu Master Mitra.");
+      mitraId = known.kode_mitra;
+    }
     const effectiveRole = role ?? target.role;
     const effectiveCustomerId = customerIdProvided ? customerId : target.customer_id;
+    const effectiveMitraId = mitraIdProvided ? mitraId : target.mitra_id;
 
     if (driverId && effectiveRole !== "Driver") {
       throw Errors.badRequest("driverId hanya berlaku untuk role Driver.");
@@ -370,6 +397,12 @@ export function registerUserRoutes(router: Router) {
     }
     if (effectiveCustomerId && effectiveRole !== "Client" && effectiveRole !== "Viewer") {
       throw Errors.badRequest("Client ID hanya berlaku untuk role Client dan Viewer.");
+    }
+    if (effectiveRole === "Mitra" && !effectiveMitraId) {
+      throw Errors.badRequest("Mitra wajib dipilih untuk role Mitra.");
+    }
+    if (effectiveMitraId && effectiveRole !== "Mitra") {
+      throw Errors.badRequest("Mitra hanya berlaku untuk role Mitra.");
     }
     if (driverId) {
       const driver = await ctx.env.DB.prepare(`SELECT id, user_id FROM drivers WHERE id = ?`)
@@ -404,6 +437,15 @@ export function registerUserRoutes(router: Router) {
       // Client ID - clear it so a re-promotion later doesn't inherit
       // a stale customer scope.
       sets.push("customer_id = ?");
+      values.push(null);
+    }
+    if (mitraIdProvided) {
+      sets.push("mitra_id = ?");
+      values.push(mitraId);
+    } else if (role && role !== "Mitra" && target.role === "Mitra") {
+      // Role moved away from Mitra without explicitly clearing it - clear
+      // so a re-promotion later doesn't inherit a stale mitra scope.
+      sets.push("mitra_id = ?");
       values.push(null);
     }
 

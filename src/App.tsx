@@ -8,6 +8,7 @@ import { FleetProvider } from "./store/FleetContext";
 import { HelpContactProvider } from "./store/HelpContactContext";
 import { LanguageProvider } from "./store/LanguageContext";
 import { LocationProvider } from "./store/LocationContext";
+import { MitraProvider } from "./store/MitraContext";
 import { NotificationProvider } from "./store/NotificationContext";
 import { SettingsProvider } from "./store/SettingsContext";
 import { ShipmentProvider } from "./store/ShipmentContext";
@@ -23,6 +24,7 @@ import FeedbackAdmin from "./pages/admin/FeedbackAdmin";
 import FleetList from "./pages/admin/FleetList";
 import LocationList from "./pages/admin/LocationList";
 import Login from "./pages/admin/Login";
+import MitraList from "./pages/admin/MitraList";
 import NotificationCenter from "./pages/admin/NotificationCenter";
 import SettingsPage from "./pages/admin/SettingsPage";
 import ShipmentDetail from "./pages/admin/ShipmentDetail";
@@ -73,11 +75,13 @@ function AppProviders({ children }: { children: React.ReactNode }) {
               <FeedbackProvider>
                 <FleetProvider>
                   <LocationProvider>
-                    <UserManagementProvider>
-                      <SettingsProvider>
-                        <ShipmentProvider>{children}</ShipmentProvider>
-                      </SettingsProvider>
-                    </UserManagementProvider>
+                    <MitraProvider>
+                      <UserManagementProvider>
+                        <SettingsProvider>
+                          <ShipmentProvider>{children}</ShipmentProvider>
+                        </SettingsProvider>
+                      </UserManagementProvider>
+                    </MitraProvider>
                   </LocationProvider>
                 </FleetProvider>
               </FeedbackProvider>
@@ -136,6 +140,7 @@ export default function App() {
               <Route path={adminPath("/armada/:id")} element={<RequireAuth><TruckHistory /></RequireAuth>} />
               <Route path={adminPath("/kota")} element={<RequireAuth><LocationList /></RequireAuth>} />
               <Route path={adminPath("/customer")} element={<RequireAdmin><CustomerList /></RequireAdmin>} />
+              <Route path={adminPath("/mitra")} element={<RequireAdmin><MitraList /></RequireAdmin>} />
               <Route path={adminPath("/notifikasi")} element={<RequireAuth><NotificationCenter /></RequireAuth>} />
               <Route path={adminPath("/feedback")} element={<RequireAuth><FeedbackAdmin /></RequireAuth>} />
               <Route path={adminPath("/audit-log")} element={<RequireAdmin><AuditLogPage /></RequireAdmin>} />

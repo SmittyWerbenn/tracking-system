@@ -34,6 +34,8 @@ interface RawShipmentSummary {
   truckJenis: string | null;
   truckDriverNama: string | null;
   customerId: string | null;
+  mitraId: string | null;
+  mitraNama: string | null;
   emailTerkirim: boolean;
   emailTerkirimAt: string | null;
   slaValue: number | null;
@@ -104,6 +106,8 @@ function toShipment(row: RawShipmentSummary): Shipment {
     },
     truckId: row.truckId ?? undefined,
     customerId: row.customerId ?? undefined,
+    mitraId: row.mitraId ?? undefined,
+    mitraNama: row.mitraNama ?? undefined,
     timeline: row.lastUpdate
       ? [{ id: "last", type: row.status as TimelineEventType, lokasi: "", tanggal: row.lastUpdate.tanggal, jam: row.lastUpdate.jam, keterangan: "" }]
       : [],
@@ -179,6 +183,8 @@ interface ShipmentContextValue {
   confirmClaim: (awb: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   rejectClaim: (awb: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   unassignDriver: (awb: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Forward/assign (mitraId) or unassign (null) a shipment to a Mitra. */
+  assignMitra: (awb: string, mitraId: string | null) => Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
 const ShipmentContext = createContext<ShipmentContextValue | null>(null);
@@ -427,6 +433,16 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function assignMitra(awb: string, mitraId: string | null) {
+    try {
+      await api.post(`/api/shipments/${encodeURIComponent(awb)}/assign-mitra`, { mitraId });
+      await refresh();
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal meneruskan ke Mitra." };
+    }
+  }
+
   return (
     <ShipmentContext.Provider
       value={{
@@ -446,6 +462,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         confirmClaim,
         rejectClaim,
         unassignDriver,
+        assignMitra,
       }}
     >
       {children}

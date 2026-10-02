@@ -22,6 +22,7 @@ function emptyForm(defaultRole: UserRole): UserFormData {
     password: "",
     driverId: null,
     customerId: null,
+    mitraId: null,
   };
 }
 
@@ -40,6 +41,7 @@ const ROLE_BADGE_STYLE: Record<UserRole, string> = {
   Driver: "bg-amber-100 text-amber-700",
   Viewer: "bg-violet-100 text-violet-700",
   "Client": "bg-teal-100 text-teal-700",
+  Mitra: "bg-orange-100 text-orange-700",
 };
 
 const ROLE_DESCRIPTION: Record<UserRole, string> = {
@@ -49,6 +51,8 @@ const ROLE_DESCRIPTION: Record<UserRole, string> = {
   Viewer: "Hanya dapat melihat data (read-only), tidak bisa mengubah apa pun.",
   "Client":
     "Setara Viewer, ditambah bisa Buat Pengiriman. Hanya melihat data pengiriman dengan Client ID miliknya sendiri.",
+  Mitra:
+    "Setara Driver. Login lewat dashboard admin yang sama, hanya melihat dan meng-update paket yang sudah diteruskan ke Mitra miliknya sendiri.",
 };
 
 function formatLastLogin(iso?: string): string {
@@ -57,7 +61,7 @@ function formatLastLogin(iso?: string): string {
 }
 
 export default function UserManagement() {
-  const { users, drivers, clientOptions, refresh, createUser, updateUser, setUserActive } = useUserManagement();
+  const { users, drivers, clientOptions, mitraOptions, refresh, createUser, updateUser, setUserActive } = useUserManagement();
   const [refreshing, setRefreshing] = useState(false);
   async function handleRefresh() {
     setRefreshing(true);
@@ -100,6 +104,7 @@ export default function UserManagement() {
       password: "",
       driverId: linkedDriver?.id ?? null,
       customerId: u.customerId ?? null,
+      mitraId: u.mitraId ?? null,
     });
     setPhotoError(null);
     setSubmitError(null);
@@ -133,6 +138,10 @@ export default function UserManagement() {
       setSubmitError(`Client wajib dipilih untuk role ${form.role}.`);
       return;
     }
+    if (form.role === "Mitra" && !form.mitraId?.trim()) {
+      setSubmitError("Mitra wajib dipilih untuk role Mitra.");
+      return;
+    }
     const data: UserFormData = {
       nama: form.nama,
       email: form.email,
@@ -140,6 +149,7 @@ export default function UserManagement() {
       fotoDataUrl: form.fotoDataUrl,
       driverId: form.role === "Driver" ? form.driverId ?? null : null,
       customerId: form.role === "Client" || form.role === "Viewer" ? form.customerId?.trim() || null : null,
+      mitraId: form.role === "Mitra" ? form.mitraId?.trim() || null : null,
       ...(form.password ? { password: form.password } : {}),
     };
     try {
@@ -160,7 +170,7 @@ export default function UserManagement() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Manajemen User</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Kelola akun internal dan peran akses (GMS-Admin / Driver / Viewer / Client).
+            Kelola akun internal dan peran akses (GMS-Admin / Driver / Viewer / Client / Mitra).
             {isAdminActor
               ? " Sebagai GMS-Admin, Anda hanya dapat menambah/mengubah akun Driver, Viewer, dan Client."
               : ""}
@@ -211,6 +221,9 @@ export default function UserManagement() {
                     </span>
                     {(u.role === "Client" || u.role === "Viewer") && u.customerId && (
                       <span className="mt-1 block text-[11px] text-slate-400">{u.customerId}</span>
+                    )}
+                    {u.role === "Mitra" && u.mitraId && (
+                      <span className="mt-1 block text-[11px] text-slate-400">{u.mitraId}</span>
                     )}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
@@ -410,6 +423,28 @@ export default function UserManagement() {
                     </select>
                     <span className="mt-1.5 block text-[11px] text-slate-400">
                       Akun ini hanya akan melihat data pengiriman milik Client yang dipilih. Client belum ada di daftar? Tambahkan dulu di menu Clients.
+                    </span>
+                  </label>
+                )}
+
+                {form.role === "Mitra" && (
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Mitra</span>
+                    <select
+                      required
+                      className={inputClass}
+                      value={form.mitraId ?? ""}
+                      onChange={(e) => setForm({ ...form, mitraId: e.target.value })}
+                    >
+                      <option value="">Pilih Mitra...</option>
+                      {mitraOptions.map((m) => (
+                        <option key={m.mitraId} value={m.mitraId}>
+                          {m.nama && m.nama !== m.mitraId ? `${m.mitraId} - ${m.nama}` : m.mitraId}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="mt-1.5 block text-[11px] text-slate-400">
+                      Akun ini hanya akan melihat dan meng-update paket yang sudah diteruskan ke Mitra yang dipilih. Mitra belum ada di daftar? Tambahkan dulu di menu Master Mitra.
                     </span>
                   </label>
                 )}

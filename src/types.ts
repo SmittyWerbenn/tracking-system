@@ -82,6 +82,11 @@ export interface Shipment {
   /** Client ID this shipment is tagged to - mandatory on every
    * shipment, scopes visibility for Client accounts server-side. */
   customerId?: string | null;
+  /** Kode Mitra this shipment has been forwarded/assigned to, if any -
+   * scopes visibility for Mitra accounts server-side. Independent of
+   * truckId: Client -> Shipment -> Mitra -> Driver. */
+  mitraId?: string | null;
+  mitraNama?: string | null;
   timeline: TimelineEvent[];
   pod?: ProofOfDelivery;
   emailTerkirim: boolean;
@@ -197,11 +202,11 @@ export interface TitikLokasi {
  * Driver: can only open Update Tracking to log an in-transit status or mark
  * a shipment as delivered - no access to create shipments, fleet/location
  * master data, settings, or user management. Viewer: read-only everywhere. */
-export type UserRole = "Superadmin" | "Admin" | "Driver" | "Viewer" | "Client";
+export type UserRole = "Superadmin" | "Admin" | "Driver" | "Viewer" | "Client" | "Mitra";
 
 /** Roles assignable to OTHER team members via Manajemen User - Superadmin
  * itself isn't assignable there, it's the single account signed in. */
-export const ASSIGNABLE_USER_ROLES: UserRole[] = ["Admin", "Driver", "Viewer", "Client"];
+export const ASSIGNABLE_USER_ROLES: UserRole[] = ["Admin", "Driver", "Viewer", "Client", "Mitra"];
 
 /** Display-only label for a role - the underlying value stays "Admin"
  * everywhere in code/DB/API (permission checks, ROLES arrays, etc.); only
@@ -213,6 +218,7 @@ const ROLE_DISPLAY_LABEL: Record<UserRole, string> = {
   Driver: "Driver",
   Viewer: "Viewer",
   "Client": "Client",
+  Mitra: "Mitra",
 };
 
 export function roleLabel(role: UserRole): string {
@@ -232,6 +238,9 @@ export interface AppUser {
   /** Client ID - set only for role "Client", scopes that account
    * to just its own customer's shipments. */
   customerId?: string | null;
+  /** Kode Mitra - set only for role "Mitra", scopes that account to just
+   * the shipments forwarded/assigned to this Mitra. */
+  mitraId?: string | null;
 }
 
 // ---------------------------------------------------------------------------

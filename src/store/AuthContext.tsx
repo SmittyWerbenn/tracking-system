@@ -10,6 +10,8 @@ export interface AdminProfile {
   fotoFileId?: string;
   /** Client ID - set only for role "Client". */
   customerId?: string | null;
+  /** Kode Mitra - set only for role "Mitra". */
+  mitraId?: string | null;
 }
 
 interface MeResponse {
@@ -20,12 +22,13 @@ interface MeResponse {
   aktif: number;
   foto_file_id: string | null;
   customer_id: string | null;
+  mitra_id: string | null;
 }
 
 interface LoginResponse {
   token: string;
   expiresAt: string;
-  user: { id: string; nama: string; email: string; role: UserRole; customerId: string | null };
+  user: { id: string; nama: string; email: string; role: UserRole; customerId: string | null; mitraId: string | null };
 }
 
 interface AuthContextValue {
@@ -48,6 +51,7 @@ function toProfile(me: MeResponse): AdminProfile {
     role: me.role,
     fotoFileId: me.foto_file_id ?? undefined,
     customerId: me.customer_id,
+    mitraId: me.mitra_id,
   };
 }
 

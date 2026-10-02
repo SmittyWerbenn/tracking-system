@@ -29,7 +29,7 @@ export function registerAuthRoutes(router: Router) {
     checkRateLimit(`${ip}:${email}`);
 
     const user = await ctx.env.DB.prepare(
-      `SELECT id, nama, email, password_hash, role, aktif, customer_id FROM users WHERE email = ?`,
+      `SELECT id, nama, email, password_hash, role, aktif, customer_id, mitra_id FROM users WHERE email = ?`,
     )
       .bind(email)
       .first<{
@@ -40,21 +40,29 @@ export function registerAuthRoutes(router: Router) {
         role: string;
         aktif: number;
         customer_id: string | null;
+        mitra_id: string | null;
       }>();
 
     const validPassword = user ? await verifyPassword(password, user.password_hash) : false;
-    // Accounts of a deactivated Client are frozen: no login until reactivated.
+    // Accounts of a deactivated Client/Mitra are frozen: no login until reactivated.
     const clientFrozen = user?.customer_id
       ? !!(await ctx.env.DB.prepare(`SELECT 1 FROM clients WHERE customer_id = ? AND aktif = 0`).bind(user.customer_id).first())
       : false;
-    if (user && validPassword && user.aktif === 1 && clientFrozen) {
+    const mitraFrozen = user?.mitra_id
+      ? !!(await ctx.env.DB.prepare(`SELECT 1 FROM mitras WHERE kode_mitra = ? AND aktif = 0`).bind(user.mitra_id).first())
+      : false;
+    if (user && validPassword && user.aktif === 1 && (clientFrozen || mitraFrozen)) {
       await writeAuditLog(ctx.env, null, {
         action: "LOGIN_FAILED",
         actionLabel: "LOGIN FAILED",
         module: "Auth",
-        description: `Login ditolak untuk ${email}: Client ${user.customer_id} nonaktif.`,
+        description: clientFrozen
+          ? `Login ditolak untuk ${email}: Client ${user.customer_id} nonaktif.`
+          : `Login ditolak untuk ${email}: Mitra ${user.mitra_id} nonaktif.`,
       }, ip);
-      throw Errors.forbidden("Akun Client Anda dinonaktifkan. Hubungi admin GMS.");
+      throw Errors.forbidden(
+        clientFrozen ? "Akun Client Anda dinonaktifkan. Hubungi admin GMS." : "Akun Mitra Anda dinonaktifkan. Hubungi admin GMS.",
+      );
     }
     if (!user || !validPassword || user.aktif !== 1) {
       await writeAuditLog(ctx.env, null, {
@@ -89,7 +97,7 @@ export function registerAuthRoutes(router: Router) {
 
     await writeAuditLog(
       ctx.env,
-      { id: user.id, nama: user.nama, email: user.email, role: user.role as any, aktif: 1, customerId: user.customer_id },
+      { id: user.id, nama: user.nama, email: user.email, role: user.role as any, aktif: 1, customerId: user.customer_id, mitraId: user.mitra_id },
       { action: "LOGIN_SUCCESS", actionLabel: "LOGIN SUCCESS", module: "Auth", description: `${user.nama} berhasil login.` },
       ip,
     );
@@ -97,7 +105,7 @@ export function registerAuthRoutes(router: Router) {
     return ok({
       token,
       expiresAt: expiresAt.toISOString(),
-      user: { id: user.id, nama: user.nama, email: user.email, role: user.role, customerId: user.customer_id },
+      user: { id: user.id, nama: user.nama, email: user.email, role: user.role, customerId: user.customer_id, mitraId: user.mitra_id },
     });
   });
 
@@ -117,7 +125,7 @@ export function registerAuthRoutes(router: Router) {
   router.get("/api/auth/me", async (ctx: Ctx) => {
     const user = requireAuth(ctx);
     const row = await ctx.env.DB.prepare(
-      `SELECT id, nama, email, role, aktif, foto_file_id, last_login_at, customer_id FROM users WHERE id = ?`,
+      `SELECT id, nama, email, role, aktif, foto_file_id, last_login_at, customer_id, mitra_id FROM users WHERE id = ?`,
     )
       .bind(user.id)
       .first();

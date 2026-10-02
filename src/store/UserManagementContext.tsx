@@ -12,6 +12,7 @@ interface UserRow {
   foto_file_id: string | null;
   last_login_at: string | null;
   customer_id: string | null;
+  mitra_id: string | null;
 }
 
 interface DriverRow {
@@ -53,6 +54,7 @@ function toAppUser(row: UserRow): AppUser {
     lastLogin: row.last_login_at ?? undefined,
     foto: row.foto_file_id ?? undefined,
     customerId: row.customer_id,
+    mitraId: row.mitra_id,
   };
 }
 
@@ -75,6 +77,9 @@ export interface UserFormData {
   /** Client ID - mandatory when role is "Client", ignored/cleared
    * for every other role. */
   customerId?: string | null;
+  /** Kode Mitra - mandatory when role is "Mitra", ignored/cleared for
+   * every other role. */
+  mitraId?: string | null;
 }
 
 interface UserManagementContextValue {
@@ -83,6 +88,8 @@ interface UserManagementContextValue {
   customerIds: string[];
   /** Client ID + name for the Tambah User dropdown. */
   clientOptions: { customerId: string; nama: string | null }[];
+  /** Kode Mitra + name for the Tambah User dropdown (active Mitra only). */
+  mitraOptions: { mitraId: string; nama: string }[];
   isLoading: boolean;
   refresh: () => Promise<void>;
   createUser: (data: UserFormData) => Promise<void>;
@@ -98,26 +105,30 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
   const [drivers, setDrivers] = useState<DriverOption[]>([]);
   const [customerIds, setCustomerIds] = useState<string[]>([]);
   const [clientOptions, setClientOptions] = useState<{ customerId: string; nama: string | null }[]>([]);
+  const [mitraOptions, setMitraOptions] = useState<{ mitraId: string; nama: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   async function refresh() {
     if (profile?.role !== "Superadmin" && profile?.role !== "Admin") return;
     setIsLoading(true);
     try {
-      const [usersRes, driversRes, customerIdsRes] = await Promise.all([
+      const [usersRes, driversRes, customerIdsRes, mitrasRes] = await Promise.all([
         api.get<{ items: UserRow[] }>("/api/users?limit=100"),
         api.get<{ items: DriverRow[] }>("/api/drivers"),
         api.get<{ items: string[]; clients?: { customerId: string; nama: string | null }[] }>("/api/customer-ids"),
+        api.get<{ items: { kodeMitra: string; nama: string; aktif: boolean }[] }>("/api/mitras?active=true"),
       ]);
       setUsers(usersRes.items.map(toAppUser));
       setDrivers(driversRes.items.map(toDriverOption));
       setCustomerIds(customerIdsRes.items);
       setClientOptions(customerIdsRes.clients ?? customerIdsRes.items.map((id) => ({ customerId: id, nama: null })));
+      setMitraOptions(mitrasRes.items.map((m) => ({ mitraId: m.kodeMitra, nama: m.nama })));
     } catch {
       setUsers([]);
       setDrivers([]);
       setCustomerIds([]);
       setClientOptions([]);
+      setMitraOptions([]);
     } finally {
       setIsLoading(false);
     }
@@ -144,6 +155,7 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
       fotoFileId,
       ...(data.driverId ? { driverId: data.driverId } : {}),
       ...(data.customerId ? { customerId: data.customerId } : {}),
+      ...(data.mitraId ? { mitraId: data.mitraId } : {}),
     });
     await refresh();
   }
@@ -162,6 +174,7 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
       fotoFileId,
       ...(data.driverId !== undefined ? { driverId: data.driverId } : {}),
       ...(data.customerId !== undefined ? { customerId: data.customerId } : {}),
+      ...(data.mitraId !== undefined ? { mitraId: data.mitraId } : {}),
     });
     await refresh();
   }
@@ -173,7 +186,7 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
 
   return (
     <UserManagementContext.Provider
-      value={{ users, drivers, customerIds, clientOptions, isLoading, refresh, createUser, updateUser, setUserActive }}
+      value={{ users, drivers, customerIds, clientOptions, mitraOptions, isLoading, refresh, createUser, updateUser, setUserActive }}
     >
       {children}
     </UserManagementContext.Provider>

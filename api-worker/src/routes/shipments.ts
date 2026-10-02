@@ -43,6 +43,8 @@ function shipmentSummary(row: Record<string, unknown>) {
     claimDriverNama: row.claim_driver_nama ?? null,
     claimDriverTelepon: row.claim_driver_telepon ?? null,
     claimRequestedAt: row.claim_requested_at ?? null,
+    mitraId: row.mitra_id ?? null,
+    mitraNama: row.mitra_nama ?? null,
     emailTerkirim: !!row.email_terkirim,
     emailTerkirimAt: row.email_terkirim_at,
     createdAt: row.created_at,
@@ -71,14 +73,21 @@ export function registerShipmentRoutes(router: Router) {
       where.push("s.customer_id = ?");
       params.push(actor.customerId);
     }
+    // Mitra only ever sees shipments explicitly forwarded/assigned to it -
+    // an unassigned (mitra_id IS NULL) shipment never shows up, and this
+    // also means a Mitra with no mitraId linked yet sees nothing at all.
+    if (actor.role === "Mitra") {
+      where.push("s.mitra_id = ?");
+      params.push(actor.mitraId);
+    }
     // Cancelled orders are "data batal order" - a separate bucket, not part
     // of the everyday Data Pengiriman view. They're excluded from the
     // default ("Semua") list for every role, including Superadmin/Admin/
     // Client, and only surface when explicitly filtered by
-    // status=Dibatalkan. Viewer/Driver never see them, even then.
+    // status=Dibatalkan. Viewer/Driver/Mitra never see them, even then.
     if (!status) {
       where.push("s.status != 'Dibatalkan'");
-    } else if (status === "Dibatalkan" && (actor.role === "Viewer" || actor.role === "Driver")) {
+    } else if (status === "Dibatalkan" && (actor.role === "Viewer" || actor.role === "Driver" || actor.role === "Mitra")) {
       where.push("1 = 0");
     }
     if (search) {
@@ -95,12 +104,14 @@ export function registerShipmentRoutes(router: Router) {
     const rows = await ctx.env.DB.prepare(
       `SELECT s.*, t.nomor_unit as truck_nomor_unit, d.nama as truck_driver_nama,
               cd.nama as claim_driver_nama, cd.telepon as claim_driver_telepon,
+              m.nama as mitra_nama,
               p.tanggal as pod_tanggal, p.jam as pod_jam, p.nama_penerima as pod_nama_penerima,
               le.tanggal as last_tanggal, le.jam as last_jam
        FROM shipments s
        LEFT JOIN trucks t ON t.id = s.truck_id
        LEFT JOIN drivers d ON d.id = t.driver_id
        LEFT JOIN drivers cd ON cd.id = s.claim_driver_id
+       LEFT JOIN mitras m ON m.kode_mitra = s.mitra_id
        LEFT JOIN shipment_pod p ON p.awb = s.awb
        LEFT JOIN (
          SELECT e1.awb, e1.tanggal, e1.jam FROM shipment_timeline_events e1
@@ -146,10 +157,21 @@ export function registerShipmentRoutes(router: Router) {
     if (!customerId) {
       throw Errors.badRequest("Client ID wajib diisi.");
     }
+    // Mitra can never be set by a Client account - only an internal
+    // Superadmin/Admin forwards a shipment to a Mitra, at creation or later
+    // via POST /api/shipments/:awb/assign-mitra.
+    const mitraId = actor.role === "Client" ? undefined : optString(body, "mitraId");
 
     if (truckId) {
       const truck = await ctx.env.DB.prepare(`SELECT id FROM trucks WHERE id = ?`).bind(truckId).first();
       if (!truck) throw Errors.badRequest("Truck yang dipilih tidak ditemukan.");
+    }
+    if (mitraId) {
+      const mitra = await ctx.env.DB.prepare(`SELECT kode_mitra, aktif FROM mitras WHERE kode_mitra = ?`)
+        .bind(mitraId)
+        .first<{ kode_mitra: string; aktif: number }>();
+      if (!mitra) throw Errors.badRequest("Mitra yang dipilih tidak ditemukan.");
+      if (mitra.aktif !== 1) throw Errors.badRequest("Mitra yang dipilih nonaktif.");
     }
 
     const now = new Date();
@@ -177,16 +199,16 @@ export function registerShipmentRoutes(router: Router) {
               penerima_nama, penerima_telepon, penerima_email,
               alamat_asal, kota_asal, alamat_tujuan, kota_tujuan,
               deskripsi_barang, layanan, berat_kg, jumlah_koli, truck_id,
-              sla_value, sla_unit, estimasi_tiba, customer_id,
+              sla_value, sla_unit, estimasi_tiba, customer_id, mitra_id,
               email_terkirim, created_at, updated_at, created_by, updated_by
-            ) VALUES (?, ?, ?, 'Dalam Persiapan', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+            ) VALUES (?, ?, ?, 'Dalam Persiapan', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
           ).bind(
             awb, tanggalDibuat, jamDibuat,
             pengirimNama, pengirimTelepon, pengirimEmail,
             penerimaNama, penerimaTelepon, penerimaEmail,
             alamatAsal, kotaAsal, alamatTujuan, kotaTujuan,
             deskripsiBarang, layanan, beratKg, jumlahKoli, truckId ?? null,
-            slaValue ?? null, slaUnit, estimasiTiba, customerId,
+            slaValue ?? null, slaUnit, estimasiTiba, customerId, mitraId ?? null,
             nowIso, nowIso, actor.id, actor.id,
           ),
           ctx.env.DB.prepare(
@@ -218,20 +240,25 @@ export function registerShipmentRoutes(router: Router) {
     const actor = requirePermission(ctx, "shipments.view");
     const row = await ctx.env.DB.prepare(
       `SELECT s.*, t.nomor_unit as truck_nomor_unit, t.jenis as truck_jenis, d.nama as truck_driver_nama,
-              cd.nama as claim_driver_nama, cd.telepon as claim_driver_telepon
+              cd.nama as claim_driver_nama, cd.telepon as claim_driver_telepon,
+              m.nama as mitra_nama
        FROM shipments s
        LEFT JOIN trucks t ON t.id = s.truck_id
        LEFT JOIN drivers d ON d.id = t.driver_id
        LEFT JOIN drivers cd ON cd.id = s.claim_driver_id
+       LEFT JOIN mitras m ON m.kode_mitra = s.mitra_id
        WHERE s.awb = ?`,
     )
       .bind(params.awb)
       .first<Record<string, unknown>>();
     if (!row) throw Errors.notFound("AWB tidak ditemukan.");
-    if ((actor.role === "Viewer" || actor.role === "Driver") && row.status === "Dibatalkan") {
+    if ((actor.role === "Viewer" || actor.role === "Driver" || actor.role === "Mitra") && row.status === "Dibatalkan") {
       throw Errors.notFound("AWB tidak ditemukan.");
     }
     if ((actor.role === "Client" || (actor.role === "Viewer" && actor.customerId)) && row.customer_id !== actor.customerId) {
+      throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
+    }
+    if (actor.role === "Mitra" && row.mitra_id !== actor.mitraId) {
       throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
     }
 
@@ -267,15 +294,18 @@ export function registerShipmentRoutes(router: Router) {
     router.get("/api/shipments/:awb/position", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "shipments.view");
     const row = await ctx.env.DB.prepare(
-    `SELECT status, customer_id FROM shipments WHERE awb = ?`,
+    `SELECT status, customer_id, mitra_id FROM shipments WHERE awb = ?`,
     )
     .bind(params.awb)
-    .first<{ status: string; customer_id: string | null }>();
+    .first<{ status: string; customer_id: string | null; mitra_id: string | null }>();
     if (!row) throw Errors.notFound("AWB tidak ditemukan.");
-    if ((actor.role === "Viewer" || actor.role === "Driver") && row.status === "Dibatalkan") {
+    if ((actor.role === "Viewer" || actor.role === "Driver" || actor.role === "Mitra") && row.status === "Dibatalkan") {
     throw Errors.notFound("AWB tidak ditemukan.");
     }
     if ((actor.role === "Client" || (actor.role === "Viewer" && actor.customerId)) && row.customer_id !== actor.customerId) {
+    throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
+    }
+    if (actor.role === "Mitra" && row.mitra_id !== actor.mitraId) {
     throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
     }
 
@@ -478,6 +508,9 @@ export function registerShipmentRoutes(router: Router) {
         .first();
       if (!owns) throw Errors.forbidden("Pengiriman ini bukan tugas Anda.");
     }
+    if (actor.role === "Mitra") {
+      if (shipment.mitra_id !== actor.mitraId) throw Errors.forbidden("Pengiriman ini bukan tugas Mitra Anda.");
+    }
 
     const body = await parseJsonBody(ctx.request);
     const type = reqEnum(body, "type", TIMELINE_EVENT_TYPES.filter((t) => t !== "Barang Diterima") as readonly TimelineEventType[]);
@@ -486,11 +519,16 @@ export function registerShipmentRoutes(router: Router) {
     const keterangan = reqString(body, "keterangan", { max: 500 });
     const truckId = optString(body, "truckId");
     const titikId = optString(body, "titikId");
-    // A driver reports their own operational progress only - reassigning
-    // the truck (including via a Transfer Unit event) is a dispatch/admin
-    // decision, not something a driver's status update should be able to do.
-    if (actor.role === "Driver" && (type === "Transfer Unit" || truckId)) {
-      throw Errors.forbidden("Driver tidak dapat mengubah unit truck.");
+    // A driver/mitra reports their own operational progress only -
+    // reassigning the truck (including via a Transfer Unit event) is a
+    // dispatch/admin decision. truckId is only treated as a change attempt
+    // when it actually differs from the shipment's current truck, since the
+    // form always submits the current value alongside every ordinary update.
+    const truckIdChanged = !!truckId && truckId !== shipment.truck_id;
+    if ((actor.role === "Driver" || actor.role === "Mitra") && (type === "Transfer Unit" || truckIdChanged)) {
+      throw Errors.forbidden(
+        actor.role === "Driver" ? "Driver tidak dapat mengubah unit truck." : "Mitra tidak dapat mengubah unit truck.",
+      );
     }
     const isSelesai = type === "Selesai / Terkirim";
     const lokasi = isSelesai ? String(shipment.kota_tujuan) : reqString(body, "lokasi", { max: 150 });
@@ -734,5 +772,51 @@ export function registerShipmentRoutes(router: Router) {
     });
 
     return ok({ unassigned: true });
+  });
+
+  // Forwards/assigns (or reassigns/unassigns, mitraId: null) a shipment to a
+  // Mitra - Superadmin/Admin only (same permission as every other
+  // dispatch/assignment action here), never the Mitra itself, which has no
+  // "shipments.update_info" permission at all (see rbac.ts).
+  router.post("/api/shipments/:awb/assign-mitra", async (ctx: Ctx, params) => {
+    const actor = requirePermission(ctx, "shipments.update_info");
+    const shipment = await ctx.env.DB.prepare(`SELECT status, mitra_id FROM shipments WHERE awb = ?`)
+      .bind(params.awb)
+      .first<{ status: string; mitra_id: string | null }>();
+    if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
+    if (shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan") {
+      throw Errors.unprocessable("Pengiriman yang sudah Selesai/Terkirim atau Dibatalkan tidak bisa diubah lagi.");
+    }
+
+    const body = await parseJsonBody(ctx.request);
+    const mitraIdProvided = Object.prototype.hasOwnProperty.call(body, "mitraId");
+    const mitraId = mitraIdProvided ? optString(body, "mitraId") ?? null : undefined;
+    if (mitraId === undefined) throw Errors.badRequest("mitraId wajib dikirim (boleh null untuk membatalkan penugasan).");
+
+    let mitraNama: string | null = null;
+    if (mitraId) {
+      const mitra = await ctx.env.DB.prepare(`SELECT kode_mitra, nama, aktif FROM mitras WHERE kode_mitra = ?`)
+        .bind(mitraId)
+        .first<{ kode_mitra: string; nama: string; aktif: number }>();
+      if (!mitra) throw Errors.badRequest("Mitra yang dipilih tidak ditemukan.");
+      if (mitra.aktif !== 1) throw Errors.badRequest("Mitra yang dipilih nonaktif.");
+      mitraNama = mitra.nama;
+    }
+
+    await ctx.env.DB.prepare(`UPDATE shipments SET mitra_id = ?, updated_at = ?, updated_by = ? WHERE awb = ?`)
+      .bind(mitraId, new Date().toISOString(), actor.id, params.awb)
+      .run();
+
+    await writeAuditLog(ctx.env, actor, {
+      action: mitraId ? "ASSIGN_MITRA" : "UNASSIGN_MITRA",
+      actionLabel: mitraId ? "ASSIGN MITRA" : "UNASSIGN MITRA",
+      module: "Shipment",
+      awb: params.awb,
+      description: mitraId
+        ? `Pengiriman diteruskan ke Mitra ${mitraNama} (${mitraId}).`
+        : `Penugasan Mitra dibatalkan - pengiriman dikembalikan ke status belum diteruskan.`,
+    });
+
+    return ok({ mitraId, mitraNama });
   });
 }

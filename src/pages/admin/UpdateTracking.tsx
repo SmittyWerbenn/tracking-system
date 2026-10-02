@@ -18,6 +18,7 @@ import { PhotoPickerBox } from "../../components/PhotoPickerBox";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useAuth } from "../../store/AuthContext";
 import { useLocations } from "../../store/LocationContext";
 import { useFleet } from "../../store/FleetContext";
 import { useShipments } from "../../store/ShipmentContext";
@@ -35,6 +36,8 @@ export default function UpdateTracking() {
   const { getByAwb, addTrackingUpdate, updateShipmentInfo, updatePodPhoto } = useShipments();
   const { trucksWithDriver } = useFleet();
   const { activeTitikLokasi } = useLocations();
+  const { profile } = useAuth();
+  const isMitra = profile?.role === "Mitra";
   const navigate = useNavigate();
 
   const [shipment, setShipment] = useState<Shipment | null>(null);
@@ -81,7 +84,7 @@ export default function UpdateTracking() {
       setIsLoading(false);
       if (s && initializedFor.current !== s.awb) {
         initializedFor.current = s.awb;
-        const allowedOptions = getAllowedNextEvents(s.status);
+        const allowedOptions = getAllowedNextEvents(s.status).filter((o) => !isMitra || o !== "Transfer Unit");
         setType(allowedOptions[0] ?? "Transit");
         setNamaPenerima(s.penerima.nama);
         setTruckId(s.truckId ?? "");
@@ -123,7 +126,7 @@ export default function UpdateTracking() {
     );
   }
 
-  const allowedOptions = getAllowedNextEvents(shipment.status);
+  const allowedOptions = getAllowedNextEvents(shipment.status).filter((o) => !isMitra || o !== "Transfer Unit");
   const locked = shipment.status === "Selesai / Terkirim";
   const POD_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   const deliveredEvent = [...shipment.timeline].reverse().find((e) => e.type === "Selesai / Terkirim");
@@ -266,7 +269,12 @@ export default function UpdateTracking() {
       foto: isSelesai
         ? [fotoBarangDiterima, fotoSuratJalan].filter((f): f is string => !!f)
         : foto,
-      truckId: truckId || undefined,
+      // Only actually submit truckId when it changed from the shipment's
+      // current unit - the field is pre-filled with the current value on
+      // every load, and sending it unchanged on an ordinary status update
+      // would otherwise look like (and for Driver/Mitra, be rejected as) a
+      // reassignment attempt.
+      truckId: truckId && truckId !== shipment!.truckId ? truckId : undefined,
       namaPenerima: isSelesai ? namaPenerima.trim() : undefined,
     };
     const result = await addTrackingUpdate(data);
@@ -760,22 +768,32 @@ export default function UpdateTracking() {
                 Informasi Truck {type === "Transfer Unit" && "(Unit Baru)"}
               </p>
             </div>
-            <label className="block sm:col-span-2">
-              <span className="mb-1.5 block text-xs font-medium text-slate-600">Pilih Unit Truck</span>
-              <SearchableSelect
-                options={truckOptions}
-                value={truckId}
-                onChange={setTruckId}
-                placeholder="Pilih Unit Truck"
-                emptyLabel="Tidak ada unit truck."
-              />
-            </label>
-            {selectedTruck && (
+            {isMitra ? (
               <div className="sm:col-span-2 flex flex-wrap items-center gap-4 rounded-lg bg-slate-50 px-3.5 py-3 text-sm">
-                <span className="font-medium text-slate-700">{selectedTruck.nomorUnit}</span>
-                <span className="text-slate-500">{selectedTruck.jenis}</span>
-                <span className="text-slate-500">Driver: {selectedTruck.driver?.nama ?? "-"}</span>
+                <span className="font-medium text-slate-700">{shipment.truck.nomorUnit}</span>
+                <span className="text-slate-500">{shipment.truck.jenis}</span>
+                {shipment.truck.driver && <span className="text-slate-500">Driver: {shipment.truck.driver}</span>}
               </div>
+            ) : (
+              <>
+                <label className="block sm:col-span-2">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Pilih Unit Truck</span>
+                  <SearchableSelect
+                    options={truckOptions}
+                    value={truckId}
+                    onChange={setTruckId}
+                    placeholder="Pilih Unit Truck"
+                    emptyLabel="Tidak ada unit truck."
+                  />
+                </label>
+                {selectedTruck && (
+                  <div className="sm:col-span-2 flex flex-wrap items-center gap-4 rounded-lg bg-slate-50 px-3.5 py-3 text-sm">
+                    <span className="font-medium text-slate-700">{selectedTruck.nomorUnit}</span>
+                    <span className="text-slate-500">{selectedTruck.jenis}</span>
+                    <span className="text-slate-500">Driver: {selectedTruck.driver?.nama ?? "-"}</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

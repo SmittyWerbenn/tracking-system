@@ -31,6 +31,7 @@ export default function Login() {
   // Backend refuses login for accounts of a deactivated Client with this
   // message; in that case offer a WhatsApp shortcut to the admin.
   const clientFrozen = !!error && error.includes("Client Anda dinonaktifkan");
+  const mitraFrozen = !!error && error.includes("Mitra Anda dinonaktifkan");
 
   const from = (location.state as { from?: Location } | null)?.from?.pathname ?? adminPath("/");
 
@@ -122,12 +123,14 @@ export default function Login() {
               silakan hubungi admin.
             </div>
           )}
-          {(clientFrozen || wrongPasswordWarning) && (
+          {(clientFrozen || mitraFrozen || wrongPasswordWarning) && (
             <ContactAdminButton
               message={
                 clientFrozen
                   ? `Halo Admin GMS, akun Client saya (${email}) dinonaktifkan. Mohon bantuannya.`
-                  : `Halo Admin GMS, saya tidak bisa login (password salah berulang kali) dengan email ${email}. Mohon bantuannya.`
+                  : mitraFrozen
+                    ? `Halo Admin GMS, akun Mitra saya (${email}) dinonaktifkan. Mohon bantuannya.`
+                    : `Halo Admin GMS, saya tidak bisa login (password salah berulang kali) dengan email ${email}. Mohon bantuannya.`
               }
             />
           )}

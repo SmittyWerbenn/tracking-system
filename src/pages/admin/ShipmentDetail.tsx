@@ -4,6 +4,7 @@ import {
   Ban,
   CheckCircle2,
   Download,
+  Handshake,
   Loader2,
   Mail,
   MapPin,
@@ -24,6 +25,7 @@ import { RefreshButton } from "../../components/RefreshButton";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../store/AuthContext";
 import { useLocations } from "../../store/LocationContext";
+import { useMitras } from "../../store/MitraContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment } from "../../types";
 import { api } from "../../utils/apiClient";
@@ -42,8 +44,9 @@ interface DriverPosition {
 
 export default function ShipmentDetail() {
   const { awb } = useParams<{ awb: string }>();
-  const { getByAwb, confirmClaim, rejectClaim, unassignDriver, cancelShipment, updateShipmentAlamat } = useShipments();
+  const { getByAwb, confirmClaim, rejectClaim, unassignDriver, cancelShipment, updateShipmentAlamat, assignMitra } = useShipments();
   const { activeTitikLokasi } = useLocations();
+  const { activeMitras } = useMitras();
   const { profile } = useAuth();
   const navigate = useNavigate();
   const [shipment, setShipment] = useState<Shipment | null>(null);
@@ -53,6 +56,10 @@ export default function ShipmentDetail() {
   const [refreshing, setRefreshing] = useState(false);
   const [driverPosition, setDriverPosition] = useState<DriverPosition | null>(null);
   const canManageClaims = profile?.role === "Superadmin" || profile?.role === "Admin";
+
+  const [mitraSelect, setMitraSelect] = useState("");
+  const [mitraPending, setMitraPending] = useState(false);
+  const [mitraError, setMitraError] = useState<string | null>(null);
 
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -71,6 +78,7 @@ export default function ShipmentDetail() {
   function reload() {
   return getByAwb(awb ?? "").then((s) => {
   setShipment(s);
+  setMitraSelect(s?.mitraId ?? "");
   return s;
   });
   }
@@ -101,6 +109,7 @@ export default function ShipmentDetail() {
   getByAwb(awb ?? "").then((s) => {
   if (!cancelled) {
   setShipment(s);
+  setMitraSelect(s?.mitraId ?? "");
   setIsLoading(false);
   }
   });
@@ -143,6 +152,26 @@ export default function ShipmentDetail() {
     setClaimActionPending(false);
     if (result.ok) await reload();
     else setClaimActionError(result.error);
+  }
+
+  async function handleAssignMitra() {
+    setMitraPending(true);
+    setMitraError(null);
+    const result = await assignMitra(shipment!.awb, mitraSelect || null);
+    setMitraPending(false);
+    if (result.ok) await reload();
+    else setMitraError(result.error);
+  }
+
+  async function handleUnassignMitra() {
+    setMitraPending(true);
+    setMitraError(null);
+    const result = await assignMitra(shipment!.awb, null);
+    setMitraPending(false);
+    if (result.ok) {
+      setMitraSelect("");
+      await reload();
+    } else setMitraError(result.error);
   }
 
   function openCancelModal() {
@@ -472,6 +501,57 @@ export default function ShipmentDetail() {
                     </button>
                   )}
                 </>
+              )}
+            </div>
+
+            <div className="mt-6 border-t border-slate-100 pt-5">
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                <Handshake size={13} /> Mitra
+              </p>
+
+              {mitraError && <p className="mb-2 text-xs font-medium text-red-600">{mitraError}</p>}
+
+              {canManageClaims ? (
+                <div className="flex flex-wrap items-center gap-2 no-print">
+                  <select
+                    value={mitraSelect}
+                    onChange={(e) => setMitraSelect(e.target.value)}
+                    disabled={mitraPending}
+                    className="min-w-[220px] rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  >
+                    <option value="">- Belum diteruskan ke Mitra -</option>
+                    {activeMitras.map((m) => (
+                      <option key={m.kodeMitra} value={m.kodeMitra}>
+                        {m.nama} ({m.kodeMitra})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    disabled={mitraPending || mitraSelect === (shipment.mitraId ?? "")}
+                    onClick={handleAssignMitra}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-800 disabled:opacity-60"
+                  >
+                    {mitraPending ? <Loader2 size={13} className="animate-spin" /> : null}
+                    Teruskan ke Mitra
+                  </button>
+                  {shipment.mitraId && (
+                    <button
+                      type="button"
+                      disabled={mitraPending}
+                      onClick={handleUnassignMitra}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+                    >
+                      Batalkan Penugasan
+                    </button>
+                  )}
+                </div>
+              ) : shipment.mitraId ? (
+                <p className="text-sm text-slate-700">
+                  Diteruskan ke <span className="font-semibold">{shipment.mitraNama ?? shipment.mitraId}</span>
+                </p>
+              ) : (
+                <p className="text-sm text-slate-500">Belum diteruskan ke Mitra manapun.</p>
               )}
             </div>
 

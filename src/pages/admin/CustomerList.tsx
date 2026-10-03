@@ -244,19 +244,19 @@ export default function CustomerList() {
         <div className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>
       )}
 
-      <MasterTableCard minWidth={1440}>
+      <MasterTableCard minWidth={1080}>
         <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
           <tr>
-            <th className="px-4 py-3 font-medium">Client ID</th>
-            <th className="px-4 py-3 font-medium">Nama Client</th>
-            <th className="px-4 py-3 font-medium">Kota</th>
-            <th className="px-4 py-3 font-medium">Kontrak Kerja Sama / No. Pelanggan</th>
-            <th className="px-4 py-3 font-medium">Status Client</th>
-            <th className="px-4 py-3 font-medium">Nama Akun</th>
-            <th className="px-4 py-3 font-medium">Email</th>
-            <th className="px-4 py-3 font-medium">Status Akun</th>
-            <th className="px-4 py-3 font-medium">Dibuat</th>
-            <th className="px-4 py-3 font-medium">Jumlah Pengiriman</th>
+            <th className="px-3 py-3 font-medium">Client ID</th>
+            <th className="px-3 py-3 font-medium">Nama Client</th>
+            <th className="px-3 py-3 font-medium">Kota</th>
+            <th className="px-3 py-3 font-medium">Kontrak Kerja Sama / No. Pelanggan</th>
+            <th className="px-3 py-3 font-medium">Status Client</th>
+            <th className="px-3 py-3 font-medium">Nama Akun</th>
+            <th className="px-3 py-3 font-medium">Email</th>
+            <th className="px-3 py-3 font-medium">Status Akun</th>
+            <th className="px-3 py-3 font-medium">Dibuat</th>
+            <th className="px-3 py-3 font-medium">Jumlah Pengiriman</th>
             <th className="sticky right-0 z-10 bg-slate-50 px-5 py-3 font-medium shadow-[-6px_0_6px_-6px_rgba(15,23,42,0.12)]">Aksi</th>
           </tr>
         </thead>
@@ -278,24 +278,24 @@ export default function CustomerList() {
               <tr key={a ? a.id : `client-${c.customerId}`} className="group hover:bg-slate-50">
                 {i === 0 && (
                   <>
-                    <td rowSpan={rows.length} className="whitespace-nowrap border-r border-slate-100 px-4 py-3 align-top">
+                    <td rowSpan={rows.length} className="whitespace-nowrap border-r border-slate-100 px-3 py-3 align-top">
                       <span className="flex items-center gap-1.5 font-mono font-semibold text-slate-900">
                         <Building2 size={14} className="text-teal-600" />
                         {c.customerId}
                       </span>
                     </td>
-                    <td rowSpan={rows.length} className="px-4 py-3 align-top text-slate-800">
+                    <td rowSpan={rows.length} className="px-3 py-3 align-top text-slate-800">
                       {c.nama ?? "-"}
                     </td>
-                    <td rowSpan={rows.length} className="px-4 py-3 align-top text-slate-800">
+                    <td rowSpan={rows.length} className="px-3 py-3 align-top text-slate-800">
                       {c.kota ?? "-"}
                     </td>
-                    <td rowSpan={rows.length} className="px-4 py-3 align-top">
+                    <td rowSpan={rows.length} className="px-3 py-3 align-top">
                       <span className={c.kontrakNoPelanggan ? "font-mono text-slate-800" : "text-slate-400"}>
                         {c.kontrakNoPelanggan ?? "-"}
                       </span>
                     </td>
-                    <td rowSpan={rows.length} className="whitespace-nowrap px-4 py-3 align-top">
+                    <td rowSpan={rows.length} className="whitespace-nowrap px-3 py-3 align-top">
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                           c.aktif ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
@@ -308,9 +308,9 @@ export default function CustomerList() {
                 )}
                 {a ? (
                   <>
-                    <td className="px-4 py-3 text-slate-800">{a.nama}</td>
-                    <td className="px-4 py-3 text-slate-600">{a.email}</td>
-                    <td className="whitespace-nowrap px-4 py-3">
+                    <td className="px-3 py-3 text-slate-800">{a.nama}</td>
+                    <td className="px-3 py-3 text-slate-600 [overflow-wrap:anywhere]">{a.email}</td>
+                    <td className="whitespace-nowrap px-3 py-3">
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                           a.aktif ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
@@ -319,15 +319,15 @@ export default function CustomerList() {
                         {a.aktif ? "Aktif" : "Nonaktif"}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">{formatCreatedAt(a.createdAt)}</td>
+                    <td className="px-3 py-3 text-xs text-slate-500">{formatCreatedAt(a.createdAt)}</td>
                   </>
                 ) : (
-                  <td colSpan={4} className="px-4 py-3 text-xs italic text-slate-400">
+                  <td colSpan={4} className="px-3 py-3 text-xs italic text-slate-400">
                     Belum ada akun user untuk client ini.
                   </td>
                 )}
                 {i === 0 && (
-                  <td rowSpan={rows.length} className="whitespace-nowrap px-4 py-3 align-top text-slate-600">
+                  <td rowSpan={rows.length} className="whitespace-nowrap px-3 py-3 align-top text-slate-600">
                     {c.shipmentCount}
                   </td>
                 )}

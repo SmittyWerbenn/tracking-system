@@ -1,8 +1,9 @@
 import { driverPath } from "../../utils/urls";
-import { AlertTriangle, ArrowRight, Building2, CalendarClock, FileSpreadsheet, Loader2, MessageCircle, Package, PackageSearch, RefreshCw, ScanLine, Truck, Weight, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, ArrowRight, Building2, CalendarClock, FileSpreadsheet, Keyboard, Loader2, MessageCircle, Package, PackageSearch, RefreshCw, ScanLine, Truck, Weight, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { BarcodeScannerModal } from "../../components/BarcodeScannerModal";
+import { ManualAwbModal } from "../../components/ManualAwbModal";
 import { DriverLayout } from "../../components/layout/DriverLayout";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { useAuth } from "../../store/AuthContext";
@@ -40,6 +41,10 @@ export default function DriverDashboard() {
   const [claimingAwb, setClaimingAwb] = useState<string | null>(null);
   const [filter, setFilter] = useState<StatusFilter>("aktif");
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  // The scan / manual-AWB outcome renders inside the "Pesanan Terbuka" list,
+  // well below the fold on a phone - bring it into view once it appears.
+  const scanOutcomeRef = useRef<HTMLDivElement>(null);
   const [scanResultAwb, setScanResultAwb] = useState<string | null>(null);
   const [scanNotFound, setScanNotFound] = useState<string | null>(null);
   const [custFilter, setCustFilter] = useState<string | null>(null);
@@ -136,6 +141,7 @@ export default function DriverDashboard() {
 
   function handleScanned(rawAwb: string) {
     setScannerOpen(false);
+    setManualOpen(false);
     const scanned = rawAwb.trim();
     const match = (openShipments ?? []).find((s) => s.awb.toUpperCase() === scanned.toUpperCase());
     setFilter("terbuka");
@@ -227,6 +233,10 @@ export default function DriverDashboard() {
 
   const hasOpenFilter = Boolean(custFilter || tujuanFilter || layananFilter);
 
+  useEffect(() => {
+    if (scanResultAwb || scanNotFound) scanOutcomeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [scanResultAwb, scanNotFound]);
+
 
 
   return (
@@ -258,20 +268,30 @@ export default function DriverDashboard() {
         <p className="text-xs text-slate-400">Driver</p>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
+      <div className="mb-6 grid grid-cols-2 items-start gap-2.5 sm:flex sm:flex-wrap">
         <Link
           to={driverPath("/riwayat")}
           className="inline-flex items-center justify-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3.5 py-3 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50 sm:py-2.5"
         >
           <FileSpreadsheet size={16} /> Data Pengiriman
         </Link>
-        <button
-          type="button"
-          onClick={() => setScannerOpen(true)}
-          className="inline-flex items-center justify-center gap-2 rounded-lg border-2 border-blue-900 bg-blue-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 sm:py-2.5"
-        >
-          <ScanLine size={18} /> Scan AWB
-        </button>
+        {/* Scan AWB with the manual-entry alternative stacked right below it. */}
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => setScannerOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border-2 border-blue-900 bg-blue-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 sm:py-2.5"
+          >
+            <ScanLine size={18} /> Scan AWB
+          </button>
+          <button
+            type="button"
+            onClick={() => setManualOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border-2 border-blue-900 bg-white px-4 py-3 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50 sm:py-2.5"
+          >
+            <Keyboard size={18} /> Isi AWB Manual
+          </button>
+        </div>
       </div>
 
       {trucks.length > 0 && (
@@ -455,6 +475,7 @@ export default function DriverDashboard() {
             </div>
           )}
 
+          <div ref={scanOutcomeRef} className="scroll-mt-20">
           {scanNotFound && (
             <div className="mb-3 flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-700">
               <span className="flex items-center gap-2">
@@ -483,6 +504,7 @@ export default function DriverDashboard() {
               />
             </div>
           )}
+          </div>
 
           {openError && (
             <div className="mb-3 flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700">
@@ -561,6 +583,7 @@ export default function DriverDashboard() {
       )}
 
       {scannerOpen && <BarcodeScannerModal onClose={() => setScannerOpen(false)} onDetected={handleScanned} />}
+      {manualOpen && <ManualAwbModal onClose={() => setManualOpen(false)} onSubmit={handleScanned} />}
     </DriverLayout>
   );
 }

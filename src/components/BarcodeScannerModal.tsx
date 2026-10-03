@@ -2,17 +2,11 @@ import { AlertTriangle, Loader2, ScanLine, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { IScannerControls } from "@zxing/browser";
 import { useLanguage } from "../store/LanguageContext";
+import { extractAwb } from "../utils/extractAwb";
 
 interface BarcodeScannerModalProps {
   onClose: () => void;
   onDetected: (awb: string) => void;
-}
-
-/** Pulls the AWB out of either a bare code ("G260911001") or a full
- * tracking URL (e.g. the QR codes this app itself prints encode the URL). */
-function extractAwb(rawText: string): string {
-  const urlMatch = rawText.match(/\/tracking\/([^/?#]+)/i);
-  return (urlMatch ? urlMatch[1] : rawText).trim();
 }
 
 export function BarcodeScannerModal({ onClose, onDetected }: BarcodeScannerModalProps) {

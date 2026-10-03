@@ -17,45 +17,77 @@ export const NAV_SECTIONS = [
   { id: "kontak", key: "contact" },
 ] as const;
 
-const LANGS: { value: Language; Flag: typeof FlagID }[] = [
-  { value: "id", Flag: FlagID },
-  { value: "en", Flag: FlagEN },
+const LANGS: { value: Language; label: string; Flag: typeof FlagID }[] = [
+  { value: "id", label: "Indonesia", Flag: FlagID },
+  { value: "en", label: "English", Flag: FlagEN },
 ];
 
-/** ID | EN segmented switcher. */
+/** Language dropdown (flag + code, opens a list of languages). */
 function LangSwitch({ solid }: { solid: boolean }) {
   const { language, setLanguage } = useLanguage();
   const l = useL();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const Current = LANGS.find((x) => x.value === language) ?? LANGS[0];
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
   return (
-    <div
-      role="group"
-      aria-label={l(C.nav.langLabel)}
-      className={`inline-flex items-center rounded-full border p-0.5 text-base font-bold ${
-        solid ? "border-slate-200 bg-gms-mist" : "border-white/25 bg-white/10"
-      }`}
-    >
-      {LANGS.map(({ value, Flag }) => {
-        const active = language === value;
-        return (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setLanguage(value)}
-            aria-pressed={active}
-            className={`inline-flex min-h-8 items-center gap-1.5 rounded-full px-2.5 uppercase transition-colors ${
-              active
-                ? "bg-gms-gold text-gms-deep"
-                : solid
-                  ? "text-slate-600 hover:text-gms-corp"
-                  : "text-white/80 hover:text-white"
-            }`}
-          >
-            <Flag className="h-3 w-4 rounded-[2px]" />
-            {value}
-            {active && <Check size={11} aria-hidden />}
-          </button>
-        );
-      })}
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label={l(C.nav.langLabel)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-base font-bold uppercase transition-colors ${
+          solid
+            ? "border-slate-200 bg-gms-mist text-slate-700 hover:text-gms-corp"
+            : "border-white/25 bg-white/10 text-white hover:bg-white/20"
+        }`}
+      >
+        <Current.Flag className="h-3 w-4 rounded-[2px]" />
+        {language}
+        <ChevronDown size={14} aria-hidden className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          aria-label={l(C.nav.langLabel)}
+          className="absolute right-0 z-50 mt-2 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+        >
+          {LANGS.map(({ value, label, Flag }) => (
+            <li key={value} role="option" aria-selected={language === value}>
+              <button
+                type="button"
+                onClick={() => {
+                  setLanguage(value);
+                  setOpen(false);
+                }}
+                className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-base font-medium text-slate-700 hover:bg-gms-mist"
+              >
+                <Flag className="h-3.5 w-5 shrink-0 rounded-[2px]" />
+                <span className="flex-1">{label}</span>
+                {language === value && <Check size={15} className="text-gms-corp" aria-hidden />}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

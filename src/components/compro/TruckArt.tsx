@@ -71,7 +71,7 @@ export function TruckArt({ kind, dark = false }: { kind: TruckArtKind; dark?: bo
           <rect x={12} y={96} width={w} height={5} fill={GOLD} />
           {cab(12 + w + 4)}
           <Wheel x={36} />
-          <Wheel x={12 + w - 14} />
+          <Wheel x={60} />
           <Wheel x={12 + w + 36} />
         </>
       );

@@ -40,6 +40,10 @@ export default function UpdateTracking() {
   const { activeTitikLokasi } = useLocations();
   const { profile } = useAuth();
   const isMitra = profile?.role === "Mitra";
+  // Editing shipment data (incl. the addresses) needs shipments.update_info on
+  // the API, which only Superadmin/Admin have. Everyone else (e.g. Mitra) gets
+  // a read-only view of the same details - the edit controls are not rendered.
+  const canEditInfo = profile?.role === "Superadmin" || profile?.role === "Admin";
   const navigate = useNavigate();
 
   const [shipment, setShipment] = useState<Shipment | null>(null);
@@ -318,23 +322,58 @@ export default function UpdateTracking() {
 
       {!locked && (
         <div className="mt-6 rounded-xl border border-slate-200 bg-white shadow-sm">
-          <button
-            type="button"
-            onClick={() => setEditInfoOpen((v) => !v)}
-            className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left sm:px-6"
-          >
-            <span className="flex items-center gap-2">
-              <Pencil size={16} className="text-blue-900" />
-              <span className="text-sm font-semibold text-slate-800">Data Pengiriman</span>
-              <span className="hidden text-xs text-slate-400 sm:inline">(Pengirim, Penerima, Rute, Layanan)</span>
-            </span>
-            <ChevronDown
-              size={16}
-              className={`shrink-0 text-slate-400 transition-transform ${editInfoOpen ? "rotate-180" : ""}`}
-            />
-          </button>
+          {canEditInfo ? (
+            <button
+              type="button"
+              onClick={() => setEditInfoOpen((v) => !v)}
+              className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left sm:px-6"
+            >
+              <span className="flex items-center gap-2">
+                <Pencil size={16} className="text-blue-900" />
+                <span className="text-sm font-semibold text-slate-800">Data Pengiriman</span>
+                <span className="hidden text-xs text-slate-400 sm:inline">(Pengirim, Penerima, Rute, Layanan)</span>
+              </span>
+              <ChevronDown
+                size={16}
+                className={`shrink-0 text-slate-400 transition-transform ${editInfoOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+          ) : (
+            <div className="flex items-center justify-between gap-3 px-5 py-4 sm:px-6">
+              <span className="flex items-center gap-2">
+                <MapPin size={16} className="text-blue-900" />
+                <span className="text-sm font-semibold text-slate-800">Data Pengiriman</span>
+              </span>
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-500">Hanya lihat</span>
+            </div>
+          )}
 
-          {!editInfoOpen && (
+          {!canEditInfo && (
+            <div className="grid grid-cols-1 gap-5 border-t border-slate-100 px-5 py-4 text-sm sm:grid-cols-2 sm:px-6">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Pengirim</p>
+                <p className="mt-0.5 font-medium text-slate-800">{shipment.pengirim.nama}</p>
+                <p className="text-xs text-slate-500">{shipment.pengirim.telepon}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Penerima</p>
+                <p className="mt-0.5 font-medium text-slate-800">{shipment.penerima.nama}</p>
+                <p className="text-xs text-slate-500">{shipment.penerima.telepon}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Alamat Asal</p>
+                <p className="mt-0.5 font-medium text-slate-800">{shipment.kotaAsal}</p>
+                <p className="text-xs text-slate-500">{shipment.alamatAsal}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Alamat Tujuan</p>
+                <p className="mt-0.5 font-medium text-slate-800">{shipment.kotaTujuan}</p>
+                <p className="text-xs text-slate-500">{shipment.alamatTujuan}</p>
+              </div>
+            </div>
+          )}
+
+          {canEditInfo && !editInfoOpen && (
             <div className="grid grid-cols-1 gap-4 border-t border-slate-100 px-5 py-4 text-sm sm:grid-cols-3 sm:px-6">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Pengirim</p>
@@ -355,7 +394,7 @@ export default function UpdateTracking() {
             </div>
           )}
 
-          {editInfoOpen && (
+          {canEditInfo && editInfoOpen && (
             <form onSubmit={handleSaveInfo} className="border-t border-slate-100 px-5 py-5 sm:px-6">
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>

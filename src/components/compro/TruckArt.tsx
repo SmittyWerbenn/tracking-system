@@ -53,9 +53,18 @@ export function TruckArt({ kind, dark = false }: { kind: TruckArtKind; dark?: bo
       );
       break;
     case "cde":
+      content = (
+        <>
+          <rect x={12} y={50} width={82} height={60} rx={3} fill={body} stroke={stroke} strokeWidth={2.5} />
+          <rect x={12} y={96} width={82} height={5} fill={GOLD} />
+          {cab(98)}
+          <Wheel x={36} />
+          <Wheel x={130} />
+        </>
+      );
+      break;
     case "cdd": {
-      const long = kind === "cdd";
-      const w = long ? 100 : 82;
+      const w = 100;
       content = (
         <>
           <rect x={12} y={50} width={w} height={60} rx={3} fill={body} stroke={stroke} strokeWidth={2.5} />

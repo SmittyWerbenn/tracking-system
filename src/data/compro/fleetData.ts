@@ -98,8 +98,8 @@ export const fleetData: FleetItem[] = [
     group: "cde",
     bodyTypes: ["Bak", "Box", "Treway"],
     specs: [
-      { label: "CDE Bak", tires: 6, dimensions: "3.5 x 1.8 x 1.6", capacity: "3 Ton", volume: "10 CBM" },
-      { label: "CDE Box", tires: 6, dimensions: "3.5 x 1.8 x 1.7", capacity: "3 Ton", volume: "11 CBM" },
+      { label: "CDE Bak", tires: 4, dimensions: "3.5 x 1.8 x 1.6", capacity: "3 Ton", volume: "10 CBM" },
+      { label: "CDE Box", tires: 4, dimensions: "3.5 x 1.8 x 1.7", capacity: "3 Ton", volume: "11 CBM" },
     ],
     art: "cde",
     description: {
@@ -116,7 +116,7 @@ export const fleetData: FleetItem[] = [
     name: "CDE Long",
     group: "cde",
     bodyTypes: ["Bak", "Box"],
-    specs: [{ label: "CDE Long", tires: 6, dimensions: "4.5 x 1.8 x 1.8", capacity: "3.5 Ton", volume: "14 CBM" }],
+    specs: [{ label: "CDE Long", tires: 4, dimensions: "4.5 x 1.8 x 1.8", capacity: "3.5 Ton", volume: "14 CBM" }],
     art: "cde",
     description: {
       id: "Versi bak lebih panjang untuk muatan yang membutuhkan ruang lebih.",

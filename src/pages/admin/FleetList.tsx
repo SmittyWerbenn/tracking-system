@@ -1,11 +1,20 @@
 import { adminPath } from "../../utils/urls";
-import { AlertTriangle, Ban, CheckCircle2, History, Pencil, Plus, RotateCcw, Table, X } from "lucide-react";
+import { AlertTriangle, Ban, CheckCircle2, History, Pencil, Plus, RotateCcw, Table, Truck, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArmadaStatusBadge } from "../../components/ArmadaStatusBadge";
 import { BulkFleetImport } from "../../components/BulkFleetImport";
 import { AdminLayout } from "../../components/layout/AdminLayout";
-import { RefreshButton } from "../../components/RefreshButton";
+import {
+  MasterDataHeader,
+  MasterDataToolbar,
+  MasterEmptyAction,
+  MasterFilterReset,
+  MasterFilterSelect,
+  MasterSearchInput,
+  MasterTableCard,
+  MasterTableMessage,
+} from "../../components/master/MasterData";
 import { useAuth } from "../../store/AuthContext";
 import { useFleet, type TruckFormData, type TruckWithDriver } from "../../store/FleetContext";
 import type { ArmadaStatus } from "../../types";
@@ -95,10 +104,31 @@ export default function FleetList() {
     });
   }
 
-  const filteredTrucks = useMemo(
-    () => (statusFilter === "Semua" ? trucksWithDriver : trucksWithDriver.filter((t) => t.status === statusFilter)),
-    [trucksWithDriver, statusFilter],
+  const [search, setSearch] = useState("");
+  const [jenisFilter, setJenisFilter] = useState("");
+  const usedJenis = useMemo(
+    () => Array.from(new Set(trucksWithDriver.map((t) => t.jenis))).sort((x, y) => x.localeCompare(y)),
+    [trucksWithDriver],
   );
+  const hasFilter = search.trim() !== "" || jenisFilter !== "" || statusFilter !== "Semua";
+  function resetFilters() {
+    setSearch("");
+    setJenisFilter("");
+    handleStatusFilterChange("Semua");
+  }
+
+  const filteredTrucks = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return trucksWithDriver.filter(
+      (t) =>
+        (statusFilter === "Semua" || t.status === statusFilter) &&
+        (!jenisFilter || t.jenis === jenisFilter) &&
+        (!q ||
+          [t.nomorUnit, t.jenis, t.kapasitas, t.driver?.nama, t.driver?.telepon, t.keterangan].some((v) =>
+            v?.toLowerCase().includes(q),
+          )),
+    );
+  }, [trucksWithDriver, statusFilter, jenisFilter, search]);
 
   async function handleCreateSubmit(e: FormEvent) {
     e.preventDefault();
@@ -151,33 +181,18 @@ export default function FleetList() {
           <option key={j} value={j} />
         ))}
       </datalist>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Master Armada</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {!expanded
-              ? "Kelola data unit truck dan driver."
-              : mode === "single"
-                ? "Tambah satu unit truck ke master armada."
-                : "Tambah banyak unit truck sekaligus dengan mengisi tabel atau mengimpor file Excel/CSV."}
-          </p>
-        </div>
-        {!expanded && (
-          <div className="flex items-center gap-2">
-            <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
-            {canEdit && (
-              <button
-                type="button"
-                onClick={() => setExpanded(true)}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-              >
-                <Plus size={16} /> Tambah Truck
-              </button>
-            )}
-          </div>
-        )}
-        {canEdit && expanded && (
-          <div className="flex items-center gap-2">
+      <MasterDataHeader
+        title="Master Armada"
+        description={
+          !expanded
+            ? "Kelola data unit truck dan driver."
+            : mode === "single"
+              ? "Tambah satu unit truck ke master armada."
+              : "Tambah banyak unit truck sekaligus dengan mengisi tabel atau mengimpor file Excel/CSV."
+        }
+        actions={
+          canEdit && expanded ? (
+            <>
             <div className="inline-flex items-center gap-1 rounded-lg bg-slate-100 p-1">
               <button
                 type="button"
@@ -208,9 +223,10 @@ export default function FleetList() {
             >
               <X size={16} />
             </button>
-          </div>
-        )}
-      </div>
+            </>
+          ) : undefined
+        }
+      />
 
       {canEdit && expanded && mode === "bulk" && (
         <div className="mt-6">
@@ -332,45 +348,50 @@ export default function FleetList() {
 
       {!expanded && (
       <>
-      <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <select
+      <MasterDataToolbar
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
+        addLabel="Tambah Truck"
+        onAdd={canEdit ? () => setExpanded(true) : undefined}
+      >
+        <MasterSearchInput value={search} onChange={setSearch} placeholder="Cari nomor unit, jenis, atau driver..." />
+        <MasterFilterSelect
           value={statusFilter}
-          onChange={(e) => handleStatusFilterChange(e.target.value as ArmadaStatus | "Semua")}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+          onChange={(v) => handleStatusFilterChange(v as ArmadaStatus | "Semua")}
+          label="Filter status"
         >
           <option value="Semua">Semua Status</option>
-          {ARMADA_STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s}>
-              {s}
+          {ARMADA_STATUS_OPTIONS.map((st) => (
+            <option key={st} value={st}>
+              {st}
             </option>
           ))}
-        </select>
-        {statusFilter !== "Semua" && (
-          <button
-            onClick={() => handleStatusFilterChange("Semua")}
-            className="text-sm font-medium text-slate-500 hover:text-slate-800"
-          >
-            Reset
-          </button>
-        )}
-      </div>
+        </MasterFilterSelect>
+        <MasterFilterSelect value={jenisFilter} onChange={setJenisFilter} label="Filter jenis">
+          <option value="">Semua Jenis</option>
+          {usedJenis.map((j) => (
+            <option key={j} value={j}>
+              {j}
+            </option>
+          ))}
+        </MasterFilterSelect>
+        <MasterFilterReset visible={hasFilter} onReset={resetFilters} />
+      </MasterDataToolbar>
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px] text-left text-sm">
-            <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">Nomor Unit</th>
-                <th className="px-4 py-3 font-medium">Jenis</th>
-                <th className="px-4 py-3 font-medium">Kapasitas</th>
-                <th className="px-4 py-3 font-medium">Driver</th>
-                <th className="px-4 py-3 font-medium">No. HP Driver</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Keterangan</th>
-                <th className="px-4 py-3 font-medium">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
+      <MasterTableCard minWidth={960}>
+        <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <tr>
+            <th className="px-4 py-3 font-medium">Nomor Unit</th>
+            <th className="px-4 py-3 font-medium">Jenis</th>
+            <th className="px-4 py-3 font-medium">Kapasitas</th>
+            <th className="px-4 py-3 font-medium">Driver</th>
+            <th className="px-4 py-3 font-medium">No. HP Driver</th>
+            <th className="px-4 py-3 font-medium">Status</th>
+            <th className="px-4 py-3 font-medium">Keterangan</th>
+            <th className="px-4 py-3 font-medium">Aksi</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
               {filteredTrucks.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-50">
                   <td className="whitespace-nowrap px-4 py-3 font-mono font-medium text-slate-900">
@@ -426,17 +447,23 @@ export default function FleetList() {
                   </td>
                 </tr>
               ))}
-              {filteredTrucks.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-400">
-                    Tidak ada armada yang cocok dengan filter.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+          {filteredTrucks.length === 0 && (
+            <MasterTableMessage
+              colSpan={8}
+              loadingText=""
+              icon={Truck}
+              title={
+                trucksWithDriver.length > 0 ? "Tidak ada armada yang cocok dengan filter." : "Belum ada data armada."
+              }
+              action={
+                trucksWithDriver.length === 0 && canEdit ? (
+                  <MasterEmptyAction label="Tambah Truck" onClick={() => setExpanded(true)} />
+                ) : undefined
+              }
+            />
+          )}
+        </tbody>
+      </MasterTableCard>
       </>
       )}
 

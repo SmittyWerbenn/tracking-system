@@ -2,7 +2,16 @@ import { AlertTriangle, Ban, CheckCircle2, MapPinned, Pencil, RotateCcw, Table, 
 import { useMemo, useState, type FormEvent } from "react";
 import { BulkLocationImport } from "../../components/BulkLocationImport";
 import { AdminLayout } from "../../components/layout/AdminLayout";
-import { RefreshButton } from "../../components/RefreshButton";
+import {
+  MasterDataHeader,
+  MasterDataToolbar,
+  MasterEmptyAction,
+  MasterFilterReset,
+  MasterFilterSelect,
+  MasterSearchInput,
+  MasterTableCard,
+  MasterTableMessage,
+} from "../../components/master/MasterData";
 import { useAuth } from "../../store/AuthContext";
 import { useLocations, type TitikFormData } from "../../store/LocationContext";
 import { ApiError } from "../../utils/apiClient";
@@ -10,6 +19,8 @@ import type { TitikJenis, TitikLokasi } from "../../types";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
+
+type StatusFilter = "semua" | "aktif" | "nonaktif";
 
 const JENIS_OPTIONS: TitikJenis[] = ["Gudang", "Hub", "Transit", "Cabang", "Tujuan"];
 
@@ -37,6 +48,25 @@ export default function LocationList() {
       setRefreshing(false);
     }
   }
+
+  const [search, setSearch] = useState("");
+  const [jenisFilter, setJenisFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("semua");
+  const hasFilter = search.trim() !== "" || jenisFilter !== "" || statusFilter !== "semua";
+  function resetFilters() {
+    setSearch("");
+    setJenisFilter("");
+    setStatusFilter("semua");
+  }
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return titikLokasi.filter(
+      (t) =>
+        (!q || [t.namaKota, t.kodeKota, t.provinsi].some((v) => v.toLowerCase().includes(q))) &&
+        (!jenisFilter || t.jenis === jenisFilter) &&
+        (statusFilter === "semua" || (statusFilter === "aktif" ? t.aktif : !t.aktif)),
+    );
+  }, [titikLokasi, search, jenisFilter, statusFilter]);
 
   const [expanded, setExpanded] = useState(false);
   const [mode, setMode] = useState<"single" | "bulk">("single");
@@ -98,33 +128,18 @@ export default function LocationList() {
 
   return (
     <AdminLayout>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Kota &amp; Titik Transit</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {!expanded
-              ? "Master data lokasi yang digunakan pada pengiriman dan update tracking."
-              : mode === "single"
-                ? "Tambah satu titik lokasi ke master data."
-                : "Tambah banyak titik lokasi sekaligus dengan mengisi tabel atau mengimpor file Excel/CSV."}
-          </p>
-        </div>
-        {!expanded && (
-          <div className="flex items-center gap-2">
-            <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
-            {canEdit && (
-              <button
-                type="button"
-                onClick={() => setExpanded(true)}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-              >
-                <Plus size={16} /> Tambah Titik
-              </button>
-            )}
-          </div>
-        )}
-        {canEdit && expanded && (
-          <div className="flex items-center gap-2">
+      <MasterDataHeader
+        title="Kota & Titik Transit"
+        description={
+          !expanded
+            ? "Master data lokasi yang digunakan pada pengiriman dan update tracking."
+            : mode === "single"
+              ? "Tambah satu titik lokasi ke master data."
+              : "Tambah banyak titik lokasi sekaligus dengan mengisi tabel atau mengimpor file Excel/CSV."
+        }
+        actions={
+          canEdit && expanded ? (
+            <>
             <div className="inline-flex items-center gap-1 rounded-lg bg-slate-100 p-1">
               <button
                 type="button"
@@ -155,9 +170,10 @@ export default function LocationList() {
             >
               <X size={16} />
             </button>
-          </div>
-        )}
-      </div>
+            </>
+          ) : undefined
+        }
+      />
 
       {canEdit && expanded && mode === "bulk" && (
         <div className="mt-6">
@@ -255,9 +271,31 @@ export default function LocationList() {
       )}
 
       {!expanded && (
-      <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-sm">
+        <>
+          <MasterDataToolbar
+            onRefresh={handleRefresh}
+            refreshing={refreshing}
+            addLabel="Tambah Titik"
+            onAdd={canEdit ? () => setExpanded(true) : undefined}
+          >
+            <MasterSearchInput value={search} onChange={setSearch} placeholder="Cari kota, kode, atau provinsi..." />
+            <MasterFilterSelect value={jenisFilter} onChange={setJenisFilter} label="Filter jenis titik">
+              <option value="">Semua Jenis</option>
+              {JENIS_OPTIONS.map((j) => (
+                <option key={j} value={j}>
+                  {j}
+                </option>
+              ))}
+            </MasterFilterSelect>
+            <MasterFilterSelect value={statusFilter} onChange={(v) => setStatusFilter(v as StatusFilter)} label="Filter status">
+              <option value="semua">Semua Status</option>
+              <option value="aktif">Aktif</option>
+              <option value="nonaktif">Nonaktif</option>
+            </MasterFilterSelect>
+            <MasterFilterReset visible={hasFilter} onReset={resetFilters} />
+          </MasterDataToolbar>
+
+          <MasterTableCard minWidth={720}>
             <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3 font-medium">Nama Kota</th>
@@ -269,35 +307,32 @@ export default function LocationList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {titikLokasi.length === 0 && (
-                <tr>
-                  <td colSpan={canEdit ? 6 : 5} className="px-4 py-14 text-center">
-                    {isLoading ? (
-                      <span className="text-sm text-slate-400">Memuat data lokasi...</span>
-                    ) : (
-                      <div className="mx-auto flex max-w-sm flex-col items-center gap-2">
-                        <MapPinned size={28} className="text-slate-300" />
-                        <p className="text-sm font-semibold text-slate-700">Belum ada data kota & titik transit</p>
-                        <p className="text-xs text-slate-500">
-                          {canEdit
-                            ? "Tambahkan kota atau titik transit terlebih dahulu. Data ini dipakai sebagai pilihan lokasi pada pembuatan pengiriman dan update tracking."
-                            : "Data ini dikelola oleh Admin dan dipakai sebagai pilihan lokasi pada pengiriman dan update tracking."}
-                        </p>
-                        {canEdit && (
-                          <button
-                            type="button"
-                            onClick={() => setExpanded(true)}
-                            className="mt-2 inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-                          >
-                            <Plus size={15} /> Tambah Titik
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                </tr>
+              {filtered.length === 0 && (
+                <MasterTableMessage
+                  colSpan={canEdit ? 6 : 5}
+                  loading={isLoading && titikLokasi.length === 0}
+                  loadingText="Memuat data lokasi..."
+                  icon={MapPinned}
+                  title={
+                    titikLokasi.length > 0
+                      ? "Tidak ada kota/titik yang cocok dengan filter."
+                      : "Belum ada data kota & titik transit"
+                  }
+                  description={
+                    titikLokasi.length > 0
+                      ? undefined
+                      : canEdit
+                        ? "Tambahkan kota atau titik transit terlebih dahulu. Data ini dipakai sebagai pilihan lokasi pada pembuatan pengiriman dan update tracking."
+                        : "Data ini dikelola oleh Admin dan dipakai sebagai pilihan lokasi pada pengiriman dan update tracking."
+                  }
+                  action={
+                    titikLokasi.length === 0 && canEdit ? (
+                      <MasterEmptyAction label="Tambah Titik" onClick={() => setExpanded(true)} />
+                    ) : undefined
+                  }
+                />
               )}
-              {titikLokasi.map((t) => (
+              {filtered.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-50">
                   <td className="whitespace-nowrap px-4 py-3">
                     <span className="flex items-center gap-1.5 font-medium text-slate-900">
@@ -354,9 +389,8 @@ export default function LocationList() {
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
-      </div>
+          </MasterTableCard>
+        </>
       )}
 
       {editModalOpen && (

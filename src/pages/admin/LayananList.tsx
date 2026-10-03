@@ -1,7 +1,15 @@
-import { AlertTriangle, Ban, Layers, Pencil, Plus, RotateCcw, Search, ShieldCheck, Trash2, X } from "lucide-react";
+import { AlertTriangle, Ban, Layers, Pencil, RotateCcw, ShieldCheck, Trash2, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
-import { RefreshButton } from "../../components/RefreshButton";
+import {
+  MasterDataHeader,
+  MasterDataToolbar,
+  MasterFilterReset,
+  MasterFilterSelect,
+  MasterSearchInput,
+  MasterTableCard,
+  MasterTableMessage,
+} from "../../components/master/MasterData";
 import { useLayanan, type Layanan } from "../../store/LayananContext";
 import { ApiError } from "../../utils/apiClient";
 
@@ -9,6 +17,8 @@ const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
 
 const CUSTOM = "__custom__";
+
+type StatusFilter = "semua" | "aktif" | "nonaktif";
 
 export default function LayananList() {
   const { layanans, standardOptions, fallback, isLoading, refresh, createLayanan, updateLayanan, deleteLayanan } =
@@ -24,10 +34,20 @@ export default function LayananList() {
   }
 
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("semua");
+  const hasFilter = search.trim() !== "" || statusFilter !== "semua";
+  function resetFilters() {
+    setSearch("");
+    setStatusFilter("semua");
+  }
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return q ? layanans.filter((l) => l.nama.toLowerCase().includes(q)) : layanans;
-  }, [layanans, search]);
+    return layanans.filter(
+      (l) =>
+        (!q || l.nama.toLowerCase().includes(q)) &&
+        (statusFilter === "semua" || (statusFilter === "aktif" ? l.aktif : !l.aktif)),
+    );
+  }, [layanans, search, statusFilter]);
 
   const [pageError, setPageError] = useState<string | null>(null);
 
@@ -125,28 +145,23 @@ export default function LayananList() {
 
   return (
     <AdminLayout>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-semibold text-slate-900">Master Layanan</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Daftar layanan pengiriman. Hanya layanan berstatus Aktif yang bisa dipilih saat membuat atau mengedit order.
-            Layanan yang tidak dikenali pada order baru otomatis memakai {fallback.nama}.
-          </p>
-        </div>
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
-          <button
-            type="button"
-            onClick={() => openAdd()}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-          >
-            <Plus size={16} /> Tambah Layanan
-          </button>
-        </div>
-      </div>
+      <MasterDataHeader
+        title="Master Layanan"
+        description={`Daftar layanan pengiriman. Hanya layanan berstatus Aktif yang bisa dipilih saat membuat atau mengedit order. Layanan yang tidak dikenali pada order baru otomatis memakai ${fallback.nama}.`}
+      />
+
+      <MasterDataToolbar onRefresh={handleRefresh} refreshing={refreshing} addLabel="Tambah Layanan" onAdd={() => openAdd()}>
+        <MasterSearchInput value={search} onChange={setSearch} placeholder="Cari nama layanan..." />
+        <MasterFilterSelect value={statusFilter} onChange={(v) => setStatusFilter(v as StatusFilter)} label="Filter status">
+          <option value="semua">Semua Status</option>
+          <option value="aktif">Aktif</option>
+          <option value="nonaktif">Nonaktif</option>
+        </MasterFilterSelect>
+        <MasterFilterReset visible={hasFilter} onReset={resetFilters} />
+      </MasterDataToolbar>
 
       {!fallback.ready && !isLoading && (
-        <div className="mt-5 flex flex-wrap items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="mt-4 flex flex-wrap items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <div className="flex items-start gap-2">
             <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-600" />
             <p>
@@ -168,7 +183,7 @@ export default function LayananList() {
       )}
 
       {pageError && (
-        <div className="mt-5 flex items-start justify-between gap-3 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+        <div className="mt-4 flex items-start justify-between gap-3 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           <span>{pageError}</span>
           <button type="button" onClick={() => setPageError(null)} className="shrink-0 text-red-500 hover:text-red-800" title="Tutup">
             <X size={15} />
@@ -176,106 +191,85 @@ export default function LayananList() {
         </div>
       )}
 
-      <div className="relative mt-5 max-w-xs">
-        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Cari layanan..."
-          className={`${inputClass} pl-9`}
-        />
-      </div>
-
-      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] text-left text-sm">
-            <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">Layanan</th>
-                <th className="px-4 py-3 font-medium">Dipakai Order</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-4 py-14 text-center">
-                    {isLoading ? (
-                      <span className="text-sm text-slate-400">Memuat data layanan...</span>
-                    ) : (
-                      <div className="mx-auto flex max-w-sm flex-col items-center gap-2">
-                        <Layers size={28} className="text-slate-300" />
-                        <p className="text-sm font-semibold text-slate-700">
-                          {search ? "Tidak ada layanan yang cocok." : "Belum ada data layanan."}
-                        </p>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              )}
-              {filtered.map((l) => (
-                <tr key={l.id} className="hover:bg-slate-50">
-                  <td className="whitespace-nowrap px-4 py-3">
-                    <span className="flex items-center gap-2 font-semibold text-slate-900">
-                      <Layers size={14} className="text-teal-600" />
-                      {l.nama}
-                      {l.fallback && (
-                        <span
-                          title="Layanan fallback order - tidak bisa dihapus, dinonaktifkan, atau diganti namanya"
-                          className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700"
-                        >
-                          <ShieldCheck size={11} /> Default
-                        </span>
-                      )}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{l.jumlahOrder} order</td>
-                  <td className="whitespace-nowrap px-4 py-3">
+      <MasterTableCard minWidth={560}>
+        <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <tr>
+            <th className="px-4 py-3 font-medium">Layanan</th>
+            <th className="px-4 py-3 font-medium">Dipakai Order</th>
+            <th className="px-4 py-3 font-medium">Status</th>
+            <th className="px-4 py-3 font-medium">Aksi</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {filtered.length === 0 && (
+            <MasterTableMessage
+              colSpan={4}
+              loading={isLoading && layanans.length === 0}
+              loadingText="Memuat data layanan..."
+              icon={Layers}
+              title={layanans.length > 0 ? "Tidak ada layanan yang cocok dengan filter." : "Belum ada data layanan."}
+            />
+          )}
+          {filtered.map((l) => (
+            <tr key={l.id} className="hover:bg-slate-50">
+              <td className="whitespace-nowrap px-4 py-3">
+                <span className="flex items-center gap-2 font-semibold text-slate-900">
+                  <Layers size={14} className="text-teal-600" />
+                  {l.nama}
+                  {l.fallback && (
                     <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                        l.aktif ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
-                      }`}
+                      title="Layanan fallback order - tidak bisa dihapus, dinonaktifkan, atau diganti namanya"
+                      className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700"
                     >
-                      {l.aktif ? "Aktif" : "Nonaktif"}
+                      <ShieldCheck size={11} /> Default
                     </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => openEdit(l)}
-                        disabled={l.fallback}
-                        title={l.fallback ? "Layanan default tidak bisa diganti namanya" : "Edit"}
-                        className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-500"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleToggleActive(l)}
-                        disabled={busyId === l.id || (l.fallback && l.aktif)}
-                        title={l.fallback && l.aktif ? "Layanan default tidak bisa dinonaktifkan" : l.aktif ? "Nonaktifkan" : "Aktifkan"}
-                        className={`rounded-md p-1.5 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent ${
-                          l.aktif ? "text-slate-500 hover:text-red-600" : "text-slate-500 hover:text-emerald-600"
-                        }`}
-                      >
-                        {l.aktif ? <Ban size={16} /> : <RotateCcw size={16} />}
-                      </button>
-                      <button
-                        onClick={() => handleDelete(l)}
-                        disabled={busyId === l.id || l.fallback}
-                        title={l.fallback ? "Layanan default tidak bisa dihapus" : "Hapus"}
-                        className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-500"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                  )}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-slate-600">{l.jumlahOrder} order</td>
+              <td className="whitespace-nowrap px-4 py-3">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    l.aktif ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {l.aktif ? "Aktif" : "Nonaktif"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => openEdit(l)}
+                    disabled={l.fallback}
+                    title={l.fallback ? "Layanan default tidak bisa diganti namanya" : "Edit"}
+                    className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-500"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleToggleActive(l)}
+                    disabled={busyId === l.id || (l.fallback && l.aktif)}
+                    title={l.fallback && l.aktif ? "Layanan default tidak bisa dinonaktifkan" : l.aktif ? "Nonaktifkan" : "Aktifkan"}
+                    className={`rounded-md p-1.5 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent ${
+                      l.aktif ? "text-slate-500 hover:text-red-600" : "text-slate-500 hover:text-emerald-600"
+                    }`}
+                  >
+                    {l.aktif ? <Ban size={16} /> : <RotateCcw size={16} />}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(l)}
+                    disabled={busyId === l.id || l.fallback}
+                    title={l.fallback ? "Layanan default tidak bisa dihapus" : "Hapus"}
+                    className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-500"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </MasterTableCard>
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

@@ -1,7 +1,16 @@
-import { Building2, Pencil, Plus, Power, X } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { Building2, Pencil, Power, X } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
-import { RefreshButton } from "../../components/RefreshButton";
+import {
+  MasterDataHeader,
+  MasterDataToolbar,
+  MasterEmptyAction,
+  MasterFilterReset,
+  MasterFilterSelect,
+  MasterSearchInput,
+  MasterTableCard,
+  MasterTableMessage,
+} from "../../components/master/MasterData";
 import { useAuth } from "../../store/AuthContext";
 import { api, ApiError } from "../../utils/apiClient";
 import { formatTanggalPanjang, isoToWib } from "../../utils/format";
@@ -23,6 +32,8 @@ interface CustomerRow {
   shipmentCount: number;
   accounts: CustomerAccount[];
 }
+
+type StatusFilter = "semua" | "aktif" | "nonaktif";
 
 function formatCreatedAt(iso: string): string {
   return formatTanggalPanjang(isoToWib(iso).tanggal);
@@ -156,6 +167,32 @@ export default function CustomerList() {
     fetchCustomers().finally(() => setIsLoading(false));
   }, []);
 
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("semua");
+  const [kotaFilter, setKotaFilter] = useState("");
+  const hasFilter = search.trim() !== "" || statusFilter !== "semua" || kotaFilter !== "";
+  function resetFilters() {
+    setSearch("");
+    setStatusFilter("semua");
+    setKotaFilter("");
+  }
+  const kotaOptions = useMemo(
+    () => Array.from(new Set(customers.map((c) => c.kota?.trim()).filter((k): k is string => !!k))).sort((x, y) => x.localeCompare(y)),
+    [customers],
+  );
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return customers.filter(
+      (c) =>
+        (statusFilter === "semua" || (statusFilter === "aktif" ? c.aktif : !c.aktif)) &&
+        (!kotaFilter || c.kota?.trim() === kotaFilter) &&
+        (!q ||
+          [c.customerId, c.nama, c.kota, c.kontrakNoPelanggan, ...c.accounts.flatMap((a) => [a.nama, a.email])].some((v) =>
+            v?.toLowerCase().includes(q),
+          )),
+    );
+  }, [customers, search, statusFilter, kotaFilter]);
+
   async function handleRefresh() {
     setRefreshing(true);
     try {
@@ -167,28 +204,35 @@ export default function CustomerList() {
 
   return (
     <AdminLayout>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Clients</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Daftar Client beserta akun yang tertaut dan jumlah pengiriman. Client baru ditambahkan di
-            sini terlebih dahulu, lalu dipilih saat membuat user di Manajemen User.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
-          <button
-            type="button"
-            onClick={openModal}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-          >
-            <Plus size={16} /> Tambah Client
-          </button>
-        </div>
-      </div>
+      <MasterDataHeader
+        title="Clients"
+        description="Daftar Client beserta akun yang tertaut dan jumlah pengiriman. Client baru ditambahkan di sini terlebih dahulu, lalu dipilih saat membuat user di Manajemen User."
+      />
+
+      <MasterDataToolbar onRefresh={handleRefresh} refreshing={refreshing} addLabel="Tambah Client" onAdd={openModal}>
+        <MasterSearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari Client ID, nama, kota, kontrak, atau akun..."
+        />
+        <MasterFilterSelect value={statusFilter} onChange={(v) => setStatusFilter(v as StatusFilter)} label="Filter status client">
+          <option value="semua">Semua Status</option>
+          <option value="aktif">Aktif</option>
+          <option value="nonaktif">Nonaktif</option>
+        </MasterFilterSelect>
+        <MasterFilterSelect value={kotaFilter} onChange={setKotaFilter} label="Filter kota">
+          <option value="">Semua Kota</option>
+          {kotaOptions.map((k) => (
+            <option key={k} value={k}>
+              {k}
+            </option>
+          ))}
+        </MasterFilterSelect>
+        <MasterFilterReset visible={hasFilter} onReset={resetFilters} />
+      </MasterDataToolbar>
 
       {notice && (
-        <div className="mt-5 flex items-start justify-between gap-3 rounded-lg bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+        <div className="mt-4 flex items-start justify-between gap-3 rounded-lg bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
           <span>{notice}</span>
           <button type="button" onClick={() => setNotice(null)} className="shrink-0 text-emerald-600 hover:text-emerald-900" title="Tutup">
             <X size={15} />
@@ -197,129 +241,126 @@ export default function CustomerList() {
       )}
 
       {error && (
-        <div className="mt-5 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>
+        <div className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>
       )}
 
-      {isLoading ? (
-        <div className="mt-8 flex justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-blue-900" />
-        </div>
-      ) : customers.length === 0 ? (
-        <div className="mt-8 rounded-xl border border-dashed border-slate-300 bg-white py-14 text-center text-sm text-slate-400">
-          Belum ada Client. Klik "Tambah Client" untuk membuat Client ID pertama.
-        </div>
-      ) : (
-        <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1440px] text-left text-sm">
-              <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Client ID</th>
-                  <th className="px-4 py-3 font-medium">Nama Client</th>
-                  <th className="px-4 py-3 font-medium">Kota</th>
-                  <th className="px-4 py-3 font-medium">Kontrak Kerja Sama / No. Pelanggan</th>
-                  <th className="px-4 py-3 font-medium">Status Client</th>
-                  <th className="px-4 py-3 font-medium">Nama Akun</th>
-                  <th className="px-4 py-3 font-medium">Email</th>
-                  <th className="px-4 py-3 font-medium">Status Akun</th>
-                  <th className="px-4 py-3 font-medium">Dibuat</th>
-                  <th className="px-4 py-3 font-medium">Jumlah Pengiriman</th>
-                  <th className="px-4 py-3 font-medium">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {customers.map((c) => {
-                  const rows = c.accounts.length > 0 ? c.accounts : [null];
-                  return rows.map((a, i) => (
-                    <tr key={a ? a.id : `client-${c.customerId}`} className="hover:bg-slate-50">
-                      {i === 0 && (
-                        <>
-                          <td rowSpan={rows.length} className="whitespace-nowrap border-r border-slate-100 px-4 py-3 align-top">
-                            <span className="flex items-center gap-1.5 font-mono font-semibold text-slate-900">
-                              <Building2 size={14} className="text-teal-600" />
-                              {c.customerId}
-                            </span>
-                          </td>
-                          <td rowSpan={rows.length} className="px-4 py-3 align-top text-slate-800">
-                            {c.nama ?? "-"}
-                          </td>
-                          <td rowSpan={rows.length} className="px-4 py-3 align-top text-slate-800">
-                            {c.kota ?? "-"}
-                          </td>
-                          <td rowSpan={rows.length} className="px-4 py-3 align-top">
-                            <span className={c.kontrakNoPelanggan ? "font-mono text-slate-800" : "text-slate-400"}>
-                              {c.kontrakNoPelanggan ?? "-"}
-                            </span>
-                          </td>
-                          <td rowSpan={rows.length} className="whitespace-nowrap px-4 py-3 align-top">
-                            <span
-                              className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                                c.aktif ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
-                              }`}
-                            >
-                              {c.aktif ? "Aktif" : "Nonaktif"}
-                            </span>
-                          </td>
-                        </>
-                      )}
-                      {a ? (
-                        <>
-                          <td className="px-4 py-3 text-slate-800">{a.nama}</td>
-                          <td className="px-4 py-3 text-slate-600">{a.email}</td>
-                          <td className="whitespace-nowrap px-4 py-3">
-                            <span
-                              className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                                a.aktif ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
-                              }`}
-                            >
-                              {a.aktif ? "Aktif" : "Nonaktif"}
-                            </span>
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">{formatCreatedAt(a.createdAt)}</td>
-                        </>
-                      ) : (
-                        <td colSpan={4} className="px-4 py-3 text-xs italic text-slate-400">
-                          Belum ada akun user untuk client ini.
-                        </td>
-                      )}
-                      {i === 0 && (
-                        <td rowSpan={rows.length} className="whitespace-nowrap px-4 py-3 align-top text-slate-600">
-                          {c.shipmentCount}
-                        </td>
-                      )}
-                      {i === 0 && (
-                        <td rowSpan={rows.length} className="whitespace-nowrap px-4 py-3 align-top">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openEdit(c)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                            >
-                              <Pencil size={13} /> Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleToggleActive(c)}
-                              disabled={togglingId === c.customerId}
-                              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium disabled:opacity-50 ${
-                                c.aktif
-                                  ? "border-red-200 text-red-600 hover:bg-red-50"
-                                  : "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                              }`}
-                            >
-                              <Power size={13} /> {c.aktif ? "Nonaktifkan" : "Aktifkan"}
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ));
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      <MasterTableCard minWidth={1440}>
+        <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <tr>
+            <th className="px-4 py-3 font-medium">Client ID</th>
+            <th className="px-4 py-3 font-medium">Nama Client</th>
+            <th className="px-4 py-3 font-medium">Kota</th>
+            <th className="px-4 py-3 font-medium">Kontrak Kerja Sama / No. Pelanggan</th>
+            <th className="px-4 py-3 font-medium">Status Client</th>
+            <th className="px-4 py-3 font-medium">Nama Akun</th>
+            <th className="px-4 py-3 font-medium">Email</th>
+            <th className="px-4 py-3 font-medium">Status Akun</th>
+            <th className="px-4 py-3 font-medium">Dibuat</th>
+            <th className="px-4 py-3 font-medium">Jumlah Pengiriman</th>
+            <th className="px-4 py-3 font-medium">Aksi</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {filtered.length === 0 && (
+            <MasterTableMessage
+              colSpan={11}
+              loading={isLoading}
+              loadingText="Memuat data Client..."
+              icon={Building2}
+              title={customers.length > 0 ? "Tidak ada Client yang cocok dengan filter." : "Belum ada data Client."}
+              description={customers.length === 0 ? 'Klik "Tambah Client" untuk membuat Client ID pertama.' : undefined}
+              action={customers.length === 0 ? <MasterEmptyAction label="Tambah Client" onClick={openModal} /> : undefined}
+            />
+          )}
+          {filtered.map((c) => {
+            const rows = c.accounts.length > 0 ? c.accounts : [null];
+            return rows.map((a, i) => (
+              <tr key={a ? a.id : `client-${c.customerId}`} className="hover:bg-slate-50">
+                {i === 0 && (
+                  <>
+                    <td rowSpan={rows.length} className="whitespace-nowrap border-r border-slate-100 px-4 py-3 align-top">
+                      <span className="flex items-center gap-1.5 font-mono font-semibold text-slate-900">
+                        <Building2 size={14} className="text-teal-600" />
+                        {c.customerId}
+                      </span>
+                    </td>
+                    <td rowSpan={rows.length} className="px-4 py-3 align-top text-slate-800">
+                      {c.nama ?? "-"}
+                    </td>
+                    <td rowSpan={rows.length} className="px-4 py-3 align-top text-slate-800">
+                      {c.kota ?? "-"}
+                    </td>
+                    <td rowSpan={rows.length} className="px-4 py-3 align-top">
+                      <span className={c.kontrakNoPelanggan ? "font-mono text-slate-800" : "text-slate-400"}>
+                        {c.kontrakNoPelanggan ?? "-"}
+                      </span>
+                    </td>
+                    <td rowSpan={rows.length} className="whitespace-nowrap px-4 py-3 align-top">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                          c.aktif ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {c.aktif ? "Aktif" : "Nonaktif"}
+                      </span>
+                    </td>
+                  </>
+                )}
+                {a ? (
+                  <>
+                    <td className="px-4 py-3 text-slate-800">{a.nama}</td>
+                    <td className="px-4 py-3 text-slate-600">{a.email}</td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                          a.aktif ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                        }`}
+                      >
+                        {a.aktif ? "Aktif" : "Nonaktif"}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">{formatCreatedAt(a.createdAt)}</td>
+                  </>
+                ) : (
+                  <td colSpan={4} className="px-4 py-3 text-xs italic text-slate-400">
+                    Belum ada akun user untuk client ini.
+                  </td>
+                )}
+                {i === 0 && (
+                  <td rowSpan={rows.length} className="whitespace-nowrap px-4 py-3 align-top text-slate-600">
+                    {c.shipmentCount}
+                  </td>
+                )}
+                {i === 0 && (
+                  <td rowSpan={rows.length} className="whitespace-nowrap px-4 py-3 align-top">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(c)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        <Pencil size={13} /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleActive(c)}
+                        disabled={togglingId === c.customerId}
+                        className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium disabled:opacity-50 ${
+                          c.aktif
+                            ? "border-red-200 text-red-600 hover:bg-red-50"
+                            : "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                        }`}
+                      >
+                        <Power size={13} /> {c.aktif ? "Nonaktifkan" : "Aktifkan"}
+                      </button>
+                    </div>
+                  </td>
+                )}
+              </tr>
+            ));
+          })}
+        </tbody>
+      </MasterTableCard>
 
       {editing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

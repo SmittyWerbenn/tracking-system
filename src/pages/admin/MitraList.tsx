@@ -1,12 +1,23 @@
-import { Ban, Handshake, Pencil, Plus, RotateCcw, Search, X } from "lucide-react";
+import { Ban, Handshake, Pencil, RotateCcw, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
-import { RefreshButton } from "../../components/RefreshButton";
+import {
+  MasterDataHeader,
+  MasterDataToolbar,
+  MasterEmptyAction,
+  MasterFilterReset,
+  MasterFilterSelect,
+  MasterSearchInput,
+  MasterTableCard,
+  MasterTableMessage,
+} from "../../components/master/MasterData";
 import { useMitras, type Mitra, type MitraFormData } from "../../store/MitraContext";
 import { ApiError } from "../../utils/apiClient";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
+
+type StatusFilter = "semua" | "aktif" | "nonaktif";
 
 const emptyForm: MitraFormData = { kodeMitra: "", nama: "", pic: "", telepon: "", email: "", alamat: "", area: "" };
 
@@ -23,13 +34,20 @@ export default function MitraList() {
   }
 
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("semua");
+  const hasFilter = search.trim() !== "" || statusFilter !== "semua";
+  function resetFilters() {
+    setSearch("");
+    setStatusFilter("semua");
+  }
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return mitras;
-    return mitras.filter((m) =>
-      [m.kodeMitra, m.nama, m.pic, m.area].some((v) => v?.toLowerCase().includes(q)),
+    return mitras.filter(
+      (m) =>
+        (!q || [m.kodeMitra, m.nama, m.pic, m.telepon, m.email, m.area].some((v) => v?.toLowerCase().includes(q))) &&
+        (statusFilter === "semua" || (statusFilter === "aktif" ? m.aktif : !m.aktif)),
     );
-  }, [mitras, search]);
+  }, [mitras, search, statusFilter]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<MitraFormData>(emptyForm);
@@ -107,126 +125,92 @@ export default function MitraList() {
 
   return (
     <AdminLayout>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-semibold text-slate-900">Master Mitra</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Data mitra agen pihak ketiga. Tambahkan Mitra di sini terlebih dahulu, lalu kaitkan dengan
-            akun user (role Mitra) di Manajemen User, dan teruskan/assign paket ke Mitra dari Detail Paket.
-          </p>
-        </div>
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
-          <button
-            type="button"
-            onClick={openAdd}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-          >
-            <Plus size={16} /> Tambah Mitra
-          </button>
-        </div>
-      </div>
+      <MasterDataHeader
+        title="Master Mitra"
+        description="Data mitra agen pihak ketiga. Tambahkan Mitra di sini terlebih dahulu, lalu kaitkan dengan akun user (role Mitra) di Manajemen User, dan teruskan/assign paket ke Mitra dari Detail Paket."
+      />
 
-      <div className="relative mt-5 max-w-xs">
-        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Cari kode, nama, PIC, atau area..."
-          className={`${inputClass} pl-9`}
-        />
-      </div>
+      <MasterDataToolbar onRefresh={handleRefresh} refreshing={refreshing} addLabel="Tambah Mitra" onAdd={openAdd}>
+        <MasterSearchInput value={search} onChange={setSearch} placeholder="Cari kode, nama, PIC, atau area..." />
+        <MasterFilterSelect value={statusFilter} onChange={(v) => setStatusFilter(v as StatusFilter)} label="Filter status">
+          <option value="semua">Semua Status</option>
+          <option value="aktif">Aktif</option>
+          <option value="nonaktif">Nonaktif</option>
+        </MasterFilterSelect>
+        <MasterFilterReset visible={hasFilter} onReset={resetFilters} />
+      </MasterDataToolbar>
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px] text-left text-sm">
-            <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">Kode Mitra</th>
-                <th className="px-4 py-3 font-medium">Nama Mitra</th>
-                <th className="px-4 py-3 font-medium">PIC</th>
-                <th className="px-4 py-3 font-medium">No. HP</th>
-                <th className="px-4 py-3 font-medium">Email</th>
-                <th className="px-4 py-3 font-medium">Area/Coverage</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-14 text-center">
-                    {isLoading ? (
-                      <span className="text-sm text-slate-400">Memuat data Mitra...</span>
-                    ) : (
-                      <div className="mx-auto flex max-w-sm flex-col items-center gap-2">
-                        <Handshake size={28} className="text-slate-300" />
-                        <p className="text-sm font-semibold text-slate-700">
-                          {search ? "Tidak ada Mitra yang cocok." : "Belum ada data Mitra."}
-                        </p>
-                        {!search && (
-                          <button
-                            type="button"
-                            onClick={openAdd}
-                            className="mt-2 inline-flex items-center gap-2 rounded-lg bg-blue-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-                          >
-                            <Plus size={15} /> Tambah Mitra
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              )}
-              {filtered.map((m) => (
-                <tr key={m.kodeMitra} className="hover:bg-slate-50">
-                  <td className="whitespace-nowrap px-4 py-3">
-                    <span className="flex items-center gap-1.5 font-mono font-semibold text-slate-900">
-                      <Handshake size={14} className="text-teal-600" />
-                      {m.kodeMitra}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-slate-800">{m.nama}</td>
-                  <td className="px-4 py-3 text-slate-600">{m.pic ?? "-"}</td>
-                  <td className="px-4 py-3 text-slate-600">{m.telepon ?? "-"}</td>
-                  <td className="px-4 py-3 text-slate-600">{m.email ?? "-"}</td>
-                  <td className="px-4 py-3 text-slate-600">{m.area ?? "-"}</td>
-                  <td className="whitespace-nowrap px-4 py-3">
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                        m.aktif ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
-                      }`}
-                    >
-                      {m.aktif ? "Aktif" : "Nonaktif"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => openEdit(m)}
-                        title="Edit"
-                        className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleToggleActive(m)}
-                        disabled={togglingId === m.kodeMitra}
-                        title={m.aktif ? "Nonaktifkan" : "Aktifkan"}
-                        className={`rounded-md p-1.5 hover:bg-slate-100 disabled:opacity-50 ${
-                          m.aktif ? "text-slate-500 hover:text-red-600" : "text-slate-500 hover:text-emerald-600"
-                        }`}
-                      >
-                        {m.aktif ? <Ban size={16} /> : <RotateCcw size={16} />}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <MasterTableCard minWidth={960}>
+        <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <tr>
+            <th className="px-4 py-3 font-medium">Kode Mitra</th>
+            <th className="px-4 py-3 font-medium">Nama Mitra</th>
+            <th className="px-4 py-3 font-medium">PIC</th>
+            <th className="px-4 py-3 font-medium">No. HP</th>
+            <th className="px-4 py-3 font-medium">Email</th>
+            <th className="px-4 py-3 font-medium">Area/Coverage</th>
+            <th className="px-4 py-3 font-medium">Status</th>
+            <th className="px-4 py-3 font-medium">Aksi</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {filtered.length === 0 && (
+            <MasterTableMessage
+              colSpan={8}
+              loading={isLoading && mitras.length === 0}
+              loadingText="Memuat data Mitra..."
+              icon={Handshake}
+              title={mitras.length > 0 ? "Tidak ada Mitra yang cocok dengan filter." : "Belum ada data Mitra."}
+              action={mitras.length === 0 ? <MasterEmptyAction label="Tambah Mitra" onClick={openAdd} /> : undefined}
+            />
+          )}
+          {filtered.map((m) => (
+            <tr key={m.kodeMitra} className="hover:bg-slate-50">
+              <td className="whitespace-nowrap px-4 py-3">
+                <span className="flex items-center gap-1.5 font-mono font-semibold text-slate-900">
+                  <Handshake size={14} className="text-teal-600" />
+                  {m.kodeMitra}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-slate-800">{m.nama}</td>
+              <td className="px-4 py-3 text-slate-600">{m.pic ?? "-"}</td>
+              <td className="px-4 py-3 text-slate-600">{m.telepon ?? "-"}</td>
+              <td className="px-4 py-3 text-slate-600">{m.email ?? "-"}</td>
+              <td className="px-4 py-3 text-slate-600">{m.area ?? "-"}</td>
+              <td className="whitespace-nowrap px-4 py-3">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    m.aktif ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {m.aktif ? "Aktif" : "Nonaktif"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => openEdit(m)}
+                    title="Edit"
+                    className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleToggleActive(m)}
+                    disabled={togglingId === m.kodeMitra}
+                    title={m.aktif ? "Nonaktifkan" : "Aktifkan"}
+                    className={`rounded-md p-1.5 hover:bg-slate-100 disabled:opacity-50 ${
+                      m.aktif ? "text-slate-500 hover:text-red-600" : "text-slate-500 hover:text-emerald-600"
+                    }`}
+                  >
+                    {m.aktif ? <Ban size={16} /> : <RotateCcw size={16} />}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </MasterTableCard>
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

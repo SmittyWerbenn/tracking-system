@@ -120,13 +120,13 @@ export function tableToBulkRows(table: unknown[][]): {
   return { rows };
 }
 
-export function normalizeLayanan(value: string): LayananPengiriman {
+/** Matches an imported layanan against the ACTIVE Master Layanan names
+ * (case/whitespace-insensitive) and returns the stored spelling; anything
+ * unmatched gets `fallback` (LTL when it's active - same rule the API
+ * applies when creating the order). */
+export function normalizeLayanan(value: string, activeOptions: string[], fallback: string): LayananPengiriman {
   const v = value.trim().toLowerCase();
-  if (v === "darat") return "Darat";
-  if (v === "express") return "Express";
-  if (v === "kargo" || v === "cargo") return "Kargo";
-  if (v === "charter") return "Charter";
-  return "Regular";
+  return activeOptions.find((o) => o.toLowerCase() === v) ?? fallback;
 }
 
 export function downloadBulkShipmentTemplate() {

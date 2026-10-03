@@ -14,6 +14,15 @@ import { sendAdminDeliveryEmail } from "../utils/sendEmail";
 import { adminResiUrl } from "../utils/urls";
 import { useAuth } from "./AuthContext";
 
+/** `layanan` is the service actually stored; `layananFallback` is true when
+ * the requested one wasn't an active Master Layanan entry and the API
+ * substituted LTL. */
+export interface CreatedShipment {
+  awb: string;
+  layanan?: string;
+  layananFallback?: boolean;
+}
+
 interface RawShipmentSummary {
   awb: string;
   tanggalDibuat: string;
@@ -169,7 +178,7 @@ interface ShipmentContextValue {
   listMeta: { total: number; totalPages: number; page: number };
   refresh: (params?: ShipmentListParams) => Promise<void>;
   getByAwb: (awb: string) => Promise<Shipment | null>;
-  createShipment: (data: ShipmentFormData) => Promise<{ awb: string }>;
+  createShipment: (data: ShipmentFormData) => Promise<CreatedShipment>;
   markEmailSent: (awb: string) => void;
   addTrackingUpdate: (data: TrackingUpdateFormData) => Promise<{ ok: true } | { ok: false; error: string }>;
   updateShipmentInfo: (awb: string, data: UpdateShipmentInfoData) => Promise<{ ok: true } | { ok: false; error: string }>;
@@ -253,8 +262,8 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function createShipment(data: ShipmentFormData): Promise<{ awb: string }> {
-    const res = await api.post<{ awb: string }>("/api/shipments", {
+  async function createShipment(data: ShipmentFormData): Promise<CreatedShipment> {
+    const res = await api.post<CreatedShipment>("/api/shipments", {
       pengirimNama: data.pengirim.nama,
       pengirimTelepon: data.pengirim.telepon,
       pengirimEmail: data.pengirim.email,
@@ -354,6 +363,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         kotaAsal: data.kotaAsal,
         alamatTujuan: data.alamatTujuan,
         kotaTujuan: data.kotaTujuan,
+        ...(data.layanan ? { layanan: data.layanan } : {}),
         ...(data.slaValue !== undefined ? { slaValue: data.slaValue } : {}),
       });
       await refresh();

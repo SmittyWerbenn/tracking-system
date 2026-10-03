@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../store/AuthContext";
 import { useFleet } from "../store/FleetContext";
+import { useLayanan } from "../store/LayananContext";
 import { useLocations } from "../store/LocationContext";
 import { useShipments } from "../store/ShipmentContext";
 import type { LayananPengiriman } from "../types";
@@ -36,8 +37,6 @@ interface BulkRow extends BulkRowInput {
   layananValue: LayananPengiriman;
 }
 
-const LAYANAN_OPTIONS: LayananPengiriman[] = ["Darat", "Express", "Kargo", "Regular", "Charter"];
-
 let rowSeq = 0;
 function newRowId() {
   rowSeq += 1;
@@ -58,7 +57,8 @@ function emptyRow(): BulkRow {
     kotaTujuan: "",
     alamatTujuan: "",
     layanan: "",
-    layananValue: "Regular",
+    // "" = not chosen yet; resolves to the default active layanan (see layananOf).
+    layananValue: "",
     beratKg: "",
     jumlahKoli: "",
     deskripsiBarang: "",
@@ -67,11 +67,11 @@ function emptyRow(): BulkRow {
   };
 }
 
-function fromInput(input: BulkRowInput): BulkRow {
+function fromInput(input: BulkRowInput, layananValue: LayananPengiriman): BulkRow {
   return {
     ...input,
     id: newRowId(),
-    layananValue: normalizeLayanan(input.layanan),
+    layananValue,
   };
 }
 
@@ -119,11 +119,21 @@ export function BulkShipmentImport() {
   const { createShipment } = useShipments();
   const { trucksWithDriver } = useFleet();
   const { activeTitikLokasi } = useLocations();
+  const { activeNames: layananOptions, refresh: refreshLayanan } = useLayanan();
   const { profile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isCustAdmin = profile?.role === "Client";
 
   const [rows, setRows] = useState<BulkRow[]>(() => [emptyRow(), emptyRow(), emptyRow()]);
+
+  useEffect(() => {
+    refreshLayanan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Layanan for a row the user hasn't touched: Regular when active (as
+  // before), else the first active Master Layanan entry.
+  const defaultLayanan = layananOptions.includes("Regular") ? "Regular" : (layananOptions[0] ?? "");
+  const layananOf = (row: BulkRow) => (layananOptions.includes(row.layananValue) ? row.layananValue : defaultLayanan);
   const [importError, setImportError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -182,12 +192,19 @@ export function BulkShipmentImport() {
         return;
       }
 
+      // An imported layanan that matches an active Master Layanan entry is
+      // used; anything else falls back to LTL (the API applies the same
+      // rule, this just shows it in the preview table first).
+      const fallbackLayanan = layananOptions.includes("LTL") ? "LTL" : "";
       const imported = parsed.map((p) =>
-        fromInput({
-          ...p,
-          kotaAsal: resolveKota(p.kotaAsal, knownKota),
-          kotaTujuan: resolveKota(p.kotaTujuan, knownKota),
-        }),
+        fromInput(
+          {
+            ...p,
+            kotaAsal: resolveKota(p.kotaAsal, knownKota),
+            kotaTujuan: resolveKota(p.kotaTujuan, knownKota),
+          },
+          normalizeLayanan(p.layanan, layananOptions, fallbackLayanan),
+        ),
       );
       setRows((prev) => {
         const withoutBlanks = prev.filter((r) => !isRowBlank(r));
@@ -229,7 +246,7 @@ export function BulkShipmentImport() {
         alamatTujuan: row.alamatTujuan,
         kotaTujuan: row.kotaTujuan,
         deskripsiBarang: row.deskripsiBarang,
-        layanan: row.layananValue,
+        layanan: layananOf(row),
         beratKg: Number(row.beratKg),
         jumlahKoli: Number(row.jumlahKoli),
         truckId: truck?.id ?? "",
@@ -480,10 +497,10 @@ export function BulkShipmentImport() {
                 <td className="px-2.5 py-2">
                   <select
                     className={cellInputClass}
-                    value={row.layananValue}
-                    onChange={(e) => updateRow(row.id, "layananValue", e.target.value as LayananPengiriman)}
+                    value={layananOf(row)}
+                    onChange={(e) => updateRow(row.id, "layananValue", e.target.value)}
                   >
-                    {LAYANAN_OPTIONS.map((l) => (
+                    {layananOptions.map((l) => (
                       <option key={l} value={l}>
                         {l}
                       </option>

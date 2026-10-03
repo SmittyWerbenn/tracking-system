@@ -2,6 +2,7 @@ import type { Router } from "../router";
 import type { Ctx } from "../types";
 import { ok, Errors } from "../http";
 import { parseJsonBody, reqString, reqEnum, reqNumber, reqEmail, optString, optNumber } from "../validate";
+import { findActiveLayanan, resolveLayananForOrder } from "../layanan";
 import { newId } from "../crypto";
 import { requireAuth, requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
@@ -10,8 +11,6 @@ import { generateClientAwb, isDuplicateAwbError } from "../awb";
 import { wibNow } from "../wib";
 import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, type TimelineEventType } from "../status";
 import { addBusinessDays } from "../sla";
-
-const LAYANAN = ["Darat", "Express", "Kargo", "Regular", "Charter"] as const;
 
 const POD_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -145,7 +144,12 @@ export function registerShipmentRoutes(router: Router) {
     const alamatTujuan = reqString(body, "alamatTujuan", { max: 300 });
     const kotaTujuan = reqString(body, "kotaTujuan", { max: 80 });
     const deskripsiBarang = optString(body, "deskripsiBarang") ?? "";
-    const layanan = reqEnum(body, "layanan", LAYANAN);
+    // Validated against Master Layanan (active entries only); anything
+    // unknown/inactive/missing falls back to LTL instead of failing the order.
+    const { nama: layanan, fellBack: layananFellBack } = await resolveLayananForOrder(
+      ctx.env,
+      typeof body.layanan === "string" ? body.layanan : undefined,
+    );
     const beratKg = reqNumber(body, "beratKg", { min: 0.01, max: 100000 });
     const jumlahKoli = reqNumber(body, "jumlahKoli", { min: 1, max: 100000 });
     const truckId = optString(body, "truckId");
@@ -230,10 +234,16 @@ export function registerShipmentRoutes(router: Router) {
       actionLabel: "CREATE AWB",
       module: "Shipment",
       awb,
-      description: `Resi diterbitkan untuk pengiriman ${kotaAsal} -> ${kotaTujuan}.`,
+      description:
+        `Resi diterbitkan untuk pengiriman ${kotaAsal} -> ${kotaTujuan}.` +
+        (layananFellBack
+          ? typeof body.layanan === "string" && body.layanan.trim()
+            ? ` Layanan "${body.layanan.trim()}" tidak tersedia di Master Layanan (tidak ditemukan atau nonaktif), otomatis memakai ${layanan}.`
+            : ` Layanan tidak diisi, otomatis memakai ${layanan}.`
+          : ""),
     });
 
-    return ok({ awb }, {}, 201);
+    return ok({ awb, layanan, layananFallback: layananFellBack }, {}, 201);
   });
 
   router.get("/api/shipments/:awb", async (ctx: Ctx, params) => {
@@ -324,9 +334,9 @@ export function registerShipmentRoutes(router: Router) {
 
     router.patch("/api/shipments/:awb", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "shipments.update_info");
-    const shipment = await ctx.env.DB.prepare(`SELECT status, tanggal_dibuat, sla_value, estimasi_tiba FROM shipments WHERE awb = ?`)
+    const shipment = await ctx.env.DB.prepare(`SELECT status, tanggal_dibuat, sla_value, estimasi_tiba, layanan FROM shipments WHERE awb = ?`)
       .bind(params.awb)
-      .first<{ status: string; tanggal_dibuat: string; sla_value: number | null; estimasi_tiba: string | null }>();
+      .first<{ status: string; tanggal_dibuat: string; sla_value: number | null; estimasi_tiba: string | null; layanan: string }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
     if (shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan") {
       throw Errors.unprocessable("Pengiriman yang sudah Selesai/Terkirim atau Dibatalkan tidak bisa diubah lagi.");
@@ -362,6 +372,25 @@ export function registerShipmentRoutes(router: Router) {
       sets.push("sla_value=?", "sla_unit=?", "estimasi_tiba=?");
       values.push(slaValue ?? null, slaValue !== undefined ? "hari_kerja" : null, newEta);
     }
+
+    // Layanan is optional on edit (older callers don't send it). Omitted, or
+    // the same value the order already has, leaves it untouched - so editing
+    // other fields never rewrites a layanan that was deactivated later. A
+    // CHANGE must be to an active Master Layanan entry: unlike order
+    // creation there is no silent LTL fallback here, because overwriting a
+    // deliberate existing choice on a typo would be worse than an error.
+    let layananChange: { from: string; to: string } | null = null;
+    if (typeof body.layanan === "string" && body.layanan.trim().toLowerCase() !== shipment.layanan.toLowerCase()) {
+      const valid = await findActiveLayanan(ctx.env, body.layanan);
+      if (!valid) {
+        throw Errors.badRequest(`Layanan "${body.layanan.trim()}" tidak tersedia atau tidak aktif di Master Layanan.`);
+      }
+      if (valid !== shipment.layanan) {
+        sets.push("layanan=?");
+        values.push(valid);
+        layananChange = { from: shipment.layanan, to: valid };
+      }
+    }
     values.push(params.awb);
 
     await ctx.env.DB.prepare(`UPDATE shipments SET ${sets.join(", ")} WHERE awb=?`).bind(...values).run();
@@ -373,6 +402,16 @@ export function registerShipmentRoutes(router: Router) {
       awb: params.awb,
       description: "Data pengiriman diperbarui.",
     });
+
+    if (layananChange) {
+      await writeAuditLog(ctx.env, actor, {
+        action: "UPDATE_LAYANAN_ORDER",
+        actionLabel: "UPDATE LAYANAN ORDER",
+        module: "Shipment",
+        awb: params.awb,
+        description: `Layanan: ${layananChange.from} -> ${layananChange.to}.`,
+      });
+    }
 
     if (slaProvided && slaValue !== shipment.sla_value) {
       await writeAuditLog(ctx.env, actor, {

@@ -8,7 +8,9 @@ export type ShipmentStatus =
   | "Selesai / Terkirim"
   | "Dibatalkan";
 
-export type LayananPengiriman = "Darat" | "Express" | "Kargo" | "Regular" | "Charter";
+/** A Master Layanan name (e.g. "Regular", "LTL", or any custom layanan) - the
+ * valid set is managed in Master Layanan and enforced by the API. */
+export type LayananPengiriman = string;
 
 export type TimelineEventType =
   | "Barang Diterima"
@@ -151,6 +153,9 @@ export interface UpdateShipmentInfoData {
   kotaAsal: string;
   alamatTujuan: string;
   kotaTujuan: string;
+  /** Omit to leave the layanan untouched; a changed value must be an active
+   * Master Layanan entry (the API rejects anything else). */
+  layanan?: LayananPengiriman;
   /** Omit to leave SLA/ETA untouched; pass a number to set/change it, or
    * null to clear it - either recalculates estimasiTiba server-side. */
   slaValue?: number | null;

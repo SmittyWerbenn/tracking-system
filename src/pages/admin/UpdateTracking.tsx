@@ -19,6 +19,7 @@ import { SearchableSelect } from "../../components/SearchableSelect";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../store/AuthContext";
+import { useLayanan } from "../../store/LayananContext";
 import { useLocations } from "../../store/LocationContext";
 import { useFleet } from "../../store/FleetContext";
 import { useShipments } from "../../store/ShipmentContext";
@@ -34,6 +35,7 @@ const inputClass =
 export default function UpdateTracking() {
   const { awb } = useParams<{ awb: string }>();
   const { getByAwb, addTrackingUpdate, updateShipmentInfo, updatePodPhoto } = useShipments();
+  const { activeNames: activeLayanan, refresh: refreshLayanan } = useLayanan();
   const { trucksWithDriver } = useFleet();
   const { activeTitikLokasi } = useLocations();
   const { profile } = useAuth();
@@ -67,8 +69,16 @@ export default function UpdateTracking() {
   const [editKotaTujuan, setEditKotaTujuan] = useState("");
   const [editAlamatTujuan, setEditAlamatTujuan] = useState("");
   const [editSlaValue, setEditSlaValue] = useState<number | undefined>(undefined);
+  const [editLayanan, setEditLayanan] = useState("");
   const [editSaved, setEditSaved] = useState(false);
   const [editFormError, setEditFormError] = useState<string | null>(null);
+
+  // The Layanan dropdown must reflect Master Layanan as of now, not as of
+  // when this session started.
+  useEffect(() => {
+    if (editInfoOpen) refreshLayanan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editInfoOpen]);
 
   const [podBarangError, setPodBarangError] = useState<string | null>(null);
   const [podBarangSaved, setPodBarangSaved] = useState(false);
@@ -95,6 +105,7 @@ export default function UpdateTracking() {
         setEditKotaTujuan(s.kotaTujuan);
         setEditAlamatTujuan(s.alamatTujuan);
         setEditSlaValue(s.slaValue);
+        setEditLayanan(s.layanan);
       }
     });
     return () => {
@@ -190,6 +201,7 @@ export default function UpdateTracking() {
       kotaAsal: editKotaAsal,
       alamatTujuan: editAlamatTujuan,
       kotaTujuan: editKotaTujuan,
+      layanan: editLayanan,
       slaValue: editSlaValue ?? null,
     };
     const result = await updateShipmentInfo(shipment!.awb, data);
@@ -314,7 +326,7 @@ export default function UpdateTracking() {
             <span className="flex items-center gap-2">
               <Pencil size={16} className="text-blue-900" />
               <span className="text-sm font-semibold text-slate-800">Data Pengiriman</span>
-              <span className="hidden text-xs text-slate-400 sm:inline">(Pengirim, Penerima, Rute)</span>
+              <span className="hidden text-xs text-slate-400 sm:inline">(Pengirim, Penerima, Rute, Layanan)</span>
             </span>
             <ChevronDown
               size={16}
@@ -450,6 +462,22 @@ export default function UpdateTracking() {
                       value={editAlamatTujuan}
                       onChange={(e) => setEditAlamatTujuan(e.target.value)}
                     />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">Layanan</span>
+                    <select className={inputClass} value={editLayanan} onChange={(e) => setEditLayanan(e.target.value)}>
+                      {/* An order's current layanan stays visible even if it was
+                          deactivated later; every other choice is an active
+                          Master Layanan entry. */}
+                      {!activeLayanan.includes(shipment.layanan) && (
+                        <option value={shipment.layanan}>{shipment.layanan} (nonaktif)</option>
+                      )}
+                      {activeLayanan.map((l) => (
+                        <option key={l} value={l}>
+                          {l}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <label className="block">
                     <span className="mb-1.5 block text-xs font-medium text-slate-600">Target Pengiriman (Hari)</span>

@@ -20,11 +20,12 @@ import { QRCode } from "../../components/QRCode";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { useAuth } from "../../store/AuthContext";
 import { useFleet } from "../../store/FleetContext";
+import { useLayanan } from "../../store/LayananContext";
 import { useLocations } from "../../store/LocationContext";
 import { useSettings } from "../../store/SettingsContext";
 import { useShipments } from "../../store/ShipmentContext";
-import type { LayananPengiriman, ShipmentFormData } from "../../types";
-import { api } from "../../utils/apiClient";
+import type { ShipmentFormData } from "../../types";
+import { api, ApiError } from "../../utils/apiClient";
 import { checkPhotoSize, compressImage } from "../../utils/compressImage";
 import { formatTanggalPanjang, todayISO } from "../../utils/format";
 import { sendTrackingEmail, type EmailableShipment } from "../../utils/sendEmail";
@@ -39,7 +40,8 @@ const emptyForm: ShipmentFormData = {
   alamatTujuan: "",
   kotaTujuan: "",
   deskripsiBarang: "",
-  layanan: "Regular",
+  // Filled from Master Layanan once it has loaded (see the effect below).
+  layanan: "",
   beratKg: 0,
   jumlahKoli: 1,
   fotoBarang: undefined,
@@ -47,8 +49,6 @@ const emptyForm: ShipmentFormData = {
   truckId: "",
   customerId: "",
 };
-
-const LAYANAN_OPTIONS: LayananPengiriman[] = ["Darat", "Express", "Kargo", "Regular", "Charter"];
 
 function Section({
   title,
@@ -94,6 +94,7 @@ export default function CreateShipment() {
   const { createShipment, markEmailSent } = useShipments();
   const { trucksWithDriver } = useFleet();
   const { activeTitikLokasi } = useLocations();
+  const { activeNames: layananOptions, refresh: refreshLayanan } = useLayanan();
   const { settings } = useSettings();
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -105,6 +106,22 @@ export default function CreateShipment() {
     customerId: isCustAdmin ? profile?.customerId ?? "" : "",
   }));
   const [customerIds, setCustomerIds] = useState<string[]>([]);
+
+  // Always show the latest Master Layanan when the form opens, then make
+  // sure the selected value is one of the active entries (Regular when it's
+  // available, as before; otherwise the first active one).
+  useEffect(() => {
+    refreshLayanan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (layananOptions.length === 0) return;
+    setForm((prev) =>
+      layananOptions.includes(prev.layanan)
+        ? prev
+        : { ...prev, layanan: layananOptions.includes("Regular") ? "Regular" : layananOptions[0] },
+    );
+  }, [layananOptions]);
 
   useEffect(() => {
     if (isCustAdmin) return;
@@ -118,6 +135,7 @@ export default function CreateShipment() {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<EmailableShipment | null>(null);
+  const [layananNote, setLayananNote] = useState<string | null>(null);
   const [emailSending, setEmailSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -175,7 +193,12 @@ export default function CreateShipment() {
     setFormError(null);
     setSubmitting(true);
     try {
-      const { awb } = await createShipment(form);
+      const { awb, layanan, layananFallback } = await createShipment(form);
+      setLayananNote(
+        layananFallback
+          ? `Layanan "${form.layanan}" tidak tersedia di Master Layanan, jadi otomatis memakai ${layanan ?? "LTL"}. Anda bisa mengubahnya lewat Edit Info Pengiriman.`
+          : null,
+      );
       setCreated({
         awb,
         kotaAsal: form.kotaAsal,
@@ -185,8 +208,8 @@ export default function CreateShipment() {
         pengirim: form.pengirim,
         penerima: form.penerima,
       });
-    } catch {
-      setFormError("Gagal membuat pengiriman. Silakan coba lagi.");
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : "Gagal membuat pengiriman. Silakan coba lagi.");
     } finally {
       setSubmitting(false);
     }
@@ -393,9 +416,10 @@ export default function CreateShipment() {
             <select
               className={inputClass}
               value={form.layanan}
-              onChange={(e) => update("layanan", e.target.value as LayananPengiriman)}
+              onChange={(e) => update("layanan", e.target.value)}
             >
-              {LAYANAN_OPTIONS.map((l) => (
+              {layananOptions.length === 0 && <option value="">Memuat layanan...</option>}
+              {layananOptions.map((l) => (
                 <option key={l} value={l}>
                   {l}
                 </option>
@@ -587,6 +611,9 @@ export default function CreateShipment() {
               <p className="text-sm text-slate-500">
                 AWB baru telah diterbitkan dan tersimpan dalam sistem.
               </p>
+              {layananNote && (
+                <p className="mt-1 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">{layananNote}</p>
+              )}
             </div>
 
             <div className="px-6 py-5">

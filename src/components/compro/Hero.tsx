@@ -11,9 +11,13 @@ export function Hero() {
   const l = useL();
   return (
     <section id="home" className="relative isolate overflow-hidden bg-gms-deep pt-20 text-white lg:pt-24">
+      {/* Purely decorative backdrop under a dark gradient, so it has an empty
+          alt: a non-empty alt gets painted as visible text (faint, behind the
+          fixed header) whenever the image is still loading or fails to load. */}
       <img
         src={COMPRO_IMAGES.hero.url}
-        alt={COMPRO_IMAGES.hero.alt}
+        alt=""
+        aria-hidden
         className="absolute inset-0 -z-20 h-full w-full object-cover opacity-40"
         fetchPriority="high"
         loading="eager"

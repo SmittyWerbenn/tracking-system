@@ -54,13 +54,13 @@ function LangSwitch({ solid }: { solid: boolean }) {
         aria-label={l(C.nav.langLabel)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-base font-bold uppercase transition-colors ${
+        className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-2.5 text-base font-bold uppercase transition-colors sm:px-3 ${
           solid
             ? "border-slate-200 bg-gms-mist text-slate-700 hover:text-gms-corp"
             : "border-white/25 bg-white/10 text-white hover:bg-white/20"
         }`}
       >
-        <Current.Flag className="h-3 w-4 rounded-[2px]" />
+        <Current.Flag className="hidden h-3 w-4 rounded-[2px] min-[360px]:block" />
         {language}
         <ChevronDown size={14} aria-hidden className={`transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
@@ -148,14 +148,14 @@ export function Navbar({ overlay }: { overlay: boolean }) {
   return (
     <header
       className={`fixed inset-x-0 top-0 z-40 transition-all duration-300 ${
-        solid ? "bg-white/95 shadow-sm backdrop-blur" : "bg-transparent"
+        solid ? "bg-white shadow-sm" : "bg-transparent"
       }`}
     >
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:h-24 lg:px-8">
-        <Link to="/" onClick={() => setOpen(false)} className="flex items-center gap-2.5">
-          <img src={logoIcon} alt="GMS Logistics - PT Gangsar Mitra Suatama" className="h-12 w-12 shrink-0 object-contain" />
+      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:px-6 lg:h-24 lg:px-8">
+        <Link to="/" onClick={() => setOpen(false)} className="flex min-w-0 items-center gap-2 sm:gap-2.5">
+          <img src={logoIcon} alt="GMS Logistics - PT Gangsar Mitra Suatama" className="h-9 w-9 shrink-0 object-contain min-[360px]:h-10 min-[360px]:w-10 min-[400px]:h-11 min-[400px]:w-11 sm:h-12 sm:w-12" />
           <span className="shrink-0 leading-tight">
-            <span className={`block whitespace-nowrap font-display text-3xl font-extrabold ${solid ? "text-gms-corp" : "text-white"}`}>
+            <span className={`block whitespace-nowrap font-display text-lg font-extrabold min-[360px]:text-xl min-[400px]:text-2xl sm:text-3xl ${solid ? "text-gms-corp" : "text-white"}`}>
               GMS Logistics
             </span>
             <span className={`hidden whitespace-nowrap text-lg sm:block ${solid ? "text-slate-500" : "text-white/70"}`}>

@@ -257,7 +257,7 @@ export default function CustomerList() {
             <th className="px-4 py-3 font-medium">Status Akun</th>
             <th className="px-4 py-3 font-medium">Dibuat</th>
             <th className="px-4 py-3 font-medium">Jumlah Pengiriman</th>
-            <th className="px-4 py-3 font-medium">Aksi</th>
+            <th className="sticky right-0 z-10 bg-slate-50 px-5 py-3 font-medium shadow-[-6px_0_6px_-6px_rgba(15,23,42,0.12)]">Aksi</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -275,7 +275,7 @@ export default function CustomerList() {
           {filtered.map((c) => {
             const rows = c.accounts.length > 0 ? c.accounts : [null];
             return rows.map((a, i) => (
-              <tr key={a ? a.id : `client-${c.customerId}`} className="hover:bg-slate-50">
+              <tr key={a ? a.id : `client-${c.customerId}`} className="group hover:bg-slate-50">
                 {i === 0 && (
                   <>
                     <td rowSpan={rows.length} className="whitespace-nowrap border-r border-slate-100 px-4 py-3 align-top">
@@ -332,7 +332,10 @@ export default function CustomerList() {
                   </td>
                 )}
                 {i === 0 && (
-                  <td rowSpan={rows.length} className="whitespace-nowrap px-4 py-3 align-top">
+                  <td
+                    rowSpan={rows.length}
+                    className="sticky right-0 z-10 whitespace-nowrap bg-white px-5 py-3 align-top shadow-[-6px_0_6px_-6px_rgba(15,23,42,0.12)] group-hover:bg-slate-50"
+                  >
                     <div className="flex items-center gap-1">
                       <button
                         type="button"

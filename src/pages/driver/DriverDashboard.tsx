@@ -262,15 +262,16 @@ export default function DriverDashboard() {
         </span>
       </button>
 
-      <div className="mb-6">
+      <div className="mb-4">
         <p className="text-sm text-slate-500">Halo,</p>
         <h1 className="text-lg font-semibold text-slate-900">{profile?.nama}</h1>
         <p className="text-xs text-slate-400">Driver</p>
       </div>
 
-      {/* Primary Scan AWB on its own full-width row, then the two secondary
-          actions side by side at 50% each. All three share one min height. */}
-      <div className="mb-6 grid max-w-md grid-cols-2 gap-2.5">
+      {/* Primary Scan AWB on its own full-width row (with extra vertical air
+          below it), then the two secondary actions side by side at 50% each.
+          All three share one min height. */}
+      <div className="mb-6 grid max-w-md grid-cols-2 gap-x-2.5 gap-y-5">
         <button
           type="button"
           onClick={() => setScannerOpen(true)}

@@ -111,27 +111,27 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
   async function refresh() {
     if (profile?.role !== "Superadmin" && profile?.role !== "Admin") return;
     setIsLoading(true);
-    try {
-      const [usersRes, driversRes, customerIdsRes, mitrasRes] = await Promise.all([
-        api.get<{ items: UserRow[] }>("/api/users?limit=100"),
-        api.get<{ items: DriverRow[] }>("/api/drivers"),
-        api.get<{ items: string[]; clients?: { customerId: string; nama: string | null }[] }>("/api/customer-ids"),
-        api.get<{ items: { kodeMitra: string; nama: string; aktif: boolean }[] }>("/api/mitras?active=true"),
-      ]);
-      setUsers(usersRes.items.map(toAppUser));
-      setDrivers(driversRes.items.map(toDriverOption));
-      setCustomerIds(customerIdsRes.items);
-      setClientOptions(customerIdsRes.clients ?? customerIdsRes.items.map((id) => ({ customerId: id, nama: null })));
-      setMitraOptions(mitrasRes.items.map((m) => ({ mitraId: m.kodeMitra, nama: m.nama })));
-    } catch {
-      setUsers([]);
-      setDrivers([]);
-      setCustomerIds([]);
-      setClientOptions([]);
-      setMitraOptions([]);
-    } finally {
-      setIsLoading(false);
+    // Each source loads independently: one failing dropdown endpoint (e.g.
+    // /api/mitras before the Worker is redeployed) must never blank the
+    // user list itself, and a failed source keeps its last good value.
+    const [usersRes, driversRes, customerIdsRes, mitrasRes] = await Promise.allSettled([
+      api.get<{ items: UserRow[] }>("/api/users?limit=100"),
+      api.get<{ items: DriverRow[] }>("/api/drivers"),
+      api.get<{ items: string[]; clients?: { customerId: string; nama: string | null }[] }>("/api/customer-ids"),
+      api.get<{ items: { kodeMitra: string; nama: string; aktif: boolean }[] }>("/api/mitras?active=true"),
+    ]);
+    if (usersRes.status === "fulfilled") setUsers(usersRes.value.items.map(toAppUser));
+    if (driversRes.status === "fulfilled") setDrivers(driversRes.value.items.map(toDriverOption));
+    if (customerIdsRes.status === "fulfilled") {
+      const { items, clients } = customerIdsRes.value;
+      setCustomerIds(items);
+      setClientOptions(clients ?? items.map((id) => ({ customerId: id, nama: null })));
     }
+    if (mitrasRes.status === "fulfilled") {
+      setMitraOptions(mitrasRes.value.items.map((m) => ({ mitraId: m.kodeMitra, nama: m.nama })));
+    }
+    if (usersRes.status === "rejected") console.error("Gagal memuat daftar user:", usersRes.reason);
+    setIsLoading(false);
   }
 
   useEffect(() => {

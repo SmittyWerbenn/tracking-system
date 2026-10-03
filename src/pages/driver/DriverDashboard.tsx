@@ -268,30 +268,29 @@ export default function DriverDashboard() {
         <p className="text-xs text-slate-400">Driver</p>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 items-start gap-2.5 sm:flex sm:flex-wrap">
+      {/* Primary Scan AWB on its own full-width row, then the two secondary
+          actions side by side at 50% each. All three share one min height. */}
+      <div className="mb-6 grid max-w-md grid-cols-2 gap-2.5">
+        <button
+          type="button"
+          onClick={() => setScannerOpen(true)}
+          className="col-span-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border-2 border-blue-900 bg-blue-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+        >
+          <ScanLine size={18} /> Scan AWB
+        </button>
         <Link
           to={driverPath("/riwayat")}
-          className="inline-flex items-center justify-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3.5 py-3 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50 sm:py-2.5"
+          className="inline-flex min-h-12 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border-2 border-blue-900 bg-white px-2.5 py-3 text-xs font-semibold text-blue-900 shadow-sm hover:bg-blue-50 min-[340px]:text-[13px] min-[360px]:text-sm min-[380px]:px-3.5"
         >
           <FileSpreadsheet size={16} /> Data Pengiriman
         </Link>
-        {/* Scan AWB with the manual-entry alternative stacked right below it. */}
-        <div className="flex flex-col gap-3">
-          <button
-            type="button"
-            onClick={() => setScannerOpen(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border-2 border-blue-900 bg-blue-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 sm:py-2.5"
-          >
-            <ScanLine size={18} /> Scan AWB
-          </button>
-          <button
-            type="button"
-            onClick={() => setManualOpen(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border-2 border-blue-900 bg-white px-4 py-3 text-sm font-semibold text-blue-900 shadow-sm hover:bg-blue-50 sm:py-2.5"
-          >
-            <Keyboard size={18} /> Isi AWB Manual
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setManualOpen(true)}
+          className="inline-flex min-h-12 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border-2 border-blue-900 bg-white px-2.5 py-3 text-xs font-semibold text-blue-900 shadow-sm hover:bg-blue-50 min-[340px]:text-[13px] min-[360px]:text-sm min-[380px]:gap-2 min-[380px]:px-3.5"
+        >
+          <Keyboard size={18} /> Isi AWB Manual
+        </button>
       </div>
 
       {trucks.length > 0 && (

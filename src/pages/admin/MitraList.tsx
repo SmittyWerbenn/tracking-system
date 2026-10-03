@@ -108,14 +108,14 @@ export default function MitraList() {
   return (
     <AdminLayout>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold text-slate-900">Master Mitra</h1>
           <p className="mt-1 text-sm text-slate-500">
             Data mitra agen pihak ketiga. Tambahkan Mitra di sini terlebih dahulu, lalu kaitkan dengan
             akun user (role Mitra) di Manajemen User, dan teruskan/assign paket ke Mitra dari Detail Paket.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
           <button
             type="button"

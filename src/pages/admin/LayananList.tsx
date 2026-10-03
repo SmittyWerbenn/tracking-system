@@ -44,7 +44,7 @@ export default function LayananList() {
     const q = search.trim().toLowerCase();
     return layanans.filter(
       (l) =>
-        (!q || l.nama.toLowerCase().includes(q)) &&
+        (!q || l.nama.toLowerCase().includes(q) || (l.deskripsi ?? "").toLowerCase().includes(q)) &&
         (statusFilter === "semua" || (statusFilter === "aktif" ? l.aktif : !l.aktif)),
     );
   }, [layanans, search, statusFilter]);
@@ -56,12 +56,14 @@ export default function LayananList() {
   const [modalOpen, setModalOpen] = useState(false);
   const [choice, setChoice] = useState("");
   const [customName, setCustomName] = useState("");
+  const [deskripsi, setDeskripsi] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   function openAdd(preselect = "") {
     setChoice(preselect);
     setCustomName("");
+    setDeskripsi("");
     setFormError(null);
     setModalOpen(true);
   }
@@ -76,7 +78,7 @@ export default function LayananList() {
     setSaving(true);
     setFormError(null);
     try {
-      await createLayanan(nama);
+      await createLayanan(nama, deskripsi.trim());
       setModalOpen(false);
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : "Gagal menambahkan layanan. Coba lagi.");
@@ -88,11 +90,13 @@ export default function LayananList() {
   // --- Edit (rename)
   const [editing, setEditing] = useState<Layanan | null>(null);
   const [editName, setEditName] = useState("");
+  const [editDeskripsi, setEditDeskripsi] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
 
   function openEdit(l: Layanan) {
     setEditing(l);
     setEditName(l.nama);
+    setEditDeskripsi(l.deskripsi ?? "");
     setEditError(null);
   }
 
@@ -102,7 +106,11 @@ export default function LayananList() {
     setSaving(true);
     setEditError(null);
     try {
-      if (editName.trim() !== editing.nama) await updateLayanan(editing.id, { nama: editName.trim() });
+      // Only send what actually changed (the default layanan's name is locked).
+      const changes: { nama?: string; deskripsi?: string } = {};
+      if (!editing.fallback && editName.trim() !== editing.nama) changes.nama = editName.trim();
+      if (editDeskripsi.trim() !== (editing.deskripsi ?? "")) changes.deskripsi = editDeskripsi.trim();
+      if (Object.keys(changes).length > 0) await updateLayanan(editing.id, changes);
       setEditing(null);
     } catch (err) {
       setEditError(err instanceof ApiError ? err.message : "Gagal menyimpan perubahan. Coba lagi.");
@@ -151,7 +159,7 @@ export default function LayananList() {
       />
 
       <MasterDataToolbar onRefresh={handleRefresh} refreshing={refreshing} addLabel="Tambah Layanan" onAdd={() => openAdd()}>
-        <MasterSearchInput value={search} onChange={setSearch} placeholder="Cari nama layanan..." />
+        <MasterSearchInput value={search} onChange={setSearch} placeholder="Cari nama atau deskripsi layanan..." />
         <MasterFilterSelect value={statusFilter} onChange={(v) => setStatusFilter(v as StatusFilter)} label="Filter status">
           <option value="semua">Semua Status</option>
           <option value="aktif">Aktif</option>
@@ -191,10 +199,11 @@ export default function LayananList() {
         </div>
       )}
 
-      <MasterTableCard minWidth={560}>
+      <MasterTableCard minWidth={760}>
         <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
           <tr>
             <th className="px-4 py-3 font-medium">Layanan</th>
+            <th className="px-4 py-3 font-medium">Deskripsi</th>
             <th className="px-4 py-3 font-medium">Dipakai Order</th>
             <th className="px-4 py-3 font-medium">Status</th>
             <th className="px-4 py-3 font-medium">Aksi</th>
@@ -203,7 +212,7 @@ export default function LayananList() {
         <tbody className="divide-y divide-slate-100">
           {filtered.length === 0 && (
             <MasterTableMessage
-              colSpan={4}
+              colSpan={5}
               loading={isLoading && layanans.length === 0}
               loadingText="Memuat data layanan..."
               icon={Layers}
@@ -226,6 +235,15 @@ export default function LayananList() {
                   )}
                 </span>
               </td>
+              <td className="max-w-[320px] px-4 py-3 text-slate-600">
+                {l.deskripsi ? (
+                  <span className="line-clamp-2 break-words" title={l.deskripsi}>
+                    {l.deskripsi}
+                  </span>
+                ) : (
+                  <span className="text-slate-400">-</span>
+                )}
+              </td>
               <td className="px-4 py-3 text-slate-600">{l.jumlahOrder} order</td>
               <td className="whitespace-nowrap px-4 py-3">
                 <span
@@ -240,9 +258,8 @@ export default function LayananList() {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => openEdit(l)}
-                    disabled={l.fallback}
-                    title={l.fallback ? "Layanan default tidak bisa diganti namanya" : "Edit"}
-                    className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-500"
+                    title="Edit"
+                    className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
                   >
                     <Pencil size={16} />
                   </button>
@@ -318,6 +335,18 @@ export default function LayananList() {
                     </span>
                   </label>
                 )}
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Deskripsi (opsional)</span>
+                  <textarea
+                    value={deskripsi}
+                    onChange={(e) => setDeskripsi(e.target.value)}
+                    placeholder="Penjelasan singkat layanan ini"
+                    rows={3}
+                    maxLength={300}
+                    className={`${inputClass} resize-none`}
+                  />
+                  <span className="mt-1 block text-right text-[11px] text-slate-400">{deskripsi.length}/300</span>
+                </label>
               </div>
               {formError && <p className="mt-4 text-sm font-medium text-red-600">{formError}</p>}
               <div className="mt-6 flex justify-end gap-2">
@@ -359,17 +388,36 @@ export default function LayananList() {
                 <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Layanan</span>
                 <input
                   required
-                  autoFocus
+                  autoFocus={!editing.fallback}
+                  disabled={editing.fallback}
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   maxLength={50}
-                  className={inputClass}
+                  className={`${inputClass} disabled:bg-slate-50 disabled:text-slate-500`}
                 />
-                {editing.jumlahOrder > 0 && (
+                {editing.fallback && (
+                  <span className="mt-1.5 block text-[11px] text-slate-400">
+                    Nama layanan default tidak bisa diganti, tetapi deskripsinya bisa diubah.
+                  </span>
+                )}
+                {!editing.fallback && editing.jumlahOrder > 0 && (
                   <span className="mt-1.5 block text-[11px] text-slate-400">
                     {editing.jumlahOrder} order yang memakai layanan ini ikut diperbarui ke nama baru.
                   </span>
                 )}
+              </label>
+              <label className="mt-4 block">
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">Deskripsi (opsional)</span>
+                <textarea
+                  value={editDeskripsi}
+                  onChange={(e) => setEditDeskripsi(e.target.value)}
+                  placeholder="Penjelasan singkat layanan ini"
+                  rows={3}
+                  maxLength={300}
+                  autoFocus={editing.fallback}
+                  className={`${inputClass} resize-none`}
+                />
+                <span className="mt-1 block text-right text-[11px] text-slate-400">{editDeskripsi.length}/300</span>
               </label>
               {editError && <p className="mt-4 text-sm font-medium text-red-600">{editError}</p>}
               <div className="mt-6 flex justify-end gap-2">

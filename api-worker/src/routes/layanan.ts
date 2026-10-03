@@ -11,6 +11,18 @@ import { FALLBACK_LAYANAN, STANDARD_LAYANAN, canonicalLayananName, isFallbackLay
 const FALLBACK_PROTECTED =
   `${FALLBACK_LAYANAN} adalah layanan fallback order dan tidak bisa dinonaktifkan, dihapus, atau diganti namanya.`;
 
+const DESKRIPSI_MAX = 300;
+
+/** Optional description: trimmed, empty -> null, capped at DESKRIPSI_MAX. */
+function readDeskripsi(body: Record<string, unknown>): string | null {
+  const raw = body.deskripsi;
+  if (raw === undefined || raw === null) return null;
+  if (typeof raw !== "string") throw Errors.badRequest("Deskripsi harus berupa teks.");
+  const v = raw.trim();
+  if (v.length > DESKRIPSI_MAX) throw Errors.badRequest(`Deskripsi maksimal ${DESKRIPSI_MAX} karakter.`);
+  return v || null;
+}
+
 /** Master Layanan (shipment services) CRUD - Superadmin/Admin only, same
  * gate as Master Mitra / Clients. GET is readable by every signed-in role
  * (order forms, incl. the Client portal, need the dropdown list) but
@@ -22,14 +34,15 @@ export function registerLayananRoutes(router: Router) {
     const onlyActive = !canManage || new URL(ctx.request.url).searchParams.get("active") === "true";
 
     const rows = await ctx.env.DB.prepare(
-      `SELECT l.id, l.nama, l.aktif, l.created_at,
+      `SELECT l.id, l.nama, l.deskripsi, l.aktif, l.created_at,
               (SELECT COUNT(*) FROM shipments s WHERE s.layanan = l.nama COLLATE NOCASE) AS jumlah_order
        FROM layanans l ${onlyActive ? "WHERE l.aktif = 1" : ""}
        ORDER BY l.nama`,
-    ).all<{ id: string; nama: string; aktif: number; created_at: string; jumlah_order: number }>();
+    ).all<{ id: string; nama: string; deskripsi: string | null; aktif: number; created_at: string; jumlah_order: number }>();
     const items = (rows.results ?? []).map((r) => ({
       id: r.id,
       nama: r.nama,
+      deskripsi: r.deskripsi ?? null,
       aktif: r.aktif === 1,
       jumlahOrder: r.jumlah_order,
       fallback: isFallbackLayanan(r.nama),
@@ -52,6 +65,7 @@ export function registerLayananRoutes(router: Router) {
     const body = await parseJsonBody(ctx.request);
     const nama = canonicalLayananName(reqString(body, "nama", { max: 50 }));
     if (!nama) throw Errors.badRequest("Nama layanan wajib diisi.");
+    const deskripsi = readDeskripsi(body);
 
     const dupe = await ctx.env.DB.prepare(`SELECT nama FROM layanans WHERE nama = ?`).bind(nama).first<{ nama: string }>();
     if (dupe) throw Errors.conflict(`Layanan "${dupe.nama}" sudah ada di Master Layanan.`);
@@ -59,9 +73,9 @@ export function registerLayananRoutes(router: Router) {
     const id = newId();
     const now = new Date().toISOString();
     await ctx.env.DB.prepare(
-      `INSERT INTO layanans (id, nama, aktif, created_at, created_by, updated_at, updated_by) VALUES (?, ?, 1, ?, ?, ?, ?)`,
+      `INSERT INTO layanans (id, nama, deskripsi, aktif, created_at, created_by, updated_at, updated_by) VALUES (?, ?, ?, 1, ?, ?, ?, ?)`,
     )
-      .bind(id, nama, now, actor.id, now, actor.id)
+      .bind(id, nama, deskripsi, now, actor.id, now, actor.id)
       .run();
 
     await writeAuditLog(ctx.env, actor, {
@@ -71,14 +85,14 @@ export function registerLayananRoutes(router: Router) {
       description: `Layanan "${nama}" ditambahkan.`,
     });
 
-    return ok({ id, nama, aktif: true }, {}, 201);
+    return ok({ id, nama, deskripsi, aktif: true }, {}, 201);
   });
 
   router.patch("/api/layanan/:id", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "users.manage");
-    const layanan = await ctx.env.DB.prepare(`SELECT id, nama, aktif FROM layanans WHERE id = ?`)
+    const layanan = await ctx.env.DB.prepare(`SELECT id, nama, aktif, deskripsi FROM layanans WHERE id = ?`)
       .bind(params.id)
-      .first<{ id: string; nama: string; aktif: number }>();
+      .first<{ id: string; nama: string; aktif: number; deskripsi: string | null }>();
     if (!layanan) throw Errors.notFound("Layanan tidak ditemukan.");
 
     const body = await parseJsonBody(ctx.request);
@@ -104,6 +118,18 @@ export function registerLayananRoutes(router: Router) {
       }
     }
 
+    // Description is editable for every layanan, including the protected LTL
+    // (only its name/status are locked).
+    let deskripsiChanged = false;
+    if (Object.prototype.hasOwnProperty.call(body, "deskripsi")) {
+      const deskripsi = readDeskripsi(body);
+      if (deskripsi !== (layanan.deskripsi ?? null)) {
+        deskripsiChanged = true;
+        sets.push("deskripsi = ?");
+        values.push(deskripsi);
+      }
+    }
+
     const aktif = optBool(body, "aktif");
     if (aktif !== undefined && (aktif ? 1 : 0) !== layanan.aktif) {
       if (!aktif && protectedFallback) throw Errors.conflict(FALLBACK_PROTECTED);
@@ -111,7 +137,9 @@ export function registerLayananRoutes(router: Router) {
       values.push(aktif ? 1 : 0);
     }
     if (sets.length === 0) {
-      if (body.nama === undefined && aktif === undefined) throw Errors.badRequest("Tidak ada perubahan yang dikirim.");
+      if (body.nama === undefined && aktif === undefined && !Object.prototype.hasOwnProperty.call(body, "deskripsi")) {
+        throw Errors.badRequest("Tidak ada perubahan yang dikirim.");
+      }
       return ok({ updated: false });
     }
 
@@ -133,7 +161,11 @@ export function registerLayananRoutes(router: Router) {
       module: "Layanan",
       description: newName
         ? `Layanan "${layanan.nama}" diganti namanya menjadi "${newName}".`
-        : `Layanan "${layanan.nama}" ${aktif ? "diaktifkan" : "dinonaktifkan"}.`,
+        : toggled
+          ? `Layanan "${layanan.nama}" ${aktif ? "diaktifkan" : "dinonaktifkan"}.`
+          : deskripsiChanged
+            ? `Deskripsi layanan "${layanan.nama}" diperbarui.`
+            : `Layanan "${layanan.nama}" diperbarui.`,
     });
 
     return ok({ updated: true });

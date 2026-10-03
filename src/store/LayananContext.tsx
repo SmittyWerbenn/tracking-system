@@ -5,6 +5,7 @@ import { useAuth } from "./AuthContext";
 export interface Layanan {
   id: string;
   nama: string;
+  deskripsi: string | null;
   aktif: boolean;
   /** Orders currently using this layanan. */
   jumlahOrder: number;
@@ -30,8 +31,8 @@ interface LayananContextValue {
   fallback: { nama: string; ready: boolean };
   isLoading: boolean;
   refresh: () => Promise<void>;
-  createLayanan: (nama: string) => Promise<void>;
-  updateLayanan: (id: string, data: { nama?: string; aktif?: boolean }) => Promise<void>;
+  createLayanan: (nama: string, deskripsi?: string) => Promise<void>;
+  updateLayanan: (id: string, data: { nama?: string; deskripsi?: string; aktif?: boolean }) => Promise<void>;
   deleteLayanan: (id: string) => Promise<void>;
 }
 
@@ -65,12 +66,12 @@ export function LayananProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
-  async function createLayanan(nama: string) {
-    await api.post("/api/layanan", { nama });
+  async function createLayanan(nama: string, deskripsi = "") {
+    await api.post("/api/layanan", { nama, deskripsi });
     await refresh();
   }
 
-  async function updateLayanan(id: string, data: { nama?: string; aktif?: boolean }) {
+  async function updateLayanan(id: string, data: { nama?: string; deskripsi?: string; aktif?: boolean }) {
     await api.patch(`/api/layanan/${encodeURIComponent(id)}`, data);
     await refresh();
   }

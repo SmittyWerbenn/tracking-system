@@ -9,6 +9,7 @@ import {
   Layers,
   LayoutDashboard,
   Radar,
+  ScanBarcode,
   ShieldCheck,
   Target,
   Truck,
@@ -86,7 +87,7 @@ export const C = {
   why: {
     eyebrow: { id: "Keunggulan", en: "Advantages" },
     title: { id: "Mengapa Memilih GMS Logistics?", en: "Why Choose GMS Logistics?" },
-    sub: { id: "Enam alasan mitra bisnis mempercayakan pengirimannya kepada kami.", en: "Six reasons business partners trust us with their shipments." },
+    sub: { id: "Tujuh alasan mitra bisnis mempercayakan pengirimannya kepada kami.", en: "Seven reasons business partners trust us with their shipments." },
     items: [
       { icon: Radar, title: { id: "Real-Time Tracking", en: "Real-Time Tracking" }, desc: { id: "Pantau lokasi dan status pengiriman secara real-time.", en: "Monitor shipment location and status in real time." } },
       { icon: LayoutDashboard, title: { id: "Smart Portal Driver", en: "Smart Driver Portal" }, desc: { id: "Manajemen driver, jadwal dan dokumen secara terintegrasi.", en: "Integrated management of drivers, schedules and documents." } },
@@ -94,6 +95,7 @@ export const C = {
       { icon: Users, title: { id: "Tim Lapangan Handal", en: "Reliable Field Team" }, desc: { id: "Didukung armada dan tim operasional berpengalaman.", en: "Supported by an experienced fleet and operations team." } },
       { icon: Truck, title: { id: "Fleet Lengkap", en: "Complete Fleet" }, desc: { id: "Beragam jenis armada untuk kebutuhan pengiriman.", en: "A wide range of vehicles for every shipping need." } },
       { icon: Layers, title: { id: "Koordinasi Terintegrasi", en: "Integrated Coordination" }, desc: { id: "Informasi pengiriman lebih terkoordinasi dan transparan.", en: "More coordinated and transparent shipment information." } },
+      { icon: ScanBarcode, title: { id: "Unique AWB untuk Setiap Client", en: "Unique AWB for Every Client" }, desc: { id: "Setiap client memiliki unique AWB yang menjamin identifikasi shipment secara akurat, memudahkan tracking, meningkatkan traceability, dan mengurangi risiko kesalahan pengiriman.", en: "Every client has a unique AWB that ensures accurate shipment identification, simplifies tracking, improves traceability, and reduces the risk of shipping errors." } },
     ] as { icon: LucideIcon; title: L; desc: L }[],
   },
   services: {

@@ -36,6 +36,9 @@ export default function Login() {
   const clientFrozen = !!error && error.includes("Client Anda dinonaktifkan");
   const mitraFrozen = !!error && error.includes("Mitra Anda dinonaktifkan");
 
+  // Unknown email: there is no account to reset, so no "Lupa Password?".
+  const emailNotRegistered = error === "Email tidak terdaftar.";
+
   const from = (location.state as { from?: Location } | null)?.from?.pathname ?? adminPath("/");
 
   // login() resolves before AuthContext's profile state has actually
@@ -109,6 +112,7 @@ export default function Login() {
 
           {/* Lupa Password: the WhatsApp number depends on the role behind the typed
               email (GMS-Admin -> Superadmin, everyone else -> Admin). */}
+          {!emailNotRegistered && (
           <div className="-mt-1 text-right">
             <ContactAdminButton
               variant="link"
@@ -119,6 +123,7 @@ export default function Login() {
               }
             />
           </div>
+          )}
 
           {error && (
             <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">

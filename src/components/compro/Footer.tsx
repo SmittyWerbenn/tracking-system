@@ -95,7 +95,9 @@ export function Footer() {
             <p className="text-base font-bold uppercase tracking-wider text-gms-light">{l(C.footer.contact)}</p>
             <ul className="mt-4 flex flex-col gap-3 text-lg text-blue-100/75">
               <li className="flex gap-2"><Phone size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><a href={toTelHref(contactPhone)} className="hover:text-gms-light">{contactPhone}</a></li>
-              <li className="flex gap-2"><MessageCircle size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><a href={`https://wa.me/${helpWhatsAppNumber}`} target="_blank" rel="noopener noreferrer" className="hover:text-gms-light">{helpPhoneDisplay}</a></li>
+              {helpWhatsAppNumber && (
+                <li className="flex gap-2"><MessageCircle size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><a href={`https://wa.me/${helpWhatsAppNumber}`} target="_blank" rel="noopener noreferrer" className="hover:text-gms-light">{helpPhoneDisplay}</a></li>
+              )}
               <li className="flex gap-2"><Mail size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><a href={`mailto:${contactEmail}`} className="break-all hover:text-gms-light">{contactEmail}</a></li>
               <li className="flex gap-2"><MapPin size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><span>{contactAddress}</span></li>
               <li className="flex gap-2"><Clock size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><span>{contactHours}</span></li>

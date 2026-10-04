@@ -5,7 +5,12 @@ import { useAuth } from "./AuthContext";
 interface Settings {
   stagnantThresholdDays: number;
   emailSendingEnabled: boolean;
+  /** WhatsApp CS (Compro / Contact page). */
   helpPhoneNumber: string;
+  /** WhatsApp Admin - help that needs an Admin (Driver/Client/Viewer/Mitra). */
+  helpWhatsAppAdmin: string;
+  /** WhatsApp Superadmin - help for GMS-Admin accounts. */
+  helpWhatsAppSuperadmin: string;
   contactPhone: string;
   contactEmail: string;
   contactAddress: string;
@@ -15,7 +20,9 @@ interface Settings {
 const DEFAULT_SETTINGS: Settings = {
   stagnantThresholdDays: 3,
   emailSendingEnabled: true,
-  helpPhoneNumber: "0812-0000-8899",
+  helpPhoneNumber: "",
+  helpWhatsAppAdmin: "",
+  helpWhatsAppSuperadmin: "",
   contactPhone: "021-2200-8899",
   contactEmail: "cs@gms-logistics.co.id",
   contactAddress: "Jl. Raya Cakung No. 88, Cakung, Jakarta Timur, DKI Jakarta",
@@ -24,6 +31,8 @@ const DEFAULT_SETTINGS: Settings = {
 
 export interface ContactInfoInput {
   helpPhoneNumber: string;
+  helpWhatsAppAdmin: string;
+  helpWhatsAppSuperadmin: string;
   contactPhone: string;
   contactEmail: string;
   contactAddress: string;

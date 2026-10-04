@@ -26,7 +26,9 @@ export default function Login() {
   const [failedCode, setFailedCode] = useState("");
   // Not offered for accounts this portal is not meant for (see backend login).
   const wrongPasswordWarning =
-    failedCount >= MAX_WRONG_PASSWORD && failedEmail === email.trim().toLowerCase() && failedCode === "BAD_CREDENTIALS_OTHER";
+    failedCount >= MAX_WRONG_PASSWORD &&
+    failedEmail === email.trim().toLowerCase() &&
+    (failedCode === "BAD_CREDENTIALS_OTHER" || failedCode === "BAD_CREDENTIALS_STAFF");
 
   // Backend refuses login for accounts of a deactivated Client with this
   // message; in that case offer a WhatsApp shortcut to the admin.
@@ -110,6 +112,19 @@ export default function Login() {
             </div>
           </label>
 
+          {/* Lupa Password: the WhatsApp number depends on the role behind the typed
+              email (GMS-Admin -> Superadmin, everyone else -> Admin). */}
+          <div className="-mt-1 text-right">
+            <ContactAdminButton
+              variant="link"
+              label="Lupa Password?"
+              email={email}
+              message={(info) =>
+                `Halo ${info.target === "superadmin" ? "Superadmin" : "Admin"} GMS, saya lupa password akun ${email.trim()}. Mohon bantuannya.`
+              }
+            />
+          </div>
+
           {error && (
             <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
               <AlertTriangle size={14} />
@@ -125,13 +140,15 @@ export default function Login() {
           )}
           {(clientFrozen || mitraFrozen || wrongPasswordWarning) && (
             <ContactAdminButton
-              message={
-                clientFrozen
-                  ? `Halo Admin GMS, akun Client saya (${email}) dinonaktifkan. Mohon bantuannya.`
+              email={email}
+              message={(info) => {
+                const to = info.target === "superadmin" ? "Superadmin" : "Admin";
+                return clientFrozen
+                  ? `Halo ${to} GMS, akun Client saya (${email}) dinonaktifkan. Mohon bantuannya.`
                   : mitraFrozen
-                    ? `Halo Admin GMS, akun Mitra saya (${email}) dinonaktifkan. Mohon bantuannya.`
-                    : `Halo Admin GMS, saya tidak bisa login (password salah berulang kali) dengan email ${email}. Mohon bantuannya.`
-              }
+                    ? `Halo ${to} GMS, akun Mitra saya (${email}) dinonaktifkan. Mohon bantuannya.`
+                    : `Halo ${to} GMS, saya tidak bisa login (password salah berulang kali) dengan email ${email}. Mohon bantuannya.`;
+              }}
             />
           )}
 

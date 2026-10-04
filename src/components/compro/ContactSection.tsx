@@ -18,6 +18,7 @@ export function ContactForm({ prefillMessage }: { prefillMessage: string }) {
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [noNumber, setNoNumber] = useState(false);
   const f = C.contact.form;
 
   useEffect(() => {
@@ -28,6 +29,7 @@ export function ContactForm({ prefillMessage }: { prefillMessage: string }) {
     setV((s) => ({ ...s, [k]: e.target.value }));
     setErrors((er) => ({ ...er, [k]: undefined }));
     setDone(false);
+    setNoNumber(false);
   };
 
   function validate(): Errors {
@@ -65,6 +67,12 @@ export function ContactForm({ prefillMessage }: { prefillMessage: string }) {
       `---`,
       `${new Date().toLocaleString(language === "id" ? "id-ID" : "en-US")}`,
     ].filter(Boolean);
+    // No valid WhatsApp CS number configured: don't pretend it was sent.
+    if (!helpWhatsAppNumber) {
+      setBusy(false);
+      setNoNumber(true);
+      return;
+    }
     window.open(`https://wa.me/${helpWhatsAppNumber}?text=${encodeURIComponent(lines.join(String.fromCharCode(10)))}`, "_blank", "noopener,noreferrer");
     setBusy(false);
     setDone(true);
@@ -123,6 +131,13 @@ export function ContactForm({ prefillMessage }: { prefillMessage: string }) {
       {Object.keys(errors).length > 0 && (
         <p role="alert" className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"><TriangleAlert size={16} aria-hidden />{l(f.errors.fix)}</p>
       )}
+      {noNumber && (
+        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+          {language === "id"
+            ? "Nomor WhatsApp CS belum dikonfigurasi. Silakan hubungi kami lewat email atau telepon."
+            : "The WhatsApp CS number has not been configured. Please contact us by email or phone."}
+        </p>
+      )}
       {done && <p role="status" className="rounded-lg bg-gms-soft px-3 py-2 text-sm font-semibold text-gms-corp">{l(f.sent)}</p>}
       <button type="submit" disabled={busy} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-gms-corp px-6 font-bold text-white transition-colors hover:bg-gms-navy disabled:opacity-70">
         {busy && <Loader2 size={16} className="animate-spin" aria-hidden />}
@@ -138,7 +153,9 @@ export function ContactSection({ prefillMessage }: { prefillMessage: string }) {
   const items = [
     { icon: Mail, label: C.contact.email, value: contactEmail, href: `mailto:${contactEmail}` },
     { icon: Phone, label: C.contact.phone, value: contactPhone, href: toTelHref(contactPhone) },
-    { icon: MessageCircle, label: C.contact.whatsapp, value: helpPhoneDisplay, href: `https://wa.me/${helpWhatsAppNumber}` },
+    ...(helpWhatsAppNumber
+      ? [{ icon: MessageCircle, label: C.contact.whatsapp, value: helpPhoneDisplay, href: `https://wa.me/${helpWhatsAppNumber}` }]
+      : []),
     { icon: MapPin, label: C.contact.address, value: contactAddress },
     { icon: Clock, label: C.contact.hours, value: contactHours },
   ];

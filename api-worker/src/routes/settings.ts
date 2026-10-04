@@ -3,11 +3,14 @@ import type { Ctx } from "../types";
 import { ok, Errors } from "../http";
 import { parseJsonBody, reqNumber, reqString, optBool } from "../validate";
 import { requirePermission } from "../authMiddleware";
+import { requireValidWhatsApp } from "../help";
 
 const KEYS = [
   "stagnant_threshold_days",
   "email_sending_enabled",
   "help_phone_number",
+  "help_whatsapp_admin",
+  "help_whatsapp_superadmin",
   "contact_phone",
   "contact_email",
   "contact_address",
@@ -18,9 +21,12 @@ type Key = (typeof KEYS)[number];
 const DEFAULTS: Record<Key, string> = {
   stagnant_threshold_days: "2",
   email_sending_enabled: "true",
-  // Matches the number previously hardcoded in src/utils/contact.ts, so
-  // nothing changes for existing users until a Superadmin edits it.
-  help_phone_number: "0812-0000-8899",
+  // WhatsApp CS (Compro / Contact page), WhatsApp Admin and WhatsApp
+  // Superadmin (help buttons). No placeholder numbers in code: an unset number
+  // is reported as "belum dikonfigurasi" by the UI instead.
+  help_phone_number: "",
+  help_whatsapp_admin: "",
+  help_whatsapp_superadmin: "",
   // The public Contact page (/kontak) used to hardcode these. The defaults are
   // exactly that text, so the page looks the same until a Superadmin edits it.
   contact_phone: "021-2200-8899",
@@ -74,6 +80,8 @@ export function registerSettingsRoutes(router: Router) {
       stagnantThresholdDays: Number(values.stagnant_threshold_days),
       emailSendingEnabled: values.email_sending_enabled === "true",
       helpPhoneNumber: values.help_phone_number,
+      helpWhatsAppAdmin: values.help_whatsapp_admin,
+      helpWhatsAppSuperadmin: values.help_whatsapp_superadmin,
       contactPhone: values.contact_phone,
       contactEmail: values.contact_email,
       contactAddress: values.contact_address,
@@ -89,6 +97,18 @@ export function registerSettingsRoutes(router: Router) {
       : undefined;
     const emailSendingEnabled = optBool(body, "emailSendingEnabled");
     const helpPhoneNumber = body.helpPhoneNumber !== undefined ? reqString(body, "helpPhoneNumber", { max: 30 }) : undefined;
+    if (helpPhoneNumber !== undefined) requireValidWhatsApp("WhatsApp CS", helpPhoneNumber);
+    // Admin / Superadmin numbers may be cleared (""), meaning "not configured".
+    const readOptionalWhatsApp = (field: string, label: string): string | undefined => {
+      if (body[field] === undefined) return undefined;
+      if (typeof body[field] !== "string") throw Errors.badRequest(`${label} harus berupa teks.`);
+      const v = (body[field] as string).trim();
+      if (v.length > 30) throw Errors.badRequest(`${label} maksimal 30 karakter.`);
+      if (v !== "") requireValidWhatsApp(label, v);
+      return v;
+    };
+    const helpWhatsAppAdmin = readOptionalWhatsApp("helpWhatsAppAdmin", "WhatsApp Admin");
+    const helpWhatsAppSuperadmin = readOptionalWhatsApp("helpWhatsAppSuperadmin", "WhatsApp Superadmin");
 
     // Public Contact page details.
     const contactPhone = body.contactPhone !== undefined ? reqString(body, "contactPhone", { max: 30 }) : undefined;
@@ -105,6 +125,8 @@ export function registerSettingsRoutes(router: Router) {
     // them. Enforced here, not just by hiding the inputs.
     const touchesContact =
       helpPhoneNumber !== undefined ||
+      helpWhatsAppAdmin !== undefined ||
+      helpWhatsAppSuperadmin !== undefined ||
       contactPhone !== undefined ||
       contactEmail !== undefined ||
       contactAddress !== undefined ||
@@ -117,6 +139,8 @@ export function registerSettingsRoutes(router: Router) {
     if (stagnantThresholdDays !== undefined) await upsert(ctx, "stagnant_threshold_days", String(stagnantThresholdDays), now, actor.id);
     if (emailSendingEnabled !== undefined) await upsert(ctx, "email_sending_enabled", String(emailSendingEnabled), now, actor.id);
     if (helpPhoneNumber !== undefined) await upsert(ctx, "help_phone_number", helpPhoneNumber, now, actor.id);
+    if (helpWhatsAppAdmin !== undefined) await upsert(ctx, "help_whatsapp_admin", helpWhatsAppAdmin, now, actor.id);
+    if (helpWhatsAppSuperadmin !== undefined) await upsert(ctx, "help_whatsapp_superadmin", helpWhatsAppSuperadmin, now, actor.id);
     if (contactPhone !== undefined) await upsert(ctx, "contact_phone", contactPhone, now, actor.id);
     if (contactEmail !== undefined) await upsert(ctx, "contact_email", contactEmail, now, actor.id);
     if (contactAddress !== undefined) await upsert(ctx, "contact_address", contactAddress, now, actor.id);

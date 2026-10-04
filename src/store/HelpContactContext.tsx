@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { api } from "../utils/apiClient";
-
-const FALLBACK_PHONE_DISPLAY = "0812-0000-8899";
+import { normalizeWhatsApp } from "../utils/whatsapp";
 
 // Shown on the public Contact page until/unless Superadmin edits them under
 // Pengaturan. Same text the page used to hardcode.
@@ -18,7 +17,7 @@ export function toTelHref(phone: string): string {
   return `tel:${cleaned}`;
 }
 
-/** Converts a displayed Indonesian phone number ("0812-0000-8899") into the
+/** Converts a displayed Indonesian phone number (e.g. "08xx-xxxx-xxxx") into the
  * digits-only format wa.me links need, swapping the country code in for a
  * leading "0". */
 export function toWhatsAppNumber(phone: string): string {
@@ -29,7 +28,9 @@ export function toWhatsAppNumber(phone: string): string {
 }
 
 interface HelpContactContextValue {
+  /** WhatsApp CS exactly as typed under Pengaturan ("" until loaded / if unset). */
   helpPhoneDisplay: string;
+  /** WhatsApp CS normalized for wa.me links; "" when unset or invalid. */
   helpWhatsAppNumber: string;
   contactPhone: string;
   contactEmail: string;
@@ -38,20 +39,21 @@ interface HelpContactContextValue {
 }
 
 const HelpContactContext = createContext<HelpContactContextValue>({
-  helpPhoneDisplay: FALLBACK_PHONE_DISPLAY,
-  helpWhatsAppNumber: toWhatsAppNumber(FALLBACK_PHONE_DISPLAY),
+  helpPhoneDisplay: "",
+  helpWhatsAppNumber: "",
   ...CONTACT_DEFAULTS,
 });
 
 /**
- * Nomor Bantuan (CS/admin contact number) - configurable by Superadmin
+ * WhatsApp CS (the existing "Nomor Bantuan" setting, used by Compro and the
+ * public Contact page) - configurable by Superadmin
  * under Pengaturan, fetched here from the public settings endpoint (no
  * auth - both the public Contact page and the driver portal need it, and
  * neither has settings.view) and shared app-wide so an edit takes effect
  * everywhere without a redeploy.
  */
 export function HelpContactProvider({ children }: { children: ReactNode }) {
-  const [helpPhoneDisplay, setHelpPhoneDisplay] = useState(FALLBACK_PHONE_DISPLAY);
+  const [helpPhoneDisplay, setHelpPhoneDisplay] = useState("");
   const [contact, setContact] = useState(CONTACT_DEFAULTS);
 
   useEffect(() => {
@@ -62,7 +64,7 @@ export function HelpContactProvider({ children }: { children: ReactNode }) {
         } & Partial<typeof CONTACT_DEFAULTS>
       >("/api/public/settings", { auth: false })
       .then((res) => {
-        if (res.helpPhoneNumber) setHelpPhoneDisplay(res.helpPhoneNumber);
+        setHelpPhoneDisplay(res.helpPhoneNumber ?? "");
         setContact({
           contactPhone: res.contactPhone || CONTACT_DEFAULTS.contactPhone,
           contactEmail: res.contactEmail || CONTACT_DEFAULTS.contactEmail,
@@ -75,7 +77,7 @@ export function HelpContactProvider({ children }: { children: ReactNode }) {
 
   return (
     <HelpContactContext.Provider
-      value={{ helpPhoneDisplay, helpWhatsAppNumber: toWhatsAppNumber(helpPhoneDisplay), ...contact }}
+      value={{ helpPhoneDisplay, helpWhatsAppNumber: normalizeWhatsApp(helpPhoneDisplay) ?? "", ...contact }}
     >
       {children}
     </HelpContactContext.Provider>

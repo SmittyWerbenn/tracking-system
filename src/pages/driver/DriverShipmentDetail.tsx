@@ -20,7 +20,8 @@ import { DriverLayout } from "../../components/layout/DriverLayout";
 import { LocationTextInput } from "../../components/LocationTextInput";
 import { PhotoPickerBox } from "../../components/PhotoPickerBox";
 import { RefreshButton } from "../../components/RefreshButton";
-import { toWhatsAppNumber, useHelpContact } from "../../store/HelpContactContext";
+import { DriverHelpLink } from "../../components/DriverHelpLink";
+import { toWhatsAppNumber } from "../../store/HelpContactContext";
 import { useLocations } from "../../store/LocationContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { ShipmentStatus, TimelineEventType } from "../../types";
@@ -57,7 +58,6 @@ export default function DriverShipmentDetail() {
   const { awb } = useParams<{ awb: string }>();
   const { addTrackingUpdate } = useShipments();
   const { activeTitikLokasi } = useLocations();
-  const { helpPhoneDisplay, helpWhatsAppNumber } = useHelpContact();
   const [data, setData] = useState<DriverShipmentDetailData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -359,19 +359,14 @@ export default function DriverShipmentDetail() {
               )}
             </div>
 
-            <a
-              href={`https://wa.me/${helpWhatsAppNumber}?text=${encodeURIComponent(
-                `Halo CS, saya driver AWB ${shipment.awb} butuh bantuan.`,
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
+            <DriverHelpLink
+              message={`Halo Admin, saya driver AWB ${shipment.awb} butuh bantuan.`}
               className="mt-2 flex w-full flex-col items-center justify-center gap-0.5 rounded-lg border border-amber-300 bg-amber-50 py-2.5 text-amber-700 hover:bg-amber-100"
             >
               <span className="flex items-center gap-2 text-sm font-semibold">
-                <Headset size={16} /> Hubungi CS (Darurat/Kendala)
+                <Headset size={16} /> Hubungi Admin (Darurat/Kendala)
               </span>
-              <span className="text-xs font-normal text-amber-600">{helpPhoneDisplay}</span>
-            </a>
+            </DriverHelpLink>
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

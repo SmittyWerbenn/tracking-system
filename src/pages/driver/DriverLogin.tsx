@@ -111,6 +111,19 @@ export default function DriverLogin() {
             </div>
           </label>
 
+          {/* Lupa Password: the WhatsApp number depends on the role behind the typed
+              email (GMS-Admin -> Superadmin, everyone else -> Admin). */}
+          <div className="-mt-1 text-right">
+            <ContactAdminButton
+              variant="link"
+              label="Lupa Password?"
+              email={email}
+              message={(info) =>
+                `Halo ${info.target === "superadmin" ? "Superadmin" : "Admin"} GMS, saya driver dan lupa password akun ${email.trim()}. Mohon bantuannya.`
+              }
+            />
+          </div>
+
           {error && (
             <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
               <AlertTriangle size={14} />
@@ -126,7 +139,8 @@ export default function DriverLogin() {
           )}
           {wrongPasswordWarning && (
             <ContactAdminButton
-              message={`Halo Admin GMS, saya driver dan tidak bisa login (password salah berulang kali) dengan email ${email}. Mohon bantuannya.`}
+              email={email}
+              message={() => `Halo Admin GMS, saya driver dan tidak bisa login (password salah berulang kali) dengan email ${email}. Mohon bantuannya.`}
             />
           )}
 

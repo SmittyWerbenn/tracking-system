@@ -16,7 +16,8 @@ export default function Contact() {
   const channelLabels = [t.contact.channelPhone, t.contact.channelWhatsapp, t.contact.channelEmail];
   const CHANNEL_VALUES = [
     { value: contactPhone, href: toTelHref(contactPhone) },
-    { value: helpPhoneDisplay, href: `https://wa.me/${helpWhatsAppNumber}` },
+    // WhatsApp CS; with no valid number configured the card is shown without a link.
+    { value: helpPhoneDisplay || "-", href: helpWhatsAppNumber ? `https://wa.me/${helpWhatsAppNumber}` : undefined },
     { value: contactEmail, href: `mailto:${contactEmail}` },
   ];
 
@@ -37,12 +38,13 @@ export default function Contact() {
           {channelLabels.map((label, i) => {
             const Icon = CHANNEL_ICONS[i];
             const { value, href } = CHANNEL_VALUES[i];
+            const Tag = href ? "a" : "div";
             return (
-              <a
+              <Tag
                 key={label}
                 href={href}
-                target={href.startsWith("http") ? "_blank" : undefined}
-                rel="noreferrer"
+                target={href?.startsWith("http") ? "_blank" : undefined}
+                rel={href ? "noreferrer" : undefined}
                 className="flex flex-col items-start gap-2 rounded-xl border border-slate-200 p-4 transition-colors hover:border-blue-300 hover:bg-blue-50"
               >
                 <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-800">
@@ -50,7 +52,7 @@ export default function Contact() {
                 </span>
                 <span className="text-xs font-medium text-slate-400">{label}</span>
                 <span className="text-sm font-semibold text-slate-800">{value}</span>
-              </a>
+              </Tag>
             );
           })}
         </div>

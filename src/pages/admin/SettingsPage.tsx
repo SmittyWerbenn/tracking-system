@@ -1,9 +1,10 @@
-import { CheckCircle2, Clock, Mail, MapPin, MessageCircle, Phone, Settings as SettingsIcon } from "lucide-react";
+import { CheckCircle2, Clock, LifeBuoy, Mail, MapPin, MessageCircle, Phone, Settings as SettingsIcon } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useAuth } from "../../store/AuthContext";
 import { useSettings } from "../../store/SettingsContext";
 import { ApiError } from "../../utils/apiClient";
+import { normalizeWhatsApp } from "../../utils/whatsapp";
 
 export default function SettingsPage() {
   const { profile } = useAuth();
@@ -15,6 +16,8 @@ export default function SettingsPage() {
   // Contact details shown on the public Contact page (/kontak).
   const [contact, setContact] = useState({
     helpPhoneNumber: settings.helpPhoneNumber,
+    helpWhatsAppAdmin: settings.helpWhatsAppAdmin,
+    helpWhatsAppSuperadmin: settings.helpWhatsAppSuperadmin,
     contactPhone: settings.contactPhone,
     contactEmail: settings.contactEmail,
     contactAddress: settings.contactAddress,
@@ -31,12 +34,14 @@ export default function SettingsPage() {
   useEffect(() => {
     setContact({
       helpPhoneNumber: settings.helpPhoneNumber,
+      helpWhatsAppAdmin: settings.helpWhatsAppAdmin,
+      helpWhatsAppSuperadmin: settings.helpWhatsAppSuperadmin,
       contactPhone: settings.contactPhone,
       contactEmail: settings.contactEmail,
       contactAddress: settings.contactAddress,
       contactHours: settings.contactHours,
     });
-  }, [settings.helpPhoneNumber, settings.contactPhone, settings.contactEmail, settings.contactAddress, settings.contactHours]);
+  }, [settings.helpPhoneNumber, settings.helpWhatsAppAdmin, settings.helpWhatsAppSuperadmin, settings.contactPhone, settings.contactEmail, settings.contactAddress, settings.contactHours]);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -48,10 +53,23 @@ export default function SettingsPage() {
   async function handleContactSubmit(e: FormEvent) {
     e.preventDefault();
     setContactError(null);
+    // Same rule as the API (which re-checks it): must be a usable WhatsApp
+    // number; Admin / Superadmin may be left empty = "belum dikonfigurasi".
+    const invalid = [
+      { label: "WhatsApp CS", value: contact.helpPhoneNumber, optional: false },
+      { label: "WhatsApp Admin", value: contact.helpWhatsAppAdmin, optional: true },
+      { label: "WhatsApp Superadmin", value: contact.helpWhatsAppSuperadmin, optional: true },
+    ].find((f) => !(f.optional && f.value.trim() === "") && normalizeWhatsApp(f.value) === null);
+    if (invalid) {
+      setContactError(`${invalid.label} tidak valid. Gunakan format 08xxxxxxxxxx atau +628xxxxxxxxxx.`);
+      return;
+    }
     setContactSaving(true);
     try {
       await setContactInfo({
         helpPhoneNumber: contact.helpPhoneNumber.trim(),
+        helpWhatsAppAdmin: contact.helpWhatsAppAdmin.trim(),
+        helpWhatsAppSuperadmin: contact.helpWhatsAppSuperadmin.trim(),
         contactPhone: contact.contactPhone.trim(),
         contactEmail: contact.contactEmail.trim(),
         contactAddress: contact.contactAddress.trim(),
@@ -165,11 +183,10 @@ export default function SettingsPage() {
       >
         <div className="mb-1 flex items-center gap-2">
           <Phone size={17} className="text-blue-900" />
-          <h2 className="text-sm font-semibold text-slate-800">Informasi Kontak</h2>
+          <h2 className="text-sm font-semibold text-slate-800">Informasi CS</h2>
         </div>
         <p className="mb-4 text-xs text-slate-400">
-          Tampil di halaman Kontak (publik). Nomor WhatsApp juga dipakai pada tombol "Butuh Bantuan" / "Hubungi Admin"
-          di Portal Driver dan halaman login.
+          Tampil di halaman Kontak dan Company Profile (publik). WhatsApp CS dipakai oleh tombol WhatsApp pada Compro.
         </p>
 
         <div className="space-y-4">
@@ -191,7 +208,7 @@ export default function SettingsPage() {
 
           <label className="block">
             <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-600">
-              <MessageCircle size={13} className="text-slate-400" /> WhatsApp (CS / Admin)
+              <MessageCircle size={13} className="text-slate-400" /> WhatsApp CS
             </span>
             <input
               type="text"
@@ -200,7 +217,7 @@ export default function SettingsPage() {
               disabled={!isSuperadmin}
               value={contact.helpPhoneNumber}
               onChange={(e) => setContact({ ...contact, helpPhoneNumber: e.target.value })}
-              placeholder="0812-0000-8899"
+              placeholder="08xxxxxxxxxx"
               className={fieldClass}
             />
           </label>
@@ -251,6 +268,49 @@ export default function SettingsPage() {
               placeholder="Senin - Sabtu, 08.00 - 18.00 WIB"
               className={fieldClass}
             />
+          </label>
+        </div>
+
+        <div className="mb-1 mt-6 flex items-center gap-2 border-t border-slate-100 pt-5">
+          <LifeBuoy size={17} className="text-blue-900" />
+          <h2 className="text-sm font-semibold text-slate-800">Informasi Bantuan</h2>
+        </div>
+        <p className="mb-4 text-xs text-slate-400">
+          Tujuan tombol bantuan di halaman login dan Portal Driver. Format: 08xxxxxxxxxx atau +628xxxxxxxxxx. Kosongkan
+          jika belum ada; tombol akan memberi tahu bahwa nomor belum dikonfigurasi.
+        </p>
+        <div className="space-y-4">
+          <label className="block">
+            <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-600">
+              <MessageCircle size={13} className="text-slate-400" /> WhatsApp Admin
+            </span>
+            <input
+              type="text"
+              maxLength={30}
+              disabled={!isSuperadmin}
+              value={contact.helpWhatsAppAdmin}
+              onChange={(e) => setContact({ ...contact, helpWhatsAppAdmin: e.target.value })}
+              placeholder="08xxxxxxxxxx"
+              className={fieldClass}
+            />
+            <span className="mt-1 block text-[11px] text-slate-400">
+              Lupa Password untuk Driver, Client, Viewer, dan Mitra, serta Hubungi Kendala untuk Driver.
+            </span>
+          </label>
+          <label className="block">
+            <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-600">
+              <MessageCircle size={13} className="text-slate-400" /> WhatsApp Superadmin
+            </span>
+            <input
+              type="text"
+              maxLength={30}
+              disabled={!isSuperadmin}
+              value={contact.helpWhatsAppSuperadmin}
+              onChange={(e) => setContact({ ...contact, helpWhatsAppSuperadmin: e.target.value })}
+              placeholder="08xxxxxxxxxx"
+              className={fieldClass}
+            />
+            <span className="mt-1 block text-[11px] text-slate-400">Lupa Password untuk akun GMS-Admin.</span>
           </label>
         </div>
 

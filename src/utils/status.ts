@@ -38,6 +38,18 @@ const STYLES: Record<string, StatusStyle> = {
     dot: "bg-red-500",
     ring: "ring-red-200",
   },
+  "Re-route": {
+    bg: "bg-cyan-100",
+    text: "text-cyan-700",
+    dot: "bg-cyan-500",
+    ring: "ring-cyan-200",
+  },
+  "Penarikan": {
+    bg: "bg-orange-100",
+    text: "text-orange-700",
+    dot: "bg-orange-500",
+    ring: "ring-orange-200",
+  },
   "Transfer Unit": {
     bg: "bg-violet-100",
     text: "text-violet-700",
@@ -82,6 +94,8 @@ export const SHIPMENT_STATUS_OPTIONS: ShipmentStatus[] = [
   "Kendala",
   "Tiba di Tujuan",
   "Selesai / Terkirim",
+  "Re-route",
+  "Penarikan",
   "Dibatalkan",
 ];
 
@@ -94,6 +108,8 @@ export const TIMELINE_EVENT_OPTIONS: TimelineEventType[] = [
   "Transfer Unit",
   "Tiba di Tujuan",
   "Selesai / Terkirim",
+  "Re-route",
+  "Penarikan",
 ];
 
 /** Maps a timeline event type to the resulting shipment-level status. */
@@ -118,6 +134,8 @@ const PIPELINE_RANK: Record<string, number> = {
   "Dalam Perjalanan": 2,
   "Kendala": 2,
   "Transfer Unit": 2,
+  "Re-route": 2,
+  "Penarikan": 2,
   "Tiba di Tujuan": 3,
   "Selesai / Terkirim": 4,
 };

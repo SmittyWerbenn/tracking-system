@@ -284,7 +284,7 @@ export default function DriverShipmentDetail() {
   const isLocked = shipment.status === SELESAI_STATUS;
   const allowedNext = isLocked
     ? []
-    : getAllowedNextEvents(shipment.status as ShipmentStatus).filter((t) => t !== "Transfer Unit");
+    : getAllowedNextEvents(shipment.status as ShipmentStatus).filter((t) => t !== "Transfer Unit" && t !== "Re-route" && t !== "Penarikan");
   const isSelesaiSelected = statusType === SELESAI_STATUS;
   const isKendalaSelected = statusType === "Kendala";
 

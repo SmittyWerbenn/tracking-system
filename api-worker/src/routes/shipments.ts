@@ -595,6 +595,10 @@ export function registerShipmentRoutes(router: Router) {
 
     const body = await parseJsonBody(ctx.request);
     const type = reqEnum(body, "type", TIMELINE_EVENT_TYPES.filter((t) => t !== "Barang Diterima") as readonly TimelineEventType[]);
+    // Diverting or pulling back a shipment is an operations/admin decision, like a truck transfer.
+    if ((type === "Re-route" || type === "Penarikan") && (actor.role === "Driver" || actor.role === "Mitra")) {
+      throw Errors.forbidden(`Status ${type} hanya dapat dicatat oleh admin.`);
+    }
     const tanggal = reqString(body, "tanggal");
     const jam = reqString(body, "jam");
     const keterangan = reqString(body, "keterangan", { max: 500 });
@@ -658,6 +662,8 @@ export function registerShipmentRoutes(router: Router) {
     const actionMap: Record<string, { action: string; label: string; description: string }> = {
       "Transfer Unit": { action: "TRANSFER_TRUCK", label: "TRANSFER TRUCK", description: `Truck dipindahkan di ${lokasi}.` },
       Kendala: { action: "ADD_ISSUE", label: "ADD ISSUE", description: `Kendala dicatat: ${keterangan}` },
+      "Re-route": { action: "REROUTE_SHIPMENT", label: "REROUTE SHIPMENT", description: `Pengiriman dialihkan (re-route) di ${lokasi}: ${keterangan}` },
+      Penarikan: { action: "PULLBACK_SHIPMENT", label: "PULLBACK SHIPMENT", description: `Penarikan barang ke gudang asal dicatat di ${lokasi}: ${keterangan}` },
     };
     if (isSelesai) {
       await writeAuditLog(ctx.env, actor, { action: "UPLOAD_POD", actionLabel: "UPLOAD POD", module: "Shipment", awb: params.awb, description: "Bukti serah terima dicatat." });

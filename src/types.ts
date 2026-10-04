@@ -6,7 +6,9 @@ export type ShipmentStatus =
   | "Kendala"
   | "Tiba di Tujuan"
   | "Selesai / Terkirim"
-  | "Dibatalkan";
+  | "Dibatalkan"
+  | "Re-route"
+  | "Penarikan";
 
 /** A Master Layanan name (e.g. "Regular", "LTL", or any custom layanan) - the
  * valid set is managed in Master Layanan and enforced by the API. */
@@ -20,7 +22,9 @@ export type TimelineEventType =
   | "Kendala"
   | "Transfer Unit"
   | "Tiba di Tujuan"
-  | "Selesai / Terkirim";
+  | "Selesai / Terkirim"
+  | "Re-route"
+  | "Penarikan";
 
 export interface PersonInfo {
   nama: string;
@@ -292,6 +296,8 @@ export type AuditAction =
   | "UPDATE_SHIPMENT_INFO"
   | "UPDATE_POD_PHOTO"
   | "CANCEL_SHIPMENT"
+  | "REROUTE_SHIPMENT"
+  | "PULLBACK_SHIPMENT"
   | "REQUEST_ORDER_RECOVERY"
   | "APPROVE_ORDER_RECOVERY"
   | "REJECT_ORDER_RECOVERY"

@@ -10,7 +10,9 @@ export type ShipmentStatus =
   | "Kendala"
   | "Tiba di Tujuan"
   | "Selesai / Terkirim"
-  | "Dibatalkan";
+  | "Dibatalkan"
+  | "Re-route"
+  | "Penarikan";
 
 export type TimelineEventType =
   | "Barang Diterima"
@@ -20,7 +22,9 @@ export type TimelineEventType =
   | "Kendala"
   | "Transfer Unit"
   | "Tiba di Tujuan"
-  | "Selesai / Terkirim";
+  | "Selesai / Terkirim"
+  | "Re-route"
+  | "Penarikan";
 
 export const TIMELINE_EVENT_TYPES: TimelineEventType[] = [
   "Barang Diterima",
@@ -31,6 +35,8 @@ export const TIMELINE_EVENT_TYPES: TimelineEventType[] = [
   "Transfer Unit",
   "Tiba di Tujuan",
   "Selesai / Terkirim",
+  "Re-route",
+  "Penarikan",
 ];
 
 const PIPELINE_RANK: Record<string, number> = {
@@ -40,6 +46,8 @@ const PIPELINE_RANK: Record<string, number> = {
   Transit: 2,
   "Dalam Perjalanan": 2,
   Kendala: 2,
+  "Re-route": 2,
+  Penarikan: 2,
   "Transfer Unit": 2,
   "Tiba di Tujuan": 3,
   "Selesai / Terkirim": 4,

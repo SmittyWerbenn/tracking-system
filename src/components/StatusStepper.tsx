@@ -11,6 +11,8 @@ function getProgress(status: ShipmentStatus): { index: number; hasKendala: boole
     case "Berangkat":
     case "Transit":
     case "Dalam Perjalanan":
+    case "Re-route":
+    case "Penarikan":
       return { index: 2, hasKendala: false };
     case "Kendala":
       return { index: 2, hasKendala: true };

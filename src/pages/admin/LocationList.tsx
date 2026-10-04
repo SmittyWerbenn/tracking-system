@@ -1,4 +1,4 @@
-import { AlertTriangle, Ban, CheckCircle2, MapPinned, Pencil, RotateCcw, Table, Plus, X } from "lucide-react";
+import { AlertTriangle, Ban, CheckCircle2, Download, MapPinned, Pencil, RotateCcw, Table, Plus, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { BulkLocationImport } from "../../components/BulkLocationImport";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -11,11 +11,13 @@ import {
   MasterSearchInput,
   MasterTableCard,
   MasterTableMessage,
+  MasterToolbarButton,
 } from "../../components/master/MasterData";
 import { useAuth } from "../../store/AuthContext";
 import { useLocations, type TitikFormData } from "../../store/LocationContext";
 import { ApiError } from "../../utils/apiClient";
 import type { TitikJenis, TitikLokasi } from "../../types";
+import { exportLocationsXlsx, locationIdentity } from "../../utils/locationImport";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
@@ -24,7 +26,14 @@ type StatusFilter = "semua" | "aktif" | "nonaktif";
 
 const JENIS_OPTIONS: TitikJenis[] = ["Gudang", "Hub", "Transit", "Cabang", "Tujuan"];
 
-const emptyForm: TitikFormData = { namaKota: "", kodeKota: "", provinsi: "", jenis: "Transit", aktif: true };
+const emptyForm: TitikFormData = {
+  namaKota: "",
+  provinsi: "",
+  namaTitik: "",
+  kodeKota: "",
+  jenis: "Transit",
+  aktif: true,
+};
 
 const JENIS_STYLE: Record<TitikJenis, string> = {
   Gudang: "bg-blue-100 text-blue-700",
@@ -62,7 +71,7 @@ export default function LocationList() {
     const q = search.trim().toLowerCase();
     return titikLokasi.filter(
       (t) =>
-        (!q || [t.namaKota, t.kodeKota, t.provinsi].some((v) => v.toLowerCase().includes(q))) &&
+        (!q || [t.namaKota, t.provinsi, t.namaTitik, t.kodeKota].some((v) => v.toLowerCase().includes(q))) &&
         (!jenisFilter || t.jenis === jenisFilter) &&
         (statusFilter === "semua" || (statusFilter === "aktif" ? t.aktif : !t.aktif)),
     );
@@ -86,9 +95,31 @@ export default function LocationList() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<TitikFormData>(emptyForm);
   const [editError, setEditError] = useState<string | null>(null);
+  // Legacy rows have no titik name yet; it is only mandatory once one exists.
+  const [editOriginalTitik, setEditOriginalTitik] = useState("");
 
-  const existingKotaNames = useMemo(() => titikLokasi.map((t) => t.namaKota.trim().toLowerCase()), [titikLokasi]);
-  const isDuplicateKota = form.namaKota.trim() !== "" && existingKotaNames.includes(form.namaKota.trim().toLowerCase());
+  // A location is unique by Kota / Kabupaten + Provinsi + Nama Titik Transit (several
+  // transit points per kota are allowed). Legacy rows without a titik name
+  // can't collide with anything.
+  const existingIds = useMemo(
+    () => titikLokasi.filter((t) => t.namaTitik).map((t) => locationIdentity(t.namaKota, t.provinsi, t.namaTitik)),
+    [titikLokasi],
+  );
+  const isDuplicateKota =
+    form.namaKota.trim() !== "" &&
+    form.namaTitik.trim() !== "" &&
+    existingIds.includes(locationIdentity(form.namaKota, form.provinsi, form.namaTitik));
+  const missingTitik = useMemo(() => titikLokasi.filter((t) => !t.namaTitik).length, [titikLokasi]);
+
+  const [exporting, setExporting] = useState(false);
+  async function handleExport() {
+    setExporting(true);
+    try {
+      await exportLocationsXlsx(titikLokasi);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function handleCreateSubmit(e: FormEvent) {
     e.preventDefault();
@@ -109,7 +140,15 @@ export default function LocationList() {
 
   function openEdit(t: TitikLokasi) {
     setEditingId(t.id);
-    setEditForm({ namaKota: t.namaKota, kodeKota: t.kodeKota, provinsi: t.provinsi, jenis: t.jenis, aktif: t.aktif });
+    setEditOriginalTitik(t.namaTitik);
+    setEditForm({
+      namaKota: t.namaKota,
+      provinsi: t.provinsi,
+      namaTitik: t.namaTitik,
+      kodeKota: t.kodeKota,
+      jenis: t.jenis,
+      aktif: t.aktif,
+    });
     setEditError(null);
     setEditModalOpen(true);
   }
@@ -134,7 +173,7 @@ export default function LocationList() {
           !expanded
             ? "Master data lokasi yang digunakan pada pengiriman dan update tracking."
             : mode === "single"
-              ? "Tambah satu titik lokasi ke master data."
+              ? "Tambah satu titik transit (Kota / Kabupaten, Provinsi, Nama Titik Transit) ke master data."
               : "Tambah banyak titik lokasi sekaligus dengan mengisi tabel atau mengimpor file Excel/CSV."
         }
         actions={
@@ -177,7 +216,7 @@ export default function LocationList() {
 
       {canEdit && expanded && mode === "bulk" && (
         <div className="mt-6">
-          <BulkLocationImport existingKota={existingKotaNames} />
+          <BulkLocationImport existing={existingIds} />
         </div>
       )}
 
@@ -188,38 +227,46 @@ export default function LocationList() {
         >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Kota</span>
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota / Kabupaten</span>
               <input
                 required
                 className={`${inputClass} ${isDuplicateKota ? "border-amber-400 focus:border-amber-500 focus:ring-amber-100" : ""}`}
-                placeholder="Jakarta"
+                placeholder="Jakarta Pusat"
                 value={form.namaKota}
                 onChange={(e) => setForm({ ...form, namaKota: e.target.value })}
               />
-              {isDuplicateKota && (
-                <span className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-amber-700">
-                  <AlertTriangle size={13} /> "{form.namaKota.trim()}" sudah ada di master data, tidak bisa dobel.
-                </span>
-              )}
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-xs font-medium text-slate-600">Kode Kota</span>
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Provinsi (opsional)</span>
               <input
-                required
-                className={inputClass}
-                placeholder="JKT"
-                value={form.kodeKota}
-                onChange={(e) => setForm({ ...form, kodeKota: e.target.value.toUpperCase() })}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-xs font-medium text-slate-600">Provinsi</span>
-              <input
-                required
                 className={inputClass}
                 placeholder="DKI Jakarta"
                 value={form.provinsi}
                 onChange={(e) => setForm({ ...form, provinsi: e.target.value })}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Titik Transit</span>
+              <input
+                required
+                className={`${inputClass} ${isDuplicateKota ? "border-amber-400 focus:border-amber-500 focus:ring-amber-100" : ""}`}
+                placeholder="Gudang Transit Pulogadung"
+                value={form.namaTitik}
+                onChange={(e) => setForm({ ...form, namaTitik: e.target.value })}
+              />
+              {isDuplicateKota && (
+                <span className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-amber-700">
+                  <AlertTriangle size={13} /> Kombinasi Kota / Kabupaten, Provinsi, dan Nama Titik Transit ini sudah ada, tidak bisa dobel.
+                </span>
+              )}
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Kode (opsional)</span>
+              <input
+                className={inputClass}
+                placeholder="JKT"
+                value={form.kodeKota}
+                onChange={(e) => setForm({ ...form, kodeKota: e.target.value.toUpperCase() })}
               />
             </label>
             <label className="block">
@@ -277,8 +324,17 @@ export default function LocationList() {
             refreshing={refreshing}
             addLabel="Tambah Titik"
             onAdd={canEdit ? () => setExpanded(true) : undefined}
+            secondary={
+              <MasterToolbarButton
+                onClick={() => void handleExport()}
+                icon={Download}
+                label="Unduh Data"
+                disabled={titikLokasi.length === 0}
+                busy={exporting}
+              />
+            }
           >
-            <MasterSearchInput value={search} onChange={setSearch} placeholder="Cari kota, kode, atau provinsi..." />
+            <MasterSearchInput value={search} onChange={setSearch} placeholder="Cari kota/kabupaten, provinsi, atau titik..." />
             <MasterFilterSelect value={jenisFilter} onChange={setJenisFilter} label="Filter jenis titik">
               <option value="">Semua Jenis</option>
               {JENIS_OPTIONS.map((j) => (
@@ -295,12 +351,23 @@ export default function LocationList() {
             <MasterFilterReset visible={hasFilter} onReset={resetFilters} />
           </MasterDataToolbar>
 
-          <MasterTableCard minWidth={720}>
+          {canEdit && missingTitik > 0 && titikLokasi.length > 0 && (
+            <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-600" />
+              <p>
+                <span className="font-semibold">{missingTitik} dari {titikLokasi.length} baris</span> belum punya Nama Titik
+                Transit. Unduh data, lengkapi kolom Nama Titik Transit di Excel, lalu import kembali.
+              </p>
+            </div>
+          )}
+
+          <MasterTableCard minWidth={900}>
             <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3 font-medium">Nama Kota</th>
-                <th className="px-4 py-3 font-medium">Kode</th>
+                <th className="px-4 py-3 font-medium">Kota / Kabupaten</th>
                 <th className="px-4 py-3 font-medium">Provinsi</th>
+                <th className="px-4 py-3 font-medium">Nama Titik Transit</th>
+                <th className="px-4 py-3 font-medium">Kode</th>
                 <th className="px-4 py-3 font-medium">Jenis Titik</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 {canEdit && <th className="px-4 py-3 font-medium">Aksi</th>}
@@ -309,7 +376,7 @@ export default function LocationList() {
             <tbody className="divide-y divide-slate-100">
               {filtered.length === 0 && (
                 <MasterTableMessage
-                  colSpan={canEdit ? 6 : 5}
+                  colSpan={canEdit ? 7 : 6}
                   loading={isLoading && titikLokasi.length === 0}
                   loadingText="Memuat data lokasi..."
                   icon={MapPinned}
@@ -340,8 +407,11 @@ export default function LocationList() {
                       {t.namaKota}
                     </span>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 font-mono text-slate-600">{t.kodeKota}</td>
-                  <td className="px-4 py-3 text-slate-600">{t.provinsi}</td>
+                  <td className="px-4 py-3 text-slate-600">{t.provinsi || "-"}</td>
+                  <td className="px-4 py-3 text-slate-800">
+                    {t.namaTitik || <span className="text-xs italic text-slate-400">Belum diisi</span>}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-slate-600">{t.kodeKota || "-"}</td>
                   <td className="whitespace-nowrap px-4 py-3">
                     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${JENIS_STYLE[t.jenis]}`}>
                       {t.jenis}
@@ -410,33 +480,41 @@ export default function LocationList() {
 
               <div className="flex flex-col gap-4">
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Kota</span>
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota / Kabupaten</span>
                   <input
                     required
                     className={inputClass}
-                    placeholder="Jakarta"
+                    placeholder="Jakarta Pusat"
                     value={editForm.namaKota}
                     onChange={(e) => setEditForm({ ...editForm, namaKota: e.target.value })}
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Kode Kota</span>
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Provinsi (opsional)</span>
                   <input
-                    required
-                    className={inputClass}
-                    placeholder="JKT"
-                    value={editForm.kodeKota}
-                    onChange={(e) => setEditForm({ ...editForm, kodeKota: e.target.value.toUpperCase() })}
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Provinsi</span>
-                  <input
-                    required
                     className={inputClass}
                     placeholder="DKI Jakarta"
                     value={editForm.provinsi}
                     onChange={(e) => setEditForm({ ...editForm, provinsi: e.target.value })}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Titik Transit</span>
+                  <input
+                    required={Boolean(editOriginalTitik)}
+                    className={inputClass}
+                    placeholder="Gudang Transit Pulogadung"
+                    value={editForm.namaTitik}
+                    onChange={(e) => setEditForm({ ...editForm, namaTitik: e.target.value })}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Kode (opsional)</span>
+                  <input
+                    className={inputClass}
+                    placeholder="JKT"
+                    value={editForm.kodeKota}
+                    onChange={(e) => setEditForm({ ...editForm, kodeKota: e.target.value.toUpperCase() })}
                   />
                 </label>
                 <label className="block">

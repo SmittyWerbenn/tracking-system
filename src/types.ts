@@ -191,9 +191,14 @@ export type TitikJenis = "Gudang" | "Hub" | "Transit" | "Cabang" | "Tujuan";
 
 export interface TitikLokasi {
   id: string;
+  /** "Kota / Kabupaten" - also the value order forms/tracking store as city. */
   namaKota: string;
-  kodeKota: string;
+  /** Provinsi (optional). */
   provinsi: string;
+  /** Nama Titik Transit. Empty for legacy rows that haven't been re-imported yet. */
+  namaTitik: string;
+  /** Optional code (e.g. province code). */
+  kodeKota: string;
   jenis: TitikJenis;
   aktif: boolean;
 }

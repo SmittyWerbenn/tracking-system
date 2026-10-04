@@ -50,17 +50,21 @@ export function MasterDataToolbar({
   refreshing,
   addLabel,
   onAdd,
+  secondary,
 }: {
   children: ReactNode;
   onRefresh: () => void;
   refreshing: boolean;
   addLabel: string;
   onAdd?: () => void;
+  /** Optional extra action (e.g. a download button) shown before Refresh. */
+  secondary?: ReactNode;
 }) {
   return (
     <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">{children}</div>
       <div className="flex shrink-0 flex-wrap items-center gap-2 sm:ml-auto">
+        {secondary}
         <RefreshButton onClick={onRefresh} refreshing={refreshing} className="h-10" />
         {onAdd && (
           <button
@@ -183,6 +187,33 @@ export function MasterTableMessage({
         )}
       </td>
     </tr>
+  );
+}
+
+/** Outline button matching the toolbar controls (h-10), for secondary actions
+ * such as "Unduh Data". */
+export function MasterToolbarButton({
+  onClick,
+  icon: Icon,
+  label,
+  disabled,
+  busy,
+}: {
+  onClick: () => void;
+  icon: LucideIcon;
+  label: string;
+  disabled?: boolean;
+  busy?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled || busy}
+      className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      <Icon size={15} className={busy ? "animate-pulse" : ""} /> {label}
+    </button>
   );
 }
 

@@ -34,7 +34,8 @@ export default function CekOngkir() {
   const [result, setResult] = useState<OngkirEstimate | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const kotaOptions = activeTitikLokasi.map((k) => ({
+  // One entry per kota: several transit points can share a kota now.
+  const kotaOptions = Array.from(new Map(activeTitikLokasi.map((k) => [k.namaKota, k])).values()).map((k) => ({
     value: k.namaKota,
     label: k.namaKota,
     description: k.provinsi,

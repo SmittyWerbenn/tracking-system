@@ -185,7 +185,8 @@ export default function UpdateTracking() {
   const selectedTruck = trucksWithDriver.find((t) => t.id === truckId);
   const isSelesai = type === "Selesai / Terkirim";
   const resolvedLokasi = isSelesai ? shipment.kotaTujuan : lokasi;
-  const kotaOptions = activeTitikLokasi.map((k) => ({
+  // One entry per kota: several transit points can share a kota now.
+  const kotaOptions = Array.from(new Map(activeTitikLokasi.map((k) => [k.namaKota, k])).values()).map((k) => ({
     value: k.namaKota,
     label: k.namaKota,
     description: `${k.jenis} - ${k.provinsi}`,

@@ -263,60 +263,78 @@ export const fleetData: FleetItem[] = [
   },
 ];
 
-/**
- * One card per vehicle category (not per body variant), ordered light -> heavy.
- * `hero` is the card photo; `variants` are the extra photos shown in the detail
- * dialog. Specs / capacity / body types are NOT stored here - they are derived
- * from the fleetData items of the same group, so there is a single source.
- */
+/** One concrete vehicle photo = one card. Order: light -> heavy. Capacity / length
+ * on the card come from the fleetData items of the same group (no duplicated specs). */
+export interface FleetVehicle {
+  id: string;
+  group: FleetGroup;
+  name: string;
+  /** Body label(s) shown as badges / in the detail gallery. */
+  bodies: string[];
+  src: string;
+  alt: string;
+}
+
+const v = (id: string, group: FleetGroup, name: string, bodies: string[], file: keyof typeof fleetAssets): FleetVehicle => ({
+  id,
+  group,
+  name,
+  bodies,
+  src: fleetAssets[file],
+  alt: `Armada ${name} GMS Logistics`,
+});
+
+export const fleetVehicles: FleetVehicle[] = [
+  v("pickup-bak", "pickup", "Pickup Bak", ["Bak"], "pickup-bak"),
+  v("pickup-box", "pickup", "Pickup Box", ["Box"], "pickup-box"),
+  v("blind-van", "blindvan", "Blind Van", ["Blind Van"], "blind-van"),
+  v("cde-bak-triway", "cde", "CDE Bak Triway", ["Bak", "Triway"], "cde-bak-triway"),
+  v("cdd-bak-sentral", "cdd", "CDD Bak Sentral", ["Bak"], "cdd-bak-sentral"),
+  v("cdd-triway", "cdd", "CDD Triway", ["Triway"], "cdd-bak-triway"),
+  v("cdd-box-long", "cdd", "CDD Box Long", ["Box"], "cdd-box-long"),
+  v("cdd-losbak", "cdd", "CDD Losbak", ["Losbak"], "cdd-losbak"),
+  v("cdd-wingbox", "cdd", "CDD Wingbox", ["Wingbox"], "cdd-wingbox"),
+  v("fuso-box", "fuso", "Fuso Box", ["Box"], "fuso-box"),
+  v("fuso-triway", "fuso", "Fuso Triway", ["Triway"], "fuso-triway"),
+  v("fuso-losbak", "fuso", "Fuso Losbak", ["Losbak"], "fuso-losbak"),
+  v("fuso-wingbox", "fuso", "Fuso Wingbox", ["Wingbox"], "fuso-wingbox"),
+  v("tronton-bak-triway", "tronton", "Tronton Bak Triway", ["Bak", "Triway"], "tronton-bak-triway"),
+  v("tronton-losbak", "tronton", "Tronton Losbak", ["Losbak"], "tronton-losbak"),
+  v("tronton-wingbox", "tronton", "Tronton Wingbox", ["Wingbox"], "tronton-wingbox"),
+  v("fuso-reefer", "reefer", "Fuso Reefer Thermo King", ["Reefer"], "fuso-refer-termoking"),
+  v("tronton-reefer", "reefer", "Tronton Reefer Thermo King", ["Reefer"], "tronton-refer-termoking"),
+  v("trailer-20ft", "trailer", "Trailer 20 Feet", ["20 Feet Flatbed"], "trailer-20ft"),
+  v("trailer-40ft", "trailer", "Trailer 40 Feet", ["40 Feet Flatbed"], "trailer-40ft"),
+  v("trailer-big-mama", "trailer", "Trailer Big Mama Wingbox", ["Wingbox"], "trailer-big-mama-wingbox"),
+  v("lowbed", "heavy", "Lowbed", ["Lowbed"], "lowbed"),
+  v("dolly", "heavy", "Dolly", ["Dolly"], "dolly"),
+];
+
+/** Group meta used by the detail dialog (gallery = every vehicle of the group). */
 export interface FleetCategory {
   group: FleetGroup;
   name: string;
-  alt: string;
   hero: string;
+  alt: string;
   variants: { label: string; src: string }[];
 }
 
-export const fleetCategories: FleetCategory[] = [
-  { group: "pickup", name: "Pickup", alt: "Armada Pickup GMS Logistics", hero: fleetAssets["pickup-box"],
-    variants: [{ label: "Bak", src: fleetAssets["pickup-bak"] }, { label: "Box", src: fleetAssets["pickup-box"] }] },
-  { group: "blindvan", name: "Blind Van", alt: "Armada Blind Van GMS Logistics", hero: fleetAssets["blind-van"],
-    variants: [{ label: "Blind Van", src: fleetAssets["blind-van"] }] },
-  { group: "cde", name: "CDE", alt: "Armada CDE GMS Logistics", hero: fleetAssets["cde-bak-triway"],
-    variants: [{ label: "Bak / Treway", src: fleetAssets["cde-bak-triway"] }] },
-  { group: "cdd", name: "CDD", alt: "Armada CDD GMS Logistics", hero: fleetAssets["cdd-box-long"],
-    variants: [
-      { label: "Box Long", src: fleetAssets["cdd-box-long"] },
-      { label: "Bak", src: fleetAssets["cdd-bak-sentral"] },
-      { label: "Treway", src: fleetAssets["cdd-bak-triway"] },
-      { label: "Losbak", src: fleetAssets["cdd-losbak"] },
-      { label: "Wingbox", src: fleetAssets["cdd-wingbox"] },
-    ] },
-  { group: "fuso", name: "Fuso", alt: "Armada Fuso GMS Logistics", hero: fleetAssets["fuso-box"],
-    variants: [
-      { label: "Box", src: fleetAssets["fuso-box"] },
-      { label: "Treway", src: fleetAssets["fuso-triway"] },
-      { label: "Losbak", src: fleetAssets["fuso-losbak"] },
-      { label: "Wingbox", src: fleetAssets["fuso-wingbox"] },
-      { label: "Reefer", src: fleetAssets["fuso-refer-termoking"] },
-    ] },
-  { group: "tronton", name: "Tronton", alt: "Armada Tronton GMS Logistics", hero: fleetAssets["tronton-wingbox"],
-    variants: [
-      { label: "Wingbox", src: fleetAssets["tronton-wingbox"] },
-      { label: "Bak / Treway", src: fleetAssets["tronton-bak-triway"] },
-      { label: "Losbak", src: fleetAssets["tronton-losbak"] },
-    ] },
-  { group: "reefer", name: "Tronton Reefer", alt: "Armada Tronton Reefer GMS Logistics", hero: fleetAssets["tronton-refer-termoking"],
-    variants: [{ label: "Reefer", src: fleetAssets["tronton-refer-termoking"] }] },
-  { group: "trailer", name: "Trailer", alt: "Armada Trailer GMS Logistics", hero: fleetAssets["trailer-40ft"],
-    variants: [
-      { label: "40 Feet", src: fleetAssets["trailer-40ft"] },
-      { label: "20 Feet", src: fleetAssets["trailer-20ft"] },
-      { label: "Big Mama Wingbox", src: fleetAssets["trailer-big-mama-wingbox"] },
-    ] },
-  { group: "heavy", name: "Heavy Haul", alt: "Armada Heavy Haul (Lowbed, Dolly, Multi Axle) GMS Logistics", hero: fleetAssets.lowbed,
-    variants: [{ label: "Lowbed", src: fleetAssets.lowbed }, { label: "Dolly", src: fleetAssets.dolly }] },
-];
+const GROUP_NAMES: Record<FleetGroup, string> = {
+  pickup: "Pickup",
+  blindvan: "Blind Van",
+  cde: "CDE",
+  cdd: "CDD",
+  fuso: "Fuso",
+  tronton: "Tronton",
+  reefer: "Reefer",
+  trailer: "Trailer",
+  heavy: "Heavy Haul",
+};
+
+export const fleetCategories: FleetCategory[] = (Object.keys(GROUP_NAMES) as FleetGroup[]).map((group) => {
+  const vs = fleetVehicles.filter((x) => x.group === group);
+  return { group, name: GROUP_NAMES[group], hero: vs[0].src, alt: `Armada ${GROUP_NAMES[group]} GMS Logistics`, variants: vs.map((x) => ({ label: x.name, src: x.src })) };
+});
 
 /** Filter tabs (order = display order). */
 export const fleetFilters: { id: "all" | FleetGroup; label: L }[] = [

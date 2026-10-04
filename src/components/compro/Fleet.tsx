@@ -6,9 +6,11 @@ import {
   fleetCategories,
   fleetData,
   fleetFilters,
+  fleetVehicles,
   type FleetCategory,
   type FleetGroup,
   type FleetItem,
+  type FleetVehicle,
 } from "../../data/compro/fleetData";
 import { useLanguage } from "../../store/LanguageContext";
 import { Container, SectionHeader } from "./SectionHeader";
@@ -35,24 +37,19 @@ function FleetImage({ category, src, art, dark, eager }: { category: FleetCatego
   return <TruckArt kind={art} dark={dark} />;
 }
 
-const MAX_BADGES = 5;
-
-/** What a card shows is derived from every fleetData item of the category. */
-function categoryInfo(category: FleetCategory) {
-  const items = fleetData.filter((f) => f.group === category.group);
+/** Capacity / length / heavy flag of a vehicle's group, from the verified fleetData items. */
+function groupInfo(group: FleetGroup) {
+  const items = fleetData.filter((f) => f.group === group);
   const caps = items.flatMap((f) => f.specs.map((sp) => parseFloat(sp.capacity)));
   const capacity = caps.length ? (Math.min(...caps) === Math.max(...caps) ? `${Math.max(...caps)} Ton` : `${Math.min(...caps)} – ${Math.max(...caps)} Ton`) : null;
-  const bodies: string[] = [];
-  for (const b of items.flatMap((f) => f.bodyTypes)) if (!bodies.some((x) => x.toLowerCase() === b.toLowerCase())) bodies.push(b);
-  return { items, capacity, bodies, length: items.find((f) => f.length)?.length, heavy: items.some((f) => f.heavy), art: items[0]?.art ?? "pickup" };
+  return { items, capacity, length: items.find((f) => f.length)?.length, heavy: items.some((f) => f.heavy), art: items[0]?.art ?? "pickup" };
 }
 
-export function FleetCard({ category, onOpen, delay }: { category: FleetCategory; onOpen: (i: FleetItem) => void; delay: number }) {
+export function FleetCard({ vehicle, onOpen, delay }: { vehicle: FleetVehicle; onOpen: (i: FleetItem, src: string) => void; delay: number }) {
   const l = useL();
-  const info = categoryInfo(category);
+  const info = groupInfo(vehicle.group);
+  const category = fleetCategories.find((c) => c.group === vehicle.group)!;
   const heavy = info.heavy;
-  const shownBodies = info.bodies.slice(0, MAX_BADGES);
-  const more = info.bodies.length - shownBodies.length;
   return (
     <Reveal delay={delay} className="h-full">
       <article
@@ -62,7 +59,15 @@ export function FleetCard({ category, onOpen, delay }: { category: FleetCategory
       >
         <div className={`relative flex aspect-[3/2] items-center justify-center p-2 sm:p-3 ${heavy ? "bg-gms-deep" : "bg-gms-mist"}`}>
           <div className="h-full w-full transition-transform duration-500 group-hover:scale-105">
-            <FleetImage category={category} art={info.art} dark={heavy} />
+            <img
+              src={vehicle.src}
+              alt={vehicle.alt}
+              width={1536}
+              height={1024}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-contain"
+            />
           </div>
           {heavy && (
             <span className="absolute left-3 top-3 rounded-full bg-gms-gold px-2.5 py-0.5 text-[11px] font-extrabold uppercase text-gms-deep">
@@ -71,30 +76,25 @@ export function FleetCard({ category, onOpen, delay }: { category: FleetCategory
           )}
         </div>
         <div className="flex flex-1 flex-col p-5">
-          <h3 className={`font-display text-2xl font-extrabold ${heavy ? "text-white" : "text-gms-corp"}`}>{category.name}</h3>
+          <h3 className={`font-display text-2xl font-extrabold ${heavy ? "text-white" : "text-gms-corp"}`}>{vehicle.name}</h3>
           <p className={`mt-0.5 text-base font-semibold ${heavy ? "text-gms-light" : "text-gms-gold"}`}>
             {info.length ? l(info.length) : info.capacity ? `${l(C.fleet.capacity)} ${info.capacity}` : "\u00A0"}
           </p>
           <ul className="mt-3 flex flex-wrap gap-1.5" aria-label={l(C.fleet.body)}>
-            {shownBodies.map((b) => (
+            {vehicle.bodies.map((b) => (
               <li key={b} className={`rounded-md px-2 py-0.5 text-xs font-semibold ${heavy ? "bg-white/10 text-blue-100" : "bg-gms-sky text-gms-corp"}`}>
                 {b}
               </li>
             ))}
-            {more > 0 && (
-              <li className={`rounded-md px-2 py-0.5 text-xs font-semibold ${heavy ? "bg-white/10 text-blue-100" : "bg-slate-100 text-slate-600"}`}>
-                +{more} {l(C.fleet.more)}
-              </li>
-            )}
           </ul>
           <button
             type="button"
-            onClick={() => onOpen(info.items[0])}
+            onClick={() => onOpen(info.items.find((f) => vehicle.name.toLowerCase().startsWith(f.name.toLowerCase())) ?? info.items[0], vehicle.src)}
             aria-haspopup="dialog"
             className={`mt-auto inline-flex items-center gap-1.5 pt-5 text-base font-bold ${heavy ? "text-gms-light hover:text-white" : "text-gms-corp hover:text-gms-gold"}`}
           >
             {l(C.fleet.viewSpec)} <ArrowRight size={15} aria-hidden className="transition-transform group-hover:translate-x-1" />
-            <span className="sr-only">: {category.name}</span>
+            <span className="sr-only">: {vehicle.name} ({category.name})</span>
           </button>
         </div>
       </article>
@@ -128,12 +128,14 @@ export function FleetFilter({ value, onChange }: { value: "all" | FleetGroup; on
   );
 }
 
-export function FleetDetailModal({ item: openedItem, onClose, onRequest }: { item: FleetItem | null; onClose: () => void; onRequest: (i: FleetItem) => void }) {
+export function FleetDetailModal({ item: openedItem, initialSrc, onClose, onRequest }: { item: FleetItem | null; initialSrc?: string; onClose: () => void; onRequest: (i: FleetItem) => void }) {
   const l = useL();
   // A category can hold several fleetData items (e.g. CDE / CDE Long): the dialog
   // lets the visitor switch between them, and between the body-variant photos.
   const [picked, setPicked] = useState<{ from: FleetItem | null; item: FleetItem | null; photo: number }>({ from: null, item: null, photo: 0 });
-  const current = picked.from === openedItem ? picked : { from: openedItem, item: openedItem, photo: 0 };
+  const openCategory = openedItem ? fleetCategories.find((c) => c.group === openedItem.group) : undefined;
+  const startPhoto = Math.max(0, openCategory?.variants.findIndex((v) => v.src === initialSrc) ?? 0);
+  const current = picked.from === openedItem ? picked : { from: openedItem, item: openedItem, photo: startPhoto };
   const item = current.item;
   const category = item ? fleetCategories.find((c) => c.group === item.group) : undefined;
   const siblings = item ? fleetData.filter((f) => f.group === item.group) : [];
@@ -347,21 +349,21 @@ export function Fleet({
   const l = useL();
   const { language } = useLanguage();
   const [query, setQuery] = useState("");
-  const [open, setOpen] = useState<FleetItem | null>(null);
+  const [open, setOpen] = useState<{ item: FleetItem; src: string } | null>(null);
 
-  // One card per category; the search looks at the category name plus every
-  // fleetData item (name, body types, spec labels, length, use cases) in it.
+  // One card per vehicle photo, light -> heavy. Search looks at the vehicle name,
+  // its body labels and the group's fleetData (names, bodies, spec labels, use cases).
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return fleetCategories.filter((c) => {
-      if (group !== "all" && c.group !== group) return false;
+    return fleetVehicles.filter((vh) => {
+      if (group !== "all" && vh.group !== group) return false;
       if (!q) return true;
       const hay = [
-        c.name,
-        ...c.variants.map((v) => v.label),
+        vh.name,
+        ...vh.bodies,
         ...fleetData
-          .filter((f) => f.group === c.group)
-          .flatMap((f) => [f.name, ...f.bodyTypes, ...f.specs.map((s) => s.label), f.length?.[language] ?? "", ...f.useCases.map((u) => u[language])]),
+          .filter((f) => f.group === vh.group)
+          .flatMap((f) => [f.name, ...f.specs.map((sp) => sp.label), f.length?.[language] ?? "", ...f.useCases.map((u) => u[language])]),
       ]
         .join(" ")
         .toLowerCase();
@@ -403,14 +405,15 @@ export function Fleet({
           </div>
         ) : (
           <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {list.map((c, i) => (
-              <FleetCard key={c.group} category={c} onOpen={setOpen} delay={(i % 3) * 60} />
+            {list.map((vh, i) => (
+              <FleetCard key={vh.id} vehicle={vh} onOpen={(it, src) => setOpen({ item: it, src })} delay={(i % 3) * 60} />
             ))}
           </div>
         )}
       </Container>
       <FleetDetailModal
-        item={open}
+        item={open?.item ?? null}
+        initialSrc={open?.src}
         onClose={() => setOpen(null)}
         onRequest={(f) => { setOpen(null); onRequest(f); }}
       />

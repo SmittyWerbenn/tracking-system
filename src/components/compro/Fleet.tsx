@@ -276,10 +276,8 @@ export function FleetFinder({ onPick }: { onPick: (g: FleetGroup) => void }) {
   const l = useL();
   const [sel, setSel] = useState<string | null>(null);
   const cargo = cargoTypes.find((c) => c.id === sel);
-  const results = useMemo(
-    () => (cargo ? fleetData.filter((f) => cargo.groups.includes(f.group)) : []),
-    [cargo],
-  );
+  // Same 23 vehicles (and photos) as the Armada section, filtered by cargo type.
+  const results = useMemo(() => (cargo ? fleetVehicles.filter((f) => cargo.groups.includes(f.group)) : []), [cargo]);
   return (
     <section id="finder" className="scroll-mt-16 bg-gms-sky py-20 sm:py-24">
       <Container>
@@ -316,10 +314,12 @@ export function FleetFinder({ onPick }: { onPick: (g: FleetGroup) => void }) {
                         onClick={() => { onPick(f.group); scrollToSection("armada"); }}
                         className="flex w-full items-center gap-3 rounded-xl border border-slate-200 p-3 text-left transition-colors hover:border-gms-gold hover:bg-gms-mist"
                       >
-                        <span className="h-12 w-20 shrink-0"><TruckArt kind={f.art} /></span>
+                        <span className="h-14 w-24 shrink-0 overflow-hidden rounded-md bg-gms-mist">
+                          <img src={f.src} alt={f.alt} width={1536} height={1024} loading="lazy" decoding="async" className="h-full w-full object-contain" />
+                        </span>
                         <span className="min-w-0 flex-1">
                           <span className="block font-display font-bold text-gms-corp">{f.name}</span>
-                          <span className="block truncate text-xs text-slate-500">{f.bodyTypes.join(" · ")}</span>
+                          <span className="block truncate text-xs text-slate-500">{f.bodies.join(" · ")}</span>
                         </span>
                         <ArrowRight size={16} className="shrink-0 text-gms-gold" aria-hidden />
                         <span className="sr-only">{l(C.finder.viewAll)}</span>

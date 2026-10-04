@@ -13,6 +13,9 @@ export function registerAuditLogRoutes(router: Router) {
     const module = url.searchParams.get("module");
     const awb = url.searchParams.get("awb");
     const userName = url.searchParams.get("user");
+    const awbContains = url.searchParams.get("awbContains")?.trim();
+    const from = url.searchParams.get("from");
+    const to = url.searchParams.get("to");
 
     const where: string[] = [];
     const params: unknown[] = [];
@@ -20,6 +23,10 @@ export function registerAuditLogRoutes(router: Router) {
     if (module) { where.push("module = ?"); params.push(module); }
     if (awb) { where.push("awb = ?"); params.push(awb); }
     if (userName) { where.push("user_name LIKE ?"); params.push(`%${userName}%`); }
+    if (awbContains) { where.push("awb LIKE ?"); params.push(`%${awbContains}%`); }
+    // ISO timestamps (UTC) compare correctly as text.
+    if (from) { where.push("timestamp >= ?"); params.push(from); }
+    if (to) { where.push("timestamp <= ?"); params.push(to); }
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
     const total = await ctx.env.DB.prepare(`SELECT COUNT(*) as c FROM audit_log ${whereSql}`)

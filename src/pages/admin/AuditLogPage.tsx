@@ -1,9 +1,10 @@
-import { History } from "lucide-react";
+import { Download, History, Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { RefreshButton } from "../../components/RefreshButton";
 import { useAuditLog } from "../../store/AuditLogContext";
 import { roleLabel, type AuditAction } from "../../types";
+import { exportAuditLogXlsx } from "../../utils/auditExport";
 import { formatTimestampWib, isoToWib } from "../../utils/format";
 
 const inputClass =
@@ -63,6 +64,29 @@ export default function AuditLogPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
+  const [exporting, setExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
+  // Exports every entry matching the current filters (not just the 100 on screen).
+  async function handleExport() {
+    setExporting(true);
+    setExportMsg(null);
+    try {
+      const { count, truncated } = await exportAuditLogXlsx({
+        user: userFilter !== "Semua" ? userFilter : undefined,
+        action: actionFilter !== "Semua" ? actionFilter : undefined,
+        module: moduleFilter !== "Semua" ? moduleFilter : undefined,
+        awbContains: awbQuery || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      });
+      setExportMsg(`${count} baris diunduh${truncated ? " (dibatasi 20.000 baris pertama; persempit filter untuk sisanya)" : ""}.`);
+    } catch {
+      setExportMsg("Gagal mengunduh data audit. Coba lagi.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const users = useMemo(() => Array.from(new Set(entries.map((e) => e.userName))).sort(), [entries]);
   const modules = useMemo(() => Array.from(new Set(entries.map((e) => e.module))).sort(), [entries]);
   const actions = useMemo(() => Array.from(new Set(entries.map((e) => e.action))).sort(), [entries]);
@@ -87,8 +111,20 @@ export default function AuditLogPage() {
           <h1 className="text-2xl font-semibold text-slate-900">Audit Log</h1>
           <p className="mt-1 text-sm text-slate-500">Riwayat siapa mengubah apa dan kapan.</p>
         </div>
-        <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={exporting}
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          >
+            {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+            Unduh Data
+          </button>
+          <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
+        </div>
       </div>
+      {exportMsg && <p className="mt-2 text-xs text-slate-500">{exportMsg}</p>}
 
       <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <select value={userFilter} onChange={(e) => setUserFilter(e.target.value)} className={inputClass}>

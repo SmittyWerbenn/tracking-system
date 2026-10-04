@@ -165,7 +165,7 @@ export default function RecoveryRequests() {
   return (
     <AdminLayout>
       <MasterDataHeader
-        title="Request Pemulihan Order"
+        title="Pemulihan Order"
         description={
           <>
             Request dari Client untuk memulihkan order yang Dibatalkan. Order baru dipulihkan setelah Anda menyetujui.

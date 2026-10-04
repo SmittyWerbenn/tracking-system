@@ -1,14 +1,14 @@
-import { ArrowLeft, ArrowLeftRight, Boxes, Calculator, Clock3, Gauge, MapPin, Truck } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { ArrowLeft, Boxes, Calculator, Clock3, Gauge, MapPin, Truck } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "../../components/compro/Navbar";
 import { Footer } from "../../components/compro/Footer";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { COMPRO_IMAGES } from "../../data/compro/imagesData";
 import { useLanguage } from "../../store/LanguageContext";
-import { useLocations } from "../../store/LocationContext";
 import type { LayananPengiriman } from "../../types";
-import { estimateOngkir, formatRupiah, type OngkirEstimate } from "../../utils/ongkir";
+import { ApiError } from "../../utils/apiClient";
+import { estimasiHariLabel, fetchOngkir, fetchWilayah, formatRupiah, type OngkirEstimate } from "../../utils/ongkir";
 import { useSeo } from "../../utils/seo";
 
 const inputClass =
@@ -24,22 +24,56 @@ export default function CekOngkir() {
     path: "/cek-ongkir",
   });
   const navigate = useNavigate();
-  const { activeTitikLokasi } = useLocations();
 
+  const [provAsal, setProvAsal] = useState("");
   const [kotaAsal, setKotaAsal] = useState("");
+  const [provTujuan, setProvTujuan] = useState("");
   const [kotaTujuan, setKotaTujuan] = useState("");
+  const [kecTujuan, setKecTujuan] = useState("");
   const [beratKg, setBeratKg] = useState("");
   const [jumlahKoli, setJumlahKoli] = useState("1");
   const [layanan, setLayanan] = useState<LayananPengiriman>("Regular");
   const [result, setResult] = useState<OngkirEstimate | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // One entry per kota: several transit points can share a kota now.
-  const kotaOptions = Array.from(new Map(activeTitikLokasi.map((k) => [k.namaKota, k])).values()).map((k) => ({
-    value: k.namaKota,
-    label: k.namaKota,
-    description: k.provinsi,
-  }));
+  // Wilayah master (Provinsi -> Kab/Kota -> Kecamatan) comes from the API; each
+  // level loads when its parent is chosen. Child values reset when a parent changes.
+  const [provinsiList, setProvinsiList] = useState<string[]>([]);
+  const [kotaAsalList, setKotaAsalList] = useState<string[]>([]);
+  const [kotaTujuanList, setKotaTujuanList] = useState<string[]>([]);
+  const [kecTujuanList, setKecTujuanList] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetchWilayah().then(setProvinsiList).catch(() => setProvinsiList([]));
+  }, []);
+  useEffect(() => {
+    if (!provAsal) return;
+    let live = true;
+    fetchWilayah(provAsal).then((l) => live && setKotaAsalList(l)).catch(() => live && setKotaAsalList([]));
+    return () => {
+      live = false;
+    };
+  }, [provAsal]);
+  useEffect(() => {
+    if (!provTujuan) return;
+    let live = true;
+    fetchWilayah(provTujuan).then((l) => live && setKotaTujuanList(l)).catch(() => live && setKotaTujuanList([]));
+    return () => {
+      live = false;
+    };
+  }, [provTujuan]);
+  useEffect(() => {
+    if (!provTujuan || !kotaTujuan) return;
+    let live = true;
+    fetchWilayah(provTujuan, kotaTujuan).then((l) => live && setKecTujuanList(l)).catch(() => live && setKecTujuanList([]));
+    return () => {
+      live = false;
+    };
+  }, [provTujuan, kotaTujuan]);
+
+  const toOptions = (list: string[]) => list.map((v) => ({ value: v, label: v }));
+  const provinsiOptions = toOptions(provinsiList);
 
   const layananIndex = LAYANAN_KEYS.indexOf(layanan);
   const resultLayananIndex = result ? LAYANAN_KEYS.indexOf(result.layanan) : -1;
@@ -50,13 +84,13 @@ export default function CekOngkir() {
     { icon: Truck, title: t.cekOngkir.benefit3Title, desc: t.cekOngkir.benefit3Desc },
   ];
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!kotaAsal || !kotaTujuan) {
+    if (!provAsal || !kotaAsal || !provTujuan || !kotaTujuan || !kecTujuan) {
       setResult(null);
-      setError(t.cekOngkir.errorCities);
+      setError(t.cekOngkir.errorRoute);
       return;
     }
     const berat = Number(beratKg);
@@ -65,16 +99,23 @@ export default function CekOngkir() {
       setError(t.cekOngkir.errorWeight);
       return;
     }
-    const koli = Number(jumlahKoli) || 1;
-    setResult(estimateOngkir(kotaAsal, kotaTujuan, berat, koli, layanan, language));
-  }
-
-  function handleSwap() {
-    const a = kotaAsal;
-    const b = kotaTujuan;
-    setKotaAsal(b);
-    setKotaTujuan(a);
-    setResult(null);
+    setLoading(true);
+    try {
+      setResult(
+        await fetchOngkir({
+          asal: { provinsi: provAsal, kota: kotaAsal },
+          tujuan: { provinsi: provTujuan, kota: kotaTujuan, kecamatan: kecTujuan },
+          beratKg: berat,
+          jumlahKoli: Number(jumlahKoli) || 1,
+          layanan,
+        }),
+      );
+    } catch (err) {
+      setResult(null);
+      setError(err instanceof ApiError ? err.message : t.cekOngkir.errorPricing);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -130,35 +171,77 @@ export default function CekOngkir() {
                 </div>
               </div>
 
-              <div className="mt-6 grid grid-cols-1 items-end gap-4 sm:grid-cols-[1fr_auto_1fr]">
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-slate-600">{t.cekOngkir.originCity}</label>
-                  <SearchableSelect
-                    options={kotaOptions}
-                    value={kotaAsal}
-                    onChange={setKotaAsal}
-                    placeholder={t.cekOngkir.originCity}
-                    emptyLabel={t.cekOngkir.cityNotFound}
-                  />
+              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-4">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-slate-600">{t.cekOngkir.originProvince}</label>
+                    <SearchableSelect
+                      options={provinsiOptions}
+                      value={provAsal}
+                      onChange={(v) => {
+                        setProvAsal(v);
+                        setKotaAsal("");
+                        setKotaAsalList([]);
+                      }}
+                      placeholder={t.cekOngkir.originProvince}
+                      emptyLabel={t.cekOngkir.provinceNotFound}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-slate-600">{t.cekOngkir.originCity}</label>
+                    <SearchableSelect
+                      options={toOptions(provAsal ? kotaAsalList : [])}
+                      value={kotaAsal}
+                      onChange={setKotaAsal}
+                      placeholder={provAsal ? t.cekOngkir.originCity : t.cekOngkir.selectProvinceFirst}
+                      emptyLabel={t.cekOngkir.cityNotFound}
+                      disabled={!provAsal}
+                    />
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleSwap}
-                  title={t.cekOngkir.swapCities}
-                  aria-label={t.cekOngkir.swapCities}
-                  className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-400 transition-colors hover:border-gms-gold hover:bg-gms-gold/10 hover:text-gms-corp sm:flex"
-                >
-                  <ArrowLeftRight size={16} />
-                </button>
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-slate-600">{t.cekOngkir.destinationCity}</label>
-                  <SearchableSelect
-                    options={kotaOptions}
-                    value={kotaTujuan}
-                    onChange={setKotaTujuan}
-                    placeholder={t.cekOngkir.destinationCity}
-                    emptyLabel={t.cekOngkir.cityNotFound}
-                  />
+                <div className="space-y-4">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-slate-600">{t.cekOngkir.destinationProvince}</label>
+                    <SearchableSelect
+                      options={provinsiOptions}
+                      value={provTujuan}
+                      onChange={(v) => {
+                        setProvTujuan(v);
+                        setKotaTujuan("");
+                        setKecTujuan("");
+                        setKotaTujuanList([]);
+                        setKecTujuanList([]);
+                      }}
+                      placeholder={t.cekOngkir.destinationProvince}
+                      emptyLabel={t.cekOngkir.provinceNotFound}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-slate-600">{t.cekOngkir.destinationCity}</label>
+                    <SearchableSelect
+                      options={toOptions(provTujuan ? kotaTujuanList : [])}
+                      value={kotaTujuan}
+                      onChange={(v) => {
+                        setKotaTujuan(v);
+                        setKecTujuan("");
+                        setKecTujuanList([]);
+                      }}
+                      placeholder={provTujuan ? t.cekOngkir.destinationCity : t.cekOngkir.selectProvinceFirst}
+                      emptyLabel={t.cekOngkir.cityNotFound}
+                      disabled={!provTujuan}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-slate-600">{t.cekOngkir.destinationDistrict}</label>
+                    <SearchableSelect
+                      options={toOptions(kotaTujuan ? kecTujuanList : [])}
+                      value={kecTujuan}
+                      onChange={setKecTujuan}
+                      placeholder={kotaTujuan ? t.cekOngkir.destinationDistrict : t.cekOngkir.destinationCity}
+                      emptyLabel={t.cekOngkir.cityNotFound}
+                      disabled={!kotaTujuan}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -211,10 +294,11 @@ export default function CekOngkir() {
 
               <button
                 type="submit"
+                disabled={loading}
                 className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gms-gold px-6 py-3.5 text-sm font-bold text-gms-deep shadow-lg shadow-gms-gold/30 transition-all hover:-translate-y-0.5 hover:bg-gms-bright sm:w-auto"
               >
                 <Calculator size={16} />
-                {t.cekOngkir.submitButton}
+                {loading ? t.cekOngkir.calculating : t.cekOngkir.submitButton}
               </button>
             </form>
 
@@ -241,7 +325,7 @@ export default function CekOngkir() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold text-gms-corp/70">
-                    {result.kotaAsal} &rarr; {result.kotaTujuan}
+                    {result.asal.kota} ({result.asal.provinsi}) &rarr; {result.tujuan.kecamatan}, {result.tujuan.kota}
                   </p>
                   <p className="mt-1 text-2xl font-bold text-gms-deep sm:text-3xl">{formatRupiah(result.total)}</p>
                   <p className="mt-1 text-xs text-slate-500">{t.cekOngkir.resultDisclaimer}</p>
@@ -256,19 +340,19 @@ export default function CekOngkir() {
                   <p className="flex items-center gap-1.5 text-[11px] text-slate-400">
                     <MapPin size={12} /> {t.cekOngkir.route}
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-800">{result.tierLabel}</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-800">{result.tujuan.provinsi}</p>
                 </div>
                 <div className="rounded-xl bg-white p-3">
                   <p className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                    <Truck size={12} /> {t.cekOngkir.estimatedDistance}
+                    <Truck size={12} /> {t.cekOngkir.areaCategory}
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-800">~{result.distanceKm} km</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-800">{result.tujuan.kategoriArea}</p>
                 </div>
                 <div className="rounded-xl bg-white p-3">
                   <p className="flex items-center gap-1.5 text-[11px] text-slate-400">
                     <Clock3 size={12} /> {t.cekOngkir.estimatedArrival}
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-800">{result.estimasiHari}</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-800">{estimasiHariLabel(result.leadTimeMin, result.leadTimeMax, language)}</p>
                 </div>
                 <div className="rounded-xl bg-white p-3">
                   <p className="flex items-center gap-1.5 text-[11px] text-slate-400">
@@ -278,6 +362,30 @@ export default function CekOngkir() {
                     {result.beratKg} kg &middot; {result.jumlahKoli} koli
                   </p>
                 </div>
+              </div>
+
+              <div className="mt-3 rounded-xl bg-white p-3 text-sm">
+                <div className="flex items-center justify-between gap-3 py-1">
+                  <span className="text-slate-500">{t.cekOngkir.publishPrice}</span>
+                  <span className="font-semibold text-slate-800">
+                    {formatRupiah(result.hargaPublishPerKg)}
+                    {t.cekOngkir.perKg}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3 py-1">
+                  <span className="text-slate-500">{t.cekOngkir.originAdjustment}</span>
+                  <span className="font-semibold text-slate-800">
+                    {result.markupPersen > 0 ? `+${result.markupPersen}%` : "0%"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3 border-t border-slate-100 py-1">
+                  <span className="text-slate-500">{t.cekOngkir.priceAfterAdjustment}</span>
+                  <span className="font-semibold text-slate-800">
+                    {formatRupiah(result.hargaSetelahPenyesuaianPerKg)}
+                    {t.cekOngkir.perKg}
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">{t.cekOngkir.originAdjustmentNote}</p>
               </div>
             </div>
           )}

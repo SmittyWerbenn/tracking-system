@@ -145,6 +145,20 @@ interface Translations {
     estimatedDistance: string;
     estimatedArrival: string;
     weightKoli: string;
+    originProvince: string;
+    destinationProvince: string;
+    destinationDistrict: string;
+    provinceNotFound: string;
+    selectProvinceFirst: string;
+    errorRoute: string;
+    errorPricing: string;
+    calculating: string;
+    areaCategory: string;
+    publishPrice: string;
+    originAdjustment: string;
+    priceAfterAdjustment: string;
+    perKg: string;
+    originAdjustmentNote: string;
     serviceOptions: { label: string; desc: string }[];
     benefit1Title: string;
     benefit1Desc: string;
@@ -419,6 +433,20 @@ const id: Translations = {
     estimatedDistance: "Jarak Perkiraan",
     estimatedArrival: "Estimasi Tiba",
     weightKoli: "Berat / Koli",
+    originProvince: "Provinsi Asal",
+    destinationProvince: "Provinsi Tujuan",
+    destinationDistrict: "Kecamatan Tujuan",
+    provinceNotFound: "Provinsi tidak ditemukan.",
+    selectProvinceFirst: "Pilih provinsi terlebih dahulu",
+    errorRoute: "Lengkapi provinsi & kota asal, serta provinsi, kota, dan kecamatan tujuan.",
+    errorPricing: "Tarif tidak dapat dihitung saat ini. Silakan coba lagi.",
+    calculating: "Menghitung...",
+    areaCategory: "Kategori Area Tujuan",
+    publishPrice: "Harga Publish",
+    originAdjustment: "Penyesuaian Origin",
+    priceAfterAdjustment: "Harga Setelah Penyesuaian",
+    perKg: "/kg",
+    originAdjustmentNote: "Penyesuaian ditentukan oleh wilayah asal.",
     serviceOptions: [
       { label: "Darat", desc: "Pengiriman jalur darat, pilihan paling hemat untuk kebutuhan non-mendesak." },
       { label: "Express", desc: "Lebih cepat sampai, biaya sedikit lebih tinggi." },
@@ -698,6 +726,20 @@ const en: Translations = {
     estimatedDistance: "Estimated Distance",
     estimatedArrival: "Estimated Arrival",
     weightKoli: "Weight / Packages",
+    originProvince: "Origin Province",
+    destinationProvince: "Destination Province",
+    destinationDistrict: "Destination District",
+    provinceNotFound: "Province not found.",
+    selectProvinceFirst: "Select a province first",
+    errorRoute: "Complete the origin province & city, and the destination province, city and district.",
+    errorPricing: "The rate cannot be calculated right now. Please try again.",
+    calculating: "Calculating...",
+    areaCategory: "Destination Area Category",
+    publishPrice: "Published Rate",
+    originAdjustment: "Origin Adjustment",
+    priceAfterAdjustment: "Rate After Adjustment",
+    perKg: "/kg",
+    originAdjustmentNote: "The adjustment is determined by the origin region.",
     serviceOptions: [
       { label: "Ground", desc: "Ground shipping, the most affordable option for non-urgent needs." },
       { label: "Express", desc: "Arrives faster, at a slightly higher cost." },

@@ -16,6 +16,7 @@ import { registerSettingsRoutes } from "./routes/settings";
 import { registerHelpRoutes } from "./routes/help";
 import { registerFileRoutes } from "./routes/files";
 import { registerPublicRoutes } from "./routes/public";
+import { registerOngkirRoutes } from "./routes/ongkir";
 import { registerDashboardRoutes } from "./routes/dashboard";
 import { registerDriverRoutes } from "./routes/driver";
 
@@ -34,6 +35,7 @@ registerSettingsRoutes(router);
 registerHelpRoutes(router);
 registerFileRoutes(router);
 registerPublicRoutes(router);
+registerOngkirRoutes(router);
 registerDashboardRoutes(router);
 registerDriverRoutes(router);
 

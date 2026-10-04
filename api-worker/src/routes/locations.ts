@@ -17,9 +17,29 @@ function clean(v: unknown): string {
   return typeof v === "string" ? v.trim().replace(/\s+/g, " ") : "";
 }
 
-/** Case-insensitive identity of a location: Kota / Kabupaten + Provinsi + Nama Titik Transit. */
-function identity(kota: string, provinsi: string, titik: string): string {
+/** Case-insensitive identity of a location: Kota / Kabupaten + Provinsi, plus
+ * Nama Titik Transit when one is given (only older clients still send it). */
+function identity(kota: string, provinsi: string, titik = ""): string {
   return [kota, provinsi, titik].map((s) => s.toLowerCase()).join("\u0001");
+}
+
+/** Without a Nama Titik Transit a location is unique by Kota / Kabupaten +
+ * Provinsi alone (the unique index can't guard this: NULL titik never
+ * collides), so look for any row with that pair. */
+async function findDuplicate(db: D1Database, kota: string, provinsi: string, titik: string, exceptId = "") {
+  return titik
+    ? db
+        .prepare(`SELECT id FROM locations WHERE nama_kota = ? COLLATE NOCASE AND provinsi = ? COLLATE NOCASE AND nama_titik = ? COLLATE NOCASE AND id != ?`)
+        .bind(kota, provinsi, titik, exceptId)
+        .first()
+    : db
+        .prepare(`SELECT id FROM locations WHERE nama_kota = ? COLLATE NOCASE AND provinsi = ? COLLATE NOCASE AND id != ?`)
+        .bind(kota, provinsi, exceptId)
+        .first();
+}
+
+function label(kota: string, provinsi: string, titik: string): string {
+  return [provinsi || "-", kota, titik].filter(Boolean).join(" / ");
 }
 
 interface LocationInput {
@@ -32,9 +52,9 @@ interface LocationInput {
 }
 
 /** Validates one location payload (used by single create and by every bulk
- * row) and returns either the cleaned values or the list of problems. Kota /
- * Kabupaten and Nama Titik Transit are mandatory; Provinsi, Kode and Jenis
- * are optional (Jenis defaults to Transit). */
+ * row) and returns either the cleaned values or the list of problems. Only
+ * Kota / Kabupaten is mandatory; Provinsi, Nama Titik Transit (no longer in
+ * the UI), Kode and Jenis are optional (Jenis defaults to Transit). */
 function validateLocation(raw: Record<string, unknown>): { value?: LocationInput; errors: string[] } {
   const errors: string[] = [];
   const namaKota = clean(raw.namaKota);
@@ -46,8 +66,7 @@ function validateLocation(raw: Record<string, unknown>): { value?: LocationInput
   if (!namaKota) errors.push("Kota / Kabupaten wajib diisi");
   else if (namaKota.length > 80) errors.push("Kota / Kabupaten maksimal 80 karakter");
   if (provinsi.length > 80) errors.push("Provinsi maksimal 80 karakter");
-  if (!namaTitik) errors.push("Nama Titik Transit wajib diisi");
-  else if (namaTitik.length > 120) errors.push("Nama Titik Transit maksimal 120 karakter");
+  if (namaTitik.length > 120) errors.push("Nama Titik Transit maksimal 120 karakter");
   if (kodeKota.length > 10) errors.push("Kode maksimal 10 karakter");
 
   let jenis: Jenis = DEFAULT_JENIS;
@@ -69,7 +88,7 @@ function insertStatement(db: D1Database, v: LocationInput, actorId: string, now:
       `INSERT INTO locations (id, nama_kota, nama_titik, kode_kota, provinsi, jenis, aktif, created_at, updated_at, created_by, updated_by)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .bind(id, v.namaKota, v.namaTitik, v.kodeKota, v.provinsi, v.jenis, v.aktif ? 1 : 0, now, now, actorId, actorId);
+    .bind(id, v.namaKota, v.namaTitik || null, v.kodeKota, v.provinsi, v.jenis, v.aktif ? 1 : 0, now, now, actorId, actorId);
 }
 
 function isUniqueViolation(err: unknown): boolean {
@@ -94,20 +113,14 @@ export function registerLocationRoutes(router: Router) {
     const { value, errors } = validateLocation(body);
     if (!value) throw Errors.badRequest(errors.join(". ") + ".");
 
-    const dupe = await ctx.env.DB.prepare(
-      `SELECT id FROM locations WHERE nama_kota = ? COLLATE NOCASE AND provinsi = ? COLLATE NOCASE AND nama_titik = ? COLLATE NOCASE`,
-    )
-      .bind(value.namaKota, value.provinsi, value.namaTitik)
-      .first();
-    if (dupe) {
-      throw Errors.conflict(`Data "${value.namaKota} / ${value.provinsi || "-"} / ${value.namaTitik}" sudah ada.`);
-    }
+    const dupe = await findDuplicate(ctx.env.DB, value.namaKota, value.provinsi, value.namaTitik);
+    if (dupe) throw Errors.conflict(`Data "${label(value.namaKota, value.provinsi, value.namaTitik)}" sudah ada.`);
 
     const id = newId();
     try {
       await insertStatement(ctx.env.DB, value, actor.id, new Date().toISOString(), id).run();
     } catch (err) {
-      if (isUniqueViolation(err)) throw Errors.conflict("Data dengan Kota / Kabupaten, Provinsi, dan Nama Titik Transit yang sama sudah ada.");
+      if (isUniqueViolation(err)) throw Errors.conflict("Data dengan Provinsi dan Kota / Kabupaten yang sama sudah ada.");
       throw err;
     }
 
@@ -115,13 +128,13 @@ export function registerLocationRoutes(router: Router) {
       action: "CREATE_LOCATION",
       actionLabel: "CREATE LOCATION",
       module: "Master Kota",
-      description: `Titik transit "${value.namaTitik}" (${value.namaKota}${value.provinsi ? ", " + value.provinsi : ""}) ditambahkan.`,
+      description: `Titik lokasi "${label(value.namaKota, value.provinsi, value.namaTitik)}" ditambahkan.`,
     });
 
     return ok({ id }, {}, 201);
   });
 
-  // Bulk import (Kota | Kabupaten | Nama Titik Transit [+ Kode, Jenis, Aktif]).
+  // Bulk import (Kota / Kabupaten [+ Provinsi, Kode, Jenis, Aktif]).
   // Every row is validated first; valid rows are inserted, invalid/duplicate
   // ones are reported back with their row number so the admin can fix just
   // those. Never replaces or deletes existing data.
@@ -132,10 +145,19 @@ export function registerLocationRoutes(router: Router) {
     if (!Array.isArray(items) || items.length === 0) throw Errors.badRequest("Tidak ada baris data untuk diimport.");
     if (items.length > BULK_MAX_ROWS) throw Errors.badRequest(`Maksimal ${BULK_MAX_ROWS} baris per import.`);
 
-    const existing = await ctx.env.DB.prepare(
-      `SELECT nama_kota, provinsi, nama_titik FROM locations WHERE nama_titik IS NOT NULL`,
-    ).all<{ nama_kota: string; provinsi: string; nama_titik: string }>();
-    const seen = new Set((existing.results ?? []).map((r) => identity(r.nama_kota, r.provinsi ?? "", r.nama_titik)));
+    const existing = await ctx.env.DB.prepare(`SELECT nama_kota, provinsi, nama_titik FROM locations`).all<{
+      nama_kota: string;
+      provinsi: string;
+      nama_titik: string | null;
+    }>();
+    // seen: full identities (rows sent with a titik name); seenPair: every
+    // Kota / Kabupaten + Provinsi pair (rows sent without one).
+    const seen = new Set<string>();
+    const seenPair = new Set<string>();
+    for (const r of existing.results ?? []) {
+      if (r.nama_titik) seen.add(identity(r.nama_kota, r.provinsi ?? "", r.nama_titik));
+      seenPair.add(identity(r.nama_kota, r.provinsi ?? ""));
+    }
 
     type Failure = { row: number; kota: string; provinsi: string; titik: string; message: string };
     const failed: Failure[] = [];
@@ -150,11 +172,13 @@ export function registerLocationRoutes(router: Router) {
         return;
       }
       const id = identity(value.namaKota, value.provinsi, value.namaTitik);
-      if (seen.has(id)) {
+      const pair = identity(value.namaKota, value.provinsi);
+      if (value.namaTitik ? seen.has(id) : seenPair.has(pair)) {
         failed.push({ row, kota: value.namaKota, provinsi: value.provinsi, titik: value.namaTitik, message: "Duplikat (sudah ada di master data atau di baris sebelumnya)" });
         return;
       }
       seen.add(id);
+      seenPair.add(pair);
       valid.push({ row, value });
     });
 
@@ -228,9 +252,6 @@ export function registerLocationRoutes(router: Router) {
     if (has("namaTitik")) {
       const v = clean(body.namaTitik);
       if (v.length > 120) throw Errors.badRequest("Nama Titik Transit maksimal 120 karakter.");
-      // Legacy rows may still have no titik name; it can be left empty only
-      // while it already is empty.
-      if (!v && existing.nama_titik) throw Errors.badRequest("Nama Titik Transit wajib diisi.");
       titik = v || null; sets.push("nama_titik = ?"); values.push(v || null);
     }
     if (has("kodeKota")) {
@@ -247,13 +268,14 @@ export function registerLocationRoutes(router: Router) {
     if (aktif !== undefined) { sets.push("aktif = ?"); values.push(aktif ? 1 : 0); }
     if (sets.length === 0) throw Errors.badRequest("Tidak ada perubahan yang dikirim.");
 
-    if (titik && (has("namaKota") || has("provinsi") || has("namaTitik"))) {
-      const dupe = await ctx.env.DB.prepare(
-        `SELECT id FROM locations WHERE nama_kota = ? COLLATE NOCASE AND provinsi = ? COLLATE NOCASE AND nama_titik = ? COLLATE NOCASE AND id != ?`,
-      )
-        .bind(kota, prov, titik, params.id)
-        .first();
-      if (dupe) throw Errors.conflict(`Data "${kota} / ${prov || "-"} / ${titik}" sudah ada.`);
+    // Only check when the identity really changed: older data may already hold
+    // several rows per Kota / Kabupaten + Provinsi, and editing e.g. just the
+    // Jenis of one of them must keep working.
+    const same = (a: string | null, b: string | null) => (a ?? "").toLowerCase() === (b ?? "").toLowerCase();
+    const changed = !same(kota, existing.nama_kota) || !same(prov, existing.provinsi) || !same(titik, existing.nama_titik);
+    if (changed) {
+      const dupe = await findDuplicate(ctx.env.DB, kota, prov, titik ?? "", params.id);
+      if (dupe) throw Errors.conflict(`Data "${label(kota, prov, titik ?? "")}" sudah ada.`);
     }
 
     sets.push("updated_at = ?", "updated_by = ?");
@@ -261,7 +283,7 @@ export function registerLocationRoutes(router: Router) {
     try {
       await ctx.env.DB.prepare(`UPDATE locations SET ${sets.join(", ")} WHERE id = ?`).bind(...values).run();
     } catch (err) {
-      if (isUniqueViolation(err)) throw Errors.conflict("Data dengan Kota / Kabupaten, Provinsi, dan Nama Titik Transit yang sama sudah ada.");
+      if (isUniqueViolation(err)) throw Errors.conflict("Data dengan Provinsi dan Kota / Kabupaten yang sama sudah ada.");
       throw err;
     }
 

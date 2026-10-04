@@ -25,10 +25,11 @@ function toTitik(row: LocationRow): TitikLokasi {
   };
 }
 
+/** Nama Titik Transit is no longer edited from the UI; rows that already have
+ * one keep it (the field is simply not sent). */
 export interface TitikFormData {
   namaKota: string;
   provinsi: string;
-  namaTitik: string;
   kodeKota: string;
   jenis: TitikJenis;
   aktif: boolean;
@@ -46,7 +47,8 @@ export interface TitikImportFailure {
   row: number;
   kota: string;
   provinsi: string;
-  titik: string;
+  /** Still returned by the API; not shown anymore. */
+  titik?: string;
   message: string;
 }
 
@@ -105,7 +107,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   async function createTitik(data: TitikFormData): Promise<TitikLokasi> {
     const res = await api.post<{ id: string }>("/api/locations", data);
     await refresh();
-    return { id: res.id, ...data };
+    return { id: res.id, namaTitik: "", ...data };
   }
 
   async function updateTitik(id: string, data: TitikFormData) {

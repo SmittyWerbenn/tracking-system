@@ -44,7 +44,6 @@ function emptyRow(): BulkLocationRow {
     id: newRowId(),
     namaKota: "",
     provinsi: "",
-    namaTitik: "",
     kodeKota: "",
     jenis: "",
     jenisValue: "Transit",
@@ -65,7 +64,7 @@ function fromInput(input: BulkLocationRowInput): BulkLocationRow {
 }
 
 function isRowBlank(row: BulkLocationRow): boolean {
-  return !row.namaKota.trim() && !row.provinsi.trim() && !row.namaTitik.trim() && !row.kodeKota.trim();
+  return !row.namaKota.trim() && !row.provinsi.trim() && !row.kodeKota.trim();
 }
 
 /** Validation for every row at once (duplicates inside the table need the
@@ -77,10 +76,9 @@ function validateRows(rows: BulkLocationRow[], existing: Set<string>): Map<strin
   for (const row of rows) {
     const errs: string[] = [];
     if (!row.namaKota.trim()) errs.push("Kota / Kabupaten wajib diisi");
-    if (!row.namaTitik.trim()) errs.push("Nama Titik Transit wajib diisi");
     if (errs.length === 0) {
-      const id = locationIdentity(row.namaKota, row.provinsi, row.namaTitik);
-      if (existing.has(id)) errs.push("Sudah ada di master data (Kota / Kabupaten + Provinsi + Titik yang sama)");
+      const id = locationIdentity(row.namaKota, row.provinsi);
+      if (existing.has(id)) errs.push("Sudah ada di master data (Provinsi + Kota / Kabupaten yang sama)");
       else if (seen.has(id)) errs.push("Duplikat dengan baris di atasnya pada tabel ini");
       seen.add(id);
     }
@@ -184,7 +182,6 @@ export function BulkLocationImport({ existing = [] }: { existing?: string[] }) {
           row: i + 1,
           namaKota: r.namaKota.trim(),
           provinsi: r.provinsi.trim(),
-          namaTitik: r.namaTitik.trim(),
           kodeKota: r.kodeKota.trim().toUpperCase(),
           jenis: r.jenisValue,
           aktif: r.aktifValue,
@@ -204,7 +201,6 @@ export function BulkLocationImport({ existing = [] }: { existing?: string[] }) {
             row: i + 1,
             kota: r.namaKota,
             provinsi: r.provinsi,
-            titik: r.namaTitik,
             message: msg,
             label: rowLabel(r, rows.findIndex((x) => x.id === r.id) + 1),
           });
@@ -238,10 +234,11 @@ export function BulkLocationImport({ existing = [] }: { existing?: string[] }) {
           <div>
             <h2 className="text-sm font-semibold text-slate-800">Bulk Input / Import Excel</h2>
             <p className="mt-1 text-xs text-slate-500">
-              Isi beberapa baris sekaligus, atau import dari file Excel (.xlsx) / CSV. Kolom wajib:{" "}
-              <span className="font-semibold text-slate-700">Kota / Kabupaten, Nama Titik Transit</span>. Kolom opsional:
-              Provinsi, Kode, Jenis (Gudang/Hub/Transit/Cabang/Tujuan, default Transit), Aktif (Ya/Tidak). Baris yang sama
-              persis (Kota / Kabupaten + Provinsi + Nama Titik Transit) tidak akan dibuat dobel.
+              Isi beberapa baris sekaligus, atau import dari file Excel (.xlsx) / CSV. Urutan kolom: Kode, Jenis
+              Titik, Provinsi, Kota / Kabupaten, Status. Kolom wajib:{" "}
+              <span className="font-semibold text-slate-700">Kota / Kabupaten</span>. Kolom opsional: Kode, Jenis Titik
+              (Gudang/Hub/Transit/Cabang/Tujuan, default Transit), Provinsi, Status (Aktif/Nonaktif, default Aktif). Baris
+              yang sama persis (Provinsi + Kota / Kabupaten) tidak akan dibuat dobel.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -280,17 +277,16 @@ export function BulkLocationImport({ existing = [] }: { existing?: string[] }) {
       </div>
 
       <div className="max-h-[70vh] overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full min-w-[940px] border-collapse text-xs">
+        <table className="w-full min-w-[800px] border-collapse text-xs">
           <thead className="sticky top-0 z-10">
             <tr className="border-b border-slate-200 bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              <th className="px-2.5 py-2.5">Status</th>
+              <th className="px-2.5 py-2.5">Cek</th>
               <th className="px-2.5 py-2.5">Baris</th>
-              <th className="px-2.5 py-2.5">Kota / Kabupaten</th>
-              <th className="px-2.5 py-2.5">Provinsi</th>
-              <th className="px-2.5 py-2.5">Nama Titik Transit</th>
               <th className="px-2.5 py-2.5">Kode</th>
-              <th className="px-2.5 py-2.5">Jenis</th>
-              <th className="px-2.5 py-2.5">Aktif</th>
+              <th className="px-2.5 py-2.5">Jenis Titik</th>
+              <th className="px-2.5 py-2.5">Provinsi</th>
+              <th className="px-2.5 py-2.5">Kota / Kabupaten</th>
+              <th className="px-2.5 py-2.5">Status Aktif</th>
               <th className="px-2.5 py-2.5"></th>
             </tr>
           </thead>
@@ -338,30 +334,6 @@ export function BulkLocationImport({ existing = [] }: { existing?: string[] }) {
                   </td>
                   <td className="px-2.5 py-2">
                     <input
-                      className={cellInputClass}
-                      value={row.namaKota}
-                      onChange={(e) => updateRow(row.id, "namaKota", e.target.value)}
-                      placeholder="Jakarta Pusat"
-                    />
-                  </td>
-                  <td className="px-2.5 py-2">
-                    <input
-                      className={cellInputClass}
-                      value={row.provinsi}
-                      onChange={(e) => updateRow(row.id, "provinsi", e.target.value)}
-                      placeholder="DKI Jakarta"
-                    />
-                  </td>
-                  <td className="px-2.5 py-2">
-                    <input
-                      className={`${cellInputClass} min-w-[180px]`}
-                      value={row.namaTitik}
-                      onChange={(e) => updateRow(row.id, "namaTitik", e.target.value)}
-                      placeholder="Gudang Transit Pulogadung"
-                    />
-                  </td>
-                  <td className="px-2.5 py-2">
-                    <input
                       className={`${cellInputClass} min-w-[80px] uppercase`}
                       value={row.kodeKota}
                       onChange={(e) => updateRow(row.id, "kodeKota", e.target.value)}
@@ -380,6 +352,22 @@ export function BulkLocationImport({ existing = [] }: { existing?: string[] }) {
                         </option>
                       ))}
                     </select>
+                  </td>
+                  <td className="px-2.5 py-2">
+                    <input
+                      className={cellInputClass}
+                      value={row.provinsi}
+                      onChange={(e) => updateRow(row.id, "provinsi", e.target.value)}
+                      placeholder="DKI Jakarta"
+                    />
+                  </td>
+                  <td className="px-2.5 py-2">
+                    <input
+                      className={cellInputClass}
+                      value={row.namaKota}
+                      onChange={(e) => updateRow(row.id, "namaKota", e.target.value)}
+                      placeholder="Jakarta Pusat"
+                    />
                   </td>
                   <td className="px-2.5 py-2">
                     <input
@@ -461,13 +449,12 @@ export function BulkLocationImport({ existing = [] }: { existing?: string[] }) {
           )}
           {result.failed.length > 0 && (
             <div className="mt-3 overflow-x-auto rounded-lg border border-amber-200 bg-white">
-              <table className="w-full min-w-[560px] text-left text-xs">
+              <table className="w-full min-w-[480px] text-left text-xs">
                 <thead className="bg-amber-100/60 text-[11px] uppercase tracking-wide text-amber-900">
                   <tr>
                     <th className="px-3 py-2">Baris</th>
-                    <th className="px-3 py-2">Kota / Kabupaten</th>
                     <th className="px-3 py-2">Provinsi</th>
-                    <th className="px-3 py-2">Nama Titik Transit</th>
+                    <th className="px-3 py-2">Kota / Kabupaten</th>
                     <th className="px-3 py-2">Alasan</th>
                   </tr>
                 </thead>
@@ -475,9 +462,8 @@ export function BulkLocationImport({ existing = [] }: { existing?: string[] }) {
                   {result.failed.map((f) => (
                     <tr key={`${f.row}-${f.label}`}>
                       <td className="whitespace-nowrap px-3 py-2 font-medium">{f.label}</td>
-                      <td className="px-3 py-2">{f.kota || "-"}</td>
                       <td className="px-3 py-2">{f.provinsi || "-"}</td>
-                      <td className="px-3 py-2">{f.titik || "-"}</td>
+                      <td className="px-3 py-2">{f.kota || "-"}</td>
                       <td className="px-3 py-2 text-red-700">{f.message}</td>
                     </tr>
                   ))}

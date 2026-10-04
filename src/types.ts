@@ -195,7 +195,7 @@ export interface TitikLokasi {
   namaKota: string;
   /** Provinsi (optional). */
   provinsi: string;
-  /** Nama Titik Transit. Empty for legacy rows that haven't been re-imported yet. */
+  /** Nama Titik Transit (legacy, no longer shown or edited in the UI). Often empty. */
   namaTitik: string;
   /** Optional code (e.g. province code). */
   kodeKota: string;

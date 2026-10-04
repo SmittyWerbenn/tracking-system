@@ -143,7 +143,7 @@ export function JourneyCarousel() {
                         {/* Step Label - Proper spacing and alignment */}
                         <div className="mt-3 md:mt-4 w-full px-1 text-center flex-shrink-0 min-h-12 flex items-center justify-center">
                           <span
-                            className={`text-sm md:text-base font-bold uppercase tracking-wider transition-all duration-300 leading-tight ${
+                            className={`text-[length:clamp(7px,2.3vw,10px)] sm:text-sm md:text-base font-bold uppercase tracking-normal sm:tracking-wider transition-all duration-300 leading-tight ${
                               isActive
                                 ? "text-[#071B41] scale-105 font-display"
                                 : isPassed
@@ -152,7 +152,7 @@ export function JourneyCarousel() {
                             }`}
                             style={{
                               whiteSpace: 'normal',
-                              wordBreak: 'break-word',
+                              overflowWrap: 'normal',
                               lineHeight: '1.25',
                               maxWidth: '100%',
                             }}

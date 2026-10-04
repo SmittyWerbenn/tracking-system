@@ -433,7 +433,7 @@ export default function ShipmentDetail() {
               </div>
             </div>
 
-            {profile?.role !== "Viewer" && (
+            {profile?.role !== "Viewer" && profile?.role !== "Mitra" && (
             <>
             <div className="mt-6 border-t border-slate-100 pt-5">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -512,6 +512,11 @@ export default function ShipmentDetail() {
                 </>
               )}
             </div>
+            </>
+            )}
+
+            {profile?.role !== "Viewer" && (
+            <>
 
             <div className="mt-6 border-t border-slate-100 pt-5">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">

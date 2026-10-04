@@ -433,6 +433,8 @@ export default function ShipmentDetail() {
               </div>
             </div>
 
+            {profile?.role !== "Viewer" && (
+            <>
             <div className="mt-6 border-t border-slate-100 pt-5">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
                 <Truck size={13} /> Truck &amp; Driver
@@ -561,6 +563,8 @@ export default function ShipmentDetail() {
                 <p className="text-sm text-slate-500">Belum diteruskan ke Mitra manapun.</p>
               )}
             </div>
+            </>
+            )}
 
             <div className="mt-6 grid grid-cols-2 gap-4 border-t border-slate-100 pt-5 text-sm sm:grid-cols-3">
               <div>

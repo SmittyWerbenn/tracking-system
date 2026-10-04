@@ -71,12 +71,23 @@ function isRowBlank(row: BulkLocationRow): boolean {
 /** Validation for every row at once (duplicates inside the table need the
  * whole list): required fields, then duplicate of existing data or of an
  * earlier row. Returns row id -> list of problems. */
-function validateRows(rows: BulkLocationRow[], existing: Set<string>): Map<string, string[]> {
+function validateRows(rows: BulkLocationRow[], existing: Set<string>, existingAreas: Map<string, string>): Map<string, string[]> {
   const out = new Map<string, string[]>();
   const seen = new Set<string>();
+  const seenAreas = new Map<string, number>(); // area -> position of the first row using it
+  let position = 0;
   for (const row of rows) {
+    position += 1;
     const errs: string[] = [];
     if (!row.namaKota.trim()) errs.push("Kota / Kabupaten wajib diisi");
+    const area = row.namaArea.trim().toLowerCase();
+    if (area) {
+      const owner = existingAreas.get(area);
+      const firstRow = seenAreas.get(area);
+      if (owner) errs.push(`Nama Area sudah dipakai oleh ${owner} (tidak boleh sama)`);
+      else if (firstRow !== undefined) errs.push(`Nama Area duplikat dengan baris tabel #${firstRow}`);
+      else seenAreas.set(area, position);
+    }
     if (errs.length === 0) {
       const id = locationIdentity(row.namaKota, row.provinsi);
       if (existing.has(id)) errs.push("Sudah ada di master data (Provinsi + Kota / Kabupaten yang sama)");
@@ -97,7 +108,7 @@ function rowLabel(row: BulkLocationRow, position: number): string {
 const cellInputClass =
   "w-full min-w-[140px] rounded-md border border-slate-300 px-2 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-100";
 
-export function BulkLocationImport({ existing = [] }: { existing?: string[] }) {
+export function BulkLocationImport({ existing = [], existingAreas = [] }: { existing?: string[]; /** "area\u0001Kota" pairs already in master data (area lower-cased). */ existingAreas?: string[] }) {
   const { importTitik } = useLocations();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -120,7 +131,8 @@ export function BulkLocationImport({ existing = [] }: { existing?: string[] }) {
   }
 
   const existingIds = useMemo(() => new Set(existing), [existing]);
-  const errorsById = useMemo(() => validateRows(rows, existingIds), [rows, existingIds]);
+  const areaMap = useMemo(() => new Map(existingAreas.map((e) => [e.split("\u0001")[0], e.split("\u0001")[1]] as [string, string])), [existingAreas]);
+  const errorsById = useMemo(() => validateRows(rows, existingIds, areaMap), [rows, existingIds, areaMap]);
 
   function updateRow<K extends keyof BulkLocationRow>(id: string, key: K, value: BulkLocationRow[K]) {
     setResult(null);

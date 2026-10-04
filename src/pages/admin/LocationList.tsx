@@ -98,6 +98,15 @@ export default function LocationList() {
 
   // A location is unique by Provinsi + Kota / Kabupaten.
   const existingIds = useMemo(() => titikLokasi.map((t) => locationIdentity(t.namaKota, t.provinsi)), [titikLokasi]);
+  // Nama Area must be unique (case-insensitive): who already uses a given area.
+  const areaOwner = (area: string, exceptId = ""): string | null => {
+    const a = area.trim().toLowerCase();
+    if (!a) return null;
+    return titikLokasi.find((t) => t.id !== exceptId && t.namaArea.trim().toLowerCase() === a)?.namaKota ?? null;
+  };
+  const existingAreas = useMemo(() => titikLokasi.filter((t) => t.namaArea.trim()).map((t) => `${t.namaArea.trim().toLowerCase()}\u0001${t.namaKota}`), [titikLokasi]);
+  const createAreaOwner = areaOwner(form.namaArea);
+  const editAreaOwner = areaOwner(editForm.namaArea, editingId ?? "");
   const isDuplicateKota = form.namaKota.trim() !== "" && existingIds.includes(locationIdentity(form.namaKota, form.provinsi));
 
   const [exporting, setExporting] = useState(false);
@@ -112,7 +121,7 @@ export default function LocationList() {
 
   async function handleCreateSubmit(e: FormEvent) {
     e.preventDefault();
-    if (isDuplicateKota) return;
+    if (isDuplicateKota || createAreaOwner) return;
     setCreating(true);
     setCreateError(null);
     try {
@@ -143,7 +152,7 @@ export default function LocationList() {
 
   async function handleEditSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!editingId) return;
+    if (!editingId || editAreaOwner) return;
     setEditError(null);
     try {
       await updateTitik(editingId, editForm);
@@ -204,7 +213,7 @@ export default function LocationList() {
 
       {canEdit && expanded && mode === "bulk" && (
         <div className="mt-6">
-          <BulkLocationImport existing={existingIds} />
+          <BulkLocationImport existing={existingIds} existingAreas={existingAreas} />
         </div>
       )}
 
@@ -231,6 +240,11 @@ export default function LocationList() {
                 value={form.namaArea}
                 onChange={(e) => setForm({ ...form, namaArea: e.target.value })}
               />
+              {createAreaOwner && (
+                <span className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-amber-700">
+                  <AlertTriangle size={13} /> Nama Area ini sudah dipakai oleh {createAreaOwner}. Nama Area tidak boleh sama.
+                </span>
+              )}
             </label>
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">Jenis Titik</span>
@@ -295,7 +309,7 @@ export default function LocationList() {
           <div className="mt-5 flex justify-end">
             <button
               type="submit"
-              disabled={creating || isDuplicateKota}
+              disabled={creating || isDuplicateKota || !!createAreaOwner}
               className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
             >
               <Plus size={15} /> Simpan Titik
@@ -478,6 +492,11 @@ export default function LocationList() {
                     value={editForm.namaArea}
                     onChange={(e) => setEditForm({ ...editForm, namaArea: e.target.value })}
                   />
+                  {editAreaOwner && (
+                    <span className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-amber-700">
+                      <AlertTriangle size={13} /> Nama Area ini sudah dipakai oleh {editAreaOwner}. Nama Area tidak boleh sama.
+                    </span>
+                  )}
                 </label>
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-slate-600">Jenis Titik</span>
@@ -539,7 +558,8 @@ export default function LocationList() {
                 </button>
                 <button
                   type="submit"
-                  className="rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+                  disabled={!!editAreaOwner}
+                  className="rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
                 >
                   Simpan
                 </button>

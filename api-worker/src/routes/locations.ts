@@ -38,6 +38,21 @@ async function findDuplicate(db: D1Database, kota: string, provinsi: string, tit
         .first();
 }
 
+/** Nama Area is meant to be unique (case-insensitive) when filled in. Returns the
+ * Kota / Kabupaten already using it, or null when it is free. */
+async function findAreaOwner(db: D1Database, area: string, exceptId = ""): Promise<string | null> {
+  if (!area) return null;
+  const row = await db
+    .prepare(`SELECT nama_kota FROM locations WHERE nama_area = ? COLLATE NOCASE AND id != ? LIMIT 1`)
+    .bind(area, exceptId)
+    .first<{ nama_kota: string }>();
+  return row ? row.nama_kota : null;
+}
+
+function areaTakenMessage(area: string, owner: string): string {
+  return `Nama Area "${area}" sudah dipakai oleh ${owner}. Nama Area tidak boleh sama.`;
+}
+
 function label(kota: string, provinsi: string, titik: string): string {
   return [provinsi || "-", kota, titik].filter(Boolean).join(" / ");
 }
@@ -119,6 +134,9 @@ export function registerLocationRoutes(router: Router) {
     const dupe = await findDuplicate(ctx.env.DB, value.namaKota, value.provinsi, value.namaTitik);
     if (dupe) throw Errors.conflict(`Data "${label(value.namaKota, value.provinsi, value.namaTitik)}" sudah ada.`);
 
+    const areaOwner = await findAreaOwner(ctx.env.DB, value.namaArea);
+    if (areaOwner) throw Errors.conflict(areaTakenMessage(value.namaArea, areaOwner));
+
     const id = newId();
     try {
       await insertStatement(ctx.env.DB, value, actor.id, new Date().toISOString(), id).run();
@@ -148,11 +166,15 @@ export function registerLocationRoutes(router: Router) {
     if (!Array.isArray(items) || items.length === 0) throw Errors.badRequest("Tidak ada baris data untuk diimport.");
     if (items.length > BULK_MAX_ROWS) throw Errors.badRequest(`Maksimal ${BULK_MAX_ROWS} baris per import.`);
 
-    const existing = await ctx.env.DB.prepare(`SELECT nama_kota, provinsi, nama_titik FROM locations`).all<{
+    const existing = await ctx.env.DB.prepare(`SELECT nama_kota, provinsi, nama_titik, nama_area FROM locations`).all<{
       nama_kota: string;
       provinsi: string;
       nama_titik: string | null;
+      nama_area: string | null;
     }>();
+    // Nama Area must be unique too: area (lower-case) -> Kota / Kabupaten using it.
+    const seenArea = new Map<string, string>();
+    for (const r of existing.results ?? []) if (r.nama_area) seenArea.set(r.nama_area.toLowerCase(), r.nama_kota);
     // seen: full identities (rows sent with a titik name); seenPair: every
     // Kota / Kabupaten + Provinsi pair (rows sent without one).
     const seen = new Set<string>();
@@ -179,6 +201,14 @@ export function registerLocationRoutes(router: Router) {
       if (value.namaTitik ? seen.has(id) : seenPair.has(pair)) {
         failed.push({ row, kota: value.namaKota, provinsi: value.provinsi, titik: value.namaTitik, message: "Duplikat (sudah ada di master data atau di baris sebelumnya)" });
         return;
+      }
+      if (value.namaArea) {
+        const owner = seenArea.get(value.namaArea.toLowerCase());
+        if (owner) {
+          failed.push({ row, kota: value.namaKota, provinsi: value.provinsi, titik: value.namaTitik, message: areaTakenMessage(value.namaArea, owner) });
+          return;
+        }
+        seenArea.set(value.namaArea.toLowerCase(), value.namaKota);
       }
       seen.add(id);
       seenPair.add(pair);
@@ -279,6 +309,14 @@ export function registerLocationRoutes(router: Router) {
     // Only check when the identity really changed: older data may already hold
     // several rows per Kota / Kabupaten + Provinsi, and editing e.g. just the
     // Jenis of one of them must keep working.
+    if (has("namaArea")) {
+      const area = clean(body.namaArea);
+      const cur = await ctx.env.DB.prepare(`SELECT nama_area FROM locations WHERE id = ?`).bind(params.id).first<{ nama_area: string | null }>();
+      if (area && area.toLowerCase() !== (cur?.nama_area ?? "").toLowerCase()) {
+        const owner = await findAreaOwner(ctx.env.DB, area, params.id);
+        if (owner) throw Errors.conflict(areaTakenMessage(area, owner));
+      }
+    }
     const same = (a: string | null, b: string | null) => (a ?? "").toLowerCase() === (b ?? "").toLowerCase();
     const changed = !same(kota, existing.nama_kota) || !same(prov, existing.provinsi) || !same(titik, existing.nama_titik);
     if (changed) {

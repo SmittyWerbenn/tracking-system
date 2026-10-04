@@ -35,12 +35,13 @@ export const ROLE_BAR_CLASS: Record<UserRole, string> = {
   Mitra: "border-t-teal-700",
 };
 
-/** Active sidebar item per role. */
+/** Active sidebar item: the same navy as the primary buttons for every role
+ * (the per-role accent lives in the header bar and badges only). */
 export const ROLE_ACTIVE_CLASS: Record<UserRole, string> = {
-  Superadmin: "bg-indigo-800 text-white",
+  Superadmin: "bg-blue-900 text-white",
   Admin: "bg-blue-900 text-white",
-  Client: "bg-sky-800 text-white",
-  Viewer: "bg-slate-700 text-white",
-  Driver: "bg-orange-700 text-white",
-  Mitra: "bg-teal-800 text-white",
+  Client: "bg-blue-900 text-white",
+  Viewer: "bg-blue-900 text-white",
+  Driver: "bg-blue-900 text-white",
+  Mitra: "bg-blue-900 text-white",
 };

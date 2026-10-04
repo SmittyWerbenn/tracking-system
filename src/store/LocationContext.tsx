@@ -9,6 +9,7 @@ interface LocationRow {
   kode_kota: string;
   provinsi?: string;
   nama_titik?: string | null;
+  nama_area?: string | null;
   jenis: TitikJenis;
   aktif?: number;
 }
@@ -20,6 +21,7 @@ function toTitik(row: LocationRow): TitikLokasi {
     provinsi: row.provinsi ?? "",
     namaTitik: row.nama_titik ?? "",
     kodeKota: row.kode_kota ?? "",
+    namaArea: row.nama_area ?? "",
     jenis: row.jenis,
     aktif: row.aktif === undefined ? true : row.aktif === 1,
   };
@@ -31,6 +33,7 @@ export interface TitikFormData {
   namaKota: string;
   provinsi: string;
   kodeKota: string;
+  namaArea: string;
   jenis: TitikJenis;
   aktif: boolean;
 }

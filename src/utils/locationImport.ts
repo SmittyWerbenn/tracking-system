@@ -2,17 +2,18 @@ import type { TitikJenis, TitikLokasi } from "../types";
 import { normalizeHeader } from "./csv";
 import { downloadXlsx } from "./xlsx";
 
-/** Template / export layout, in the same order as the listing table (Kode,
+/** Template / export layout, in the same order as the listing table (Kode, Nama Area,
  * Jenis Titik, Provinsi, Kota / Kabupaten, Status). Only Kota / Kabupaten is
  * required; Jenis defaults to Transit and Status to Aktif. Import matches
  * headers by name, so files in the old column order still load (an old "Nama
  * Titik Transit" column is ignored). */
-export const LOCATION_TEMPLATE_HEADERS = ["Kode", "Jenis Titik", "Provinsi", "Kota / Kabupaten", "Status"] as const;
+export const LOCATION_TEMPLATE_HEADERS = ["Kode", "Nama Area", "Jenis Titik", "Provinsi", "Kota / Kabupaten", "Status"] as const;
 
 export interface BulkLocationRowInput {
   namaKota: string;
   provinsi: string;
   kodeKota: string;
+  namaArea: string;
   jenis: string;
   aktif: string;
   /** Row number in the source file (header = row 1), for error messages. */
@@ -28,6 +29,7 @@ const HEADER_ALIASES: Record<Field, string[]> = {
   namaKota: ["Kota / Kabupaten", "Kota/Kabupaten", "Kota", "Kabupaten", "Nama Kota"],
   provinsi: ["Provinsi"],
   kodeKota: ["Kode", "Kode Kota"],
+  namaArea: ["Nama Area", "Area"],
   jenis: ["Jenis", "Jenis Titik"],
   aktif: ["Aktif", "Status"],
 };
@@ -83,6 +85,7 @@ export function tableToBulkLocationRows(table: unknown[][]): {
       namaKota: record.namaKota ?? "",
       provinsi: record.provinsi ?? "",
       kodeKota: record.kodeKota ?? "",
+      namaArea: record.namaArea ?? "",
       jenis: record.jenis ?? "",
       aktif: record.aktif ?? "",
       sourceRow: r + 1,
@@ -114,7 +117,7 @@ export function locationIdentity(kota: string, provinsi: string): string {
   return [kota, provinsi].map((s) => s.trim().replace(/\s+/g, " ").toLowerCase()).join("\u0001");
 }
 
-const COLUMN_WIDTHS = [10, 14, 24, 30, 10];
+const COLUMN_WIDTHS = [10, 24, 14, 24, 30, 10];
 
 /** Downloads every Kota & Titik Transit as .xlsx in the same layout the import
  * reads, so the file can be completed and uploaded back as-is. */
@@ -128,7 +131,7 @@ export async function exportLocationsXlsx(titik: TitikLokasi[]): Promise<void> {
   await downloadXlsx(
     `kota-titik-transit-${today}.xlsx`,
     LOCATION_TEMPLATE_HEADERS,
-    sorted.map((t) => [t.kodeKota, t.jenis, t.provinsi, t.namaKota, t.aktif ? "Aktif" : "Nonaktif"]),
+    sorted.map((t) => [t.kodeKota, t.namaArea, t.jenis, t.provinsi, t.namaKota, t.aktif ? "Aktif" : "Nonaktif"]),
     COLUMN_WIDTHS,
   );
 }
@@ -138,8 +141,8 @@ export async function downloadBulkLocationTemplate(): Promise<void> {
     "template-kota-titik-transit.xlsx",
     LOCATION_TEMPLATE_HEADERS,
     [
-      ["JKT", "Transit", "DKI Jakarta", "Jakarta Timur", "Aktif"],
-      ["SMG", "Hub", "Jawa Tengah", "Kabupaten Semarang", "Aktif"],
+      ["JKT", "Jakarta Timur Area 1", "Transit", "DKI Jakarta", "Jakarta Timur", "Aktif"],
+      ["SMG", "Semarang Raya", "Hub", "Jawa Tengah", "Kabupaten Semarang", "Aktif"],
     ],
     COLUMN_WIDTHS,
   );

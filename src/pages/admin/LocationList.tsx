@@ -30,6 +30,7 @@ const emptyForm: TitikFormData = {
   namaKota: "",
   provinsi: "",
   kodeKota: "",
+  namaArea: "",
   jenis: "Transit",
   aktif: true,
 };
@@ -70,7 +71,7 @@ export default function LocationList() {
     const q = search.trim().toLowerCase();
     return titikLokasi.filter(
       (t) =>
-        (!q || [t.namaKota, t.provinsi, t.kodeKota].some((v) => v.toLowerCase().includes(q))) &&
+        (!q || [t.namaKota, t.provinsi, t.kodeKota, t.namaArea].some((v) => v.toLowerCase().includes(q))) &&
         (!jenisFilter || t.jenis === jenisFilter) &&
         (statusFilter === "semua" || (statusFilter === "aktif" ? t.aktif : !t.aktif)),
     );
@@ -132,6 +133,7 @@ export default function LocationList() {
       namaKota: t.namaKota,
       provinsi: t.provinsi,
       kodeKota: t.kodeKota,
+      namaArea: t.namaArea,
       jenis: t.jenis,
       aktif: t.aktif,
     });
@@ -219,6 +221,15 @@ export default function LocationList() {
                 placeholder="JKT"
                 value={form.kodeKota}
                 onChange={(e) => setForm({ ...form, kodeKota: e.target.value.toUpperCase() })}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Area (opsional)</span>
+              <input
+                className={inputClass}
+                placeholder="Contoh: Jakarta Timur Area 1"
+                value={form.namaArea}
+                onChange={(e) => setForm({ ...form, namaArea: e.target.value })}
               />
             </label>
             <label className="block">
@@ -331,13 +342,14 @@ export default function LocationList() {
           {/* Equal-width columns so the spacing between them is even. */}
           <MasterTableCard minWidth={760} fixed>
             <colgroup>
-              {Array.from({ length: canEdit ? 6 : 5 }, (_, i) => (
-                <col key={i} className={canEdit ? "w-1/6" : "w-1/5"} />
+              {Array.from({ length: canEdit ? 7 : 6 }, (_, i) => (
+                <col key={i} className={canEdit ? "w-1/7" : "w-1/6"} />
               ))}
             </colgroup>
             <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3 font-medium">Kode</th>
+                <th className="px-4 py-3 font-medium">Nama Area</th>
                 <th className="px-4 py-3 font-medium">Jenis Titik</th>
                 <th className="px-4 py-3 font-medium">Provinsi</th>
                 <th className="px-4 py-3 font-medium">Kota / Kabupaten</th>
@@ -348,7 +360,7 @@ export default function LocationList() {
             <tbody className="divide-y divide-slate-100">
               {filtered.length === 0 && (
                 <MasterTableMessage
-                  colSpan={canEdit ? 6 : 5}
+                  colSpan={canEdit ? 7 : 6}
                   loading={isLoading && titikLokasi.length === 0}
                   loadingText="Memuat data lokasi..."
                   icon={MapPinned}
@@ -374,6 +386,7 @@ export default function LocationList() {
               {filtered.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-50">
                   <td className="whitespace-nowrap px-4 py-3 font-mono text-slate-600">{t.kodeKota || "-"}</td>
+                  <td className="px-4 py-3 text-slate-700">{t.namaArea || "-"}</td>
                   <td className="whitespace-nowrap px-4 py-3">
                     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${JENIS_STYLE[t.jenis]}`}>
                       {t.jenis}
@@ -455,6 +468,15 @@ export default function LocationList() {
                     placeholder="JKT"
                     value={editForm.kodeKota}
                     onChange={(e) => setEditForm({ ...editForm, kodeKota: e.target.value.toUpperCase() })}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Area (opsional)</span>
+                  <input
+                    className={inputClass}
+                    placeholder="Contoh: Jakarta Timur Area 1"
+                    value={editForm.namaArea}
+                    onChange={(e) => setEditForm({ ...editForm, namaArea: e.target.value })}
                   />
                 </label>
                 <label className="block">

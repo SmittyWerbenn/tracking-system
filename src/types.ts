@@ -199,6 +199,8 @@ export interface TitikLokasi {
   namaTitik: string;
   /** Optional code (e.g. province code). */
   kodeKota: string;
+  /** Optional area name, shown right after Kode. */
+  namaArea: string;
   jenis: TitikJenis;
   aktif: boolean;
 }

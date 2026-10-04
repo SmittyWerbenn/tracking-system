@@ -47,6 +47,7 @@ interface LocationInput {
   provinsi: string;
   namaTitik: string;
   kodeKota: string;
+  namaArea: string;
   jenis: Jenis;
   aktif: boolean;
 }
@@ -61,6 +62,7 @@ function validateLocation(raw: Record<string, unknown>): { value?: LocationInput
   const provinsi = clean(raw.provinsi);
   const namaTitik = clean(raw.namaTitik);
   const kodeKota = clean(raw.kodeKota).toUpperCase();
+  const namaArea = clean(raw.namaArea);
   const jenisRaw = clean(raw.jenis);
 
   if (!namaKota) errors.push("Kota / Kabupaten wajib diisi");
@@ -68,6 +70,7 @@ function validateLocation(raw: Record<string, unknown>): { value?: LocationInput
   if (provinsi.length > 80) errors.push("Provinsi maksimal 80 karakter");
   if (namaTitik.length > 120) errors.push("Nama Titik Transit maksimal 120 karakter");
   if (kodeKota.length > 10) errors.push("Kode maksimal 10 karakter");
+  if (namaArea.length > 120) errors.push("Nama Area maksimal 120 karakter");
 
   let jenis: Jenis = DEFAULT_JENIS;
   if (jenisRaw) {
@@ -78,17 +81,17 @@ function validateLocation(raw: Record<string, unknown>): { value?: LocationInput
   const aktif = raw.aktif === undefined || raw.aktif === null ? true : Boolean(raw.aktif);
 
   if (errors.length > 0) return { errors };
-  return { value: { namaKota, provinsi, namaTitik, kodeKota, jenis, aktif }, errors };
+  return { value: { namaKota, provinsi, namaTitik, kodeKota, namaArea, jenis, aktif }, errors };
 }
 
 function insertStatement(db: D1Database, v: LocationInput, actorId: string, now: string, id: string = newId()) {
   // provinsi is its own field now (NOT NULL in the schema, so "" when not given).
   return db
     .prepare(
-      `INSERT INTO locations (id, nama_kota, nama_titik, kode_kota, provinsi, jenis, aktif, created_at, updated_at, created_by, updated_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO locations (id, nama_kota, nama_titik, kode_kota, nama_area, provinsi, jenis, aktif, created_at, updated_at, created_by, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .bind(id, v.namaKota, v.namaTitik || null, v.kodeKota, v.provinsi, v.jenis, v.aktif ? 1 : 0, now, now, actorId, actorId);
+    .bind(id, v.namaKota, v.namaTitik || null, v.kodeKota, v.namaArea || null, v.provinsi, v.jenis, v.aktif ? 1 : 0, now, now, actorId, actorId);
 }
 
 function isUniqueViolation(err: unknown): boolean {
@@ -258,6 +261,11 @@ export function registerLocationRoutes(router: Router) {
       const v = clean(body.kodeKota).toUpperCase();
       if (v.length > 10) throw Errors.badRequest("Kode maksimal 10 karakter.");
       sets.push("kode_kota = ?"); values.push(v);
+    }
+    if (has("namaArea")) {
+      const v = clean(body.namaArea);
+      if (v.length > 120) throw Errors.badRequest("Nama Area maksimal 120 karakter.");
+      sets.push("nama_area = ?"); values.push(v || null);
     }
     if (has("jenis") && clean(body.jenis)) {
       const match = JENIS.find((j) => j.toLowerCase() === clean(body.jenis).toLowerCase());

@@ -515,7 +515,7 @@ export default function ShipmentDetail() {
             </>
             )}
 
-            {profile?.role !== "Viewer" && (
+            {profile?.role !== "Viewer" && profile?.role !== "Client" && (
             <>
 
             <div className="mt-6 border-t border-slate-100 pt-5">

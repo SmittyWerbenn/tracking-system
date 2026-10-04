@@ -14,6 +14,11 @@ import { addBusinessDays } from "../sla";
 
 const POD_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
+/** Client accounts never learn which Mitra (partner agent) handles an order. */
+function forActor(summary: ReturnType<typeof shipmentSummary>, role: string) {
+  return role === "Client" ? { ...summary, mitraId: null, mitraNama: null } : summary;
+}
+
 function shipmentSummary(row: Record<string, unknown>) {
   return {
     awb: row.awb,
@@ -131,7 +136,7 @@ export function registerShipmentRoutes(router: Router) {
       .all();
 
     return ok({
-      items: (rows.results ?? []).map(shipmentSummary),
+      items: (rows.results ?? []).map((r) => forActor(shipmentSummary(r), actor.role)),
       meta: pageMeta(page, limit, total?.c ?? 0),
     });
   });
@@ -305,7 +310,7 @@ export function registerShipmentRoutes(router: Router) {
       .bind(params.awb, params.awb)
       .all();
 
-    return ok({ shipment: shipmentSummary(row), timeline: timeline.results, pod: pod ?? null, files: files.results ?? [] });
+    return ok({ shipment: forActor(shipmentSummary(row), actor.role), timeline: timeline.results, pod: pod ?? null, files: files.results ?? [] });
     });
 
     // Last position reported by the driver ("Perbarui Posisi" button on the

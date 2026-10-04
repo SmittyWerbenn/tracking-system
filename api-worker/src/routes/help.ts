@@ -1,7 +1,7 @@
 import type { Router } from "../router";
 import type { Ctx, Role } from "../types";
-import { ok, Errors } from "../http";
-import { parseJsonBody, reqEmail } from "../validate";
+import { ok, Errors, HttpError } from "../http";
+import { parseJsonBody } from "../validate";
 import { requireAuth } from "../authMiddleware";
 import {
   HELP_TARGET_LABEL,
@@ -37,11 +37,15 @@ export function registerHelpRoutes(router: Router) {
   router.post("/api/public/help-whatsapp", async (ctx: Ctx) => {
     checkRateLimit(ctx.request.headers.get("CF-Connecting-IP") ?? "unknown");
     const body = await parseJsonBody(ctx.request);
-    const email = reqEmail(body, "email");
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    if (!email) throw Errors.badRequest("Email wajib diisi.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw Errors.badRequest("Format email tidak valid.");
     const user = await ctx.env.DB.prepare(`SELECT role FROM users WHERE email = ? COLLATE NOCASE`)
       .bind(email)
       .first<{ role: Role }>();
-    return answer(ctx, lupaPasswordTarget(user?.role));
+    // Unknown email: stop here - no WhatsApp number is handed out.
+    if (!user) throw new HttpError(404, "EMAIL_NOT_REGISTERED", "Email tidak terdaftar");
+    return answer(ctx, lupaPasswordTarget(user.role));
   });
 
   // For a signed-in user (e.g. Driver -> "Hubungi Kendala"): the destination

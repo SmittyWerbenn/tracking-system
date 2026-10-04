@@ -31,7 +31,11 @@ export function ContactAdminButton({
     setError(null);
     setFallbackUrl(null);
     if (!email.trim()) {
-      setError("Isi email akun Anda terlebih dahulu, lalu klik lagi.");
+      setError("Email wajib diisi");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("Format email tidak valid");
       return;
     }
     setBusy(true);

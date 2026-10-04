@@ -47,9 +47,8 @@ export function helpTargetForRole(topic: HelpTopic, role: Role): HelpTarget | nu
 }
 
 /** Lupa Password happens before sign-in, so the role comes from the typed
- * email. A role the mapping doesn't cover (e.g. Superadmin) and an email that
- * isn't registered both get the Admin number - which also keeps the answer
- * for an unknown email indistinguishable from a normal Client/Viewer one. */
+ * email (the route rejects unregistered emails before calling this). A role
+ * the mapping doesn't cover (e.g. Superadmin) gets the Admin number. */
 export function lupaPasswordTarget(role: Role | null | undefined): HelpTarget {
   return (role && MAPPING.lupa_password[role]) || "admin";
 }

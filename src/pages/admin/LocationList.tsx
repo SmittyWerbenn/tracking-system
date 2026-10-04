@@ -98,15 +98,18 @@ export default function LocationList() {
 
   // A location is unique by Provinsi + Kota / Kabupaten.
   const existingIds = useMemo(() => titikLokasi.map((t) => locationIdentity(t.namaKota, t.provinsi)), [titikLokasi]);
-  // Nama Area must be unique (case-insensitive): who already uses a given area.
-  const areaOwner = (area: string, exceptId = ""): string | null => {
+  // Same Nama Area may repeat across different Jenis Titik, never with the same one.
+  const areaOwner = (area: string, jenis: string, exceptId = ""): string | null => {
     const a = area.trim().toLowerCase();
     if (!a) return null;
-    return titikLokasi.find((t) => t.id !== exceptId && t.namaArea.trim().toLowerCase() === a)?.namaKota ?? null;
+    return titikLokasi.find((t) => t.id !== exceptId && t.jenis === jenis && t.namaArea.trim().toLowerCase() === a)?.namaKota ?? null;
   };
-  const existingAreas = useMemo(() => titikLokasi.filter((t) => t.namaArea.trim()).map((t) => `${t.namaArea.trim().toLowerCase()}\u0001${t.namaKota}`), [titikLokasi]);
-  const createAreaOwner = areaOwner(form.namaArea);
-  const editAreaOwner = areaOwner(editForm.namaArea, editingId ?? "");
+  const existingAreas = useMemo(
+    () => titikLokasi.filter((t) => t.namaArea.trim()).map((t) => `${t.namaArea.trim().toLowerCase()}\u0001${t.jenis}\u0001${t.namaKota}`),
+    [titikLokasi],
+  );
+  const createAreaOwner = areaOwner(form.namaArea, form.jenis);
+  const editAreaOwner = areaOwner(editForm.namaArea, editForm.jenis, editingId ?? "");
   const isDuplicateKota = form.namaKota.trim() !== "" && existingIds.includes(locationIdentity(form.namaKota, form.provinsi));
 
   const [exporting, setExporting] = useState(false);
@@ -242,7 +245,7 @@ export default function LocationList() {
               />
               {createAreaOwner && (
                 <span className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-amber-700">
-                  <AlertTriangle size={13} /> Nama Area ini sudah dipakai oleh {createAreaOwner}. Nama Area tidak boleh sama.
+                  <AlertTriangle size={13} /> Nama Area ini dengan Jenis Titik {form.jenis} sudah ada (dipakai oleh {createAreaOwner}). Duplikat tidak diperbolehkan.
                 </span>
               )}
             </label>
@@ -494,7 +497,7 @@ export default function LocationList() {
                   />
                   {editAreaOwner && (
                     <span className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-amber-700">
-                      <AlertTriangle size={13} /> Nama Area ini sudah dipakai oleh {editAreaOwner}. Nama Area tidak boleh sama.
+                      <AlertTriangle size={13} /> Nama Area ini dengan Jenis Titik {editForm.jenis} sudah ada (dipakai oleh {editAreaOwner}). Duplikat tidak diperbolehkan.
                     </span>
                   )}
                 </label>

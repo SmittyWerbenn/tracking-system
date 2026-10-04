@@ -80,13 +80,15 @@ function validateRows(rows: BulkLocationRow[], existing: Set<string>, existingAr
     position += 1;
     const errs: string[] = [];
     if (!row.namaKota.trim()) errs.push("Kota / Kabupaten wajib diisi");
+    // Same Nama Area is fine with a different Jenis Titik; area + jenis must be unique.
     const area = row.namaArea.trim().toLowerCase();
     if (area) {
-      const owner = existingAreas.get(area);
-      const firstRow = seenAreas.get(area);
-      if (owner) errs.push(`Nama Area sudah dipakai oleh ${owner} (tidak boleh sama)`);
-      else if (firstRow !== undefined) errs.push(`Nama Area duplikat dengan baris tabel #${firstRow}`);
-      else seenAreas.set(area, position);
+      const key = `${area}\u0001${row.jenisValue}`;
+      const owner = existingAreas.get(key);
+      const firstRow = seenAreas.get(key);
+      if (owner) errs.push(`Nama Area "${row.namaArea.trim()}" dengan Jenis Titik ${row.jenisValue} sudah ada di master data (dipakai oleh ${owner})`);
+      else if (firstRow !== undefined) errs.push(`Nama Area "${row.namaArea.trim()}" dengan Jenis Titik ${row.jenisValue} duplikat dengan baris tabel #${firstRow}`);
+      else seenAreas.set(key, position);
     }
     if (errs.length === 0) {
       const id = locationIdentity(row.namaKota, row.provinsi);
@@ -108,7 +110,7 @@ function rowLabel(row: BulkLocationRow, position: number): string {
 const cellInputClass =
   "w-full min-w-[140px] rounded-md border border-slate-300 px-2 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-100";
 
-export function BulkLocationImport({ existing = [], existingAreas = [] }: { existing?: string[]; /** "area\u0001Kota" pairs already in master data (area lower-cased). */ existingAreas?: string[] }) {
+export function BulkLocationImport({ existing = [], existingAreas = [] }: { existing?: string[]; /** "area\u0001jenis\u0001Kota" entries already in master data (area lower-cased). */ existingAreas?: string[] }) {
   const { importTitik } = useLocations();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -131,7 +133,7 @@ export function BulkLocationImport({ existing = [], existingAreas = [] }: { exis
   }
 
   const existingIds = useMemo(() => new Set(existing), [existing]);
-  const areaMap = useMemo(() => new Map(existingAreas.map((e) => [e.split("\u0001")[0], e.split("\u0001")[1]] as [string, string])), [existingAreas]);
+  const areaMap = useMemo(() => new Map(existingAreas.map((e) => { const [a, j, k] = e.split("\u0001"); return [`${a}\u0001${j}`, k] as [string, string]; })), [existingAreas]);
   const errorsById = useMemo(() => validateRows(rows, existingIds, areaMap), [rows, existingIds, areaMap]);
 
   function updateRow<K extends keyof BulkLocationRow>(id: string, key: K, value: BulkLocationRow[K]) {

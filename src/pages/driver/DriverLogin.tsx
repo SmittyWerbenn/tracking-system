@@ -77,7 +77,7 @@ export default function DriverLogin() {
         <div className="flex flex-col items-center text-center">
           <img src={logoIcon} alt="GMS Logistics" className="h-14 w-14 object-contain" />
           <h1 className="mt-4 text-lg font-semibold text-slate-900">Portal Driver</h1>
-          <p className="mt-1 text-sm text-slate-500">PT Gangsar Mitra Suatama</p>
+          <p className="mt-1 text-sm text-slate-500">GMS Logistics</p>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">

@@ -108,6 +108,9 @@ export interface Shipment {
   claimDriverNama?: string;
   claimDriverTelepon?: string;
   claimRequestedAt?: string;
+  claimDriverId?: string;
+  /** Unit the claiming driver would use (Master Armada). */
+  claimTruck?: { id: string; nomorUnit: string; jenis: string };
   /** Latest "Request Pemulihan" for a cancelled order. This is a process, not an
    * order status - the order itself stays Dibatalkan until GMS approves. */
   recovery?: { status: RecoveryStatus; requestedAt: string; rejectionReason?: string };

@@ -55,9 +55,16 @@ interface RawShipmentSummary {
   claimDriverNama: string | null;
   claimDriverTelepon: string | null;
   claimRequestedAt: string | null;
+  claimDriverId?: string | null;
+  claimTruck?: { id: string; nomorUnit: string; jenis: string } | null;
   recovery?: { status: RecoveryStatus; requestedAt: string; rejectionReason: string | null } | null;
   pod: { tanggal: string; jam: string; namaPenerima: string } | null;
   lastUpdate: { tanggal: string; jam: string } | null;
+}
+
+export interface ClaimSeen {
+  driverId: string;
+  truckId: string | null;
 }
 
 export interface PendingClaim {
@@ -68,6 +75,8 @@ export interface PendingClaim {
   deskripsiBarang: string;
   claimRequestedAt: string;
   driver: { id: string; nama: string; telepon: string };
+  /** The unit this driver would run the shipment with (Master Armada). */
+  truck: { id: string; nomorUnit: string; jenis: string } | null;
 }
 
 interface RawTimelineRow {
@@ -134,6 +143,8 @@ function toShipment(row: RawShipmentSummary): Shipment {
     claimDriverNama: row.claimDriverNama ?? undefined,
     claimDriverTelepon: row.claimDriverTelepon ?? undefined,
     claimRequestedAt: row.claimRequestedAt ?? undefined,
+    claimDriverId: row.claimDriverId ?? undefined,
+    claimTruck: row.claimTruck ?? undefined,
     recovery: row.recovery
       ? { status: row.recovery.status, requestedAt: row.recovery.requestedAt, rejectionReason: row.recovery.rejectionReason ?? undefined }
       : undefined,
@@ -196,8 +207,9 @@ interface ShipmentContextValue {
   requestRecovery: (awb: string, alasan?: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   updatePodPhoto: (awb: string, slot: "barang" | "suratJalan", fotoDataUrl: string | undefined) => Promise<void>;
   fetchPendingClaims: () => Promise<PendingClaim[]>;
-  confirmClaim: (awb: string) => Promise<{ ok: true } | { ok: false; error: string }>;
-  rejectClaim: (awb: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  /** `seen` = the driver/unit the admin was looking at; the API refuses if either changed since. */
+  confirmClaim: (awb: string, seen?: ClaimSeen) => Promise<{ ok: true } | { ok: false; error: string }>;
+  rejectClaim: (awb: string, seen?: ClaimSeen) => Promise<{ ok: true } | { ok: false; error: string }>;
   unassignDriver: (awb: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   /** Forward/assign (mitraId) or unassign (null) a shipment to a Mitra. */
   assignMitra: (awb: string, mitraId: string | null) => Promise<{ ok: true } | { ok: false; error: string }>;
@@ -447,9 +459,9 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     return res.items;
   }
 
-  async function confirmClaim(awb: string) {
+  async function confirmClaim(awb: string, seen?: ClaimSeen) {
     try {
-      await api.post(`/api/shipments/${encodeURIComponent(awb)}/claim/confirm`);
+      await api.post(`/api/shipments/${encodeURIComponent(awb)}/claim/confirm`, seen ? { driverId: seen.driverId, truckId: seen.truckId ?? "" } : undefined);
       await refresh();
       return { ok: true as const };
     } catch (err) {
@@ -457,9 +469,9 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function rejectClaim(awb: string) {
+  async function rejectClaim(awb: string, seen?: ClaimSeen) {
     try {
-      await api.post(`/api/shipments/${encodeURIComponent(awb)}/claim/reject`);
+      await api.post(`/api/shipments/${encodeURIComponent(awb)}/claim/reject`, seen ? { driverId: seen.driverId, truckId: seen.truckId ?? "" } : undefined);
       await refresh();
       return { ok: true as const };
     } catch (err) {

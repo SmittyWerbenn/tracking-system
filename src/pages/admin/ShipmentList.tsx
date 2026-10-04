@@ -3,6 +3,7 @@ import { AlertTriangle, Ban, CheckCircle2, Download, Eye, FileEdit, LayoutList, 
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { ClaimDecisionModal } from "../../components/ClaimDecisionModal";
 import { EditShipmentModal } from "../../components/EditShipmentModal";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../store/AuthContext";
@@ -113,22 +114,25 @@ export default function ShipmentList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleConfirmClaim(awb: string) {
-    setClaimActionAwb(awb);
-    setClaimError(null);
-    const result = await confirmClaim(awb);
-    setClaimActionAwb(null);
-    if (result.ok) loadPendingClaims();
-    else setClaimError(result.error);
-  }
+  // Confirm / Tolak first open a second-confirmation dialog (AWB, driver, unit);
+  // nothing is sent until the admin presses the explicit button inside it.
+  const [claimDialog, setClaimDialog] = useState<{ mode: "confirm" | "reject"; claim: PendingClaim } | null>(null);
 
-  async function handleRejectClaim(awb: string) {
-    setClaimActionAwb(awb);
+  async function submitClaimDialog() {
+    if (!claimDialog) return;
+    const { mode, claim } = claimDialog;
+    setClaimActionAwb(claim.awb);
     setClaimError(null);
-    const result = await rejectClaim(awb);
+    const seen = { driverId: claim.driver.id, truckId: claim.truck?.id ?? null };
+    const result = mode === "confirm" ? await confirmClaim(claim.awb, seen) : await rejectClaim(claim.awb, seen);
     setClaimActionAwb(null);
-    if (result.ok) loadPendingClaims();
-    else setClaimError(result.error);
+    if (result.ok) {
+      setClaimDialog(null);
+      loadPendingClaims();
+    } else {
+      setClaimError(result.error);
+      loadPendingClaims(); // show the real, current state behind the dialog
+    }
   }
 
   const statusParam = searchParams.get("status") ?? "";
@@ -286,12 +290,19 @@ export default function ShipmentList() {
                     {c.driver.telepon}) ·{" "}
                     {formatTanggalJam(isoToWib(c.claimRequestedAt).tanggal, isoToWib(c.claimRequestedAt).jam)}
                   </p>
+                  <p className="text-xs text-slate-500">
+                    Unit: <span className="font-semibold text-slate-700">{c.truck?.nomorUnit ?? "-"}</span> · Jenis:{" "}
+                    <span className="font-semibold text-slate-700">{c.truck?.jenis ?? "-"}</span>
+                  </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <button
                     type="button"
                     disabled={claimActionAwb === c.awb}
-                    onClick={() => handleRejectClaim(c.awb)}
+                    onClick={() => {
+                      setClaimError(null);
+                      setClaimDialog({ mode: "reject", claim: c });
+                    }}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
                   >
                     <XCircle size={13} /> Tolak
@@ -299,7 +310,10 @@ export default function ShipmentList() {
                   <button
                     type="button"
                     disabled={claimActionAwb === c.awb}
-                    onClick={() => handleConfirmClaim(c.awb)}
+                    onClick={() => {
+                      setClaimError(null);
+                      setClaimDialog({ mode: "confirm", claim: c });
+                    }}
                     className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
                   >
                     {claimActionAwb === c.awb ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
@@ -615,6 +629,20 @@ export default function ShipmentList() {
           </table>
         </div>
       </div>
+
+      {claimDialog && (
+        <ClaimDecisionModal
+          mode={claimDialog.mode}
+          claim={{ awb: claimDialog.claim.awb, driverNama: claimDialog.claim.driver.nama, nomorUnit: claimDialog.claim.truck?.nomorUnit ?? null, jenisUnit: claimDialog.claim.truck?.jenis ?? null }}
+          pending={claimActionAwb === claimDialog.claim.awb}
+          error={claimError}
+          onCancel={() => {
+            setClaimDialog(null);
+            setClaimError(null);
+          }}
+          onSubmit={submitClaimDialog}
+        />
+      )}
 
       {recoveryTargetAwb && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

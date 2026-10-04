@@ -22,6 +22,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { QRCode } from "../../components/QRCode";
 import { RefreshButton } from "../../components/RefreshButton";
+import { ClaimDecisionModal } from "../../components/ClaimDecisionModal";
 import { EditShipmentModal } from "../../components/EditShipmentModal";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../store/AuthContext";
@@ -125,22 +126,23 @@ export default function ShipmentDetail() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [awb]);
 
-  async function handleConfirmClaim() {
-    setClaimActionPending(true);
-    setClaimActionError(null);
-    const result = await confirmClaim(shipment!.awb);
-    setClaimActionPending(false);
-    if (result.ok) await reload();
-    else setClaimActionError(result.error);
-  }
+  // Second confirmation (AWB, driver, unit) before a claim is confirmed/rejected.
+  const [claimDialog, setClaimDialog] = useState<"confirm" | "reject" | null>(null);
 
-  async function handleRejectClaim() {
+  async function submitClaimDialog() {
+    if (!claimDialog || !shipment) return;
     setClaimActionPending(true);
     setClaimActionError(null);
-    const result = await rejectClaim(shipment!.awb);
+    const seen = { driverId: shipment.claimDriverId ?? "", truckId: shipment.claimTruck?.id ?? null };
+    const result = claimDialog === "confirm" ? await confirmClaim(shipment.awb, seen) : await rejectClaim(shipment.awb, seen);
     setClaimActionPending(false);
-    if (result.ok) await reload();
-    else setClaimActionError(result.error);
+    if (result.ok) {
+      setClaimDialog(null);
+      await reload();
+    } else {
+      setClaimActionError(result.error);
+      await reload(); // show the real, current state behind the dialog
+    }
   }
 
   async function handleUnassignDriver() {
@@ -421,12 +423,19 @@ export default function ShipmentDetail() {
                       </span>
                     )}
                   </p>
+                  <p className="mt-1 text-xs text-violet-700">
+                    Unit: <span className="font-semibold">{shipment.claimTruck?.nomorUnit ?? "-"}</span> · Jenis:{" "}
+                    <span className="font-semibold">{shipment.claimTruck?.jenis ?? "-"}</span>
+                  </p>
                   {canManageClaims && (
                     <div className="mt-3 flex items-center gap-2 no-print">
                       <button
                         type="button"
                         disabled={claimActionPending}
-                        onClick={handleRejectClaim}
+                        onClick={() => {
+                          setClaimActionError(null);
+                          setClaimDialog("reject");
+                        }}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
                       >
                         <XCircle size={13} /> Tolak
@@ -434,7 +443,10 @@ export default function ShipmentDetail() {
                       <button
                         type="button"
                         disabled={claimActionPending}
-                        onClick={handleConfirmClaim}
+                        onClick={() => {
+                          setClaimActionError(null);
+                          setClaimDialog("confirm");
+                        }}
                         className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
                       >
                         {claimActionPending ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
@@ -689,6 +701,19 @@ export default function ShipmentDetail() {
         </div>
       )}
 
+      {claimDialog && shipment.claimStatus === "pending" && (
+        <ClaimDecisionModal
+          mode={claimDialog}
+          claim={{ awb: shipment.awb, driverNama: shipment.claimDriverNama ?? "-", nomorUnit: shipment.claimTruck?.nomorUnit ?? null, jenisUnit: shipment.claimTruck?.jenis ?? null }}
+          pending={claimActionPending}
+          error={claimActionError}
+          onCancel={() => {
+            setClaimDialog(null);
+            setClaimActionError(null);
+          }}
+          onSubmit={submitClaimDialog}
+        />
+      )}
       {editOpen && <EditShipmentModal shipment={shipment} onClose={() => setEditOpen(false)} onSaved={() => reload()} />}
     </AdminLayout>
   );

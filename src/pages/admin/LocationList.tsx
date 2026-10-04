@@ -17,7 +17,7 @@ import { useAuth } from "../../store/AuthContext";
 import { useLocations, type TitikFormData } from "../../store/LocationContext";
 import { ApiError } from "../../utils/apiClient";
 import type { TitikJenis, TitikLokasi } from "../../types";
-import { exportLocationsXlsx, locationIdentity } from "../../utils/locationImport";
+import { exportLocationsXlsx } from "../../utils/locationImport";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
@@ -96,8 +96,6 @@ export default function LocationList() {
   const [editForm, setEditForm] = useState<TitikFormData>(emptyForm);
   const [editError, setEditError] = useState<string | null>(null);
 
-  // A location is unique by Provinsi + Kota / Kabupaten.
-  const existingIds = useMemo(() => titikLokasi.map((t) => locationIdentity(t.namaKota, t.provinsi)), [titikLokasi]);
   // Same Nama Area may repeat across different Jenis Titik, never with the same one.
   const areaOwner = (area: string, jenis: string, exceptId = ""): string | null => {
     const a = area.trim().toLowerCase();
@@ -110,7 +108,6 @@ export default function LocationList() {
   );
   const createAreaOwner = areaOwner(form.namaArea, form.jenis);
   const editAreaOwner = areaOwner(editForm.namaArea, editForm.jenis, editingId ?? "");
-  const isDuplicateKota = form.namaKota.trim() !== "" && existingIds.includes(locationIdentity(form.namaKota, form.provinsi));
 
   const [exporting, setExporting] = useState(false);
   async function handleExport() {
@@ -124,7 +121,7 @@ export default function LocationList() {
 
   async function handleCreateSubmit(e: FormEvent) {
     e.preventDefault();
-    if (isDuplicateKota || createAreaOwner) return;
+    if (createAreaOwner) return;
     setCreating(true);
     setCreateError(null);
     try {
@@ -216,7 +213,7 @@ export default function LocationList() {
 
       {canEdit && expanded && mode === "bulk" && (
         <div className="mt-6">
-          <BulkLocationImport existing={existingIds} existingAreas={existingAreas} />
+          <BulkLocationImport existingAreas={existingAreas} />
         </div>
       )}
 
@@ -276,16 +273,11 @@ export default function LocationList() {
               <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota / Kabupaten</span>
               <input
                 required
-                className={`${inputClass} ${isDuplicateKota ? "border-amber-400 focus:border-amber-500 focus:ring-amber-100" : ""}`}
+                className={inputClass}
                 placeholder="Jakarta Pusat"
                 value={form.namaKota}
                 onChange={(e) => setForm({ ...form, namaKota: e.target.value })}
               />
-              {isDuplicateKota && (
-                <span className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-amber-700">
-                  <AlertTriangle size={13} /> Kombinasi Provinsi dan Kota / Kabupaten ini sudah ada, tidak bisa dobel.
-                </span>
-              )}
             </label>
             <label className="flex items-center gap-2 sm:col-span-2">
               <input
@@ -312,7 +304,7 @@ export default function LocationList() {
           <div className="mt-5 flex justify-end">
             <button
               type="submit"
-              disabled={creating || isDuplicateKota || !!createAreaOwner}
+              disabled={creating || !!createAreaOwner}
               className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
             >
               <Plus size={15} /> Simpan Titik

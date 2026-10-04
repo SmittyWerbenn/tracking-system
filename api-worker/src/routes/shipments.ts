@@ -52,6 +52,9 @@ function shipmentSummary(row: Record<string, unknown>) {
       ? { tanggal: row.pod_tanggal, jam: row.pod_jam, namaPenerima: row.pod_nama_penerima }
       : null,
     lastUpdate: row.last_tanggal ? { tanggal: row.last_tanggal, jam: row.last_jam } : null,
+    recovery: row.recovery_status
+      ? { status: row.recovery_status, requestedAt: row.recovery_requested_at, rejectionReason: row.recovery_rejection_reason ?? null }
+      : null,
   };
 }
 
@@ -105,7 +108,8 @@ export function registerShipmentRoutes(router: Router) {
               cd.nama as claim_driver_nama, cd.telepon as claim_driver_telepon,
               m.nama as mitra_nama,
               p.tanggal as pod_tanggal, p.jam as pod_jam, p.nama_penerima as pod_nama_penerima,
-              le.tanggal as last_tanggal, le.jam as last_jam
+              le.tanggal as last_tanggal, le.jam as last_jam,
+              rr.status as recovery_status, rr.requested_at as recovery_requested_at, rr.rejection_reason as recovery_rejection_reason
        FROM shipments s
        LEFT JOIN trucks t ON t.id = s.truck_id
        LEFT JOIN drivers d ON d.id = t.driver_id
@@ -116,6 +120,9 @@ export function registerShipmentRoutes(router: Router) {
          SELECT e1.awb, e1.tanggal, e1.jam FROM shipment_timeline_events e1
          WHERE e1.seq = (SELECT MAX(e2.seq) FROM shipment_timeline_events e2 WHERE e2.awb = e1.awb)
        ) le ON le.awb = s.awb
+       LEFT JOIN order_recovery_requests rr ON rr.id = (
+         SELECT x.id FROM order_recovery_requests x WHERE x.awb = s.awb ORDER BY x.requested_at DESC LIMIT 1
+       )
        ${whereSql}
        ORDER BY s.tanggal_dibuat DESC, s.jam_dibuat DESC
        LIMIT ? OFFSET ?`,
@@ -251,12 +258,16 @@ export function registerShipmentRoutes(router: Router) {
     const row = await ctx.env.DB.prepare(
       `SELECT s.*, t.nomor_unit as truck_nomor_unit, t.jenis as truck_jenis, d.nama as truck_driver_nama,
               cd.nama as claim_driver_nama, cd.telepon as claim_driver_telepon,
-              m.nama as mitra_nama
+              m.nama as mitra_nama,
+              rr.status as recovery_status, rr.requested_at as recovery_requested_at, rr.rejection_reason as recovery_rejection_reason
        FROM shipments s
        LEFT JOIN trucks t ON t.id = s.truck_id
        LEFT JOIN drivers d ON d.id = t.driver_id
        LEFT JOIN drivers cd ON cd.id = s.claim_driver_id
        LEFT JOIN mitras m ON m.kode_mitra = s.mitra_id
+       LEFT JOIN order_recovery_requests rr ON rr.id = (
+         SELECT x.id FROM order_recovery_requests x WHERE x.awb = s.awb ORDER BY x.requested_at DESC LIMIT 1
+       )
        WHERE s.awb = ?`,
     )
       .bind(params.awb)

@@ -9,6 +9,7 @@ import {
   MapPinned,
   Menu,
   MessageSquare,
+  RotateCcw,
   Package,
   PackagePlus,
   Settings,
@@ -88,7 +89,10 @@ function getNavGroups(role: UserRole): { title: string; items: NavItem[] }[] {
     },
     {
       title: "Layanan",
-      items: [{ to: adminPath("/feedback"), label: "Feedback Customer", icon: MessageSquare, end: true, roles: NON_MITRA_ROLES }],
+      items: [
+        { to: adminPath("/feedback"), label: "Feedback Customer", icon: MessageSquare, end: true, roles: NON_MITRA_ROLES },
+        { to: adminPath("/pemulihan-order"), label: "Request Pemulihan Order", icon: RotateCcw, end: true, roles: ["Superadmin", "Admin"] },
+      ],
     },
     {
       title: "Sistem",

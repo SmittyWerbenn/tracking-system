@@ -1,5 +1,5 @@
 import { adminPath } from "../../utils/urls";
-import { AlertTriangle, Ban, CheckCircle2, Download, Eye, FileEdit, LayoutList, ListTree, Loader2, MapPin, PackageSearch, Pencil, Printer, RefreshCw, Search, X, XCircle } from "lucide-react";
+import { AlertTriangle, Ban, CheckCircle2, Download, Eye, FileEdit, LayoutList, ListTree, Loader2, MapPin, PackageSearch, Pencil, Printer, RefreshCw, RotateCcw, Search, X, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -25,7 +25,7 @@ function isShipmentStatus(value: string): value is ShipmentStatus {
  * and the "macet" quick-filter refine client-side over that already-
  * filtered, already-bounded batch rather than the whole table. */
 export default function ShipmentList() {
-  const { shipments, isLoading, refresh, fetchPendingClaims, confirmClaim, rejectClaim, cancelShipment, updateShipmentAlamat } =
+  const { shipments, isLoading, refresh, fetchPendingClaims, confirmClaim, rejectClaim, cancelShipment, requestRecovery, updateShipmentAlamat } =
     useShipments();
   const { activeTitikLokasi } = useLocations();
   const { settings } = useSettings();
@@ -54,6 +54,26 @@ export default function ShipmentList() {
     if (profile?.role === "Superadmin" || profile?.role === "Admin") return true;
     if (profile?.role === "Client") return s.status === "Dalam Persiapan";
     return false;
+  }
+
+  // "Ajukan Pemulihan": Client only, cancelled orders without an active request.
+  // The order itself is not touched - GMS Admin / Superadmin decide.
+  const [recoveryTargetAwb, setRecoveryTargetAwb] = useState<string | null>(null);
+  const [recoveryPending, setRecoveryPending] = useState(false);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+
+  function canRequestRecovery(s: { status: ShipmentStatus; recovery?: { status: string } }): boolean {
+    return profile?.role === "Client" && s.status === "Dibatalkan" && s.recovery?.status !== "PENDING";
+  }
+
+  async function handleRequestRecovery() {
+    if (!recoveryTargetAwb) return;
+    setRecoveryPending(true);
+    setRecoveryError(null);
+    const result = await requestRecovery(recoveryTargetAwb);
+    setRecoveryPending(false);
+    if (result.ok) setRecoveryTargetAwb(null);
+    else setRecoveryError(result.error);
   }
 
   function openCancelModal(awb: string) {
@@ -518,6 +538,16 @@ export default function ShipmentList() {
                   )}
                   <td className="whitespace-nowrap px-4 py-3">
                     <StatusBadge status={s.status} size="sm" />
+                    {s.status === "Dibatalkan" && s.recovery && (profile?.role === "Client" || profile?.role === "Superadmin" || profile?.role === "Admin") && (
+                      <p
+                        className={`mt-1 text-[11px] font-medium ${
+                          s.recovery.status === "PENDING" ? "text-amber-700" : s.recovery.status === "REJECTED" ? "text-rose-600" : "text-slate-500"
+                        }`}
+                      >
+                        Request Pemulihan:{" "}
+                        {s.recovery.status === "PENDING" ? "Menunggu Konfirmasi" : s.recovery.status === "REJECTED" ? "Ditolak" : "Disetujui"}
+                      </p>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-slate-600">
                     {s.claimStatus === "pending" ? (
@@ -574,6 +604,19 @@ export default function ShipmentList() {
                           <Pencil size={16} />
                         </button>
                       )}
+                      {canRequestRecovery(s) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRecoveryError(null);
+                            setRecoveryTargetAwb(s.awb);
+                          }}
+                          title="Ajukan Pemulihan"
+                          className="inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-xs font-semibold text-blue-800 hover:bg-blue-50"
+                        >
+                          <RotateCcw size={14} /> Ajukan Pemulihan
+                        </button>
+                      )}
                       {canCancelRow(s) && (
                         <button
                           type="button"
@@ -606,6 +649,43 @@ export default function ShipmentList() {
           </table>
         </div>
       </div>
+
+      {recoveryTargetAwb && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+              <RotateCcw size={18} className="text-blue-800" /> Ajukan Pemulihan Order?
+            </h2>
+            <p className="mt-3 text-sm text-slate-600">
+              Order AWB <span className="font-mono font-semibold">{recoveryTargetAwb}</span> saat ini berstatus Dibatalkan. Apakah Anda
+              yakin ingin mengajukan request untuk memulihkan order ini? Order baru dipulihkan setelah disetujui oleh GMS.
+            </p>
+            {recoveryError && (
+              <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-red-600">
+                <AlertTriangle size={14} /> {recoveryError}
+              </p>
+            )}
+            <div className="mt-5 flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setRecoveryTargetAwb(null)}
+                className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={recoveryPending}
+                onClick={handleRequestRecovery}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
+              >
+                {recoveryPending ? <Loader2 size={15} className="animate-spin" /> : <RotateCcw size={15} />}
+                Ajukan Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {cancelTargetAwb && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

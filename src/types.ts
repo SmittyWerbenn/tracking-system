@@ -104,7 +104,12 @@ export interface Shipment {
   claimDriverNama?: string;
   claimDriverTelepon?: string;
   claimRequestedAt?: string;
+  /** Latest "Request Pemulihan" for a cancelled order. This is a process, not an
+   * order status - the order itself stays Dibatalkan until GMS approves. */
+  recovery?: { status: RecoveryStatus; requestedAt: string; rejectionReason?: string };
 }
+
+export type RecoveryStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export interface ShipmentFormData {
   pengirim: PersonInfo;
@@ -283,6 +288,10 @@ export type AuditAction =
   | "UPDATE_SHIPMENT_INFO"
   | "UPDATE_POD_PHOTO"
   | "CANCEL_SHIPMENT"
+  | "REQUEST_ORDER_RECOVERY"
+  | "APPROVE_ORDER_RECOVERY"
+  | "REJECT_ORDER_RECOVERY"
+  | "RECOVER_ORDER"
   | "LOGIN_SUCCESS"
   | "LOGIN_FAILED"
   | "PASSWORD_CHANGED"

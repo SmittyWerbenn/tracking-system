@@ -35,6 +35,7 @@ import ShipmentTracking from "./pages/admin/ShipmentTracking";
 import TruckHistory from "./pages/admin/TruckHistory";
 import UpdateTracking from "./pages/admin/UpdateTracking";
 import DriverUserManagement from "./pages/admin/DriverUserManagement";
+import RecoveryRequests from "./pages/admin/RecoveryRequests";
 import UserManagement from "./pages/admin/UserManagement";
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import DriverLogin from "./pages/driver/DriverLogin";
@@ -151,6 +152,7 @@ export default function App() {
               <Route path={adminPath("/feedback")} element={<RequireAuth><FeedbackAdmin /></RequireAuth>} />
               <Route path={adminPath("/audit-log")} element={<RequireAdmin><AuditLogPage /></RequireAdmin>} />
               <Route path={adminPath("/users")} element={<RequireAdmin><UserManagement /></RequireAdmin>} />
+              <Route path={adminPath("/pemulihan-order")} element={<RequireAdmin><RecoveryRequests /></RequireAdmin>} />
               <Route path={adminPath("/users-driver")} element={<RequireAdmin><DriverUserManagement /></RequireAdmin>} />
               <Route path={adminPath("/pengaturan/tracking")} element={<RequireAdmin><SettingsPage /></RequireAdmin>} />
               <Route path={adminPath("/pengaturan/akun")} element={<RequireAuth><AccountSettings /></RequireAuth>} />

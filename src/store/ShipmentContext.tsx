@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type {
+  RecoveryStatus,
   Shipment,
   ShipmentFormData,
   ShipmentStatus,
@@ -54,6 +55,7 @@ interface RawShipmentSummary {
   claimDriverNama: string | null;
   claimDriverTelepon: string | null;
   claimRequestedAt: string | null;
+  recovery?: { status: RecoveryStatus; requestedAt: string; rejectionReason: string | null } | null;
   pod: { tanggal: string; jam: string; namaPenerima: string } | null;
   lastUpdate: { tanggal: string; jam: string } | null;
 }
@@ -132,6 +134,9 @@ function toShipment(row: RawShipmentSummary): Shipment {
     claimDriverNama: row.claimDriverNama ?? undefined,
     claimDriverTelepon: row.claimDriverTelepon ?? undefined,
     claimRequestedAt: row.claimRequestedAt ?? undefined,
+    recovery: row.recovery
+      ? { status: row.recovery.status, requestedAt: row.recovery.requestedAt, rejectionReason: row.recovery.rejectionReason ?? undefined }
+      : undefined,
   };
 }
 
@@ -187,6 +192,8 @@ interface ShipmentContextValue {
     data: { alamatAsal: string; kotaAsal: string; alamatTujuan: string; kotaTujuan: string },
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
   cancelShipment: (awb: string, alasan?: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Client only: asks GMS to restore a cancelled order (does not change the order). */
+  requestRecovery: (awb: string, alasan?: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   updatePodPhoto: (awb: string, slot: "barang" | "suratJalan", fotoDataUrl: string | undefined) => Promise<void>;
   fetchPendingClaims: () => Promise<PendingClaim[]>;
   confirmClaim: (awb: string) => Promise<{ ok: true } | { ok: false; error: string }>;
@@ -204,7 +211,14 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [listMeta, setListMeta] = useState({ total: 0, totalPages: 1, page: 1 });
 
+  // Several callers refresh with different filters (the provider on login, a
+  // list page with its own status/search). Only the most recent call may write
+  // the list, otherwise a slower earlier answer (e.g. the unfiltered one, which
+  // hides cancelled orders) could replace a filtered view.
+  const refreshSeq = useRef(0);
+
   async function refresh(params: ShipmentListParams = {}) {
+    const seq = ++refreshSeq.current;
     setIsLoading(true);
     try {
       const search = new URLSearchParams();
@@ -214,18 +228,25 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       if (params.q) search.set("q", params.q);
 
       const res = await api.get<ShipmentListResponse>(`/api/shipments?${search.toString()}`);
+      if (seq !== refreshSeq.current) return;
       setShipments(res.items.map(toShipment));
       setListMeta({ total: res.meta.total, totalPages: res.meta.totalPages, page: res.meta.page });
     } catch {
-      setShipments([]);
+      if (seq === refreshSeq.current) setShipments([]);
     } finally {
-      setIsLoading(false);
+      if (seq === refreshSeq.current) setIsLoading(false);
     }
   }
 
   useEffect(() => {
-    if (isAuthenticated) refresh();
-    else setShipments([]);
+    // A page that mounted first (child effects run before this one) has already
+    // asked for its own filtered list - don't clobber it with the default one.
+    if (isAuthenticated) {
+      if (refreshSeq.current === 0) refresh();
+    } else {
+      refreshSeq.current = 0;
+      setShipments([]);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
@@ -401,6 +422,16 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function requestRecovery(awb: string, alasan?: string) {
+    try {
+      await api.post(`/api/shipments/${encodeURIComponent(awb)}/recovery-request`, { alasan });
+      await refresh({ status: "Dibatalkan" });
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal mengajukan pemulihan." };
+    }
+  }
+
   async function updatePodPhoto(awb: string, slot: "barang" | "suratJalan", fotoDataUrl: string | undefined) {
     if (!fotoDataUrl) return;
     const entityType = slot === "suratJalan" ? "pod_surat_jalan" : "pod_barang";
@@ -467,6 +498,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         updateShipmentInfo,
         updateShipmentAlamat,
         cancelShipment,
+        requestRecovery,
         updatePodPhoto,
         fetchPendingClaims,
         confirmClaim,

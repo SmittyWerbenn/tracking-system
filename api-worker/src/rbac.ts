@@ -15,7 +15,8 @@ export type Permission =
   | "audit.view"
   | "settings.view"
   | "settings.manage"
-  | "files.upload";
+  | "files.upload"
+  | "recovery.review";
 
 const ALL: Permission[] = [
   "users.manage",
@@ -33,6 +34,7 @@ const ALL: Permission[] = [
   "settings.view",
   "settings.manage",
   "files.upload",
+  "recovery.review",
 ];
 
 const ROLE_PERMISSIONS: Record<Role, Set<Permission>> = {
@@ -53,6 +55,7 @@ const ROLE_PERMISSIONS: Record<Role, Set<Permission>> = {
     "settings.view",
     "settings.manage",
     "files.upload",
+    "recovery.review",
   ]),
   Driver: new Set([
     "shipments.view",

@@ -127,6 +127,8 @@ export const C = {
     reset: { id: "Reset filter", en: "Reset filters" },
     count: { id: "armada ditampilkan", en: "fleet shown" },
     viewSpec: { id: "Lihat Spesifikasi", en: "View Specifications" },
+    more: { id: "lainnya", en: "more" },
+    variants: { id: "Pilihan Body", en: "Body Options" },
     body: { id: "Body", en: "Body" },
     length: { id: "Panjang", en: "Length" },
     tires: { id: "Jumlah Ban", en: "Tires" },

@@ -3,9 +3,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { C } from "../../data/compro/content";
 import {
   cargoTypes,
-  capacitySummary,
+  fleetCategories,
   fleetData,
   fleetFilters,
+  type FleetCategory,
   type FleetGroup,
   type FleetItem,
 } from "../../data/compro/fleetData";
@@ -14,31 +15,54 @@ import { Container, SectionHeader } from "./SectionHeader";
 import { TruckArt } from "./TruckArt";
 import { Reveal, scrollToSection, useL } from "./utils";
 
-/** Image slot: real photo if `image` is set, otherwise branded vector. */
-function FleetImage({ item, dark }: { item: FleetItem; dark?: boolean }) {
+/** Photo of a category (or one of its variants); falls back to the branded vector. */
+function FleetImage({ category, src, art, dark, eager }: { category: FleetCategory; src?: string; art: FleetItem["art"]; dark?: boolean; eager?: boolean }) {
   const [failed, setFailed] = useState(false);
-  if (item.image && !failed) {
-    return <img src={item.image} alt={item.name} loading="lazy" onError={() => setFailed(true)} className="h-full w-full object-cover" />;
+  if (!failed) {
+    return (
+      <img
+        src={src ?? category.hero}
+        alt={category.alt}
+        width={1536}
+        height={1024}
+        loading={eager ? "eager" : "lazy"}
+        decoding="async"
+        onError={() => setFailed(true)}
+        className="h-full w-full object-contain"
+      />
+    );
   }
-  return <TruckArt kind={item.art} dark={dark} />;
+  return <TruckArt kind={art} dark={dark} />;
 }
 
-export function FleetCard({ item, onOpen, delay }: { item: FleetItem; onOpen: (i: FleetItem) => void; delay: number }) {
+const MAX_BADGES = 5;
+
+/** What a card shows is derived from every fleetData item of the category. */
+function categoryInfo(category: FleetCategory) {
+  const items = fleetData.filter((f) => f.group === category.group);
+  const caps = items.flatMap((f) => f.specs.map((sp) => parseFloat(sp.capacity)));
+  const capacity = caps.length ? (Math.min(...caps) === Math.max(...caps) ? `${Math.max(...caps)} Ton` : `${Math.min(...caps)} – ${Math.max(...caps)} Ton`) : null;
+  const bodies: string[] = [];
+  for (const b of items.flatMap((f) => f.bodyTypes)) if (!bodies.some((x) => x.toLowerCase() === b.toLowerCase())) bodies.push(b);
+  return { items, capacity, bodies, length: items.find((f) => f.length)?.length, heavy: items.some((f) => f.heavy), art: items[0]?.art ?? "pickup" };
+}
+
+export function FleetCard({ category, onOpen, delay }: { category: FleetCategory; onOpen: (i: FleetItem) => void; delay: number }) {
   const l = useL();
-  const cap = capacitySummary(item);
-  const heavy = item.heavy;
+  const info = categoryInfo(category);
+  const heavy = info.heavy;
+  const shownBodies = info.bodies.slice(0, MAX_BADGES);
+  const more = info.bodies.length - shownBodies.length;
   return (
     <Reveal delay={delay} className="h-full">
       <article
         className={`group flex h-full flex-col overflow-hidden rounded-2xl border-2 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl ${
-          heavy
-            ? "border-gms-gold bg-gms-corp text-white"
-            : "border-slate-200 bg-white text-gms-ink hover:border-gms-corp"
+          heavy ? "border-gms-gold bg-gms-corp text-white" : "border-slate-200 bg-white text-gms-ink hover:border-gms-corp"
         }`}
       >
-        <div className={`relative flex h-44 items-center justify-center p-5 ${heavy ? "bg-gms-deep" : "bg-gms-mist"}`}>
+        <div className={`relative flex aspect-[3/2] items-center justify-center p-2 sm:p-3 ${heavy ? "bg-gms-deep" : "bg-gms-mist"}`}>
           <div className="h-full w-full transition-transform duration-500 group-hover:scale-105">
-            <FleetImage item={item} dark={heavy} />
+            <FleetImage category={category} art={info.art} dark={heavy} />
           </div>
           {heavy && (
             <span className="absolute left-3 top-3 rounded-full bg-gms-gold px-2.5 py-0.5 text-[11px] font-extrabold uppercase text-gms-deep">
@@ -47,32 +71,30 @@ export function FleetCard({ item, onOpen, delay }: { item: FleetItem; onOpen: (i
           )}
         </div>
         <div className="flex flex-1 flex-col p-5">
-          <h3 className={`font-display text-2xl font-extrabold ${heavy ? "text-white" : "text-gms-corp"}`}>{item.name}</h3>
+          <h3 className={`font-display text-2xl font-extrabold ${heavy ? "text-white" : "text-gms-corp"}`}>{category.name}</h3>
           <p className={`mt-0.5 text-base font-semibold ${heavy ? "text-gms-light" : "text-gms-gold"}`}>
-            {item.length ? l(item.length) : cap ? `${l(C.fleet.capRange)} ${cap}` : "\u00A0"}
+            {info.length ? l(info.length) : info.capacity ? `${l(C.fleet.capacity)} ${info.capacity}` : "\u00A0"}
           </p>
           <ul className="mt-3 flex flex-wrap gap-1.5" aria-label={l(C.fleet.body)}>
-            {item.bodyTypes.map((b) => (
-              <li
-                key={b}
-                className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
-                  heavy ? "bg-white/10 text-blue-100" : "bg-gms-sky text-gms-corp"
-                }`}
-              >
+            {shownBodies.map((b) => (
+              <li key={b} className={`rounded-md px-2 py-0.5 text-xs font-semibold ${heavy ? "bg-white/10 text-blue-100" : "bg-gms-sky text-gms-corp"}`}>
                 {b}
               </li>
             ))}
+            {more > 0 && (
+              <li className={`rounded-md px-2 py-0.5 text-xs font-semibold ${heavy ? "bg-white/10 text-blue-100" : "bg-slate-100 text-slate-600"}`}>
+                +{more} {l(C.fleet.more)}
+              </li>
+            )}
           </ul>
           <button
             type="button"
-            onClick={() => onOpen(item)}
+            onClick={() => onOpen(info.items[0])}
             aria-haspopup="dialog"
-            className={`mt-auto inline-flex items-center gap-1.5 pt-5 text-base font-bold ${
-              heavy ? "text-gms-light hover:text-white" : "text-gms-corp hover:text-gms-gold"
-            }`}
+            className={`mt-auto inline-flex items-center gap-1.5 pt-5 text-base font-bold ${heavy ? "text-gms-light hover:text-white" : "text-gms-corp hover:text-gms-gold"}`}
           >
             {l(C.fleet.viewSpec)} <ArrowRight size={15} aria-hidden className="transition-transform group-hover:translate-x-1" />
-            <span className="sr-only">: {item.name}</span>
+            <span className="sr-only">: {category.name}</span>
           </button>
         </div>
       </article>
@@ -106,12 +128,20 @@ export function FleetFilter({ value, onChange }: { value: "all" | FleetGroup; on
   );
 }
 
-export function FleetDetailModal({ item, onClose, onRequest }: { item: FleetItem | null; onClose: () => void; onRequest: (i: FleetItem) => void }) {
+export function FleetDetailModal({ item: openedItem, onClose, onRequest }: { item: FleetItem | null; onClose: () => void; onRequest: (i: FleetItem) => void }) {
   const l = useL();
+  // A category can hold several fleetData items (e.g. CDE / CDE Long): the dialog
+  // lets the visitor switch between them, and between the body-variant photos.
+  const [picked, setPicked] = useState<{ from: FleetItem | null; item: FleetItem | null; photo: number }>({ from: null, item: null, photo: 0 });
+  const current = picked.from === openedItem ? picked : { from: openedItem, item: openedItem, photo: 0 };
+  const item = current.item;
+  const category = item ? fleetCategories.find((c) => c.group === item.group) : undefined;
+  const siblings = item ? fleetData.filter((f) => f.group === item.group) : [];
+  const photo = category ? category.variants[Math.min(current.photo, category.variants.length - 1)] : undefined;
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!item) return;
+    if (!openedItem) return;
     const prev = document.activeElement as HTMLElement | null;
     document.body.style.overflow = "hidden";
     closeRef.current?.focus();
@@ -132,8 +162,8 @@ export function FleetDetailModal({ item, onClose, onRequest }: { item: FleetItem
       document.body.style.overflow = "";
       prev?.focus?.();
     };
-  }, [item, onClose]);
-  if (!item) return null;
+  }, [openedItem, onClose]);
+  if (!item || !category) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6" role="presentation">
       <div className="absolute inset-0 bg-gms-deep/70 backdrop-blur-sm" onClick={onClose} aria-hidden />
@@ -144,8 +174,8 @@ export function FleetDetailModal({ item, onClose, onRequest }: { item: FleetItem
         aria-labelledby="fleet-dialog-title"
         className="relative flex max-h-[92vh] w-full max-w-3xl animate-[fadeIn_0.25s_ease-out] flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
       >
-        <div className={`relative flex h-40 shrink-0 items-center justify-center p-5 sm:h-48 ${item.heavy ? "bg-gms-deep" : "bg-gms-sky"}`}>
-          <div className="h-full w-full max-w-xs"><FleetImage item={item} dark={item.heavy} /></div>
+        <div className={`relative flex h-52 shrink-0 items-center justify-center p-3 sm:h-72 ${item.heavy ? "bg-gms-deep" : "bg-gms-sky"}`}>
+          <div className="h-full w-full max-w-xl"><FleetImage category={category} src={photo?.src} art={item.art} dark={item.heavy} eager /></div>
           <button
             ref={closeRef}
             type="button"
@@ -157,6 +187,39 @@ export function FleetDetailModal({ item, onClose, onRequest }: { item: FleetItem
           </button>
         </div>
         <div className="overflow-y-auto p-6 sm:p-8">
+          {category.variants.length > 1 && (
+            <ul className="-mt-1 mb-5 flex flex-wrap gap-2" aria-label={l(C.fleet.variants)}>
+              {category.variants.map((v, i) => (
+                <li key={v.label}>
+                  <button
+                    type="button"
+                    aria-pressed={photo?.src === v.src}
+                    onClick={() => setPicked({ from: openedItem, item, photo: i })}
+                    className={`rounded-full border px-3 py-1 text-sm font-semibold transition-colors ${
+                      photo?.src === v.src ? "border-gms-corp bg-gms-corp text-white" : "border-slate-300 text-gms-corp hover:border-gms-gold"
+                    }`}
+                  >
+                    {v.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {siblings.length > 1 && (
+            <div role="group" aria-label={category.name} className="mb-4 flex flex-wrap gap-2">
+              {siblings.map((sb) => (
+                <button
+                  key={sb.id}
+                  type="button"
+                  aria-pressed={sb.id === item.id}
+                  onClick={() => setPicked({ from: openedItem, item: sb, photo: current.photo })}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-bold ${sb.id === item.id ? "bg-gms-gold text-gms-deep" : "bg-gms-mist text-gms-corp hover:bg-gms-sky"}`}
+                >
+                  {sb.name}
+                </button>
+              ))}
+            </div>
+          )}
           <h3 id="fleet-dialog-title" className="font-display text-3xl font-extrabold text-gms-corp">{item.name}</h3>
           {item.length && <p className="mt-0.5 font-semibold text-gms-gold">{l(item.length)}</p>}
           <p className="mt-3 text-base text-slate-600">{l(item.description)}</p>
@@ -286,12 +349,20 @@ export function Fleet({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<FleetItem | null>(null);
 
+  // One card per category; the search looks at the category name plus every
+  // fleetData item (name, body types, spec labels, length, use cases) in it.
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return fleetData.filter((f) => {
-      if (group !== "all" && f.group !== group) return false;
+    return fleetCategories.filter((c) => {
+      if (group !== "all" && c.group !== group) return false;
       if (!q) return true;
-      const hay = [f.name, ...f.bodyTypes, ...f.specs.map((s) => s.label), f.length?.[language] ?? "", ...f.useCases.map((u) => u[language])]
+      const hay = [
+        c.name,
+        ...c.variants.map((v) => v.label),
+        ...fleetData
+          .filter((f) => f.group === c.group)
+          .flatMap((f) => [f.name, ...f.bodyTypes, ...f.specs.map((s) => s.label), f.length?.[language] ?? "", ...f.useCases.map((u) => u[language])]),
+      ]
         .join(" ")
         .toLowerCase();
       return hay.includes(q);
@@ -331,9 +402,9 @@ export function Fleet({
             </button>
           </div>
         ) : (
-          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {list.map((f, i) => (
-              <FleetCard key={f.id} item={f} onOpen={setOpen} delay={(i % 4) * 60} />
+          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {list.map((c, i) => (
+              <FleetCard key={c.group} category={c} onOpen={setOpen} delay={(i % 3) * 60} />
             ))}
           </div>
         )}

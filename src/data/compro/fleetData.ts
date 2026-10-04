@@ -1,4 +1,5 @@
 import type { Language } from "../translations";
+import { fleetAssets } from "./assetsMap";
 
 /** Bilingual text. */
 export type L = { id: string; en: string };
@@ -260,6 +261,61 @@ export const fleetData: FleetItem[] = [
       { id: "Project Cargo", en: "Project Cargo" },
     ],
   },
+];
+
+/**
+ * One card per vehicle category (not per body variant), ordered light -> heavy.
+ * `hero` is the card photo; `variants` are the extra photos shown in the detail
+ * dialog. Specs / capacity / body types are NOT stored here - they are derived
+ * from the fleetData items of the same group, so there is a single source.
+ */
+export interface FleetCategory {
+  group: FleetGroup;
+  name: string;
+  alt: string;
+  hero: string;
+  variants: { label: string; src: string }[];
+}
+
+export const fleetCategories: FleetCategory[] = [
+  { group: "pickup", name: "Pickup", alt: "Armada Pickup GMS Logistics", hero: fleetAssets["pickup-box"],
+    variants: [{ label: "Bak", src: fleetAssets["pickup-bak"] }, { label: "Box", src: fleetAssets["pickup-box"] }] },
+  { group: "blindvan", name: "Blind Van", alt: "Armada Blind Van GMS Logistics", hero: fleetAssets["blind-van"],
+    variants: [{ label: "Blind Van", src: fleetAssets["blind-van"] }] },
+  { group: "cde", name: "CDE", alt: "Armada CDE GMS Logistics", hero: fleetAssets["cde-bak-triway"],
+    variants: [{ label: "Bak / Treway", src: fleetAssets["cde-bak-triway"] }] },
+  { group: "cdd", name: "CDD", alt: "Armada CDD GMS Logistics", hero: fleetAssets["cdd-box-long"],
+    variants: [
+      { label: "Box Long", src: fleetAssets["cdd-box-long"] },
+      { label: "Bak", src: fleetAssets["cdd-bak-sentral"] },
+      { label: "Treway", src: fleetAssets["cdd-bak-triway"] },
+      { label: "Losbak", src: fleetAssets["cdd-losbak"] },
+      { label: "Wingbox", src: fleetAssets["cdd-wingbox"] },
+    ] },
+  { group: "fuso", name: "Fuso", alt: "Armada Fuso GMS Logistics", hero: fleetAssets["fuso-box"],
+    variants: [
+      { label: "Box", src: fleetAssets["fuso-box"] },
+      { label: "Treway", src: fleetAssets["fuso-triway"] },
+      { label: "Losbak", src: fleetAssets["fuso-losbak"] },
+      { label: "Wingbox", src: fleetAssets["fuso-wingbox"] },
+      { label: "Reefer", src: fleetAssets["fuso-refer-termoking"] },
+    ] },
+  { group: "tronton", name: "Tronton", alt: "Armada Tronton GMS Logistics", hero: fleetAssets["tronton-wingbox"],
+    variants: [
+      { label: "Wingbox", src: fleetAssets["tronton-wingbox"] },
+      { label: "Bak / Treway", src: fleetAssets["tronton-bak-triway"] },
+      { label: "Losbak", src: fleetAssets["tronton-losbak"] },
+    ] },
+  { group: "reefer", name: "Tronton Reefer", alt: "Armada Tronton Reefer GMS Logistics", hero: fleetAssets["tronton-refer-termoking"],
+    variants: [{ label: "Reefer", src: fleetAssets["tronton-refer-termoking"] }] },
+  { group: "trailer", name: "Trailer", alt: "Armada Trailer GMS Logistics", hero: fleetAssets["trailer-40ft"],
+    variants: [
+      { label: "40 Feet", src: fleetAssets["trailer-40ft"] },
+      { label: "20 Feet", src: fleetAssets["trailer-20ft"] },
+      { label: "Big Mama Wingbox", src: fleetAssets["trailer-big-mama-wingbox"] },
+    ] },
+  { group: "heavy", name: "Heavy Haul", alt: "Armada Heavy Haul (Lowbed, Dolly, Multi Axle) GMS Logistics", hero: fleetAssets.lowbed,
+    variants: [{ label: "Lowbed", src: fleetAssets.lowbed }, { label: "Dolly", src: fleetAssets.dolly }] },
 ];
 
 /** Filter tabs (order = display order). */

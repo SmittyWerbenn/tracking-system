@@ -306,7 +306,9 @@ export default function UserManagementView({ group }: { group: UserGroup }) {
       >
         <MasterSearchInput value={draft.nama} onChange={(v) => patchFilter({ nama: v })} placeholder="Nama" />
         <MasterSearchInput value={draft.email} onChange={(v) => patchFilter({ email: v })} placeholder="Email" />
-        <MasterSearchInput value={draft.nopol} onChange={(v) => patchFilter({ nopol: v })} placeholder="Nopol" />
+        {isDriverGroup && (
+          <MasterSearchInput value={draft.nopol} onChange={(v) => patchFilter({ nopol: v })} placeholder="Nopol" />
+        )}
         {!isDriverGroup && (
           <MasterFilterSelect value={draft.role} onChange={(v) => patchFilter({ role: v })} label="Filter role">
             <option value="">Semua Role</option>

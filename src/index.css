@@ -79,7 +79,7 @@ body {
 @media print {
   @page {
     size: A4;
-    margin: 12mm;
+    margin: 10mm;
   }
 
   .no-print {
@@ -89,6 +89,45 @@ body {
   html,
   body {
     background: #fff !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Viewport units resolve against the on-screen viewport on phones (and iOS
+   * Safari), so a min-h-screen shell can be taller than the page and spill
+   * onto a blank second page. Print height must come from the content only. */
+  .min-h-screen,
+  .h-screen {
+    min-height: 0 !important;
+    height: auto !important;
+  }
+
+  /* AWB: keep every block intact and never start a page of its own. */
+  .awb-print-area,
+  .awb-print-area > * {
+    break-before: avoid;
+    break-after: avoid;
+    page-break-before: avoid;
+    page-break-after: avoid;
+  }
+  .awb-print-area > div > * {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .awb-print-area {
+    max-width: 100%;
+    overflow: visible;
+  }
+  /* Compact spacing so the whole AWB fits one page without hiding anything. */
+  .awb-print-area .space-y-6 > :not(:last-child),
+  .awb-print-area .space-y-4 > :not(:last-child) {
+    margin-bottom: 0.6rem !important;
+  }
+  .awb-print-area .p-5,
+  .awb-print-area .p-4,
+  .awb-print-area .sm\:p-6 {
+    padding: 0.75rem !important;
   }
 
   * {

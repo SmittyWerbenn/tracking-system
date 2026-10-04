@@ -103,6 +103,12 @@ export default function ShipmentDetail() {
   }
   }
 
+  // Safety net so the printed AWB is always one page, whatever the device
+  // (phones lay the print out differently than desktops): when the print
+  // layout is taller than the printable A4 area, scale it down to fit.
+  // Information is never hidden - only shrunk.
+  useEffect(() => fitAwbToOnePage(), []);
+
   useEffect(() => {
   let cancelled = false;
   setIsLoading(true);
@@ -279,6 +285,7 @@ export default function ShipmentDetail() {
         <ArrowLeft size={15} /> Kembali
       </button>
 
+      <div id="awb-print-area" className="awb-print-area">
       <div className="flex flex-wrap items-start justify-between gap-4 print:block">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
@@ -646,6 +653,7 @@ export default function ShipmentDetail() {
           )}
         </div>
       </div>
+      </div>
 
       {cancelModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -812,4 +820,32 @@ export default function ShipmentDetail() {
       )}
     </AdminLayout>
   );
+}
+
+/** Printable height of an A4 page (297mm - 2 x 10mm margin) in CSS px. */
+const A4_PRINTABLE_HEIGHT_PX = ((297 - 20) / 25.4) * 96;
+
+/** While the browser is in print mode, zooms #awb-print-area down so its
+ * height fits one page; resets afterwards. Returns the cleanup function. */
+function fitAwbToOnePage(): () => void {
+  const mql = window.matchMedia("print");
+  const fit = () => {
+    const el = document.getElementById("awb-print-area");
+    if (!el) return;
+    el.style.zoom = "";
+    if (!mql.matches) return;
+    // Space already used above the area (back button is no-print; nothing else).
+    const height = el.getBoundingClientRect().height;
+    if (height > A4_PRINTABLE_HEIGHT_PX) el.style.zoom = String(Math.max(0.4, (A4_PRINTABLE_HEIGHT_PX / height) * 0.97));
+  };
+  const reset = () => {
+    const el = document.getElementById("awb-print-area");
+    if (el) el.style.zoom = "";
+  };
+  mql.addEventListener("change", fit);
+  window.addEventListener("afterprint", reset);
+  return () => {
+    mql.removeEventListener("change", fit);
+    window.removeEventListener("afterprint", reset);
+  };
 }

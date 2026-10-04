@@ -3,9 +3,9 @@ import { AlertTriangle, Ban, CheckCircle2, Download, Eye, FileEdit, LayoutList, 
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { EditShipmentModal } from "../../components/EditShipmentModal";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../store/AuthContext";
-import { useLocations } from "../../store/LocationContext";
 import { useSettings } from "../../store/SettingsContext";
 import { useShipments, type PendingClaim } from "../../store/ShipmentContext";
 import type { ShipmentStatus } from "../../types";
@@ -25,9 +25,8 @@ function isShipmentStatus(value: string): value is ShipmentStatus {
  * and the "macet" quick-filter refine client-side over that already-
  * filtered, already-bounded batch rather than the whole table. */
 export default function ShipmentList() {
-  const { shipments, isLoading, refresh, fetchPendingClaims, confirmClaim, rejectClaim, cancelShipment, requestRecovery, updateShipmentAlamat } =
+  const { shipments, isLoading, refresh, fetchPendingClaims, confirmClaim, rejectClaim, cancelShipment, requestRecovery } =
     useShipments();
-  const { activeTitikLokasi } = useLocations();
   const { settings } = useSettings();
   const { profile } = useAuth();
   const canCreateShipment =
@@ -95,44 +94,11 @@ export default function ShipmentList() {
     }
   }
 
-  const kotaSuggestions = Array.from(new Set(activeTitikLokasi.map((k) => k.namaKota))).sort();
-  const [alamatTargetAwb, setAlamatTargetAwb] = useState<string | null>(null);
-  const [alamatAsalInput, setAlamatAsalInput] = useState("");
-  const [kotaAsalInput, setKotaAsalInput] = useState("");
-  const [alamatTujuanInput, setAlamatTujuanInput] = useState("");
-  const [kotaTujuanInput, setKotaTujuanInput] = useState("");
-  const [alamatPending, setAlamatPending] = useState(false);
-  const [alamatError, setAlamatError] = useState<string | null>(null);
+  // Client: edit all data of an order that is still "Dalam Persiapan".
+  const [editTargetAwb, setEditTargetAwb] = useState<string | null>(null);
 
   function canEditAlamatRow(s: { status: ShipmentStatus }): boolean {
     return profile?.role === "Client" && s.status === "Dalam Persiapan";
-  }
-
-  function openAlamatModal(s: { awb: string; alamatAsal: string; kotaAsal: string; alamatTujuan: string; kotaTujuan: string }) {
-    setAlamatTargetAwb(s.awb);
-    setAlamatAsalInput(s.alamatAsal);
-    setKotaAsalInput(s.kotaAsal);
-    setAlamatTujuanInput(s.alamatTujuan);
-    setKotaTujuanInput(s.kotaTujuan);
-    setAlamatError(null);
-  }
-
-  async function handleSaveAlamat() {
-    if (!alamatTargetAwb) return;
-    setAlamatPending(true);
-    setAlamatError(null);
-    const result = await updateShipmentAlamat(alamatTargetAwb, {
-      alamatAsal: alamatAsalInput.trim(),
-      kotaAsal: kotaAsalInput.trim(),
-      alamatTujuan: alamatTujuanInput.trim(),
-      kotaTujuan: kotaTujuanInput.trim(),
-    });
-    setAlamatPending(false);
-    if (result.ok) {
-      setAlamatTargetAwb(null);
-    } else {
-      setAlamatError(result.error);
-    }
   }
 
   function loadPendingClaims() {
@@ -597,8 +563,8 @@ export default function ShipmentList() {
                       {canEditAlamatRow(s) && (
                         <button
                           type="button"
-                          onClick={() => openAlamatModal(s)}
-                          title="Edit Alamat"
+                          onClick={() => setEditTargetAwb(s.awb)}
+                          title="Edit Data Pengiriman"
                           className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
                         >
                           <Pencil size={16} />
@@ -747,108 +713,8 @@ export default function ShipmentList() {
         </div>
       )}
 
-      {alamatTargetAwb && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
-            <div className="p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-                  <Pencil size={18} /> Edit Alamat
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setAlamatTargetAwb(null)}
-                  className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="flex flex-col gap-4">
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota Asal</span>
-                  <input
-                    required
-                    list="list-kota-asal-suggestions"
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    value={kotaAsalInput}
-                    onChange={(e) => setKotaAsalInput(e.target.value)}
-                    autoComplete="off"
-                  />
-                  <datalist id="list-kota-asal-suggestions">
-                    {kotaSuggestions.map((k) => (
-                      <option key={k} value={k} />
-                    ))}
-                  </datalist>
-                </label>
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Alamat Asal</span>
-                  <textarea
-                    required
-                    rows={2}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    value={alamatAsalInput}
-                    onChange={(e) => setAlamatAsalInput(e.target.value)}
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota Tujuan</span>
-                  <input
-                    required
-                    list="list-kota-tujuan-suggestions"
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    value={kotaTujuanInput}
-                    onChange={(e) => setKotaTujuanInput(e.target.value)}
-                    autoComplete="off"
-                  />
-                  <datalist id="list-kota-tujuan-suggestions">
-                    {kotaSuggestions.map((k) => (
-                      <option key={k} value={k} />
-                    ))}
-                  </datalist>
-                </label>
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Alamat Tujuan</span>
-                  <textarea
-                    required
-                    rows={2}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    value={alamatTujuanInput}
-                    onChange={(e) => setAlamatTujuanInput(e.target.value)}
-                  />
-                </label>
-              </div>
-              {alamatError && (
-                <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-red-600">
-                  <AlertTriangle size={14} /> {alamatError}
-                </p>
-              )}
-              <div className="mt-5 flex justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setAlamatTargetAwb(null)}
-                  className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  disabled={
-                    alamatPending ||
-                    !alamatAsalInput.trim() ||
-                    !kotaAsalInput.trim() ||
-                    !alamatTujuanInput.trim() ||
-                    !kotaTujuanInput.trim()
-                  }
-                  onClick={handleSaveAlamat}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
-                >
-                  {alamatPending ? <Loader2 size={15} className="animate-spin" /> : null}
-                  Simpan
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {editTargetAwb && shipments.find((x) => x.awb === editTargetAwb) && (
+        <EditShipmentModal shipment={shipments.find((x) => x.awb === editTargetAwb)!} onClose={() => setEditTargetAwb(null)} />
       )}
     </AdminLayout>
   );

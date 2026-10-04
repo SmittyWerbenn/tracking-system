@@ -22,9 +22,9 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { QRCode } from "../../components/QRCode";
 import { RefreshButton } from "../../components/RefreshButton";
+import { EditShipmentModal } from "../../components/EditShipmentModal";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../store/AuthContext";
-import { useLocations } from "../../store/LocationContext";
 import { useMitras } from "../../store/MitraContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment } from "../../types";
@@ -44,8 +44,7 @@ interface DriverPosition {
 
 export default function ShipmentDetail() {
   const { awb } = useParams<{ awb: string }>();
-  const { getByAwb, confirmClaim, rejectClaim, unassignDriver, cancelShipment, updateShipmentAlamat, assignMitra } = useShipments();
-  const { activeTitikLokasi } = useLocations();
+  const { getByAwb, confirmClaim, rejectClaim, unassignDriver, cancelShipment, assignMitra } = useShipments();
   const { activeMitras } = useMitras();
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -66,14 +65,7 @@ export default function ShipmentDetail() {
   const [cancelPending, setCancelPending] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
 
-  const [alamatModalOpen, setAlamatModalOpen] = useState(false);
-  const [alamatAsalInput, setAlamatAsalInput] = useState("");
-  const [kotaAsalInput, setKotaAsalInput] = useState("");
-  const [alamatTujuanInput, setAlamatTujuanInput] = useState("");
-  const [kotaTujuanInput, setKotaTujuanInput] = useState("");
-  const [alamatPending, setAlamatPending] = useState(false);
-  const [alamatError, setAlamatError] = useState<string | null>(null);
-  const kotaSuggestions = Array.from(new Set(activeTitikLokasi.map((k) => k.namaKota))).sort();
+  const [editOpen, setEditOpen] = useState(false);
 
   function reload() {
   return getByAwb(awb ?? "").then((s) => {
@@ -199,33 +191,6 @@ export default function ShipmentDetail() {
     }
   }
 
-  function openAlamatModal() {
-    setAlamatAsalInput(shipment!.alamatAsal);
-    setKotaAsalInput(shipment!.kotaAsal);
-    setAlamatTujuanInput(shipment!.alamatTujuan);
-    setKotaTujuanInput(shipment!.kotaTujuan);
-    setAlamatError(null);
-    setAlamatModalOpen(true);
-  }
-
-  async function handleSaveAlamat() {
-    setAlamatPending(true);
-    setAlamatError(null);
-    const result = await updateShipmentAlamat(shipment!.awb, {
-      alamatAsal: alamatAsalInput.trim(),
-      kotaAsal: kotaAsalInput.trim(),
-      alamatTujuan: alamatTujuanInput.trim(),
-      kotaTujuan: kotaTujuanInput.trim(),
-    });
-    setAlamatPending(false);
-    if (result.ok) {
-      setAlamatModalOpen(false);
-      await reload();
-    } else {
-      setAlamatError(result.error);
-    }
-  }
-
   if (isLoading) {
     return (
       <AdminLayout>
@@ -341,10 +306,10 @@ export default function ShipmentDetail() {
               <div className="mb-4 flex justify-end no-print">
                 <button
                   type="button"
-                  onClick={openAlamatModal}
+                  onClick={() => setEditOpen(true)}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
                 >
-                  <Pencil size={13} /> Edit Alamat
+                  <Pencil size={13} /> Edit Data
                 </button>
               </div>
             )}
@@ -724,109 +689,7 @@ export default function ShipmentDetail() {
         </div>
       )}
 
-      {alamatModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
-            <div className="p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-                  <Pencil size={18} /> Edit Alamat
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setAlamatModalOpen(false)}
-                  className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="flex flex-col gap-4">
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota Asal</span>
-                  <input
-                    required
-                    list="detail-kota-asal-suggestions"
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    value={kotaAsalInput}
-                    onChange={(e) => setKotaAsalInput(e.target.value)}
-                    autoComplete="off"
-                  />
-                  <datalist id="detail-kota-asal-suggestions">
-                    {kotaSuggestions.map((k) => (
-                      <option key={k} value={k} />
-                    ))}
-                  </datalist>
-                </label>
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Alamat Asal</span>
-                  <textarea
-                    required
-                    rows={2}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    value={alamatAsalInput}
-                    onChange={(e) => setAlamatAsalInput(e.target.value)}
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota Tujuan</span>
-                  <input
-                    required
-                    list="detail-kota-tujuan-suggestions"
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    value={kotaTujuanInput}
-                    onChange={(e) => setKotaTujuanInput(e.target.value)}
-                    autoComplete="off"
-                  />
-                  <datalist id="detail-kota-tujuan-suggestions">
-                    {kotaSuggestions.map((k) => (
-                      <option key={k} value={k} />
-                    ))}
-                  </datalist>
-                </label>
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Alamat Tujuan</span>
-                  <textarea
-                    required
-                    rows={2}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    value={alamatTujuanInput}
-                    onChange={(e) => setAlamatTujuanInput(e.target.value)}
-                  />
-                </label>
-              </div>
-              {alamatError && (
-                <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-red-600">
-                  <AlertTriangle size={14} /> {alamatError}
-                </p>
-              )}
-              <div className="mt-5 flex justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setAlamatModalOpen(false)}
-                  className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  disabled={
-                    alamatPending ||
-                    !alamatAsalInput.trim() ||
-                    !kotaAsalInput.trim() ||
-                    !alamatTujuanInput.trim() ||
-                    !kotaTujuanInput.trim()
-                  }
-                  onClick={handleSaveAlamat}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
-                >
-                  {alamatPending ? <Loader2 size={15} className="animate-spin" /> : null}
-                  Simpan
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {editOpen && <EditShipmentModal shipment={shipment} onClose={() => setEditOpen(false)} onSaved={() => reload()} />}
     </AdminLayout>
   );
 }

@@ -161,6 +161,10 @@ export interface UpdateShipmentInfoData {
   /** Omit to leave the layanan untouched; a changed value must be an active
    * Master Layanan entry (the API rejects anything else). */
   layanan?: LayananPengiriman;
+  /** Barang details - omit to leave untouched. */
+  deskripsiBarang?: string;
+  beratKg?: number;
+  jumlahKoli?: number;
   /** Omit to leave SLA/ETA untouched; pass a number to set/change it, or
    * null to clear it - either recalculates estimasiTiba server-side. */
   slaValue?: number | null;

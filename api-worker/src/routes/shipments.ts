@@ -349,12 +349,24 @@ export function registerShipmentRoutes(router: Router) {
     });
 
     router.patch("/api/shipments/:awb", async (ctx: Ctx, params) => {
-    const actor = requirePermission(ctx, "shipments.update_info");
-    const shipment = await ctx.env.DB.prepare(`SELECT status, tanggal_dibuat, sla_value, estimasi_tiba, layanan FROM shipments WHERE awb = ?`)
+    // Superadmin/Admin edit any open shipment. A Client may edit ALL data of its
+    // own customer's shipments, but only while still "Dalam Persiapan" - and never
+    // the internal fields (SLA/ETA, truck, mitra), which stay admin-only.
+    const actor = requireAuth(ctx);
+    const isClient = actor.role === "Client";
+    if (!isClient) requirePermission(ctx, "shipments.update_info");
+    const shipment = await ctx.env.DB.prepare(
+      `SELECT status, tanggal_dibuat, sla_value, estimasi_tiba, layanan, customer_id FROM shipments WHERE awb = ?`,
+    )
       .bind(params.awb)
-      .first<{ status: string; tanggal_dibuat: string; sla_value: number | null; estimasi_tiba: string | null; layanan: string }>();
+      .first<{ status: string; tanggal_dibuat: string; sla_value: number | null; estimasi_tiba: string | null; layanan: string; customer_id: string | null }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
-    if (shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan") {
+    if (isClient) {
+      if (!actor.customerId || shipment.customer_id !== actor.customerId) throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
+      if (shipment.status !== "Dalam Persiapan") {
+        throw Errors.unprocessable("Data pengiriman hanya bisa diubah selama status masih Dalam Persiapan.");
+      }
+    } else if (shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan") {
       throw Errors.unprocessable("Pengiriman yang sudah Selesai/Terkirim atau Dibatalkan tidak bisa diubah lagi.");
     }
 
@@ -371,7 +383,7 @@ export function registerShipmentRoutes(router: Router) {
     const kotaTujuan = reqString(body, "kotaTujuan", { max: 80 });
     // SLA is optional in this payload (older callers won't send it) - only
     // touch sla/eta when the field is actually present in the request.
-    const slaProvided = Object.prototype.hasOwnProperty.call(body, "slaValue");
+    const slaProvided = !isClient && Object.prototype.hasOwnProperty.call(body, "slaValue");
     const slaValue = slaProvided ? optNumber(body, "slaValue", { min: 1, max: 365 }) : undefined;
 
     const sets = [
@@ -382,6 +394,20 @@ export function registerShipmentRoutes(router: Router) {
       pengirimNama, pengirimTelepon, pengirimEmail, penerimaNama, penerimaTelepon, penerimaEmail,
       alamatAsal, kotaAsal, alamatTujuan, kotaTujuan, new Date().toISOString(), actor.id,
     ];
+    // Barang details: optional, only touched when sent (older callers omit them).
+    const has = (k: string) => Object.prototype.hasOwnProperty.call(body, k);
+    if (has("deskripsiBarang")) {
+      sets.push("deskripsi_barang=?");
+      values.push(optString(body, "deskripsiBarang") ?? "");
+    }
+    if (has("beratKg")) {
+      sets.push("berat_kg=?");
+      values.push(reqNumber(body, "beratKg", { min: 0.01, max: 100000 }));
+    }
+    if (has("jumlahKoli")) {
+      sets.push("jumlah_koli=?");
+      values.push(reqNumber(body, "jumlahKoli", { min: 1, max: 100000 }));
+    }
     let newEta: string | null = shipment.estimasi_tiba;
     if (slaProvided) {
       newEta = slaValue !== undefined ? addBusinessDays(shipment.tanggal_dibuat, slaValue) : null;

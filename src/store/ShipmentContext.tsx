@@ -385,6 +385,9 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         alamatTujuan: data.alamatTujuan,
         kotaTujuan: data.kotaTujuan,
         ...(data.layanan ? { layanan: data.layanan } : {}),
+        ...(data.deskripsiBarang !== undefined ? { deskripsiBarang: data.deskripsiBarang } : {}),
+        ...(data.beratKg !== undefined ? { beratKg: data.beratKg } : {}),
+        ...(data.jumlahKoli !== undefined ? { jumlahKoli: data.jumlahKoli } : {}),
         ...(data.slaValue !== undefined ? { slaValue: data.slaValue } : {}),
       });
       await refresh();

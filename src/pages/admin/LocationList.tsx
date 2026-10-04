@@ -328,15 +328,21 @@ export default function LocationList() {
           </MasterDataToolbar>
 
 
-          <MasterTableCard minWidth={760}>
+          {/* Equal-width columns so the spacing between them is even. */}
+          <MasterTableCard minWidth={760} fixed>
+            <colgroup>
+              {Array.from({ length: canEdit ? 6 : 5 }, (_, i) => (
+                <col key={i} className={canEdit ? "w-1/6" : "w-1/5"} />
+              ))}
+            </colgroup>
             <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="w-24 px-4 py-3 font-medium">Kode</th>
-                <th className="w-28 px-4 py-3 font-medium">Jenis Titik</th>
+                <th className="px-4 py-3 font-medium">Kode</th>
+                <th className="px-4 py-3 font-medium">Jenis Titik</th>
                 <th className="px-4 py-3 font-medium">Provinsi</th>
                 <th className="px-4 py-3 font-medium">Kota / Kabupaten</th>
-                <th className="w-28 px-4 py-3 font-medium">Status</th>
-                {canEdit && <th className="w-24 px-4 py-3 font-medium">Aksi</th>}
+                <th className="px-4 py-3 font-medium">Status</th>
+                {canEdit && <th className="px-4 py-3 font-medium">Aksi</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

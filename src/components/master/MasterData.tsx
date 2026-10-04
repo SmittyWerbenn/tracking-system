@@ -142,11 +142,21 @@ export function MasterFilterReset({ visible, onReset }: { visible: boolean; onRe
 }
 
 /** Bordered card + horizontal scroll wrapper every Master Data table sits in. */
-export function MasterTableCard({ minWidth, children }: { minWidth: number; children: ReactNode }) {
+export function MasterTableCard({
+  minWidth,
+  fixed = false,
+  children,
+}: {
+  minWidth: number;
+  /** Fixed table layout: column widths come from a <colgroup> instead of the
+   * cell contents (use it to get evenly spaced columns). */
+  fixed?: boolean;
+  children: ReactNode;
+}) {
   return (
     <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm" style={{ minWidth }}>
+        <table className={`w-full text-left text-sm ${fixed ? "table-fixed" : ""}`} style={{ minWidth }}>
           {children}
         </table>
       </div>

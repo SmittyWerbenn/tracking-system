@@ -141,21 +141,15 @@ export function JourneyCarousel() {
                         </button>
 
                         {/* Step Label - Proper spacing and alignment */}
-                        <div className="mt-3 md:mt-4 w-full px-1 text-center flex-shrink-0 min-h-12 flex items-center justify-center">
+                        <div className="relative mt-3 h-[76px] w-full flex-shrink-0 sm:static sm:mt-3 sm:h-auto sm:min-h-12 md:mt-4 px-1 text-center sm:flex sm:items-center sm:justify-center">
                           <span
-                            className={`text-[length:clamp(7px,2.3vw,10px)] sm:text-sm md:text-base font-bold uppercase tracking-normal sm:tracking-wider transition-all duration-300 leading-tight ${
+                            className={`absolute right-1/2 top-1 origin-top-right -rotate-45 whitespace-nowrap text-xs sm:static sm:rotate-0 sm:whitespace-normal sm:text-sm md:text-base font-bold uppercase tracking-normal sm:tracking-wider transition-all duration-300 leading-tight ${
                               isActive
                                 ? "text-[#071B41] scale-105 font-display"
                                 : isPassed
                                   ? "text-[#0B2553] font-semibold"
                                   : "text-[#7A8A9E] font-semibold"
                             }`}
-                            style={{
-                              whiteSpace: 'normal',
-                              overflowWrap: 'normal',
-                              lineHeight: '1.25',
-                              maxWidth: '100%',
-                            }}
                           >
                             {s.short[language]}
                           </span>

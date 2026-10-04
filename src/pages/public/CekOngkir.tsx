@@ -363,30 +363,6 @@ export default function CekOngkir() {
                   </p>
                 </div>
               </div>
-
-              <div className="mt-3 rounded-xl bg-white p-3 text-sm">
-                <div className="flex items-center justify-between gap-3 py-1">
-                  <span className="text-slate-500">{t.cekOngkir.publishPrice}</span>
-                  <span className="font-semibold text-slate-800">
-                    {formatRupiah(result.hargaPublishPerKg)}
-                    {t.cekOngkir.perKg}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3 py-1">
-                  <span className="text-slate-500">{t.cekOngkir.originAdjustment}</span>
-                  <span className="font-semibold text-slate-800">
-                    {result.markupPersen > 0 ? `+${result.markupPersen}%` : "0%"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3 border-t border-slate-100 py-1">
-                  <span className="text-slate-500">{t.cekOngkir.priceAfterAdjustment}</span>
-                  <span className="font-semibold text-slate-800">
-                    {formatRupiah(result.hargaSetelahPenyesuaianPerKg)}
-                    {t.cekOngkir.perKg}
-                  </span>
-                </div>
-                <p className="mt-1 text-[11px] text-slate-400">{t.cekOngkir.originAdjustmentNote}</p>
-              </div>
             </div>
           )}
         </div>

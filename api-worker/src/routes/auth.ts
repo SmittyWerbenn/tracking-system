@@ -64,6 +64,15 @@ export function registerAuthRoutes(router: Router) {
         clientFrozen ? "Akun Client Anda dinonaktifkan. Hubungi admin GMS." : "Akun Mitra Anda dinonaktifkan. Hubungi admin GMS.",
       );
     }
+    if (!user) {
+      await writeAuditLog(ctx.env, null, {
+        action: "LOGIN_FAILED",
+        actionLabel: "LOGIN FAILED",
+        module: "Auth",
+        description: `Percobaan login gagal untuk ${email}: email tidak terdaftar.`,
+      }, ip);
+      throw new HttpError(401, "EMAIL_NOT_REGISTERED", "Email tidak terdaftar.");
+    }
     if (!user || !validPassword || user.aktif !== 1) {
       await writeAuditLog(ctx.env, null, {
         action: "LOGIN_FAILED",

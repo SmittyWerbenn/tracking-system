@@ -1,9 +1,10 @@
 import { driverPath } from "../../utils/urls";
-import { AlertTriangle, Loader2, Lock, Mail } from "lucide-react";
+import { AlertTriangle, Loader2, Mail } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { Navigate, useLocation, useNavigate, type Location } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
 import { useAuth } from "../../store/AuthContext";
+import { PasswordInput } from "../../components/PasswordInput";
 import { ContactAdminButton } from "../../components/ContactAdminButton";
 
 const MAX_WRONG_PASSWORD = 3;
@@ -98,17 +99,11 @@ export default function DriverLogin() {
           </label>
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium text-slate-600">Password</span>
-            <div className="relative">
-              <Lock size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                required
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 py-3 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                placeholder="********"
-              />
-            </div>
+            <PasswordInput
+              value={password}
+              onChange={setPassword}
+              className="w-full rounded-lg border border-slate-300 py-3 pl-9 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            />
           </label>
 
           {/* Lupa Password: the WhatsApp number depends on the role behind the typed

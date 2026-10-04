@@ -65,7 +65,7 @@ function fromInput(input: BulkLocationRowInput): BulkLocationRow {
 }
 
 function isRowBlank(row: BulkLocationRow): boolean {
-  return !row.namaKota.trim() && !row.provinsi.trim() && !row.kodeKota.trim();
+  return !row.namaKota.trim() && !row.provinsi.trim() && !row.kodeKota.trim() && !row.namaArea.trim();
 }
 
 /** Validation for every row at once (duplicates inside the table need the
@@ -236,9 +236,9 @@ export function BulkLocationImport({ existing = [] }: { existing?: string[] }) {
           <div>
             <h2 className="text-sm font-semibold text-slate-800">Bulk Input / Import Excel</h2>
             <p className="mt-1 text-xs text-slate-500">
-              Isi beberapa baris sekaligus, atau import dari file Excel (.xlsx) / CSV. Urutan kolom: Kode, Jenis
-              Titik, Provinsi, Kota / Kabupaten, Status. Kolom wajib:{" "}
-              <span className="font-semibold text-slate-700">Kota / Kabupaten</span>. Kolom opsional: Kode, Jenis Titik
+              Isi beberapa baris sekaligus, atau import dari file Excel (.xlsx) / CSV. Urutan kolom: Kode, Nama Area,
+              Jenis Titik, Provinsi, Kota / Kabupaten, Status. Kolom wajib:{" "}
+              <span className="font-semibold text-slate-700">Kota / Kabupaten</span>. Kolom opsional: Kode, Nama Area, Jenis Titik
               (Gudang/Hub/Transit/Cabang/Tujuan, default Transit), Provinsi, Status (Aktif/Nonaktif, default Aktif). Baris
               yang sama persis (Provinsi + Kota / Kabupaten) tidak akan dibuat dobel.
             </p>
@@ -279,12 +279,13 @@ export function BulkLocationImport({ existing = [] }: { existing?: string[] }) {
       </div>
 
       <div className="max-h-[70vh] overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full min-w-[800px] border-collapse text-xs">
+        <table className="w-full min-w-[940px] border-collapse text-xs">
           <thead className="sticky top-0 z-10">
             <tr className="border-b border-slate-200 bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               <th className="px-2.5 py-2.5">Cek</th>
               <th className="px-2.5 py-2.5">Baris</th>
               <th className="px-2.5 py-2.5">Kode</th>
+              <th className="px-2.5 py-2.5">Nama Area</th>
               <th className="px-2.5 py-2.5">Jenis Titik</th>
               <th className="px-2.5 py-2.5">Provinsi</th>
               <th className="px-2.5 py-2.5">Kota / Kabupaten</th>
@@ -340,6 +341,14 @@ export function BulkLocationImport({ existing = [] }: { existing?: string[] }) {
                       value={row.kodeKota}
                       onChange={(e) => updateRow(row.id, "kodeKota", e.target.value)}
                       placeholder="JKT"
+                    />
+                  </td>
+                  <td className="px-2.5 py-2">
+                    <input
+                      className={`${cellInputClass} min-w-[140px]`}
+                      value={row.namaArea}
+                      onChange={(e) => updateRow(row.id, "namaArea", e.target.value)}
+                      placeholder="Nama area"
                     />
                   </td>
                   <td className="px-2.5 py-2">

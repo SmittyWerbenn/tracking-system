@@ -1,4 +1,5 @@
 import { driverPath } from "../../utils/urls";
+import { ROLE_BAR_CLASS } from "../../utils/roleTheme";
 import { LogOut } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
@@ -24,7 +25,7 @@ export function DriverLayout({ children, wide = false }: { children: ReactNode; 
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="no-print sticky top-0 z-20 border-b border-slate-200 bg-white px-4">
+      <header className={`no-print sticky top-0 z-20 border-b border-t-4 border-slate-200 ${ROLE_BAR_CLASS.Driver} bg-white px-4`}>
         <div className={`mx-auto flex h-14 items-center justify-between ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
           <div className="flex min-w-0 items-center gap-2">
             <img src={logoIcon} alt="GMS Logistics" className="h-7 w-7 shrink-0 object-contain" />

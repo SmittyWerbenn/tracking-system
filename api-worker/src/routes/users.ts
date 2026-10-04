@@ -8,6 +8,7 @@ import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta } from "../pagination";
 
 const ROLES = ["Admin", "Driver", "Viewer", "Client", "Mitra"] as const;
+const EMAIL_TAKEN = "Email sudah digunakan oleh user lain.";
 
 export function registerUserRoutes(router: Router) {
   // Driver master data (drivers table, keyed by truck assignment) is
@@ -36,17 +37,65 @@ export function registerUserRoutes(router: Router) {
     return ok({ items: rows.results });
   });
 
+  // User list with server-side filtering, so a filter searches ALL users, not
+  // just the page on screen. Filters combine (AND):
+  //   nama / email / nopol  - "contains", case-insensitive (nopol ignores spaces,
+  //                           so "B1234XYZ" finds "B 1234 XYZ")
+  //   emailExact            - exact match (used for the "email already taken" check)
+  //   role                  - one role
+  //   status                - aktif | nonaktif
+  //   group                 - driver (only Driver accounts) | staff (everyone else)
+  // Always sorted Aktif first, then Nonaktif, then by name. The password hash is
+  // never selected. Nopol comes from the existing user -> driver -> truck link.
   router.get("/api/users", async (ctx: Ctx) => {
     requirePermission(ctx, "users.manage");
     const url = new URL(ctx.request.url);
     const { page, limit, offset } = parsePagination(url);
+    const q = url.searchParams;
 
-    const total = await ctx.env.DB.prepare(`SELECT COUNT(*) as c FROM users`).first<{ c: number }>();
+    const where: string[] = [];
+    const params: unknown[] = [];
+    const like = (value: string) => `%${value.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+
+    const nama = (q.get("nama") ?? "").trim();
+    if (nama) { where.push(`u.nama LIKE ? ESCAPE '\\'`); params.push(like(nama)); }
+    const email = (q.get("email") ?? "").trim();
+    if (email) { where.push(`u.email LIKE ? ESCAPE '\\'`); params.push(like(email)); }
+    const emailExact = (q.get("emailExact") ?? "").trim().toLowerCase();
+    if (emailExact) { where.push(`LOWER(u.email) = ?`); params.push(emailExact); }
+    const nopol = (q.get("nopol") ?? "").trim().replace(/\s+/g, "").toLowerCase();
+    if (nopol) {
+      where.push(
+        `EXISTS (SELECT 1 FROM drivers d JOIN trucks t ON t.driver_id = d.id
+                 WHERE d.user_id = u.id AND LOWER(REPLACE(t.nomor_unit, ' ', '')) LIKE ? ESCAPE '\\')`,
+      );
+      params.push(like(nopol));
+    }
+    const role = q.get("role");
+    if (role) {
+      if (!(ROLES as readonly string[]).includes(role) && role !== "Superadmin") throw Errors.badRequest("Role tidak dikenal.");
+      where.push(`u.role = ?`); params.push(role);
+    }
+    const status = q.get("status");
+    if (status === "aktif") where.push(`u.aktif = 1`);
+    else if (status === "nonaktif") where.push(`u.aktif = 0`);
+    else if (status) throw Errors.badRequest("Status harus aktif atau nonaktif.");
+    const group = q.get("group");
+    if (group === "driver") where.push(`u.role = 'Driver'`);
+    else if (group === "staff") where.push(`u.role != 'Driver'`);
+    else if (group) throw Errors.badRequest("Group harus driver atau staff.");
+
+    const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+    const total = await ctx.env.DB.prepare(`SELECT COUNT(*) as c FROM users u ${whereSql}`).bind(...params).first<{ c: number }>();
     const rows = await ctx.env.DB.prepare(
-      `SELECT id, nama, email, role, aktif, foto_file_id, last_login_at, created_at, customer_id, mitra_id
-       FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      `SELECT u.id, u.nama, u.email, u.role, u.aktif, u.foto_file_id, u.last_login_at, u.created_at, u.customer_id, u.mitra_id,
+              (SELECT group_concat(t.nomor_unit, ', ') FROM drivers d JOIN trucks t ON t.driver_id = d.id WHERE d.user_id = u.id) AS nopol,
+              (SELECT d.telepon FROM drivers d WHERE d.user_id = u.id) AS driver_telepon
+       FROM users u ${whereSql}
+       ORDER BY u.aktif DESC, u.nama COLLATE NOCASE ASC, u.created_at ASC
+       LIMIT ? OFFSET ?`,
     )
-      .bind(limit, offset)
+      .bind(...params, limit, offset)
       .all();
 
     return ok({ items: rows.results, meta: pageMeta(page, limit, total?.c ?? 0) });
@@ -303,19 +352,26 @@ export function registerUserRoutes(router: Router) {
       if (driver.user_id) throw Errors.conflict("Data driver ini sudah ditautkan ke akun lain.");
     }
 
-    const existing = await ctx.env.DB.prepare(`SELECT id FROM users WHERE email = ?`).bind(email).first();
-    if (existing) throw Errors.conflict("Email sudah terdaftar.");
+    const existing = await ctx.env.DB.prepare(`SELECT id FROM users WHERE email = ? COLLATE NOCASE`).bind(email).first();
+    if (existing) throw Errors.conflict(EMAIL_TAKEN);
 
     const id = newId();
     const now = new Date().toISOString();
     const passwordHash = await hashPassword(password);
 
-    await ctx.env.DB.prepare(
-      `INSERT INTO users (id, nama, email, password_hash, role, aktif, foto_file_id, created_at, updated_at, created_by, updated_by, customer_id, mitra_id)
-       VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-      .bind(id, nama, email, passwordHash, role, fotoFileId ?? null, now, now, actor.id, actor.id, customerId ?? null, mitraId ?? null)
-      .run();
+    try {
+      await ctx.env.DB.prepare(
+        `INSERT INTO users (id, nama, email, password_hash, role, aktif, foto_file_id, created_at, updated_at, created_by, updated_by, customer_id, mitra_id)
+         VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+        .bind(id, nama, email, passwordHash, role, fotoFileId ?? null, now, now, actor.id, actor.id, customerId ?? null, mitraId ?? null)
+        .run();
+    } catch (err) {
+      // The unique index on users.email is the last line of defence (two
+      // requests racing past the check above).
+      if (err instanceof Error && /UNIQUE constraint failed: users\.email/i.test(err.message)) throw Errors.conflict(EMAIL_TAKEN);
+      throw err;
+    }
 
     if (driverId) {
       await ctx.env.DB.prepare(`UPDATE drivers SET user_id = ?, updated_at = ? WHERE id = ? AND user_id IS NULL`)
@@ -415,10 +471,11 @@ export function registerUserRoutes(router: Router) {
     }
 
     if (email) {
-      const dupe = await ctx.env.DB.prepare(`SELECT id FROM users WHERE email = ? AND id != ?`)
+      // Another user's email is refused; the user's own current email is fine.
+      const dupe = await ctx.env.DB.prepare(`SELECT id FROM users WHERE email = ? COLLATE NOCASE AND id != ?`)
         .bind(email, params.id)
         .first();
-      if (dupe) throw Errors.conflict("Email sudah dipakai user lain.");
+      if (dupe) throw Errors.conflict(EMAIL_TAKEN);
     }
 
     const sets: string[] = [];
@@ -455,7 +512,12 @@ export function registerUserRoutes(router: Router) {
     if (sets.length > 0) {
       sets.push("updated_at = ?", "updated_by = ?");
       values.push(now, actor.id, params.id);
-      await ctx.env.DB.prepare(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`).bind(...values).run();
+      try {
+        await ctx.env.DB.prepare(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`).bind(...values).run();
+      } catch (err) {
+        if (err instanceof Error && /UNIQUE constraint failed: users\.email/i.test(err.message)) throw Errors.conflict(EMAIL_TAKEN);
+        throw err;
+      }
     }
 
     if (password) {

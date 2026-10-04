@@ -251,6 +251,12 @@ export interface AppUser {
   /** Kode Mitra - set only for role "Mitra", scopes that account to just
    * the shipments forwarded/assigned to this Mitra. */
   mitraId?: string | null;
+  /** Nopol - the plate number(s) of the truck(s) linked to a Driver account
+   * (user -> driver -> truck). Null for accounts without a truck. */
+  nopol?: string | null;
+  /** Phone number from the linked driver record. */
+  driverTelepon?: string | null;
+  createdAt?: string;
 }
 
 // ---------------------------------------------------------------------------

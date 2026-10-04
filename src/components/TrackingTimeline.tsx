@@ -30,12 +30,12 @@ export function TrackingTimeline({ events }: TrackingTimelineProps) {
             <li key={event.id} className="relative flex gap-3.5 pb-6 last:pb-0">
               {/* connector line */}
               {idx !== ordered.length - 1 && (
-                <span className="absolute left-[7px] top-5 h-[calc(100%-0.75rem)] w-px bg-violet-200" />
+                <span className="absolute left-[7px] top-5 h-[calc(100%-0.75rem)] w-px bg-blue-100" />
               )}
               <div className="relative flex flex-col items-center pt-1.5">
                 <span
                   className={`z-10 h-3.5 w-3.5 shrink-0 rounded-full ring-4 ring-slate-50 ${
-                    isLatest ? "bg-violet-600" : "border-2 border-violet-300 bg-white"
+                    isLatest ? "bg-blue-900" : "border-2 border-blue-300 bg-white"
                   }`}
                 />
               </div>
@@ -46,7 +46,7 @@ export function TrackingTimeline({ events }: TrackingTimelineProps) {
                     {formatTanggalPanjang(event.tanggal)} · {formatJam(event.jam)}
                   </p>
                   {isLatest && (
-                    <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
+                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
                       {t.timeline.latest}
                     </span>
                   )}
@@ -86,8 +86,8 @@ export function TrackingTimeline({ events }: TrackingTimelineProps) {
                 )}
 
                 {event.type === "Transfer Unit" && event.truckSebelumnya && event.truck && (
-                  <div className="mt-2.5 rounded-lg bg-violet-50 px-3 py-2.5">
-                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-700">
+                  <div className="mt-2.5 rounded-lg bg-blue-50 px-3 py-2.5">
+                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-blue-800">
                       Transfer Unit
                     </p>
                     <div className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
@@ -95,9 +95,9 @@ export function TrackingTimeline({ events }: TrackingTimelineProps) {
                         <Truck size={14} className="text-slate-400" />
                         <span>{event.truckSebelumnya.jenis}</span>
                       </div>
-                      <ArrowRight size={16} className="shrink-0 text-violet-400" />
-                      <div className="flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 ring-1 ring-violet-200">
-                        <Truck size={14} className="text-violet-500" />
+                      <ArrowRight size={16} className="shrink-0 text-blue-400" />
+                      <div className="flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 ring-1 ring-blue-100">
+                        <Truck size={14} className="text-blue-500" />
                         <span className="font-medium">{event.truck.jenis}</span>
                       </div>
                     </div>

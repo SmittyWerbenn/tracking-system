@@ -3,7 +3,7 @@ import type { AppUser, UserRole } from "../types";
 import { api, uploadFile } from "../utils/apiClient";
 import { useAuth } from "./AuthContext";
 
-interface UserRow {
+export interface UserRow {
   id: string;
   nama: string;
   email: string;
@@ -11,8 +11,11 @@ interface UserRow {
   aktif: number;
   foto_file_id: string | null;
   last_login_at: string | null;
+  created_at?: string | null;
   customer_id: string | null;
   mitra_id: string | null;
+  nopol?: string | null;
+  driver_telepon?: string | null;
 }
 
 interface DriverRow {
@@ -44,7 +47,7 @@ function toDriverOption(row: DriverRow): DriverOption {
   };
 }
 
-function toAppUser(row: UserRow): AppUser {
+export function toAppUser(row: UserRow): AppUser {
   return {
     id: row.id,
     nama: row.nama,
@@ -55,6 +58,9 @@ function toAppUser(row: UserRow): AppUser {
     foto: row.foto_file_id ?? undefined,
     customerId: row.customer_id,
     mitraId: row.mitra_id,
+    nopol: row.nopol ?? null,
+    driverTelepon: row.driver_telepon ?? null,
+    createdAt: row.created_at ?? undefined,
   };
 }
 
@@ -83,7 +89,6 @@ export interface UserFormData {
 }
 
 interface UserManagementContextValue {
-  users: AppUser[];
   drivers: DriverOption[];
   customerIds: string[];
   /** Client ID + name for the Tambah User dropdown. */
@@ -101,7 +106,6 @@ const UserManagementContext = createContext<UserManagementContextValue | null>(n
 
 export function UserManagementProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, profile } = useAuth();
-  const [users, setUsers] = useState<AppUser[]>([]);
   const [drivers, setDrivers] = useState<DriverOption[]>([]);
   const [customerIds, setCustomerIds] = useState<string[]>([]);
   const [clientOptions, setClientOptions] = useState<{ customerId: string; nama: string | null }[]>([]);
@@ -112,15 +116,14 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
     if (profile?.role !== "Superadmin" && profile?.role !== "Admin") return;
     setIsLoading(true);
     // Each source loads independently: one failing dropdown endpoint (e.g.
-    // /api/mitras before the Worker is redeployed) must never blank the
-    // user list itself, and a failed source keeps its last good value.
-    const [usersRes, driversRes, customerIdsRes, mitrasRes] = await Promise.allSettled([
-      api.get<{ items: UserRow[] }>("/api/users?limit=100"),
+    // /api/mitras before the Worker is redeployed) must not blank the others,
+    // and a failed source keeps its last good value. (The user list itself is
+    // queried per page, with filters, by useUserList.)
+    const [driversRes, customerIdsRes, mitrasRes] = await Promise.allSettled([
       api.get<{ items: DriverRow[] }>("/api/drivers"),
       api.get<{ items: string[]; clients?: { customerId: string; nama: string | null }[] }>("/api/customer-ids"),
       api.get<{ items: { kodeMitra: string; nama: string; aktif: boolean }[] }>("/api/mitras?active=true"),
     ]);
-    if (usersRes.status === "fulfilled") setUsers(usersRes.value.items.map(toAppUser));
     if (driversRes.status === "fulfilled") setDrivers(driversRes.value.items.map(toDriverOption));
     if (customerIdsRes.status === "fulfilled") {
       const { items, clients } = customerIdsRes.value;
@@ -130,13 +133,11 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
     if (mitrasRes.status === "fulfilled") {
       setMitraOptions(mitrasRes.value.items.map((m) => ({ mitraId: m.kodeMitra, nama: m.nama })));
     }
-    if (usersRes.status === "rejected") console.error("Gagal memuat daftar user:", usersRes.reason);
     setIsLoading(false);
   }
 
   useEffect(() => {
     if (isAuthenticated && (profile?.role === "Superadmin" || profile?.role === "Admin")) refresh();
-    else setUsers([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, profile?.role]);
 
@@ -186,7 +187,7 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
 
   return (
     <UserManagementContext.Provider
-      value={{ users, drivers, customerIds, clientOptions, mitraOptions, isLoading, refresh, createUser, updateUser, setUserActive }}
+      value={{ drivers, customerIds, clientOptions, mitraOptions, isLoading, refresh, createUser, updateUser, setUserActive }}
     >
       {children}
     </UserManagementContext.Provider>

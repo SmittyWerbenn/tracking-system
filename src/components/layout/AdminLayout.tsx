@@ -21,6 +21,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
 import { useAuth } from "../../store/AuthContext";
 import { roleLabel, type UserRole } from "../../types";
+import { ROLE_ACTIVE_CLASS, ROLE_BADGE_CLASS, ROLE_BAR_CLASS } from "../../utils/roleTheme";
 import { initials } from "../../utils/initials";
 import { useFileUrl } from "../../utils/useFileUrl";
 import { NotificationBell } from "./NotificationBell";
@@ -93,6 +94,7 @@ function getNavGroups(role: UserRole): { title: string; items: NavItem[] }[] {
       title: "Sistem",
       items: [
         { to: adminPath("/users"), label: "Manajemen User", icon: Users, end: true, roles: ["Superadmin", "Admin"] },
+        { to: adminPath("/users-driver"), label: "Manajemen User Driver", icon: Truck, end: true, roles: ["Superadmin", "Admin"] },
         { to: adminPath("/audit-log"), label: "Audit Log", icon: History, end: true, roles: ["Superadmin", "Admin"] },
         {
           to: adminPath("/pengaturan/tracking"),
@@ -124,7 +126,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50 print:bg-white">
       {/* Top bar */}
-      <header className="no-print sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6">
+      <header className={`no-print sticky top-0 z-30 flex h-16 items-center justify-between border-b border-t-4 border-slate-200 ${profile ? ROLE_BAR_CLASS[profile.role] : ""} bg-white px-4 sm:px-6`}>
         <div className="flex min-w-0 items-center gap-3">
           <button
             className="shrink-0 rounded-md p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
@@ -202,7 +204,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                         className={({ isActive }) =>
                           `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                             isActive
-                              ? "bg-blue-900 text-white"
+                              ? profile ? ROLE_ACTIVE_CLASS[profile.role] : "bg-blue-900 text-white"
                               : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                           }`
                         }
@@ -217,7 +219,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             })}
           </nav>
           <div className="mx-4 mt-2 rounded-lg bg-slate-50 p-4 text-xs text-slate-500">
-            <p className="font-medium text-slate-700">{roleLabel(profile.role)}</p>
+            <p className={`inline-block rounded-full px-2 py-0.5 font-medium ${ROLE_BADGE_CLASS[profile.role]}`}>{roleLabel(profile.role)}</p>
             <p className="mt-1">Sistem Tracking &amp; Resi Digital &mdash; PT Gangsar Mitra Suatama.</p>
           </div>
         </aside>

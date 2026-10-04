@@ -5,7 +5,7 @@ import type { UserGroup } from "./useUserList";
 import { downloadXlsx } from "./xlsx";
 
 const DRIVER_HEADERS = ["Nama", "Email", "Nopol", "Nomor HP Driver", "Status", "Last Login", "Dibuat"] as const;
-const STAFF_HEADERS = ["Nama", "Email", "Nopol", "Role", "Client ID / Kode Mitra", "Status", "Last Login", "Dibuat"] as const;
+const STAFF_HEADERS = ["Nama", "Email", "Role", "Client ID / Kode Mitra", "Status", "Last Login", "Dibuat"] as const;
 
 const dateOrDash = (iso?: string) => (iso ? formatTimestampWib(iso) : "-");
 
@@ -31,7 +31,6 @@ export async function exportUsersXlsx(users: AppUser[], group: UserGroup): Promi
     users.map((u) => [
       u.nama,
       u.email,
-      u.nopol ?? "-",
       roleLabel(u.role),
       u.customerId ?? u.mitraId ?? "-",
       u.aktif ? "Aktif" : "Nonaktif",

@@ -258,7 +258,7 @@ export default function UserManagementView({ group }: { group: UserGroup }) {
   // ----- detail
   const [detail, setDetail] = useState<AppUser | null>(null);
 
-  const colCount = isDriverGroup ? 5 : 7;
+  const colCount = isDriverGroup ? 5 : 6;
   const { draft, setDraft } = list;
   const patchFilter = (patch: Partial<UserFilters>) => setDraft({ ...draft, ...patch });
   const from = list.meta.total === 0 ? 0 : (list.meta.page - 1) * list.meta.limit + 1;
@@ -356,12 +356,12 @@ export default function UserManagementView({ group }: { group: UserGroup }) {
         </div>
       )}
 
-      <MasterTableCard minWidth={isDriverGroup ? 720 : 900}>
+      <MasterTableCard minWidth={isDriverGroup ? 720 : 800}>
         <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
           <tr>
             <th className="px-4 py-3 font-medium">Nama</th>
             <th className="px-4 py-3 font-medium">Email</th>
-            <th className="px-4 py-3 font-medium">Nopol</th>
+            {isDriverGroup && <th className="px-4 py-3 font-medium">Nopol</th>}
             {!isDriverGroup && <th className="px-4 py-3 font-medium">Role</th>}
             <th className="px-4 py-3 font-medium">Status</th>
             {!isDriverGroup && <th className="px-4 py-3 font-medium">Last Login</th>}
@@ -389,7 +389,7 @@ export default function UserManagementView({ group }: { group: UserGroup }) {
                   </div>
                 </td>
                 <td className="break-all px-4 py-3 text-slate-600">{u.email}</td>
-                <td className="whitespace-nowrap px-4 py-3 font-mono text-slate-700">{u.nopol || "-"}</td>
+                {isDriverGroup && <td className="whitespace-nowrap px-4 py-3 font-mono text-slate-700">{u.nopol || "-"}</td>}
                 {!isDriverGroup && (
                   <td className="whitespace-nowrap px-4 py-3">
                     <RoleBadge role={u.role} />
@@ -514,8 +514,12 @@ export default function UserManagementView({ group }: { group: UserGroup }) {
               <dl className="mt-5 grid grid-cols-[110px_1fr] gap-x-3 gap-y-2.5 text-sm">
                 <dt className="text-slate-400">Email</dt>
                 <dd className="break-all text-slate-800">{detail.email}</dd>
-                <dt className="text-slate-400">Nopol</dt>
-                <dd className="font-mono text-slate-800">{detail.nopol || "-"}</dd>
+                {isDriverGroup && (
+                  <>
+                    <dt className="text-slate-400">Nopol</dt>
+                    <dd className="font-mono text-slate-800">{detail.nopol || "-"}</dd>
+                  </>
+                )}
                 {detail.role === "Driver" && (
                   <>
                     <dt className="text-slate-400">No. HP Driver</dt>

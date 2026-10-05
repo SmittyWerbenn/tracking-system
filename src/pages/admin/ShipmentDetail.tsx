@@ -1,7 +1,5 @@
 import {
-  AlertTriangle,
   ArrowLeft,
-  Ban,
   CheckCircle2,
   Download,
   Handshake,
@@ -14,7 +12,6 @@ import {
   Printer,
   Truck,
   User,
-  X,
   XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -32,6 +29,7 @@ import type { Shipment } from "../../types";
 import { api } from "../../utils/apiClient";
 import { formatJam, formatTanggalJam, formatTanggalPanjang, isoToWib } from "../../utils/format";
 import { adminPath, trackingUrl as publicTrackingUrl } from "../../utils/urls";
+import { CancelOrderActions, CancellationInfo } from "../../components/CancelOrderActions";
 
 /** Last row of driver_position_reports (raw DB shape) - the driver portal's
  * "Perbarui Posisi" button writes this, the detail page only reads it. */
@@ -45,7 +43,7 @@ interface DriverPosition {
 
 export default function ShipmentDetail() {
   const { awb } = useParams<{ awb: string }>();
-  const { getByAwb, confirmClaim, rejectClaim, unassignDriver, cancelShipment, assignMitra } = useShipments();
+  const { getByAwb, confirmClaim, rejectClaim, unassignDriver, assignMitra } = useShipments();
   const { activeMitras } = useMitras();
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -60,11 +58,6 @@ export default function ShipmentDetail() {
   const [mitraSelect, setMitraSelect] = useState("");
   const [mitraPending, setMitraPending] = useState(false);
   const [mitraError, setMitraError] = useState<string | null>(null);
-
-  const [cancelModalOpen, setCancelModalOpen] = useState(false);
-  const [cancelReason, setCancelReason] = useState("");
-  const [cancelPending, setCancelPending] = useState(false);
-  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const [editOpen, setEditOpen] = useState(false);
 
@@ -174,25 +167,6 @@ export default function ShipmentDetail() {
     } else setMitraError(result.error);
   }
 
-  function openCancelModal() {
-    setCancelReason("");
-    setCancelError(null);
-    setCancelModalOpen(true);
-  }
-
-  async function handleCancelShipment() {
-    setCancelPending(true);
-    setCancelError(null);
-    const result = await cancelShipment(shipment!.awb, cancelReason.trim() || undefined);
-    setCancelPending(false);
-    if (result.ok) {
-      setCancelModalOpen(false);
-      await reload();
-    } else {
-      setCancelError(result.error);
-    }
-  }
-
   if (isLoading) {
     return (
       <AdminLayout>
@@ -217,12 +191,6 @@ export default function ShipmentDetail() {
   }
 
   const trackingUrl = publicTrackingUrl(shipment.awb);
-  const isTerminalStatus = shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan";
-  const canCancelOrder =
-    !isTerminalStatus &&
-    (profile?.role === "Superadmin" ||
-      profile?.role === "Admin" ||
-      (profile?.role === "Client" && shipment.status === "Dalam Persiapan"));
   const canEditAlamat = profile?.role === "Client" && shipment.status === "Dalam Persiapan";
 
   function printResi() {
@@ -289,17 +257,10 @@ export default function ShipmentDetail() {
           >
             <MapPin size={15} /> Lihat Tracking
           </Link>
-          {canCancelOrder && (
-            <button
-              type="button"
-              onClick={openCancelModal}
-              className="inline-flex items-center gap-1.5 rounded-lg border-2 border-rose-600 bg-white px-3.5 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50"
-            >
-              <Ban size={15} /> Batalkan Pesanan
-            </button>
-          )}
+          <CancelOrderActions shipment={shipment} onDone={reload} variant="full" />
         </div>
       </div>
+      <CancellationInfo shipment={shipment} />
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3 print:mt-4 print:grid-cols-3 print:gap-4">
         <div className="space-y-6 lg:col-span-2 print:col-span-2 print:space-y-4">
@@ -640,66 +601,6 @@ export default function ShipmentDetail() {
         </div>
       </div>
       </div>
-
-      {cancelModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
-            <div className="p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-                  <Ban size={18} className="text-rose-600" /> Batalkan Pesanan
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setCancelModalOpen(false)}
-                  className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <p className="text-sm text-slate-600">
-                AWB <span className="font-mono font-semibold">{shipment.awb}</span> akan dibatalkan.
-                Setelah dibatalkan, status tidak bisa dikembalikan lagi.
-              </p>
-              <label className="mt-4 block">
-                <span className="mb-1.5 block text-xs font-medium text-slate-600">
-                  Alasan Pembatalan <span className="text-slate-400">(opsional)</span>
-                </span>
-                <textarea
-                  rows={3}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  placeholder="Contoh: Salah input, pesanan diganti, dll."
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                />
-              </label>
-              {cancelError && (
-                <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-red-600">
-                  <AlertTriangle size={14} /> {cancelError}
-                </p>
-              )}
-              <div className="mt-5 flex justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setCancelModalOpen(false)}
-                  className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  disabled={cancelPending}
-                  onClick={handleCancelShipment}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 disabled:opacity-60"
-                >
-                  {cancelPending ? <Loader2 size={15} className="animate-spin" /> : <Ban size={15} />}
-                  Batalkan Pesanan
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {claimDialog && shipment.claimStatus === "pending" && (
         <ClaimDecisionModal

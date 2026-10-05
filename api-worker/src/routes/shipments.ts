@@ -1,5 +1,5 @@
 import type { Router } from "../router";
-import type { Ctx } from "../types";
+import type { Ctx, AuthedUser } from "../types";
 import { ok, Errors } from "../http";
 import { parseJsonBody, reqString, reqEnum, reqNumber, reqEmail, optString, optNumber } from "../validate";
 import { findActiveLayanan, resolveLayananForOrder } from "../layanan";
@@ -11,6 +11,7 @@ import { generateClientAwb, isDuplicateAwbError } from "../awb";
 import { wibNow } from "../wib";
 import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, type TimelineEventType } from "../status";
 import { addBusinessDays } from "../sla";
+import { cancelPolicy, creatorRoleOf, pickupEvidenceSql } from "../cancellation";
 
 const POD_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -62,6 +63,39 @@ function shipmentSummary(row: Record<string, unknown>) {
     recovery: row.recovery_status
       ? { status: row.recovery_status, requestedAt: row.recovery_requested_at, rejectionReason: row.recovery_rejection_reason ?? null }
       : null,
+    createdByName: row.created_by_name ?? null,
+    createdByRole: creatorRoleOf({ created_by_role: row.created_by_role as string | null, customer_id: row.customer_id as string | null }),
+    cancellation: row.cr_id
+      ? {
+          id: row.cr_id,
+          status: row.cr_status,
+          reason: row.cr_reason,
+          requestedBy: row.cr_requested_by_name,
+          requestedByRole: row.cr_requested_by_role,
+          requestedAt: row.cr_requested_at,
+          decidedBy: row.cr_decided_by_name ?? null,
+          decidedByRole: row.cr_decided_by_role ?? null,
+          decidedAt: row.cr_decided_at ?? null,
+          decisionReason: row.cr_decision_reason ?? null,
+        }
+      : null,
+  };
+}
+
+/** What this actor may do about cancelling the order (computed on the server; the UI only renders it). */
+function withCancelPolicy(summary: ReturnType<typeof shipmentSummary>, row: Record<string, unknown>, actor: AuthedUser) {
+  return {
+    ...summary,
+    cancel: cancelPolicy(
+      {
+        status: String(row.status),
+        customer_id: (row.customer_id as string | null) ?? null,
+        created_by_role: (row.created_by_role as string | null) ?? null,
+        has_pickup: Number(row.has_pickup ?? 0),
+        pending_request: row.cr_status === "PENDING",
+      },
+      actor,
+    ),
   };
 }
 
@@ -116,7 +150,11 @@ export function registerShipmentRoutes(router: Router) {
               m.nama as mitra_nama,
               p.tanggal as pod_tanggal, p.jam as pod_jam, p.nama_penerima as pod_nama_penerima,
               le.tanggal as last_tanggal, le.jam as last_jam,
-              rr.status as recovery_status, rr.requested_at as recovery_requested_at, rr.rejection_reason as recovery_rejection_reason
+              rr.status as recovery_status, rr.requested_at as recovery_requested_at, rr.rejection_reason as recovery_rejection_reason,
+              ${pickupEvidenceSql("s.awb")} AS has_pickup,
+              cr.id as cr_id, cr.status as cr_status, cr.reason as cr_reason, cr.requested_by_name as cr_requested_by_name,
+              cr.requested_by_role as cr_requested_by_role, cr.requested_at as cr_requested_at, cr.decided_by_name as cr_decided_by_name,
+              cr.decided_by_role as cr_decided_by_role, cr.decided_at as cr_decided_at, cr.decision_reason as cr_decision_reason
        FROM shipments s
        LEFT JOIN trucks t ON t.id = s.truck_id
        LEFT JOIN drivers d ON d.id = t.driver_id
@@ -130,6 +168,9 @@ export function registerShipmentRoutes(router: Router) {
        LEFT JOIN order_recovery_requests rr ON rr.id = (
          SELECT x.id FROM order_recovery_requests x WHERE x.awb = s.awb ORDER BY x.requested_at DESC LIMIT 1
        )
+       LEFT JOIN cancellation_requests cr ON cr.id = (
+         SELECT y.id FROM cancellation_requests y WHERE y.awb = s.awb ORDER BY y.requested_at DESC LIMIT 1
+       )
        ${whereSql}
        ORDER BY s.tanggal_dibuat DESC, s.jam_dibuat DESC
        LIMIT ? OFFSET ?`,
@@ -138,7 +179,7 @@ export function registerShipmentRoutes(router: Router) {
       .all();
 
     return ok({
-      items: (rows.results ?? []).map((r) => forActor(shipmentSummary(r), actor.role)),
+      items: (rows.results ?? []).map((r) => forActor(withCancelPolicy(shipmentSummary(r), r, actor), actor.role)),
       meta: pageMeta(page, limit, total?.c ?? 0),
     });
   });
@@ -218,8 +259,8 @@ export function registerShipmentRoutes(router: Router) {
               alamat_asal, kota_asal, alamat_tujuan, kota_tujuan,
               deskripsi_barang, layanan, berat_kg, jumlah_koli, truck_id,
               sla_value, sla_unit, estimasi_tiba, customer_id, mitra_id,
-              email_terkirim, created_at, updated_at, created_by, updated_by
-            ) VALUES (?, ?, ?, 'Dalam Persiapan', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+              email_terkirim, created_at, updated_at, created_by, updated_by, created_by_role, created_by_name
+            ) VALUES (?, ?, ?, 'Dalam Persiapan', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`,
           ).bind(
             awb, tanggalDibuat, jamDibuat,
             pengirimNama, pengirimTelepon, pengirimEmail,
@@ -227,7 +268,7 @@ export function registerShipmentRoutes(router: Router) {
             alamatAsal, kotaAsal, alamatTujuan, kotaTujuan,
             deskripsiBarang, layanan, beratKg, jumlahKoli, truckId ?? null,
             slaValue ?? null, slaUnit, estimasiTiba, customerId, mitraId ?? null,
-            nowIso, nowIso, actor.id, actor.id,
+            nowIso, nowIso, actor.id, actor.id, actor.role, actor.nama,
           ),
           ctx.env.DB.prepare(
             `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, truck_id, input_by_user_id, input_by_name, input_at, created_at)
@@ -267,7 +308,11 @@ export function registerShipmentRoutes(router: Router) {
               cd.nama as claim_driver_nama, cd.telepon as claim_driver_telepon,
               ct.id as claim_truck_id, ct.nomor_unit as claim_truck_nomor_unit, ct.jenis as claim_truck_jenis,
               m.nama as mitra_nama,
-              rr.status as recovery_status, rr.requested_at as recovery_requested_at, rr.rejection_reason as recovery_rejection_reason
+              rr.status as recovery_status, rr.requested_at as recovery_requested_at, rr.rejection_reason as recovery_rejection_reason,
+              ${pickupEvidenceSql("s.awb")} AS has_pickup,
+              cr.id as cr_id, cr.status as cr_status, cr.reason as cr_reason, cr.requested_by_name as cr_requested_by_name,
+              cr.requested_by_role as cr_requested_by_role, cr.requested_at as cr_requested_at, cr.decided_by_name as cr_decided_by_name,
+              cr.decided_by_role as cr_decided_by_role, cr.decided_at as cr_decided_at, cr.decision_reason as cr_decision_reason
        FROM shipments s
        LEFT JOIN trucks t ON t.id = s.truck_id
        LEFT JOIN drivers d ON d.id = t.driver_id
@@ -276,6 +321,9 @@ export function registerShipmentRoutes(router: Router) {
        LEFT JOIN mitras m ON m.kode_mitra = s.mitra_id
        LEFT JOIN order_recovery_requests rr ON rr.id = (
          SELECT x.id FROM order_recovery_requests x WHERE x.awb = s.awb ORDER BY x.requested_at DESC LIMIT 1
+       )
+       LEFT JOIN cancellation_requests cr ON cr.id = (
+         SELECT y.id FROM cancellation_requests y WHERE y.awb = s.awb ORDER BY y.requested_at DESC LIMIT 1
        )
        WHERE s.awb = ? AND s.deleted_at IS NULL`,
     )
@@ -314,7 +362,7 @@ export function registerShipmentRoutes(router: Router) {
       .bind(params.awb, params.awb)
       .all();
 
-    return ok({ shipment: forActor(shipmentSummary(row), actor.role), timeline: timeline.results, pod: pod ?? null, files: files.results ?? [] });
+    return ok({ shipment: forActor(withCancelPolicy(shipmentSummary(row), row, actor), actor.role), timeline: timeline.results, pod: pod ?? null, files: files.results ?? [] });
     });
 
     // Last position reported by the driver ("Perbarui Posisi" button on the
@@ -518,64 +566,6 @@ export function registerShipmentRoutes(router: Router) {
     return ok({ updated: true });
   });
 
-  // Cancel order - Superadmin/Admin may cancel from any not-yet-terminal
-  // status; Client only its own customer's shipments and only while
-  // still "Dalam Persiapan" (mirrors the alamat-edit restriction above -
-  // once a truck is actually moving, cancellation goes through ops).
-  router.post("/api/shipments/:awb/cancel", async (ctx: Ctx, params) => {
-    const actor = requireAuth(ctx);
-    if (actor.role !== "Client" && actor.role !== "Superadmin" && actor.role !== "Admin") {
-      throw Errors.forbidden();
-    }
-    const shipment = await ctx.env.DB.prepare(`SELECT status, customer_id, kota_asal FROM shipments WHERE awb = ? AND deleted_at IS NULL`)
-      .bind(params.awb)
-      .first<{ status: string; customer_id: string | null; kota_asal: string }>();
-    if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
-    if (shipment.status === "Selesai / Terkirim") {
-      throw Errors.unprocessable("Pengiriman yang sudah Selesai/Terkirim tidak bisa dibatalkan.");
-    }
-    if (shipment.status === "Dibatalkan") {
-      throw Errors.unprocessable("Pengiriman ini sudah dibatalkan.");
-    }
-    if (actor.role === "Client") {
-      if (shipment.customer_id !== actor.customerId) throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
-      if (shipment.status !== "Dalam Persiapan") {
-        throw Errors.unprocessable("Hanya pengiriman dengan status Dalam Persiapan yang bisa dibatalkan.");
-      }
-    }
-
-    const body = await parseJsonBody(ctx.request).catch(() => ({}) as Record<string, unknown>);
-    const alasan = optString(body, "alasan") ?? "";
-    const nowIso = new Date().toISOString();
-    const { tanggal, jam } = wibNow();
-
-    const seqRow = await ctx.env.DB.prepare(`SELECT COALESCE(MAX(seq), 0) + 1 as next FROM shipment_timeline_events WHERE awb = ?`)
-      .bind(params.awb)
-      .first<{ next: number }>();
-    const seq = seqRow?.next ?? 1;
-
-    await ctx.env.DB.prepare(
-      `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, input_by_user_id, input_by_name, input_at, created_at)
-       VALUES (?, ?, ?, 'Dibatalkan', ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-      .bind(newId(), params.awb, seq, shipment.kota_asal, tanggal, jam, alasan || "Pesanan dibatalkan.", actor.id, actor.nama, nowIso, nowIso)
-      .run();
-
-    await ctx.env.DB.prepare(`UPDATE shipments SET status = 'Dibatalkan', updated_at = ?, updated_by = ? WHERE awb = ?`)
-      .bind(nowIso, actor.id, params.awb)
-      .run();
-
-    await writeAuditLog(ctx.env, actor, {
-      action: "CANCEL_SHIPMENT",
-      actionLabel: "CANCEL SHIPMENT",
-      module: "Shipment",
-      awb: params.awb,
-      description: alasan ? `Pengiriman dibatalkan: ${alasan}` : "Pengiriman dibatalkan.",
-    });
-
-    return ok({ cancelled: true });
-  });
-
   router.post("/api/shipments/:awb/timeline", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "tracking.update");
     const shipment = await ctx.env.DB.prepare(`SELECT * FROM shipments WHERE awb = ? AND deleted_at IS NULL`).bind(params.awb).first<
@@ -652,6 +642,14 @@ export function registerShipmentRoutes(router: Router) {
 
     await ctx.env.DB.prepare(`UPDATE shipments SET status = ?, truck_id = COALESCE(?, truck_id), updated_at = ?, updated_by = ? WHERE awb = ?`)
       .bind(newStatus, truckId ?? null, nowIso, actor.id, params.awb)
+      .run();
+
+    // Cargo is moving: a still-pending cancellation request can no longer be honoured.
+    await ctx.env.DB.prepare(
+      `UPDATE cancellation_requests SET status = 'EXPIRED', decided_at = ?, decided_by_name = 'System', decided_by_role = 'System', decision_reason = ?
+       WHERE awb = ? AND status = 'PENDING'`,
+    )
+      .bind(nowIso, `Status order berubah menjadi ${newStatus} sebelum Client memberi keputusan.`, params.awb)
       .run();
 
     if (isSelesai) {

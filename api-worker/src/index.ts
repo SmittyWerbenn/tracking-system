@@ -21,6 +21,7 @@ import { registerRecoveryRoutes } from "./routes/recovery";
 import { registerDashboardRoutes } from "./routes/dashboard";
 import { registerDriverRoutes } from "./routes/driver";
 import { registerRecycleRoutes } from "./routes/recycle";
+import { registerCancellationRoutes } from "./routes/cancellation";
 import { purgeExpired } from "./recycle";
 
 const router = new Router();
@@ -43,6 +44,7 @@ registerRecoveryRoutes(router);
 registerDashboardRoutes(router);
 registerDriverRoutes(router);
 registerRecycleRoutes(router);
+registerCancellationRoutes(router);
 
 router.get("/api/health", async () => ok({ status: "ok", time: new Date().toISOString() }));
 

@@ -114,6 +114,35 @@ export interface Shipment {
   /** Latest "Request Pemulihan" for a cancelled order. This is a process, not an
    * order status - the order itself stays Dibatalkan until GMS approves. */
   recovery?: { status: RecoveryStatus; requestedAt: string; rejectionReason?: string };
+  /** Who created the order and in which role - cancellation rules follow the creator. */
+  createdByName?: string;
+  createdByRole?: "Client" | "Admin" | "Superadmin";
+  /** What the signed-in user may do about cancelling, decided by the API. */
+  cancel?: CancelPolicy;
+  /** Latest cancellation request (a process, separate from the order status). */
+  cancellation?: CancellationRequest;
+}
+
+export interface CancelPolicy {
+  canDirect: boolean;
+  canRequest: boolean;
+  canDecide: boolean;
+  blockedReason: string | null;
+}
+
+export type CancellationStatus = "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" | "EXPIRED";
+
+export interface CancellationRequest {
+  id: string;
+  status: CancellationStatus;
+  reason: string;
+  requestedBy: string;
+  requestedByRole: string;
+  requestedAt: string;
+  decidedBy: string | null;
+  decidedByRole: string | null;
+  decidedAt: string | null;
+  decisionReason: string | null;
 }
 
 export type RecoveryStatus = "PENDING" | "APPROVED" | "REJECTED";

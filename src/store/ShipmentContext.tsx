@@ -58,6 +58,10 @@ interface RawShipmentSummary {
   claimDriverId?: string | null;
   claimTruck?: { id: string; nomorUnit: string; jenis: string } | null;
   recovery?: { status: RecoveryStatus; requestedAt: string; rejectionReason: string | null } | null;
+  createdByName?: string | null;
+  createdByRole?: Shipment["createdByRole"];
+  cancel?: Shipment["cancel"];
+  cancellation?: Shipment["cancellation"] | null;
   pod: { tanggal: string; jam: string; namaPenerima: string } | null;
   lastUpdate: { tanggal: string; jam: string } | null;
 }
@@ -148,6 +152,10 @@ function toShipment(row: RawShipmentSummary): Shipment {
     recovery: row.recovery
       ? { status: row.recovery.status, requestedAt: row.recovery.requestedAt, rejectionReason: row.recovery.rejectionReason ?? undefined }
       : undefined,
+    createdByName: row.createdByName ?? undefined,
+    createdByRole: row.createdByRole,
+    cancel: row.cancel,
+    cancellation: row.cancellation ?? undefined,
   };
 }
 
@@ -202,7 +210,6 @@ interface ShipmentContextValue {
     awb: string,
     data: { alamatAsal: string; kotaAsal: string; alamatTujuan: string; kotaTujuan: string },
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
-  cancelShipment: (awb: string, alasan?: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   /** Client only: asks GMS to restore a cancelled order (does not change the order). */
   requestRecovery: (awb: string, alasan?: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   updatePodPhoto: (awb: string, slot: "barang" | "suratJalan", fotoDataUrl: string | undefined) => Promise<void>;
@@ -427,16 +434,6 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function cancelShipment(awb: string, alasan?: string) {
-    try {
-      await api.post(`/api/shipments/${encodeURIComponent(awb)}/cancel`, { alasan });
-      await refresh();
-      return { ok: true as const };
-    } catch (err) {
-      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal membatalkan pengiriman." };
-    }
-  }
-
   async function requestRecovery(awb: string, alasan?: string) {
     try {
       await api.post(`/api/shipments/${encodeURIComponent(awb)}/recovery-request`, { alasan });
@@ -512,7 +509,6 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         addTrackingUpdate,
         updateShipmentInfo,
         updateShipmentAlamat,
-        cancelShipment,
         requestRecovery,
         updatePodPhoto,
         fetchPendingClaims,

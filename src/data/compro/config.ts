@@ -34,10 +34,6 @@ export const FLEET_STATS_CONFIG = {
 export const SITE_IMAGES = {
   about: "" as string, // e.g. "/images/about-team.jpg"
 };
-
-/** Client / partner logos. Add real entries only: { name: "PT ...", logo: "/clients/x.png" } */
-export const CLIENT_LOGOS: { name: string; logo: string; url?: string }[] = [];
-
 /** Social links. Leave empty to hide. */
 export const SOCIAL_LINKS: { label: string; url: string }[] = [];
 

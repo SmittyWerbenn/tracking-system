@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { About } from "../../components/compro/About";
-import { CTASection } from "../../components/compro/Clients";
+import { Clients, CTASection } from "../../components/compro/Clients";
 import { ContactSection } from "../../components/compro/ContactSection";
 import { Coverage } from "../../components/compro/Coverage";
 import { Fleet, FleetFinder } from "../../components/compro/Fleet";
@@ -77,6 +77,7 @@ export default function Home() {
         <FleetStats />
         <FleetFinder onPick={setGroup} />
         <Coverage />
+        <Clients />
         <CTASection />
         <ContactSection prefillMessage={prefill} />
       </main>

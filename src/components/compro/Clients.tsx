@@ -1,20 +1,11 @@
 import { ArrowRight } from "lucide-react";
 import { C } from "../../data/compro/content";
-import { CLIENT_LOGOS } from "../../data/compro/config";
+import { clientsAsset } from "../../data/compro/assetsMap";
 import { Container, SectionHeader } from "./SectionHeader";
 import { Reveal, scrollToSection, useL } from "./utils";
 
-export function ClientLogo({ name, logo, url }: { name: string; logo: string; url?: string }) {
-  const img = (
-    <img src={logo} alt={name} loading="lazy" className="max-h-12 w-auto object-contain opacity-60 grayscale transition-all duration-300 hover:opacity-100 hover:grayscale-0" />
-  );
-  return (
-    <li className="flex h-24 items-center justify-center rounded-xl border border-slate-200 bg-white p-4">
-      {url ? <a href={url} target="_blank" rel="noopener noreferrer">{img}</a> : img}
-    </li>
-  );
-}
-
+/** One ready-made image that already contains every client logo. Shown whole:
+ * no cropping, no recolouring, width 100% with the natural 3:1 ratio kept. */
 export function Clients() {
   const l = useL();
   return (
@@ -22,13 +13,15 @@ export function Clients() {
       <Container>
         <SectionHeader title={l(C.clients.title)} sub={l(C.clients.sub)} />
         <Reveal className="mt-10">
-          {CLIENT_LOGOS.length ? (
-            <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-              {CLIENT_LOGOS.map((c) => <ClientLogo key={c.name} {...c} />)}
-            </ul>
-          ) : (
-            <p className="mx-auto max-w-xl rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center text-base text-slate-500">{l(C.clients.empty)}</p>
-          )}
+          <img
+            src={clientsAsset}
+            alt={l({ id: "Logo client GMS Logistics", en: "GMS Logistics clients" })}
+            width={2172}
+            height={724}
+            loading="lazy"
+            decoding="async"
+            className="mx-auto block h-auto w-full max-w-6xl object-contain"
+          />
         </Reveal>
       </Container>
     </section>

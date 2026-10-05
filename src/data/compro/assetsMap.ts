@@ -49,3 +49,6 @@ export const fleetAssets = {
   lowbed: `${ASSETS_PATH}/lowbed.webp`,
   dolly: `${ASSETS_PATH}/dolly.webp`,
 } as const;
+
+/** Single image containing every client logo (assets/clients.webp, served from public/assets). */
+export const clientsAsset = `${ASSETS_PATH}/clients.webp`;

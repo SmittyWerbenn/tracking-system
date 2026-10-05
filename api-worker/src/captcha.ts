@@ -4,6 +4,8 @@ import { Errors, HttpError } from "./http";
 /** Readable alphabet: no I/L/O/0/1/5/S/B/8. */
 const CHARS = "ACDEFGHJKMNPQRTUVWXYZ234679";
 const LENGTH = 6;
+/** Tracking CAPTCHA switched off for now (flip to true to re-enable; keep in sync with src/utils/captchaApi.ts). */
+export const TRACKING_CAPTCHA_ENABLED = false;
 export const CAPTCHA_TTL_MS = 5 * 60 * 1000;
 export const MAX_ATTEMPTS = 5;
 export const PASS_TTL_MS = 15 * 60 * 1000;

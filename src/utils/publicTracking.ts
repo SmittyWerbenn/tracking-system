@@ -4,7 +4,7 @@
 // api-worker/src/routes/public.ts).
 import type { Shipment, ShipmentStatus, TimelineEvent, TimelineEventType } from "../types";
 import { api, ApiError } from "./apiClient";
-import { getHumanPass, clearHumanPass } from "./captchaApi";
+import { TRACKING_CAPTCHA_ENABLED, getHumanPass, clearHumanPass } from "./captchaApi";
 import { resolveFileUrls, type FileRef } from "./resolveFiles";
 
 interface RawPublicShipment {
@@ -53,8 +53,8 @@ export interface PublicShipmentResult {
 export class HumanCheckRequiredError extends Error {}
 
 export async function fetchPublicShipment(awb: string): Promise<PublicShipmentResult | null> {
-  const pass = getHumanPass();
-  if (!pass) throw new HumanCheckRequiredError();
+  const pass = TRACKING_CAPTCHA_ENABLED ? getHumanPass() : null;
+  if (TRACKING_CAPTCHA_ENABLED && !pass) throw new HumanCheckRequiredError();
   try {
     const res = await api.get<{
       shipment: RawPublicShipment;
@@ -62,7 +62,7 @@ export async function fetchPublicShipment(awb: string): Promise<PublicShipmentRe
       pod: RawPublicPod | null;
       files: FileRef[];
       hasFeedback: boolean;
-    }>(`/api/public/shipments/${encodeURIComponent(awb)}`, { auth: false, headers: { "X-Human-Pass": pass } });
+    }>(`/api/public/shipments/${encodeURIComponent(awb)}`, { auth: false, headers: pass ? { "X-Human-Pass": pass } : undefined });
 
     const urlMap = await resolveFileUrls(res.files, true);
     const podBarangUrls = urlMap.get(`pod_barang:${res.shipment.awb}`) ?? [];

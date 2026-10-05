@@ -17,7 +17,7 @@ import {
 } from "../../utils/awbHistory";
 import { Captcha } from "../../components/Captcha";
 import { useTrackingGate } from "../../utils/useTrackingGate";
-import { getHumanPass } from "../../utils/captchaApi";
+import { TRACKING_CAPTCHA_ENABLED, getHumanPass } from "../../utils/captchaApi";
 import { useSeo } from "../../utils/seo";
 
 export default function TrackingSearch() {
@@ -66,7 +66,7 @@ export default function TrackingSearch() {
     setNotFound(false);
     // Already verified -> go straight on. Otherwise show the scanned AWB and ask for the
     // code once, WITHOUT reopening the scanner.
-    if (getHumanPass()) {
+    if (!TRACKING_CAPTCHA_ENABLED || getHumanPass()) {
       setScanNotice("");
       goToAwbIfExists(scannedAwb);
     } else {

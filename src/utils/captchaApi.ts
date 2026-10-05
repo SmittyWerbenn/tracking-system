@@ -11,6 +11,9 @@ export function fetchCaptcha(): Promise<CaptchaChallenge> {
   return api.post<CaptchaChallenge>("/api/public/captcha", undefined, { auth: false });
 }
 
+/** Tracking CAPTCHA switched off for now (keep in sync with api-worker/src/captcha.ts). */
+export const TRACKING_CAPTCHA_ENABLED = false;
+
 const PASS_KEY = "gms-human-pass";
 
 /** A human pass (issued after a solved CAPTCHA) lets the tracking lookup run for a while. */

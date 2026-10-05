@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import type { CaptchaHandle } from "../components/Captcha";
 import { useLanguage } from "../store/LanguageContext";
-import { CAPTCHA_MESSAGES, captchaFailureOf, getHumanPass, verifyTrackingCaptcha } from "./captchaApi";
+import { CAPTCHA_MESSAGES, TRACKING_CAPTCHA_ENABLED, captchaFailureOf, getHumanPass, verifyTrackingCaptcha } from "./captchaApi";
 import { fetchPublicShipment, HumanCheckRequiredError, type PublicShipmentResult } from "./publicTracking";
 
 /**
@@ -14,12 +14,12 @@ export function useTrackingGate() {
   const captchaRef = useRef<CaptchaHandle>(null);
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
-  const [needsCaptcha, setNeedsCaptcha] = useState(() => getHumanPass() === null);
+  const [needsCaptcha, setNeedsCaptcha] = useState(() => TRACKING_CAPTCHA_ENABLED && getHumanPass() === null);
 
   /** Verifies (if needed) and looks the AWB up. `blocked` = CAPTCHA step failed. */
   async function lookup(awb: string): Promise<PublicShipmentResult | null | "blocked"> {
     setError("");
-    if (!getHumanPass()) {
+    if (TRACKING_CAPTCHA_ENABLED && !getHumanPass()) {
       const c = code.trim();
       if (!c) {
         setNeedsCaptcha(true);

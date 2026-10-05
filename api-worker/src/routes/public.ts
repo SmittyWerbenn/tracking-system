@@ -6,7 +6,7 @@ import { parseJsonBody, reqString, reqNumber, optString } from "../validate";
 import { newId } from "../crypto";
 import { presignGet } from "../storage";
 import { likeTerm } from "../pagination";
-import { clientIp, rateLimit, requirePass } from "../captcha";
+import { TRACKING_CAPTCHA_ENABLED, clientIp, rateLimit, requirePass } from "../captcha";
 
 const PUBLIC_ENTITY_TYPES = new Set([
   "shipment_photo",
@@ -43,7 +43,7 @@ export function registerPublicRoutes(router: Router) {
     // Needs a human pass (issued after a solved CAPTCHA) + a per-IP cap, so the
     // AWB space can't be scraped by script. Direct links get the CAPTCHA gate in the UI.
     await rateLimit(ctx.env, `track:${clientIp(ctx)}`, 120, 10 * 60 * 1000);
-    await requirePass(ctx.env, ctx.request.headers.get("X-Human-Pass"));
+    if (TRACKING_CAPTCHA_ENABLED) await requirePass(ctx.env, ctx.request.headers.get("X-Human-Pass"));
     const row = await ctx.env.DB.prepare(
       `SELECT s.*, t.nomor_unit as truck_nomor_unit, t.jenis as truck_jenis, d.nama as truck_driver_nama
        FROM shipments s LEFT JOIN trucks t ON t.id = s.truck_id LEFT JOIN drivers d ON d.id = t.driver_id

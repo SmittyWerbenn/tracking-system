@@ -12,12 +12,12 @@ export interface PageMeta {
   totalPages: number;
 }
 
-function readSize(): number {
+function readSize(key = SIZE_KEY, fallback = DEFAULT_PAGE_SIZE): number {
   try {
-    const n = Number(localStorage.getItem(SIZE_KEY));
-    return (PAGE_SIZE_OPTIONS as readonly number[]).includes(n) ? n : DEFAULT_PAGE_SIZE;
+    const n = Number(localStorage.getItem(key));
+    return (PAGE_SIZE_OPTIONS as readonly number[]).includes(n) ? n : fallback;
   } catch {
-    return DEFAULT_PAGE_SIZE;
+    return fallback;
   }
 }
 
@@ -56,10 +56,11 @@ export function usePagedList<Raw, T = Raw>(
   endpoint: string,
   params: PagedParams,
   map?: (r: Raw) => T,
-  opts: { enabled?: boolean } = {},
+  opts: { enabled?: boolean; /** Own default + remembered choice for this table (instead of the shared one). */ pageSizeKey?: string; defaultPageSize?: number } = {},
 ) {
   const enabled = opts.enabled ?? true;
-  const [pageSize, setPageSizeState] = useState<number>(readSize);
+  const sizeKey = opts.pageSizeKey ? `${SIZE_KEY}:${opts.pageSizeKey}` : SIZE_KEY;
+  const [pageSize, setPageSizeState] = useState<number>(() => readSize(sizeKey, opts.defaultPageSize));
   const filterKey = `${endpoint}|${toQuery(params).toString()}|${pageSize}`;
   const [pageState, setPageState] = useState({ key: filterKey, page: 1 });
   const page = pageState.key === filterKey ? pageState.page : 1;
@@ -110,7 +111,7 @@ export function usePagedList<Raw, T = Raw>(
 
   function setPageSize(n: number) {
     try {
-      localStorage.setItem(SIZE_KEY, String(n));
+      localStorage.setItem(sizeKey, String(n));
     } catch {
       /* ignore */
     }

@@ -76,6 +76,7 @@ export default function LocationList() {
     "/api/locations",
     { q: debouncedSearch, jenis: jenisFilter, status: statusFilter === "semua" ? "" : statusFilter },
     toTitik,
+    { pageSizeKey: "locations", defaultPageSize: 10 },
   );
   const filtered = list.items;
   const isLoading = list.loading;

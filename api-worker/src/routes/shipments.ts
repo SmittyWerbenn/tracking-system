@@ -464,7 +464,7 @@ export function registerShipmentRoutes(router: Router) {
       .bind(params.awb, params.awb)
       .all();
 
-    return ok({ shipment: forActor(withHoldPolicy(withCancelPolicy(shipmentSummary(row), row, actor), row, actor), actor.role), timeline: timeline.results, pod: pod ?? null, files: files.results ?? [], holds: holds.results ?? [] });
+    return ok({ shipment: forActor(withHoldPolicy(withCancelPolicy(shipmentSummary(row), row, actor), row, actor), actor.role), timeline: timeline.results, pod: pod ?? null, files: files.results ?? [], holds: actor.role === "Mitra" || actor.role === "Driver" ? [] : holds.results ?? [] });
     });
 
     // Last position reported by the driver ("Perbarui Posisi" button on the

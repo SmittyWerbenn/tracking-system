@@ -262,7 +262,7 @@ export default function ShipmentDetail() {
           <CancelOrderActions shipment={shipment} onDone={reload} variant="full" />
         </div>
       </div>
-      <HoldInfo shipment={shipment} />
+      {profile?.role !== "Mitra" && <HoldInfo shipment={shipment} />}
       <CancellationInfo shipment={shipment} />
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3 print:mt-4 print:grid-cols-3 print:gap-4">
@@ -366,7 +366,7 @@ export default function ShipmentDetail() {
 
             {profile?.role !== "Viewer" && profile?.role !== "Mitra" && (
             <>
-            <div className="mt-6 border-t border-slate-100 pt-5">
+            <div className="mt-6 border-t border-slate-100 pt-5 print:hidden">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
                 <Truck size={13} /> Truck &amp; Driver
               </p>
@@ -459,7 +459,7 @@ export default function ShipmentDetail() {
             {profile?.role !== "Viewer" && profile?.role !== "Client" && (
             <>
 
-            <div className="mt-6 border-t border-slate-100 pt-5">
+            <div className="mt-6 border-t border-slate-100 pt-5 print:hidden">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
                 <Handshake size={13} /> Mitra
               </p>

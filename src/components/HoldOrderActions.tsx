@@ -59,7 +59,7 @@ export function HoldOrderActions({ shipment, onDone, variant = "icon" }: Props) 
 
   return (
     <>
-      {policy.canHold && btn("Hold Pengiriman", () => setOpen("hold"), <PauseCircle size={variant === "icon" ? 14 : 15} />)}
+      {policy.canHold && btn("Hold", () => setOpen("hold"), <PauseCircle size={variant === "icon" ? 14 : 15} />)}
       {policy.canRelease && btn("Lepas Hold", () => setOpen("release"), <PlayCircle size={variant === "icon" ? 14 : 15} />)}
 
       {open === "hold" && (

@@ -74,7 +74,7 @@ export function CancelOrderActions({ shipment, onDone, variant = "icon" }: Props
 
   return (
     <>
-      {policy.canDirect && btn("Batalkan Pesanan", () => setOpen("direct"), "rose", <Ban size={variant === "icon" ? 14 : 15} />)}
+      {policy.canDirect && btn("Batalkan", () => setOpen("direct"), "rose", <Ban size={variant === "icon" ? 14 : 15} />)}
       {policy.canRequest && btn("Ajukan Pembatalan", () => setOpen("request"), "amber", <Send size={variant === "icon" ? 14 : 15} />)}
       {policy.canDecide && pending && btn("Keputusan Pembatalan", () => setOpen("decide"), "blue", <Ban size={variant === "icon" ? 14 : 15} />)}
       {isStaff && pending && btn("Tarik Permintaan", () => setOpen("withdraw"), "blue", <Undo2 size={variant === "icon" ? 14 : 15} />)}

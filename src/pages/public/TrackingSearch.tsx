@@ -106,20 +106,20 @@ export default function TrackingSearch() {
           <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
             <button
               onClick={() => navigate(-1)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200/40 px-3.5 py-2 text-sm font-semibold text-blue-100 transition-colors hover:bg-white/10 hover:text-white"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200/40 px-3.5 py-2 text-base sm:text-lg font-semibold text-blue-100 transition-colors hover:bg-white/10 hover:text-white"
             >
               <ArrowLeft size={15} /> {t.trackingResult.back}
             </button>
 
             <div className="mt-6 grid grid-cols-1 items-center gap-10 lg:grid-cols-5">
               <div className="text-center lg:col-span-3 lg:text-left">
-                <p className="inline-flex items-center gap-2 rounded-full border border-gms-gold/40 bg-gms-gold/10 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-gms-light">
+                <p className="inline-flex items-center gap-2 rounded-full border border-gms-gold/40 bg-gms-gold/10 px-3.5 py-1.5 text-sm sm:text-base font-bold uppercase tracking-[0.14em] text-gms-light">
                   <Search size={13} /> {t.nav.trackPackage}
                 </p>
                 <h1 className="mt-4 font-display text-3xl font-extrabold leading-tight text-white sm:text-4xl lg:text-5xl">
                   {t.trackingSearch.heroTitle} <span className="text-gms-bright">{t.trackingSearch.heroTitleGold}</span>
                 </h1>
-                <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-blue-100/90 sm:text-base lg:mx-0">
+                <p className="mx-auto mt-3 max-w-md text-base sm:text-lg leading-relaxed text-blue-100/90 sm:text-lg lg:mx-0">
                   {t.trackingSearch.heroDesc}
                 </p>
 
@@ -135,10 +135,10 @@ export default function TrackingSearch() {
                       placeholder={t.trackingSearch.placeholder}
                       aria-label="AWB"
                       autoComplete="off"
-                      className="min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-base text-slate-900 focus:border-gms-gold focus:bg-white focus:outline-none focus:ring-2 focus:ring-gms-gold/20"
+                      className="min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-lg text-slate-900 focus:border-gms-gold focus:bg-white focus:outline-none focus:ring-2 focus:ring-gms-gold/20"
                     />
                     {scanNotice && gate.needsCaptcha && (
-                      <p role="status" className="rounded-lg bg-gms-soft px-3 py-2 text-xs font-semibold text-gms-corp">
+                      <p role="status" className="rounded-lg bg-gms-soft px-3 py-2 text-sm sm:text-base font-semibold text-gms-corp">
                         {language === "id" ? `AWB ${scanNotice} terbaca. Masukkan kode verifikasi lalu tekan Lacak.` : `AWB ${scanNotice} scanned. Enter the verification code, then press Track.`}
                       </p>
                     )}
@@ -148,21 +148,21 @@ export default function TrackingSearch() {
                     <button
                       type="submit"
                       disabled={checking}
-                      className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-gms-corp px-6 py-3 text-sm font-bold text-white shadow-lg transition-all hover:bg-gms-deep disabled:opacity-60"
+                      className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-gms-corp px-6 py-3 text-base sm:text-lg font-bold text-white shadow-lg transition-all hover:bg-gms-deep disabled:opacity-60"
                     >
                       <Search size={16} />
                       {checking ? (language === "id" ? "Memproses..." : "Processing...") : t.trackingSearch.submitButton}
                     </button>
                   </div>
                   {notFound && (
-                    <p className="mt-2 text-left text-xs font-medium text-red-200">{t.trackingSearch.notFound}</p>
+                    <p className="mt-2 text-left text-sm sm:text-base font-medium text-red-200">{t.trackingSearch.notFound}</p>
                   )}
                 </form>
 
                 <button
                   type="button"
                   onClick={() => setScannerOpen(true)}
-                  className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white/90 shadow-sm backdrop-blur-sm transition-colors hover:border-white/40 hover:bg-white/20 lg:mx-0"
+                  className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-5 py-2.5 text-base sm:text-lg font-semibold text-white/90 shadow-sm backdrop-blur-sm transition-colors hover:border-white/40 hover:bg-white/20 lg:mx-0"
                 >
                   <QrCode size={18} />
                   {t.trackingSearch.scanButton}
@@ -173,7 +173,7 @@ export default function TrackingSearch() {
                 <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/15">
                   <Truck size={44} className="text-white" />
                 </div>
-                <p className="max-w-[220px] text-center font-serif text-lg italic text-blue-100">
+                <p className="max-w-[220px] text-center font-serif text-xl italic text-blue-100">
                   {t.trackingSearch.taglineImage}
                 </p>
               </div>
@@ -190,8 +190,8 @@ export default function TrackingSearch() {
                   <f.icon size={19} />
                 </span>
                 <div>
-                  <p className="text-sm font-bold text-gms-corp">{f.title}</p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-slate-500">{f.desc}</p>
+                  <p className="text-base sm:text-lg font-bold text-gms-corp">{f.title}</p>
+                  <p className="mt-0.5 text-sm sm:text-base leading-relaxed text-slate-500">{f.desc}</p>
                 </div>
               </div>
             ))}
@@ -203,13 +203,13 @@ export default function TrackingSearch() {
           <section className="mx-auto max-w-6xl px-4 pb-10 pt-10 sm:px-6">
             <div className="w-full text-left">
               <div className="mb-2 flex items-center justify-between">
-                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                <p className="flex items-center gap-1.5 text-sm sm:text-base font-semibold uppercase tracking-wide text-slate-400">
                   <History size={13} />
                   {t.trackingSearch.historyTitle}
                 </p>
                 <button
                   onClick={() => setHistory(clearAwbHistory())}
-                  className="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-red-600"
+                  className="flex items-center gap-1 text-sm sm:text-base font-medium text-slate-400 hover:text-red-600"
                 >
                   <Trash2 size={12} /> {t.trackingSearch.clearAll}
                 </button>
@@ -225,8 +225,8 @@ export default function TrackingSearch() {
                       className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
                     >
                       <div className="min-w-0">
-                        <p className="truncate font-mono text-sm font-medium text-slate-800">{h.awb}</p>
-                        <p className="text-xs text-slate-400">
+                        <p className="truncate font-mono text-base sm:text-lg font-medium text-slate-800">{h.awb}</p>
+                        <p className="text-sm sm:text-base text-slate-400">
                           {t.trackingSearch.lastViewed}: {formatRelativeView(h.lastViewedAt, language)}
                         </p>
                       </div>

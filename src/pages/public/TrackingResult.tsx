@@ -122,8 +122,8 @@ export default function TrackingResult() {
       <PublicLayout>
         <div className="mx-auto flex max-w-sm flex-col items-center py-10 text-center">
           <ShieldCheck size={40} className="text-gms-gold" />
-          <h1 className="mt-4 text-lg font-semibold text-slate-800">Verifikasi Keamanan</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="mt-4 text-xl font-semibold text-slate-800">Verifikasi Keamanan</h1>
+          <p className="mt-1 text-base sm:text-lg text-slate-500">
             Untuk melihat status AWB <span className="font-mono font-medium text-slate-700">{awb}</span>, masukkan kode pada gambar.
           </p>
           <form onSubmit={handleVerify} className="mt-5 w-full text-left">
@@ -131,7 +131,7 @@ export default function TrackingResult() {
             <button
               type="submit"
               disabled={checking}
-              className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gms-corp px-6 text-sm font-bold text-white hover:bg-gms-deep disabled:opacity-60"
+              className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gms-corp px-6 text-base sm:text-lg font-bold text-white hover:bg-gms-deep disabled:opacity-60"
             >
               <Search size={15} /> {checking ? "Memproses..." : t.trackingSearch.submitButton}
             </button>
@@ -146,8 +146,8 @@ export default function TrackingResult() {
       <PublicLayout>
         <div className="flex flex-col items-center py-10 text-center">
           <PackageSearch size={40} className="text-slate-300" />
-          <h1 className="mt-4 text-lg font-semibold text-slate-800">{t.trackingResult.notFoundTitle}</h1>
-          <p className="mt-1 max-w-sm text-sm text-slate-500">
+          <h1 className="mt-4 text-xl font-semibold text-slate-800">{t.trackingResult.notFoundTitle}</h1>
+          <p className="mt-1 max-w-sm text-base sm:text-lg text-slate-500">
             AWB <span className="font-mono font-medium text-slate-700">"{awb}"</span> — {t.trackingResult.notFoundDesc}
           </p>
           <form onSubmit={handleSearch} className="mt-6 flex w-full max-w-sm gap-2">
@@ -155,18 +155,18 @@ export default function TrackingResult() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t.trackingSearch.placeholder}
-              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-base sm:text-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
             />
             <button
               type="submit"
               disabled={checking}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-900 px-4 py-2.5 text-base sm:text-lg font-semibold text-white hover:bg-blue-800 disabled:opacity-60"
             >
               <Search size={15} /> {t.trackingSearch.submitButton}
             </button>
           </form>
-          {notFound && <p className="mt-2 text-xs font-medium text-red-600">{t.trackingResult.notFoundError}</p>}
-          <Link to="/tracking" className="mt-4 text-sm text-blue-700 hover:underline">
+          {notFound && <p className="mt-2 text-sm sm:text-base font-medium text-red-600">{t.trackingResult.notFoundError}</p>}
+          <Link to="/tracking" className="mt-4 text-base sm:text-lg text-blue-700 hover:underline">
             {t.trackingResult.notFoundBack}
           </Link>
         </div>
@@ -182,7 +182,7 @@ export default function TrackingResult() {
     <PublicLayout wide>
       <button
         onClick={() => navigate(-1)}
-        className="mb-4 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900"
+        className="mb-4 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-base sm:text-lg font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900"
       >
         <ArrowLeft size={15} /> {t.trackingResult.back}
       </button>
@@ -193,18 +193,18 @@ export default function TrackingResult() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t.trackingResult.searchPlaceholder}
-          className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+          className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-base sm:text-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
         />
         <button
           type="submit"
           disabled={checking}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-base sm:text-lg font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
         >
           <Search size={15} />
         </button>
       </form>
       {notFound && (
-        <p className="-mt-3 mb-3 text-xs font-medium text-red-600">
+        <p className="-mt-3 mb-3 text-sm sm:text-base font-medium text-red-600">
           AWB "{query}" {t.trackingResult.notFoundError}
         </p>
       )}
@@ -223,7 +223,7 @@ export default function TrackingResult() {
             </div>
             <StatusBadge status={shipment.status} />
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <div className="flex items-center gap-1.5 text-sm sm:text-base text-slate-500">
             <CalendarClock size={14} className={isOverdue ? "text-amber-500" : "text-slate-400"} />
             {t.trackingResult.estimatedArrival}:{" "}
             <span className={`font-medium ${isOverdue ? "text-amber-600" : "text-slate-700"}`}>
@@ -243,7 +243,7 @@ export default function TrackingResult() {
         <div className="grid grid-cols-2 divide-x divide-slate-100 border-t border-slate-100 px-5 py-4 sm:px-6">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{t.trackingResult.origin}</p>
-            <p className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+            <p className="mt-0.5 flex items-center gap-1.5 text-base sm:text-lg font-semibold text-slate-800">
               {shipment.kotaAsal}
             </p>
           </div>
@@ -251,7 +251,7 @@ export default function TrackingResult() {
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
               {t.trackingResult.destination}
             </p>
-            <p className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+            <p className="mt-0.5 flex items-center gap-1.5 text-base sm:text-lg font-semibold text-slate-800">
               {shipment.kotaTujuan}
               <ArrowRight size={13} className="text-slate-300" />
             </p>
@@ -273,7 +273,7 @@ export default function TrackingResult() {
 
       {/* Timeline */}
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <h2 className="mb-4 text-base sm:text-lg font-semibold uppercase tracking-wide text-slate-500">
           {t.trackingResult.journeyHeading}
         </h2>
         <TrackingTimeline events={shipment.timeline} />
@@ -283,7 +283,7 @@ export default function TrackingResult() {
         <FeedbackPopup awb={shipment.awb} customerName={shipment.penerima.nama} alreadyRated={hasFeedback} />
       )}
 
-      <div className="mt-8 rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center text-xs text-slate-400">
+      <div className="mt-8 rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center text-sm sm:text-base text-slate-400">
         {t.trackingResult.helpText}{" "}
         <span className="font-mono font-medium text-slate-600">{shipment.awb}</span>.
       </div>

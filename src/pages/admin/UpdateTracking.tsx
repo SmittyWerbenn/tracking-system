@@ -38,8 +38,8 @@ export default function UpdateTracking() {
   const { activeNames: activeLayanan, refresh: refreshLayanan } = useLayanan();
   const { trucksWithDriver } = useFleet();
   const { activeTitikLokasi } = useLocations();
-  // Lokasi update status mengarah ke "Nama Area" (fallback ke Kota bila area kosong).
-  const areaSuggestions = Array.from(new Set(activeTitikLokasi.map((t) => (t.namaArea || t.namaKota).trim()).filter(Boolean)));
+  // Lokasi update status mengarah ke "Nama Area" (hanya field Nama Area di Kota & Titik Transit).
+  const areaSuggestions = Array.from(new Set(activeTitikLokasi.map((t) => (t.namaArea || "").trim()).filter(Boolean)));
   const { profile } = useAuth();
   const isMitra = profile?.role === "Mitra";
   // Editing shipment data (incl. the addresses) needs shipments.update_info on

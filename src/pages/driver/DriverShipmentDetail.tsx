@@ -58,8 +58,8 @@ export default function DriverShipmentDetail() {
   const { awb } = useParams<{ awb: string }>();
   const { addTrackingUpdate } = useShipments();
   const { activeTitikLokasi } = useLocations();
-  // Lokasi update status mengarah ke "Nama Area" (fallback ke Kota bila area kosong).
-  const areaSuggestions = Array.from(new Set(activeTitikLokasi.map((t) => (t.namaArea || t.namaKota).trim()).filter(Boolean)));
+  // Lokasi update status mengarah ke "Nama Area" (hanya field Nama Area di Kota & Titik Transit).
+  const areaSuggestions = Array.from(new Set(activeTitikLokasi.map((t) => (t.namaArea || "").trim()).filter(Boolean)));
   const [data, setData] = useState<DriverShipmentDetailData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 

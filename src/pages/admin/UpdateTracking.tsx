@@ -310,9 +310,9 @@ export default function UpdateTracking() {
     <AdminLayout>
       <button
         onClick={() => navigate(-1)}
-        className="mb-4 inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-6 py-3.5 text-xl font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900"
+        className="mb-4 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900"
       >
-        <ArrowLeft size={26} /> Kembali
+        <ArrowLeft size={15} /> Kembali
       </button>
 
       <div className="flex flex-wrap items-center justify-between gap-3">

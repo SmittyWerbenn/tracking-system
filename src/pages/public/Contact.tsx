@@ -25,9 +25,9 @@ export default function Contact() {
     <PublicLayout>
       <button
         onClick={() => navigate(-1)}
-        className="mb-4 inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-base font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900"
+        className="mb-4 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900"
       >
-        <ArrowLeft size={20} /> {t.trackingResult.back}
+        <ArrowLeft size={15} /> {t.trackingResult.back}
       </button>
 
       <section className="rounded-2xl bg-white p-6 shadow-sm sm:p-8">

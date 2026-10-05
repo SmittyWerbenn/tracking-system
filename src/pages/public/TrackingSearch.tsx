@@ -106,9 +106,9 @@ export default function TrackingSearch() {
           <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
             <button
               onClick={() => navigate(-1)}
-              className="inline-flex items-center gap-2 rounded-lg border border-blue-200/40 px-4 py-2.5 text-base font-semibold text-blue-100 transition-colors hover:bg-white/10 hover:text-white"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200/40 px-3.5 py-2 text-sm font-semibold text-blue-100 transition-colors hover:bg-white/10 hover:text-white"
             >
-              <ArrowLeft size={20} /> {t.trackingResult.back}
+              <ArrowLeft size={15} /> {t.trackingResult.back}
             </button>
 
             <div className="mt-6 grid grid-cols-1 items-center gap-10 lg:grid-cols-5">

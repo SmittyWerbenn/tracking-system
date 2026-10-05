@@ -17,6 +17,7 @@ import { exportShipmentsCsv } from "../../utils/exportCsv";
 import { formatTanggalJam, formatTanggalPendek, stripKeteranganMeta, todayISO, isoToWib } from "../../utils/format";
 import { SHIPMENT_STATUS_OPTIONS } from "../../utils/status";
 import { CancelOrderActions } from "../../components/CancelOrderActions";
+import { HoldOrderActions } from "../../components/HoldOrderActions";
 import { DeleteButton } from "../../components/DeleteButton";
 
 const NO_CLIENT = "__none__";
@@ -599,6 +600,7 @@ export default function ShipmentList() {
                           <RotateCcw size={14} /> Ajukan Pemulihan
                         </button>
                       )}
+                      <HoldOrderActions shipment={s} onDone={reloadList} />
                       <CancelOrderActions shipment={s} onDone={reloadList} />
                       <DeleteButton
                         entityType="shipment"

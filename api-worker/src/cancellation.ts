@@ -2,6 +2,9 @@ import type { Env, AuthedUser } from "./types";
 
 /** Orders can only be cancelled while the cargo has not been picked up. */
 export const CANCELLABLE_STATUS = "Dalam Persiapan";
+/** SQL predicate for "not picked up yet": normal preparation, or parked on Hold
+ * (a Hold order is still unpicked, so it follows the same cancellation workflow). */
+export const CANCELLABLE_STATUS_SQL = "status IN ('Dalam Persiapan','Hold')";
 export const PICKED_UP_MESSAGE = "Order tidak dapat dibatalkan karena barang sudah dipickup.";
 
 /** SQL: any operational trace that cargo has been collected, independent of
@@ -52,7 +55,7 @@ export function cancelPolicy(row: PolicyInput, actor: Pick<AuthedUser, "role" | 
   if (row.status === "Dibatalkan") return none("Order sudah dibatalkan.");
   if (row.status === "Selesai / Terkirim") return none("Order yang sudah Selesai/Terkirim tidak dapat dibatalkan.");
 
-  const pickedUp = row.status !== CANCELLABLE_STATUS || !!row.has_pickup;
+  const pickedUp = (row.status !== CANCELLABLE_STATUS && row.status !== "Hold") || !!row.has_pickup;
   const creator = creatorRoleOf(row);
 
   // A pending request stays visible to its decider even if cargo moved meanwhile:

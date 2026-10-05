@@ -12,7 +12,8 @@ export type ShipmentStatus =
   | "Selesai / Terkirim"
   | "Dibatalkan"
   | "Re-route"
-  | "Penarikan";
+  | "Penarikan"
+  | "Hold";
 
 export type TimelineEventType =
   | "Barang Diterima"

@@ -61,6 +61,8 @@ interface RawShipmentSummary {
   createdByName?: string | null;
   createdByRole?: Shipment["createdByRole"];
   cancel?: Shipment["cancel"];
+  hold?: Shipment["hold"] | null;
+  holdPolicy?: Shipment["holdPolicy"];
   cancellation?: Shipment["cancellation"] | null;
   pod: { tanggal: string; jam: string; namaPenerima: string } | null;
   lastUpdate: { tanggal: string; jam: string } | null;
@@ -155,6 +157,8 @@ function toShipment(row: RawShipmentSummary): Shipment {
     createdByName: row.createdByName ?? undefined,
     createdByRole: row.createdByRole,
     cancel: row.cancel,
+    hold: row.hold ?? undefined,
+    holdPolicy: row.holdPolicy,
     cancellation: row.cancellation ?? undefined,
   };
 }
@@ -182,6 +186,7 @@ interface ShipmentDetailResponse {
   timeline: RawTimelineRow[];
   pod: RawPodRow | null;
   files: FileRef[];
+  holds?: Shipment["holds"];
 }
 
 interface ShipmentListResponse {
@@ -314,6 +319,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
 
       return {
         ...toShipment(res.shipment),
+        holds: res.holds ?? [],
         fotoBarang: fotoBarangUrls[0],
         fotoSuratJalan: fotoSuratJalanUrls[0],
         timeline,
@@ -353,6 +359,8 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       truckId: data.truckId || undefined,
       slaValue: data.slaValue,
       customerId: data.customerId || undefined,
+      hold: data.hold || undefined,
+      holdReason: data.hold ? data.holdReason?.trim() : undefined,
     });
 
     if (data.fotoBarang) {

@@ -323,6 +323,11 @@ export default function UpdateTracking() {
         <StatusBadge status={shipment.status} />
       </div>
 
+      {shipment.status === "Hold" && (
+        <div className="mt-6 rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-800">
+          Pengiriman ini sedang di-Hold, jadi belum bisa diproses atau diberi update tracking. Pembuat order dapat memilih Lepas Hold dari halaman detail resi.
+        </div>
+      )}
       {!locked && (
         <div className="mt-6 rounded-xl border border-slate-200 bg-white shadow-sm">
           {canEditInfo ? (

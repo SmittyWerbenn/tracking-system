@@ -78,7 +78,7 @@ export function registerDriverRoutes(router: Router) {
     // Page mode (history screen): status / created-date filters + LIMIT/OFFSET in SQL.
     // Without page/limit it returns the driver's whole list (the dashboard's status tabs need it).
     const paged = wantsPaging(url);
-    const where = ["t.driver_id = ?", "s.status != 'Dibatalkan'", "s.deleted_at IS NULL"];
+    const where = ["t.driver_id = ?", "s.status != 'Dibatalkan'", "s.status != 'Hold'", "s.deleted_at IS NULL"];
     const params: unknown[] = [driverId];
     const status = url.searchParams.get("status");
     const from = url.searchParams.get("from");
@@ -111,7 +111,7 @@ export function registerDriverRoutes(router: Router) {
       `SELECT s.*, ${CUSTOMER_NAME_SQL}
        FROM shipments s
        WHERE s.truck_id IS NULL AND s.deleted_at IS NULL
-         AND s.status != 'Dibatalkan'
+         AND s.status != 'Dibatalkan' AND s.status != 'Hold'
          AND (s.claim_status IS NULL OR s.claim_driver_id = ?)
        ORDER BY s.created_at ASC`,
     )
@@ -137,7 +137,7 @@ export function registerDriverRoutes(router: Router) {
       .bind(params.awb)
       .first<{ truck_id: string | null; claim_status: string | null; claim_driver_id: string | null; status: string }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
-    if (shipment.status === "Dibatalkan") throw Errors.notFound("AWB tidak ditemukan.");
+    if (shipment.status === "Dibatalkan" || shipment.status === "Hold") throw Errors.notFound("AWB tidak ditemukan.");
     if (shipment.truck_id) throw Errors.conflict("Pengiriman ini sudah punya driver yang ditugaskan.");
     if (shipment.claim_status === "pending") {
       if (shipment.claim_driver_id === driverId) return ok({ claimed: true });
@@ -205,7 +205,7 @@ export function registerDriverRoutes(router: Router) {
       .bind(params.awb)
       .first<Record<string, unknown>>();
     if (!row) throw Errors.notFound("AWB tidak ditemukan.");
-    if (row.status === "Dibatalkan") throw Errors.notFound("AWB tidak ditemukan.");
+    if (row.status === "Dibatalkan" || row.status === "Hold") throw Errors.notFound("AWB tidak ditemukan.");
     if (row.truck_driver_id !== driverId) throw Errors.forbidden("Pengiriman ini bukan tugas Anda.");
 
     const timeline = await ctx.env.DB.prepare(
@@ -223,7 +223,7 @@ export function registerDriverRoutes(router: Router) {
     const user = requireAuth(ctx);
     const driverId = await requireDriverId(ctx);
     const owns = await ctx.env.DB.prepare(
-      `SELECT 1 FROM shipments s JOIN trucks t ON t.id = s.truck_id WHERE s.awb = ? AND t.driver_id = ? AND s.deleted_at IS NULL`,
+      `SELECT 1 FROM shipments s JOIN trucks t ON t.id = s.truck_id WHERE s.awb = ? AND t.driver_id = ? AND s.deleted_at IS NULL AND s.status != 'Hold'`,
     )
       .bind(params.awb, driverId)
       .first();
@@ -260,7 +260,7 @@ export function registerDriverRoutes(router: Router) {
   router.get("/api/driver/shipments/:awb/position", async (ctx: Ctx, params) => {
     const driverId = await requireDriverId(ctx);
     const owns = await ctx.env.DB.prepare(
-      `SELECT 1 FROM shipments s JOIN trucks t ON t.id = s.truck_id WHERE s.awb = ? AND t.driver_id = ? AND s.deleted_at IS NULL`,
+      `SELECT 1 FROM shipments s JOIN trucks t ON t.id = s.truck_id WHERE s.awb = ? AND t.driver_id = ? AND s.deleted_at IS NULL AND s.status != 'Hold'`,
     )
       .bind(params.awb, driverId)
       .first();

@@ -20,7 +20,7 @@ export function registerDashboardRoutes(router: Router) {
     // Cancelled orders are internal-admin/owning-customer data only - never
     // counted or listed for Viewer/Driver/Mitra, even in aggregate stats.
     const hideCancelled = actor.role === "Viewer" || actor.role === "Driver" || actor.role === "Mitra";
-    const cancelWhere = hideCancelled ? `AND status != 'Dibatalkan'` : "";
+    const cancelWhere = (hideCancelled ? `AND status != 'Dibatalkan'` : "") + (actor.role === "Driver" || actor.role === "Mitra" ? ` AND status != 'Hold'` : "");
 
     const [byStatus, total, stagnant, trucks, avgRating, recent] = await Promise.all([
       ctx.env.DB.prepare(`SELECT status, COUNT(*) as c FROM shipments WHERE deleted_at IS NULL ${custWhere} ${cancelWhere} GROUP BY status`)
@@ -30,7 +30,7 @@ export function registerDashboardRoutes(router: Router) {
         .bind(...custBind())
         .first<{ c: number }>(),
       ctx.env.DB.prepare(
-        `SELECT COUNT(*) as c FROM shipments WHERE deleted_at IS NULL AND status NOT IN ('Selesai / Terkirim', 'Dibatalkan') AND updated_at < ? ${custWhere}`,
+        `SELECT COUNT(*) as c FROM shipments WHERE deleted_at IS NULL AND status NOT IN ('Selesai / Terkirim', 'Dibatalkan', 'Hold') AND updated_at < ? ${custWhere}`,
       )
         .bind(...custBind(stagnantCutoff))
         .first<{ c: number }>(),

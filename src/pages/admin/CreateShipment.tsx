@@ -189,6 +189,10 @@ export default function CreateShipment() {
       setFormError("Client ID wajib diisi.");
       return;
     }
+    if (form.hold && !form.holdReason?.trim()) {
+      setFormError("Alasan Hold wajib diisi.");
+      return;
+    }
     setFormError(null);
     setSubmitting(true);
     try {
@@ -202,7 +206,7 @@ export default function CreateShipment() {
         awb,
         kotaAsal: form.kotaAsal,
         kotaTujuan: form.kotaTujuan,
-        status: "Dalam Persiapan",
+        status: form.hold ? "Hold" : "Dalam Persiapan",
         tanggalDibuat: todayISO(),
         pengirim: form.pengirim,
         penerima: form.penerima,
@@ -497,6 +501,33 @@ export default function CreateShipment() {
               value={form.deskripsiBarang}
               onChange={(e) => update("deskripsiBarang", e.target.value)}
             />
+          </Field>
+          <Field label="Status Awal" full>
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600"
+                checked={!!form.hold}
+                onChange={(e) => update("hold", e.target.checked)}
+              />
+              <span className="text-sm text-slate-700">
+                <span className="font-medium">Hold Pengiriman</span>
+                <span className="block text-xs text-slate-500">
+                  AWB tetap diterbitkan (mis. untuk penagihan), tetapi order belum masuk ke proses Driver sampai Anda memilih Lepas Hold.
+                </span>
+              </span>
+            </label>
+            {form.hold && (
+              <textarea
+                required
+                rows={2}
+                maxLength={500}
+                className={`${inputClass} mt-2`}
+                placeholder="Alasan Hold, contoh: Menunggu pembayaran dari pembeli."
+                value={form.holdReason ?? ""}
+                onChange={(e) => update("holdReason", e.target.value)}
+              />
+            )}
           </Field>
           <Field label="Foto Barang" full>
             <div className="flex items-center gap-3">

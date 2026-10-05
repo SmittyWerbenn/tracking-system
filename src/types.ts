@@ -8,7 +8,8 @@ export type ShipmentStatus =
   | "Selesai / Terkirim"
   | "Dibatalkan"
   | "Re-route"
-  | "Penarikan";
+  | "Penarikan"
+  | "Hold";
 
 /** A Master Layanan name (e.g. "Regular", "LTL", or any custom layanan) - the
  * valid set is managed in Master Layanan and enforced by the API. */
@@ -119,8 +120,33 @@ export interface Shipment {
   createdByRole?: "Client" | "Admin" | "Superadmin";
   /** What the signed-in user may do about cancelling, decided by the API. */
   cancel?: CancelPolicy;
+  /** Active Hold (order parked, hidden from Driver/Mitra); only present while status is "Hold". */
+  hold?: { reason: string; holdAt: string; holdBy: string; holdByRole: string; previousStatus: string };
+  /** What the signed-in user may do about Hold/Release, decided by the API (creator ownership). */
+  holdPolicy?: HoldPolicy;
+  /** Every Hold episode, newest first (detail only). */
+  holds?: HoldRecord[];
   /** Latest cancellation request (a process, separate from the order status). */
   cancellation?: CancellationRequest;
+}
+
+export interface HoldPolicy {
+  canHold: boolean;
+  canRelease: boolean;
+  blockedReason: string | null;
+}
+
+export interface HoldRecord {
+  id: string;
+  previousStatus: string;
+  holdReason: string;
+  holdAt: string;
+  holdBy: string;
+  holdByRole: string;
+  releasedAt: string | null;
+  releasedBy: string | null;
+  releasedByRole: string | null;
+  releaseReason: string | null;
 }
 
 export interface CancelPolicy {
@@ -169,6 +195,9 @@ export interface ShipmentFormData {
    * server and force-replaced with its own; other creator roles must
    * supply one explicitly. */
   customerId?: string;
+  /** Create the AWB already parked on Hold (needs holdReason). */
+  hold?: boolean;
+  holdReason?: string;
 }
 
 export interface TrackingUpdateFormData {

@@ -30,6 +30,7 @@ import { api } from "../../utils/apiClient";
 import { formatJam, formatTanggalJam, formatTanggalPanjang, isoToWib } from "../../utils/format";
 import { adminPath, trackingUrl as publicTrackingUrl } from "../../utils/urls";
 import { CancelOrderActions, CancellationInfo } from "../../components/CancelOrderActions";
+import { HoldInfo, HoldOrderActions } from "../../components/HoldOrderActions";
 
 /** Last row of driver_position_reports (raw DB shape) - the driver portal's
  * "Perbarui Posisi" button writes this, the detail page only reads it. */
@@ -257,9 +258,11 @@ export default function ShipmentDetail() {
           >
             <MapPin size={15} /> Lihat Tracking
           </Link>
+          <HoldOrderActions shipment={shipment} onDone={reload} variant="full" />
           <CancelOrderActions shipment={shipment} onDone={reload} variant="full" />
         </div>
       </div>
+      <HoldInfo shipment={shipment} />
       <CancellationInfo shipment={shipment} />
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3 print:mt-4 print:grid-cols-3 print:gap-4">

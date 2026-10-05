@@ -74,6 +74,12 @@ const STYLES: Record<string, StatusStyle> = {
     dot: "bg-slate-400",
     ring: "ring-slate-200",
   },
+  "Hold": {
+    bg: "bg-indigo-100",
+    text: "text-indigo-700",
+    dot: "bg-indigo-500",
+    ring: "ring-indigo-200",
+  },
   "Dibatalkan": {
     bg: "bg-rose-100",
     text: "text-rose-700",
@@ -96,6 +102,7 @@ export const SHIPMENT_STATUS_OPTIONS: ShipmentStatus[] = [
   "Selesai / Terkirim",
   "Re-route",
   "Penarikan",
+  "Hold",
   "Dibatalkan",
 ];
 

@@ -5,6 +5,7 @@ export type Permission =
   | "shipments.view"
   | "shipments.create"
   | "shipments.update_info"
+  | "shipments.hold"
   | "tracking.update"
   | "fleet.view"
   | "fleet.manage"
@@ -24,6 +25,7 @@ const ALL: Permission[] = [
   "shipments.view",
   "shipments.create",
   "shipments.update_info",
+  "shipments.hold",
   "tracking.update",
   "fleet.view",
   "fleet.manage",
@@ -46,6 +48,7 @@ const ROLE_PERMISSIONS: Record<Role, Set<Permission>> = {
     "shipments.view",
     "shipments.create",
     "shipments.update_info",
+    "shipments.hold",
     "tracking.update",
     "fleet.view",
     "fleet.manage",
@@ -83,6 +86,7 @@ const ROLE_PERMISSIONS: Record<Role, Set<Permission>> = {
   "Client": new Set([
     "shipments.view",
     "shipments.create",
+    "shipments.hold",
     "fleet.view",
     "locations.view",
     "feedback.view",

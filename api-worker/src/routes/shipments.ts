@@ -12,6 +12,7 @@ import { wibNow } from "../wib";
 import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, type TimelineEventType } from "../status";
 import { addBusinessDays } from "../sla";
 import { cancelPolicy, creatorRoleOf, pickupEvidenceSql } from "../cancellation";
+import { holdPolicy } from "../hold";
 
 const POD_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -63,6 +64,15 @@ function shipmentSummary(row: Record<string, unknown>) {
     recovery: row.recovery_status
       ? { status: row.recovery_status, requestedAt: row.recovery_requested_at, rejectionReason: row.recovery_rejection_reason ?? null }
       : null,
+    hold: row.status === "Hold" && row.h_id
+      ? {
+          reason: row.h_reason,
+          holdAt: row.h_at,
+          holdBy: row.h_by,
+          holdByRole: row.h_by_role,
+          previousStatus: row.h_prev,
+        }
+      : null,
     createdByName: row.created_by_name ?? null,
     createdByRole: creatorRoleOf({ created_by_role: row.created_by_role as string | null, customer_id: row.customer_id as string | null }),
     cancellation: row.cr_id
@@ -79,6 +89,24 @@ function shipmentSummary(row: Record<string, unknown>) {
           decisionReason: row.cr_decision_reason ?? null,
         }
       : null,
+  };
+}
+
+/** Whether this actor may Hold / Release this order (ownership + state, computed on the server). */
+function withHoldPolicy<T extends ReturnType<typeof shipmentSummary>>(summary: T, row: Record<string, unknown>, actor: AuthedUser) {
+  return {
+    ...summary,
+    holdPolicy: holdPolicy(
+      {
+        status: String(row.status),
+        customer_id: (row.customer_id as string | null) ?? null,
+        created_by: (row.created_by as string | null) ?? null,
+        created_by_role: (row.created_by_role as string | null) ?? null,
+        has_pickup: Number(row.has_pickup ?? 0),
+        pending_cancel: row.cr_status === "PENDING",
+      },
+      actor,
+    ),
   };
 }
 
@@ -123,6 +151,8 @@ export function registerShipmentRoutes(router: Router) {
       where.push("s.mitra_id = ?");
       params.push(actor.mitraId);
     }
+    // Hold orders are not operational yet: Driver/Mitra never receive them (filtered in SQL, before pagination).
+    if (actor.role === "Driver" || actor.role === "Mitra") where.push("s.status != 'Hold'");
     // Cancelled orders are "data batal order" - a separate bucket, not part
     // of the everyday Data Pengiriman view. They're excluded from the
     // default ("Semua") list for every role, including Superadmin/Admin/
@@ -150,7 +180,7 @@ export function registerShipmentRoutes(router: Router) {
     const macet = Number(url.searchParams.get("macet"));
     if (Number.isFinite(macet) && macet > 0) {
       const cutoff = new Date(Date.now() + 7 * 3600_000 - macet * 86_400_000).toISOString().slice(0, 16);
-      where.push("s.status != 'Selesai / Terkirim'");
+      where.push("s.status NOT IN ('Selesai / Terkirim', 'Hold')");
       where.push(
         "(SELECT e.tanggal || 'T' || e.jam FROM shipment_timeline_events e WHERE e.awb = s.awb ORDER BY e.seq DESC LIMIT 1) <= ?",
       );
@@ -177,7 +207,8 @@ export function registerShipmentRoutes(router: Router) {
               ${pickupEvidenceSql("s.awb")} AS has_pickup,
               cr.id as cr_id, cr.status as cr_status, cr.reason as cr_reason, cr.requested_by_name as cr_requested_by_name,
               cr.requested_by_role as cr_requested_by_role, cr.requested_at as cr_requested_at, cr.decided_by_name as cr_decided_by_name,
-              cr.decided_by_role as cr_decided_by_role, cr.decided_at as cr_decided_at, cr.decision_reason as cr_decision_reason
+              cr.decided_by_role as cr_decided_by_role, cr.decided_at as cr_decided_at, cr.decision_reason as cr_decision_reason,
+              h.id as h_id, h.previous_status as h_prev, h.hold_reason as h_reason, h.hold_at as h_at, h.hold_by_name as h_by, h.hold_by_role as h_by_role
        FROM shipments s
        LEFT JOIN trucks t ON t.id = s.truck_id
        LEFT JOIN drivers d ON d.id = t.driver_id
@@ -191,6 +222,7 @@ export function registerShipmentRoutes(router: Router) {
        LEFT JOIN order_recovery_requests rr ON rr.id = (
          SELECT x.id FROM order_recovery_requests x WHERE x.awb = s.awb ORDER BY x.requested_at DESC LIMIT 1
        )
+       LEFT JOIN shipment_holds h ON h.awb = s.awb AND h.released_at IS NULL
        LEFT JOIN cancellation_requests cr ON cr.id = (
          SELECT y.id FROM cancellation_requests y WHERE y.awb = s.awb ORDER BY y.requested_at DESC LIMIT 1
        )
@@ -202,7 +234,7 @@ export function registerShipmentRoutes(router: Router) {
       .all();
 
     return ok({
-      items: (rows.results ?? []).map((r) => forActor(withCancelPolicy(shipmentSummary(r), r, actor), actor.role)),
+      items: (rows.results ?? []).map((r) => forActor(withHoldPolicy(withCancelPolicy(shipmentSummary(r), r, actor), r, actor), actor.role)),
       meta: pageMeta(page, limit, total?.c ?? 0),
     });
   });
@@ -259,6 +291,16 @@ export function registerShipmentRoutes(router: Router) {
     // Superadmin/Admin forwards a shipment to a Mitra, at creation or later
     // via POST /api/shipments/:awb/assign-mitra.
     const mitraId = actor.role === "Client" ? undefined : optString(body, "mitraId");
+    // Optional "Hold Pengiriman" at creation: the AWB is issued (e.g. for invoicing) but the order is parked.
+    // Needs the hold permission and a reason; the creator is the one who can release it later.
+    const holdAtCreate = body.hold === true;
+    let holdReason = "";
+    if (holdAtCreate) {
+      requirePermission(ctx, "shipments.hold");
+      holdReason = typeof body.holdReason === "string" ? body.holdReason.trim() : "";
+      if (!holdReason) throw Errors.badRequest("Alasan Hold wajib diisi.");
+      if (holdReason.length > 500) throw Errors.badRequest("Alasan Hold maksimal 500 karakter.");
+    }
 
     if (truckId) {
       const truck = await ctx.env.DB.prepare(`SELECT id FROM trucks WHERE id = ? AND deleted_at IS NULL`).bind(truckId).first();
@@ -299,9 +341,9 @@ export function registerShipmentRoutes(router: Router) {
               deskripsi_barang, layanan, berat_kg, jumlah_koli, truck_id,
               sla_value, sla_unit, estimasi_tiba, customer_id, mitra_id,
               email_terkirim, created_at, updated_at, created_by, updated_by, created_by_role, created_by_name
-            ) VALUES (?, ?, ?, 'Dalam Persiapan', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`,
           ).bind(
-            awb, tanggalDibuat, jamDibuat,
+            awb, tanggalDibuat, jamDibuat, holdAtCreate ? "Hold" : "Dalam Persiapan",
             pengirimNama, pengirimTelepon, pengirimEmail,
             penerimaNama, penerimaTelepon, penerimaEmail,
             alamatAsal, kotaAsal, alamatTujuan, kotaTujuan,
@@ -313,6 +355,14 @@ export function registerShipmentRoutes(router: Router) {
             `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, truck_id, input_by_user_id, input_by_name, input_at, created_at)
              VALUES (?, ?, 1, 'Barang Diterima', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           ).bind(newId(), awb, `Gudang ${kotaAsal}`, tanggalDibuat, jamDibuat, "Barang diterima dan siap dikirim.", truckId ?? null, actor.id, actor.nama, nowIso, nowIso),
+          ...(holdAtCreate
+            ? [
+                ctx.env.DB.prepare(
+                  `INSERT INTO shipment_holds (id, awb, previous_status, hold_reason, hold_at, hold_by_user_id, hold_by_name, hold_by_role)
+                   VALUES (?, ?, 'Dalam Persiapan', ?, ?, ?, ?, ?)`,
+                ).bind(newId(), awb, holdReason, nowIso, actor.id, actor.nama, actor.role),
+              ]
+            : []),
         ]);
         saved = true;
       } catch (err) {
@@ -330,6 +380,7 @@ export function registerShipmentRoutes(router: Router) {
       awb,
       description:
         `Resi diterbitkan untuk pengiriman ${kotaAsal} -> ${kotaTujuan}.` +
+        (holdAtCreate ? ` Langsung di-Hold. Alasan: ${holdReason}.` : "") +
         (layananFellBack
           ? typeof body.layanan === "string" && body.layanan.trim()
             ? ` Layanan "${body.layanan.trim()}" tidak tersedia di Master Layanan (tidak ditemukan atau nonaktif), otomatis memakai ${layanan}.`
@@ -337,7 +388,7 @@ export function registerShipmentRoutes(router: Router) {
           : ""),
     });
 
-    return ok({ awb, layanan, layananFallback: layananFellBack }, {}, 201);
+    return ok({ awb, layanan, layananFallback: layananFellBack, hold: holdAtCreate }, {}, 201);
   });
 
   router.get("/api/shipments/:awb", async (ctx: Ctx, params) => {
@@ -351,7 +402,8 @@ export function registerShipmentRoutes(router: Router) {
               ${pickupEvidenceSql("s.awb")} AS has_pickup,
               cr.id as cr_id, cr.status as cr_status, cr.reason as cr_reason, cr.requested_by_name as cr_requested_by_name,
               cr.requested_by_role as cr_requested_by_role, cr.requested_at as cr_requested_at, cr.decided_by_name as cr_decided_by_name,
-              cr.decided_by_role as cr_decided_by_role, cr.decided_at as cr_decided_at, cr.decision_reason as cr_decision_reason
+              cr.decided_by_role as cr_decided_by_role, cr.decided_at as cr_decided_at, cr.decision_reason as cr_decision_reason,
+              h.id as h_id, h.previous_status as h_prev, h.hold_reason as h_reason, h.hold_at as h_at, h.hold_by_name as h_by, h.hold_by_role as h_by_role
        FROM shipments s
        LEFT JOIN trucks t ON t.id = s.truck_id
        LEFT JOIN drivers d ON d.id = t.driver_id
@@ -361,6 +413,7 @@ export function registerShipmentRoutes(router: Router) {
        LEFT JOIN order_recovery_requests rr ON rr.id = (
          SELECT x.id FROM order_recovery_requests x WHERE x.awb = s.awb ORDER BY x.requested_at DESC LIMIT 1
        )
+       LEFT JOIN shipment_holds h ON h.awb = s.awb AND h.released_at IS NULL
        LEFT JOIN cancellation_requests cr ON cr.id = (
          SELECT y.id FROM cancellation_requests y WHERE y.awb = s.awb ORDER BY y.requested_at DESC LIMIT 1
        )
@@ -378,6 +431,7 @@ export function registerShipmentRoutes(router: Router) {
     if (actor.role === "Mitra" && row.mitra_id !== actor.mitraId) {
       throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
     }
+    if ((actor.role === "Driver" || actor.role === "Mitra") && row.status === "Hold") throw Errors.notFound("AWB tidak ditemukan.");
 
     const timeline = await ctx.env.DB.prepare(
       `SELECT e.*, t.nomor_unit as truck_nomor_unit, d.nama as truck_driver_nama,
@@ -393,6 +447,15 @@ export function registerShipmentRoutes(router: Router) {
 
     const pod = await ctx.env.DB.prepare(`SELECT * FROM shipment_pod WHERE awb = ?`).bind(params.awb).first();
 
+    // Every Hold episode, newest first (never overwritten).
+    const holds = await ctx.env.DB.prepare(
+      `SELECT id, previous_status as previousStatus, hold_reason as holdReason, hold_at as holdAt, hold_by_name as holdBy, hold_by_role as holdByRole,
+              released_at as releasedAt, released_by_name as releasedBy, released_by_role as releasedByRole, release_reason as releaseReason
+       FROM shipment_holds WHERE awb = ? ORDER BY hold_at DESC`,
+    )
+      .bind(params.awb)
+      .all();
+
     const files = await ctx.env.DB.prepare(
       `SELECT id, entity_type, entity_id FROM files WHERE (entity_type IN ('shipment_photo','shipment_surat_jalan','pod_barang','pod_surat_jalan') AND entity_id = ?)
          OR (entity_type = 'timeline_photo' AND entity_id IN (SELECT id FROM shipment_timeline_events WHERE awb = ?))
@@ -401,7 +464,7 @@ export function registerShipmentRoutes(router: Router) {
       .bind(params.awb, params.awb)
       .all();
 
-    return ok({ shipment: forActor(withCancelPolicy(shipmentSummary(row), row, actor), actor.role), timeline: timeline.results, pod: pod ?? null, files: files.results ?? [] });
+    return ok({ shipment: forActor(withHoldPolicy(withCancelPolicy(shipmentSummary(row), row, actor), row, actor), actor.role), timeline: timeline.results, pod: pod ?? null, files: files.results ?? [], holds: holds.results ?? [] });
     });
 
     // Last position reported by the driver ("Perbarui Posisi" button on the
@@ -419,6 +482,7 @@ export function registerShipmentRoutes(router: Router) {
     if ((actor.role === "Viewer" || actor.role === "Driver" || actor.role === "Mitra") && row.status === "Dibatalkan") {
     throw Errors.notFound("AWB tidak ditemukan.");
     }
+    if ((actor.role === "Driver" || actor.role === "Mitra") && row.status === "Hold") throw Errors.notFound("AWB tidak ditemukan.");
     if ((actor.role === "Client" || (actor.role === "Viewer" && actor.customerId)) && row.customer_id !== actor.customerId) {
     throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
     }
@@ -454,7 +518,7 @@ export function registerShipmentRoutes(router: Router) {
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
     if (isClient) {
       if (!actor.customerId || shipment.customer_id !== actor.customerId) throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
-      if (shipment.status !== "Dalam Persiapan") {
+      if (shipment.status !== "Dalam Persiapan" && shipment.status !== "Hold") {
         throw Errors.unprocessable("Data pengiriman hanya bisa diubah selama status masih Dalam Persiapan.");
       }
     } else if (shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan") {
@@ -575,7 +639,7 @@ export function registerShipmentRoutes(router: Router) {
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
     if (actor.role === "Client") {
       if (shipment.customer_id !== actor.customerId) throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
-      if (shipment.status !== "Dalam Persiapan") {
+      if (shipment.status !== "Dalam Persiapan" && shipment.status !== "Hold") {
         throw Errors.unprocessable("Alamat hanya bisa diubah selama status masih Dalam Persiapan.");
       }
     } else if (shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan") {
@@ -613,6 +677,9 @@ export function registerShipmentRoutes(router: Router) {
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
     if (shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan") {
       throw Errors.unprocessable("Pengiriman ini sudah Selesai/Terkirim atau Dibatalkan, dan terkunci.");
+    }
+    if (shipment.status === "Hold") {
+      throw Errors.unprocessable("Pengiriman ini sedang di-Hold dan belum boleh diproses. Lepas Hold terlebih dahulu.");
     }
     if (actor.role === "Driver") {
       const owns = await ctx.env.DB.prepare(
@@ -853,13 +920,15 @@ export function registerShipmentRoutes(router: Router) {
     const actor = requirePermission(ctx, "shipments.update_info");
     const claim = await loadPendingClaim(ctx, params.awb);
     if (!claim.truck_id) throw Errors.badRequest("Driver ini belum memiliki unit truck di Master Armada.");
+    const held = await ctx.env.DB.prepare(`SELECT 1 FROM shipments WHERE awb = ? AND status = 'Hold'`).bind(params.awb).first();
+    if (held) throw Errors.unprocessable("Pengiriman ini sedang di-Hold, penugasan driver tidak dapat dikonfirmasi. Lepas Hold terlebih dahulu.");
 
     const now = new Date().toISOString();
     // Atomic: only the first reviewer's update still finds the claim pending for this driver.
     const res = await ctx.env.DB.prepare(
       `UPDATE shipments SET truck_id = ?, claim_status = NULL, claim_driver_id = NULL, claim_requested_at = NULL,
               updated_at = ?, updated_by = ?
-       WHERE awb = ? AND claim_status = 'pending' AND claim_driver_id = ?`,
+       WHERE awb = ? AND claim_status = 'pending' AND claim_driver_id = ? AND status != 'Hold'`,
     )
       .bind(claim.truck_id, now, actor.id, params.awb, claim.driver_id)
       .run();
@@ -948,6 +1017,7 @@ export function registerShipmentRoutes(router: Router) {
     if (shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan") {
       throw Errors.unprocessable("Pengiriman yang sudah Selesai/Terkirim atau Dibatalkan tidak bisa diubah lagi.");
     }
+    if (shipment.status === "Hold") throw Errors.unprocessable("Pengiriman yang sedang di-Hold tidak dapat diteruskan ke Mitra. Lepas Hold terlebih dahulu.");
 
     const body = await parseJsonBody(ctx.request);
     const mitraIdProvided = Object.prototype.hasOwnProperty.call(body, "mitraId");

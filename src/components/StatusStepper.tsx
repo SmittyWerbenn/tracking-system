@@ -7,6 +7,7 @@ const STEP_ICONS = [ClipboardCheck, PackageCheck, Truck, Navigation, Check];
 function getProgress(status: ShipmentStatus): { index: number; hasKendala: boolean } {
   switch (status) {
     case "Dalam Persiapan":
+    case "Hold":
       return { index: 1, hasKendala: false };
     case "Berangkat":
     case "Transit":

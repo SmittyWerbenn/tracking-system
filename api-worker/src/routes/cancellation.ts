@@ -7,7 +7,7 @@ import { requireAuth } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta } from "../pagination";
 import { wibNow } from "../wib";
-import { CANCELLABLE_STATUS, PICKED_UP_MESSAGE, cancelPolicy, creatorRoleOf, loadPolicyRow, pickupEvidenceSql } from "../cancellation";
+import { CANCELLABLE_STATUS_SQL, PICKED_UP_MESSAGE, cancelPolicy, creatorRoleOf, loadPolicyRow, pickupEvidenceSql } from "../cancellation";
 
 const ROLE_LABEL: Record<string, string> = { Superadmin: "Superadmin", Admin: "GMS-Admin", Client: "Client", Driver: "Driver", Viewer: "Viewer", Mitra: "Mitra" };
 
@@ -76,7 +76,7 @@ export function registerCancellationRoutes(router: Router) {
     const results = await ctx.env.DB.batch([
       ctx.env.DB.prepare(
         `UPDATE shipments SET status = 'Dibatalkan', updated_at = ?, updated_by = ?
-         WHERE awb = ? AND status = '${CANCELLABLE_STATUS}' AND deleted_at IS NULL
+         WHERE awb = ? AND ${CANCELLABLE_STATUS_SQL} AND deleted_at IS NULL
            AND NOT ${pickupEvidenceSql("shipments.awb")}
            AND NOT EXISTS (SELECT 1 FROM cancellation_requests c WHERE c.awb = shipments.awb AND c.status = 'PENDING')`,
       ).bind(nowIso, actor.id, params.awb),
@@ -185,11 +185,11 @@ export function registerCancellationRoutes(router: Router) {
       ctx.env.DB.prepare(
         `UPDATE cancellation_requests SET status = 'APPROVED', decided_by_user_id = ?, decided_by_name = ?, decided_by_role = ?, decided_at = ?, decision_reason = ?
          WHERE id = ? AND status = 'PENDING'
-           AND EXISTS (SELECT 1 FROM shipments s WHERE s.awb = ? AND s.status = '${CANCELLABLE_STATUS}' AND s.deleted_at IS NULL AND NOT ${pickupEvidenceSql("s.awb")})`,
+           AND EXISTS (SELECT 1 FROM shipments s WHERE s.awb = ? AND s.${CANCELLABLE_STATUS_SQL} AND s.deleted_at IS NULL AND NOT ${pickupEvidenceSql("s.awb")})`,
       ).bind(actor.id, actor.nama, actor.role, nowIso, keterangan, req.id, params.awb),
       ctx.env.DB.prepare(
         `UPDATE shipments SET status = 'Dibatalkan', updated_at = ?, updated_by = ?
-         WHERE awb = ? AND status = '${CANCELLABLE_STATUS}'
+         WHERE awb = ? AND ${CANCELLABLE_STATUS_SQL}
            AND EXISTS (SELECT 1 FROM cancellation_requests c WHERE c.id = ? AND c.status = 'APPROVED' AND c.decided_at = ?)`,
       ).bind(nowIso, actor.id, params.awb, req.id, nowIso),
       timelineInsert(

@@ -1,11 +1,14 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { PAGE_SIZE_OPTIONS, type PageMeta } from "../utils/usePagedList";
 
+/** Page numbers to show: 1 ... (page-2..page+2) ... last. <= 7 pages: all of them, no ellipsis. */
 function pageWindow(page: number, last: number): (number | "…")[] {
   if (last <= 7) return Array.from({ length: last }, (_, i) => i + 1);
+  let from = Math.max(2, page - 2);
+  let to = Math.min(last - 1, Math.max(page + 2, 3));
+  if (from === 3) from = 2; // don't hide a single page behind "…"
+  if (to === last - 2) to = last - 1;
   const out: (number | "…")[] = [1];
-  const from = Math.max(2, page - 1);
-  const to = Math.min(last - 1, page + 1);
   if (from > 2) out.push("…");
   for (let p = from; p <= to; p++) out.push(p);
   if (to < last - 1) out.push("…");
@@ -13,8 +16,10 @@ function pageWindow(page: number, last: number): (number | "…")[] {
   return out;
 }
 
-const nav =
-  "inline-flex h-8 min-w-8 items-center justify-center rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40";
+const navBase =
+  "inline-flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40";
+const nav = `${navBase} border-slate-300 bg-white text-slate-600 hover:bg-slate-50`;
+const navActive = `${navBase} border-blue-900 bg-blue-900 text-white`;
 
 /** Shared footer for every server-paged table/list. Hidden when there is no data. */
 export function Pagination({
@@ -78,7 +83,7 @@ export function Pagination({
         <div className="hidden items-center gap-1 sm:flex">
           {pageWindow(page, last).map((p, i) =>
             p === "…" ? (
-              <span key={`e${i}`} className="px-1">
+              <span key={`e${i}`} aria-hidden className="px-1 text-slate-400">
                 …
               </span>
             ) : (
@@ -89,7 +94,7 @@ export function Pagination({
                 aria-current={p === page ? "page" : undefined}
                 disabled={loading}
                 onClick={() => onPage(p)}
-                className={p === page ? `${nav} border-blue-900 bg-blue-900 text-white hover:bg-blue-900` : nav}
+                className={p === page ? navActive : nav}
               >
                 {p}
               </button>

@@ -114,7 +114,7 @@ export function registerUserRoutes(router: Router) {
          UNION SELECT customer_id FROM users WHERE customer_id IS NOT NULL
          UNION SELECT customer_id FROM shipments WHERE customer_id IS NOT NULL
        ) ids LEFT JOIN clients c ON c.customer_id = ids.customer_id
-       WHERE COALESCE(c.aktif, 1) = 1
+       WHERE COALESCE(c.aktif, 1) = 1 AND c.deleted_at IS NULL
        ORDER BY ids.customer_id`,
     ).all<{ customer_id: string; nama: string | null; kota: string | null }>();
     const list = rows.results ?? [];
@@ -141,8 +141,14 @@ export function registerUserRoutes(router: Router) {
   // to it and its shipment count. Superadmin/Admin only.
   router.get("/api/customers", async (ctx: Ctx) => {
     requirePermission(ctx, "users.manage");
+    // Ids of binned clients: their leftover users/shipments must not resurrect them as "derived" rows.
+    const binned = new Set(
+      ((await ctx.env.DB.prepare(`SELECT customer_id FROM clients WHERE deleted_at IS NOT NULL`).all<{ customer_id: string }>()).results ?? []).map((r) =>
+        r.customer_id.toLowerCase(),
+      ),
+    );
     const [clients, accounts, shipmentCounts] = await Promise.all([
-      ctx.env.DB.prepare(`SELECT customer_id, nama, kota, kontrak_no_pelanggan, aktif, created_at FROM clients`).all<{ customer_id: string; nama: string; kota: string | null; kontrak_no_pelanggan: string | null; aktif: number; created_at: string }>(),
+      ctx.env.DB.prepare(`SELECT customer_id, nama, kota, kontrak_no_pelanggan, aktif, created_at FROM clients WHERE deleted_at IS NULL`).all<{ customer_id: string; nama: string; kota: string | null; kontrak_no_pelanggan: string | null; aktif: number; created_at: string }>(),
       ctx.env.DB.prepare(
         `SELECT id, nama, email, aktif, created_at, customer_id, role
          FROM users WHERE customer_id IS NOT NULL AND deleted_at IS NULL ORDER BY created_at ASC`,
@@ -169,12 +175,13 @@ export function registerUserRoutes(router: Router) {
     };
     for (const r of clients.results ?? []) ensure(r.customer_id, r.nama, r.kota, r.kontrak_no_pelanggan, r.created_at, r.aktif === 1);
     for (const a of accounts.results ?? []) {
+      if (binned.has(key(a.customer_id))) continue;
       ensure(a.customer_id, null, null, null, null).accounts.push({
         id: a.id, nama: a.nama, email: a.email, aktif: a.aktif === 1, role: a.role, createdAt: a.created_at,
       });
     }
     for (const id of shipmentCountByClient.keys()) {
-      if (!byClient.has(id)) {
+      if (!byClient.has(id) && !binned.has(id)) {
         const orig = (shipmentCounts.results ?? []).find((r) => key(r.customer_id) === id)!.customer_id;
         ensure(orig, null, null, null, null);
       }
@@ -225,7 +232,7 @@ export function registerUserRoutes(router: Router) {
   router.patch("/api/customers/:id", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "users.manage");
     const body = await parseJsonBody(ctx.request);
-    const client = await ctx.env.DB.prepare(`SELECT customer_id, nama, kota, kontrak_no_pelanggan, aktif FROM clients WHERE customer_id = ?`)
+    const client = await ctx.env.DB.prepare(`SELECT customer_id, nama, kota, kontrak_no_pelanggan, aktif FROM clients WHERE customer_id = ? AND deleted_at IS NULL`)
       .bind(params.id)
       .first<{ customer_id: string; nama: string; kota: string | null; kontrak_no_pelanggan: string | null; aktif: number }>();
     if (!client) throw Errors.notFound("Client tidak ditemukan.");
@@ -319,7 +326,7 @@ export function registerUserRoutes(router: Router) {
       throw Errors.badRequest("Client ID hanya berlaku untuk role Client dan Viewer.");
     }
     if (customerId) {
-      const known = await ctx.env.DB.prepare(`SELECT customer_id, aktif FROM clients WHERE customer_id = ?`)
+      const known = await ctx.env.DB.prepare(`SELECT customer_id, aktif FROM clients WHERE customer_id = ? AND deleted_at IS NULL`)
         .bind(customerId)
         .first<{ customer_id: string; aktif: number }>();
       if (!known) throw Errors.badRequest("Client ID belum terdaftar. Tambahkan dulu di menu Clients.");
@@ -421,7 +428,7 @@ export function registerUserRoutes(router: Router) {
     const customerIdProvided = Object.prototype.hasOwnProperty.call(body, "customerId");
     let customerId = customerIdProvided ? optString(body, "customerId") ?? null : undefined;
     if (customerId && customerId !== target.customer_id) {
-      const known = await ctx.env.DB.prepare(`SELECT customer_id FROM clients WHERE customer_id = ?`)
+      const known = await ctx.env.DB.prepare(`SELECT customer_id FROM clients WHERE customer_id = ? AND deleted_at IS NULL`)
         .bind(customerId)
         .first<{ customer_id: string }>();
       if (!known) throw Errors.badRequest("Client ID belum terdaftar. Tambahkan dulu di menu Clients.");

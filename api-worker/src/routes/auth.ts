@@ -46,7 +46,7 @@ export function registerAuthRoutes(router: Router) {
     const validPassword = user ? await verifyPassword(password, user.password_hash) : false;
     // Accounts of a deactivated Client/Mitra are frozen: no login until reactivated.
     const clientFrozen = user?.customer_id
-      ? !!(await ctx.env.DB.prepare(`SELECT 1 FROM clients WHERE customer_id = ? AND aktif = 0`).bind(user.customer_id).first())
+      ? !!(await ctx.env.DB.prepare(`SELECT 1 FROM clients WHERE customer_id = ? AND (aktif = 0 OR deleted_at IS NOT NULL)`).bind(user.customer_id).first())
       : false;
     const mitraFrozen = user?.mitra_id
       ? !!(await ctx.env.DB.prepare(`SELECT 1 FROM mitras WHERE kode_mitra = ? AND (aktif = 0 OR deleted_at IS NOT NULL)`).bind(user.mitra_id).first())

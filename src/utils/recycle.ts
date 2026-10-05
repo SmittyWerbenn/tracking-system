@@ -1,6 +1,6 @@
 import { api } from "./apiClient";
 
-export type RecycleEntity = "shipment" | "user" | "truck" | "location" | "layanan" | "mitra";
+export type RecycleEntity = "shipment" | "user" | "truck" | "location" | "layanan" | "mitra" | "client";
 
 export interface RecycleItemResult {
   id: string;

@@ -6,7 +6,7 @@ import { writeAuditLog } from "./audit";
 /** Days a binned row is kept before the nightly job purges it. */
 export const RETENTION_DAYS = 30;
 
-export type RecycleEntity = "shipment" | "user" | "truck" | "location" | "layanan" | "mitra";
+export type RecycleEntity = "shipment" | "user" | "truck" | "location" | "layanan" | "mitra" | "client";
 
 export interface EntityRow {
   id: string;
@@ -341,7 +341,54 @@ const mitra: EntityDef = {
   },
 };
 
-export const ENTITIES: Record<RecycleEntity, EntityDef> = { shipment, user, truck, location, layanan, mitra };
+const client: EntityDef = {
+  type: "client",
+  title: "Client",
+  module: "Clients",
+  table: "clients",
+  pk: "customer_id",
+  async load(env, id) {
+    const c = await env.DB.prepare(`SELECT * FROM clients WHERE customer_id = ?`).bind(id).first<Record<string, unknown>>();
+    if (!c) return null;
+    return {
+      id: String(c.customer_id),
+      label: String(c.nama),
+      sublabel: String(c.customer_id),
+      deletedAt: (c.deleted_at as string | null) ?? null,
+      snapshot: c,
+    };
+  },
+  async guardDelete(env, row) {
+    const users = await count(env, `SELECT COUNT(*) AS c FROM users WHERE customer_id = ? COLLATE NOCASE AND deleted_at IS NULL`, row.id);
+    const active = await count(
+      env,
+      `SELECT COUNT(*) AS c FROM shipments WHERE customer_id = ? COLLATE NOCASE AND deleted_at IS NULL AND status NOT IN (?, ?)`,
+      row.id,
+      ...FINAL_STATUSES,
+    );
+    return blockedBy(
+      [
+        [users, "user aktif (hapus atau pindahkan user-nya dulu)"],
+        [active, "pengiriman aktif"],
+      ],
+      "Client ini",
+    );
+  },
+  async guardPurge(env, row) {
+    return blockedBy(
+      [
+        [await count(env, `SELECT COUNT(*) AS c FROM users WHERE customer_id = ? COLLATE NOCASE`, row.id), "user"],
+        [await count(env, `SELECT COUNT(*) AS c FROM shipments WHERE customer_id = ? COLLATE NOCASE`, row.id), "pengiriman"],
+      ],
+      "Client ini",
+    );
+  },
+  async purgeStatements(env, row) {
+    return [env.DB.prepare(`DELETE FROM clients WHERE customer_id = ?`).bind(row.id)];
+  },
+};
+
+export const ENTITIES: Record<RecycleEntity, EntityDef> = { shipment, user, truck, location, layanan, mitra, client };
 export const ENTITY_TYPES = Object.keys(ENTITIES) as RecycleEntity[];
 
 export function expiresAtFrom(deletedAtIso: string): string {

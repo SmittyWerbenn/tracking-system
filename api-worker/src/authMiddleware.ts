@@ -17,7 +17,7 @@ export async function loadUserFromRequest(ctx: Ctx): Promise<AuthedUser | null> 
      FROM sessions s
      JOIN users u ON u.id = s.user_id
      WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND u.deleted_at IS NULL
-       AND NOT EXISTS (SELECT 1 FROM clients c WHERE c.customer_id = u.customer_id AND c.aktif = 0)
+       AND NOT EXISTS (SELECT 1 FROM clients c WHERE c.customer_id = u.customer_id AND (c.aktif = 0 OR c.deleted_at IS NOT NULL))
        AND NOT EXISTS (SELECT 1 FROM mitras m WHERE m.kode_mitra = u.mitra_id AND (m.aktif = 0 OR m.deleted_at IS NOT NULL))`,
   )
     .bind(tokenHash, now)

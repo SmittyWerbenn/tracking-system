@@ -11,6 +11,7 @@ import {
   MasterTableCard,
   MasterTableMessage,
 } from "../../components/master/MasterData";
+import { DeleteButton } from "../../components/DeleteButton";
 import { useAuth } from "../../store/AuthContext";
 import { api, ApiError } from "../../utils/apiClient";
 import { formatTanggalPanjang, isoToWib } from "../../utils/format";
@@ -358,6 +359,12 @@ export default function CustomerList() {
                       >
                         {c.aktif ? <Ban size={16} /> : <RotateCcw size={16} />}
                       </button>
+                      <DeleteButton
+                        entityType="client"
+                        id={c.customerId}
+                        details={[["Client ID", c.customerId], ["Nama", c.nama ?? "-"], ["User", `${c.accounts.length} akun`]]}
+                        onDone={handleRefresh}
+                      />
                     </div>
                   </td>
                 )}

@@ -263,7 +263,7 @@ export default function ShipmentDetail() {
         </div>
       </div>
       {profile?.role !== "Mitra" && <HoldInfo shipment={shipment} />}
-      <CancellationInfo shipment={shipment} />
+      {profile?.role !== "Mitra" && <CancellationInfo shipment={shipment} />}
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3 print:mt-4 print:grid-cols-3 print:gap-4">
         <div className="space-y-6 lg:col-span-2 print:col-span-2 print:space-y-4">

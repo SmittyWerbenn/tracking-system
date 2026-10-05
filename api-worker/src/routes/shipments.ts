@@ -18,6 +18,7 @@ const POD_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** Client accounts never learn which Mitra (partner agent) handles an order. */
 function forActor(summary: ReturnType<typeof shipmentSummary>, role: string) {
+  if (role === "Mitra") return { ...summary, createdByName: null, createdByRole: null as unknown as typeof summary.createdByRole, hold: null, holdPolicy: undefined };
   return role === "Client" ? { ...summary, mitraId: null, mitraNama: null } : summary;
 }
 

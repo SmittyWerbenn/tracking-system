@@ -506,7 +506,7 @@ export default function CreateShipment() {
             <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3">
               <input
                 type="checkbox"
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-orange-600"
                 checked={!!form.hold}
                 onChange={(e) => update("hold", e.target.checked)}
               />

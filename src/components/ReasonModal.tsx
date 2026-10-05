@@ -7,7 +7,7 @@ const TONE_BUTTON: Record<Tone, string> = {
   danger: "bg-rose-600 hover:bg-rose-700",
   warning: "bg-rose-700 hover:bg-rose-800",
   primary: "bg-emerald-600 hover:bg-emerald-700",
-  hold: "bg-indigo-600 hover:bg-indigo-700",
+  hold: "bg-orange-600 hover:bg-orange-700",
 };
 
 interface Props {

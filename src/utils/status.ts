@@ -75,10 +75,10 @@ const STYLES: Record<string, StatusStyle> = {
     ring: "ring-slate-200",
   },
   "Hold": {
-    bg: "bg-indigo-100",
-    text: "text-indigo-700",
-    dot: "bg-indigo-500",
-    ring: "ring-indigo-200",
+    bg: "bg-orange-500",
+    text: "text-white",
+    dot: "bg-white",
+    ring: "ring-orange-600",
   },
   "Dibatalkan": {
     bg: "bg-rose-100",

@@ -33,8 +33,8 @@ export function HoldOrderActions({ shipment, onDone, variant = "icon" }: Props) 
       title={label}
       className={
         variant === "icon"
-          ? "inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50"
-          : "inline-flex items-center gap-1.5 rounded-lg border-2 border-indigo-600 bg-white px-3.5 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50"
+          ? "inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-50"
+          : "inline-flex items-center gap-1.5 rounded-lg border-2 border-orange-600 bg-white px-3.5 py-2 text-sm font-semibold text-orange-700 hover:bg-orange-50"
       }
     >
       {icon} {label}
@@ -116,10 +116,10 @@ export function HoldInfo({ shipment }: { shipment: Pick<Shipment, "status" | "ho
   const note = shipment.holdPolicy?.blockedReason;
   if (holds.length === 0 && shipment.status !== "Hold") return null;
   return (
-    <div className="no-print mt-4 rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 text-sm shadow-sm">
+    <div className="no-print mt-4 rounded-xl border border-orange-200 bg-orange-50/40 p-4 text-sm shadow-sm">
       {shipment.status === "Hold" && shipment.hold ? (
         <>
-          <p className="font-semibold text-indigo-800">Pengiriman ini sedang di-Hold - belum muncul di Driver.</p>
+          <p className="font-semibold text-orange-800">Pengiriman ini sedang di-Hold - belum muncul di Driver.</p>
           <dl className="mt-2 grid gap-x-6 gap-y-2 sm:grid-cols-2">
             <Field k="Hold Sejak" v={fmtIso(shipment.hold.holdAt)} />
             <Field k="Di-Hold Oleh" v={`${shipment.hold.holdBy} (${roleLabel(shipment.hold.holdByRole)})`} />
@@ -145,11 +145,11 @@ export function HoldInfo({ shipment }: { shipment: Pick<Shipment, "status" | "ho
             </thead>
             <tbody className="align-top text-slate-700">
               {holds.map((h, i) => (
-                <tr key={h.id} className="border-t border-indigo-100">
+                <tr key={h.id} className="border-t border-orange-100">
                   <td className="py-1.5 pr-3">{holds.length - i}</td>
                   <td className="py-1.5 pr-3">{fmtIso(h.holdAt)}<br />{h.holdBy}</td>
                   <td className="py-1.5 pr-3">{h.holdReason}</td>
-                  <td className="py-1.5 pr-3">{h.releasedAt ? <>{fmtIso(h.releasedAt)}<br />{h.releasedBy ?? "-"}</> : <span className="font-semibold text-indigo-700">Masih Hold</span>}</td>
+                  <td className="py-1.5 pr-3">{h.releasedAt ? <>{fmtIso(h.releasedAt)}<br />{h.releasedBy ?? "-"}</> : <span className="font-semibold text-orange-700">Masih Hold</span>}</td>
                   <td className="py-1.5">{h.releaseReason ?? "-"}</td>
                 </tr>
               ))}

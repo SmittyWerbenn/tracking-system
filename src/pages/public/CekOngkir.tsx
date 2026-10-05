@@ -137,9 +137,9 @@ export default function CekOngkir() {
           <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
             <button
               onClick={() => navigate(-1)}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-blue-200 transition-colors hover:text-white"
+              className="inline-flex items-center gap-2 rounded-lg border border-blue-200/40 px-4 py-2.5 text-base font-semibold text-blue-100 transition-colors hover:bg-white/10 hover:text-white"
             >
-              <ArrowLeft size={16} /> {t.trackingResult.back}
+              <ArrowLeft size={20} /> {t.trackingResult.back}
             </button>
 
             <div className="mt-8 max-w-xl">

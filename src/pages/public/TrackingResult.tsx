@@ -182,9 +182,9 @@ export default function TrackingResult() {
     <PublicLayout wide>
       <button
         onClick={() => navigate(-1)}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800"
+        className="mb-4 inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-base font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900"
       >
-        <ArrowLeft size={15} /> {t.trackingResult.back}
+        <ArrowLeft size={20} /> {t.trackingResult.back}
       </button>
 
       {/* quick search */}

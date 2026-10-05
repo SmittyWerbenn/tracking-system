@@ -80,9 +80,9 @@ export default function TruckHistory() {
       <div className="mb-4 flex items-center justify-between">
         <button
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800"
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-base font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900"
         >
-          <ArrowLeft size={15} /> Kembali
+          <ArrowLeft size={20} /> Kembali
         </button>
         <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
       </div>

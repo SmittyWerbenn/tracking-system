@@ -72,9 +72,9 @@ export default function ShipmentTracking() {
     <AdminLayout>
       <button
         onClick={() => navigate(-1)}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800"
+        className="mb-4 inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-base font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900"
       >
-        <ArrowLeft size={15} /> Kembali
+        <ArrowLeft size={20} /> Kembali
       </button>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

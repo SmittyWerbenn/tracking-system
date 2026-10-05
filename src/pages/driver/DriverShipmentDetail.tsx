@@ -257,8 +257,8 @@ export default function DriverShipmentDetail() {
   if (loadError) {
     return (
       <DriverLayout>
-        <Link to={driverPath("/")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
-          <ArrowLeft size={15} /> Kembali
+        <Link to={driverPath("/")} className="mb-4 inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-base font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
+          <ArrowLeft size={20} /> Kembali
         </Link>
         <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700">
           <AlertTriangle size={15} /> {loadError}
@@ -290,8 +290,8 @@ export default function DriverShipmentDetail() {
   return (
     <DriverLayout wide>
       <div className="mb-4 flex items-center justify-between">
-        <Link to={driverPath("/")} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
-          <ArrowLeft size={15} /> Kembali
+        <Link to={driverPath("/")} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-base font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
+          <ArrowLeft size={20} /> Kembali
         </Link>
         <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
       </div>

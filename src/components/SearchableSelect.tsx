@@ -20,6 +20,8 @@ interface SearchableSelectProps {
   className?: string;
   /** Server-side search: when set, options are NOT filtered locally; the parent reloads them for each (debounced) query. */
   onSearch?: (query: string) => void;
+  /** Larger text (public pages); admin callers keep the compact default. */
+  large?: boolean;
 }
 
 /** A dropdown with a built-in search box, used for pickers backed by master
@@ -34,7 +36,10 @@ export function SearchableSelect({
   disabled,
   className = "",
   onSearch,
+  large,
 }: SearchableSelectProps) {
+  const txt = large ? "text-lg" : "text-sm";
+  const txtSm = large ? "text-base" : "text-xs";
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
@@ -67,7 +72,7 @@ export function SearchableSelect({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        className={`flex w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ${className}`}
+        className={`flex w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left ${txt} text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ${className}`}
       >
         <span className={`min-w-0 flex-1 truncate ${selected ? "" : "text-slate-400"}`}>
           {selected ? selected.label : placeholder}
@@ -87,12 +92,12 @@ export function SearchableSelect({
                 onSearch?.(e.target.value);
               }}
               placeholder="Cari..."
-              className="w-full text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+              className={`w-full ${txt} text-slate-900 placeholder:text-slate-400 focus:outline-none`}
             />
           </div>
           <ul className="max-h-56 overflow-y-auto py-1">
             {filtered.length === 0 && (
-              <li className="px-3 py-3 text-center text-xs text-slate-400">{emptyLabel}</li>
+              <li className={`px-3 py-3 text-center ${txtSm} text-slate-400`}>{emptyLabel}</li>
             )}
             {filtered.map((o) => (
               <li key={o.value}>
@@ -103,12 +108,12 @@ export function SearchableSelect({
                     setOpen(false);
                     setQuery("");
                   }}
-                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left ${txt} hover:bg-slate-50`}
                 >
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-slate-800">{o.label}</span>
                     {o.description && (
-                      <span className="block truncate text-xs text-slate-500">{o.description}</span>
+                      <span className={`block truncate ${txtSm} text-slate-500`}>{o.description}</span>
                     )}
                   </span>
                   {o.value === value && <Check size={15} className="shrink-0 text-blue-700" />}

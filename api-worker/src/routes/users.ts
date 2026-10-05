@@ -46,7 +46,7 @@ export function registerUserRoutes(router: Router) {
   //   role                  - one role
   //   status                - aktif | nonaktif
   //   group                 - driver (only Driver accounts) | staff (everyone else)
-  // Always sorted Aktif first, then Nonaktif, then by name. The password hash is
+  // Always sorted by role (Superadmin, Admin, Viewer, Client, Mitra, Driver), then Aktif before Nonaktif, then by name. The password hash is
   // never selected. Nopol comes from the existing user -> driver -> truck link.
   router.get("/api/users", async (ctx: Ctx) => {
     requirePermission(ctx, "users.manage");
@@ -93,7 +93,8 @@ export function registerUserRoutes(router: Router) {
               (SELECT group_concat(t.nomor_unit, ', ') FROM drivers d JOIN trucks t ON t.driver_id = d.id WHERE d.user_id = u.id) AS nopol,
               (SELECT d.telepon FROM drivers d WHERE d.user_id = u.id) AS driver_telepon
        FROM users u ${whereSql}
-       ORDER BY u.aktif DESC, u.nama COLLATE NOCASE ASC, u.created_at ASC
+       ORDER BY CASE u.role WHEN 'Superadmin' THEN 0 WHEN 'Admin' THEN 1 WHEN 'Viewer' THEN 2 WHEN 'Client' THEN 3 WHEN 'Mitra' THEN 4 WHEN 'Driver' THEN 5 ELSE 6 END,
+                u.aktif DESC, u.nama COLLATE NOCASE ASC, u.created_at ASC
        LIMIT ? OFFSET ?`,
     )
       .bind(...params, limit, offset)

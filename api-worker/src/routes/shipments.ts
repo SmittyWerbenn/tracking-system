@@ -73,7 +73,7 @@ export function registerShipmentRoutes(router: Router) {
     const status = url.searchParams.get("status");
     const search = url.searchParams.get("q")?.trim();
 
-    const where: string[] = [];
+    const where: string[] = ["s.deleted_at IS NULL"];
     const params: unknown[] = [];
     if (status) { where.push("s.status = ?"); params.push(status); }
     // Client only ever sees its own customer's shipments - forced
@@ -181,11 +181,11 @@ export function registerShipmentRoutes(router: Router) {
     const mitraId = actor.role === "Client" ? undefined : optString(body, "mitraId");
 
     if (truckId) {
-      const truck = await ctx.env.DB.prepare(`SELECT id FROM trucks WHERE id = ?`).bind(truckId).first();
+      const truck = await ctx.env.DB.prepare(`SELECT id FROM trucks WHERE id = ? AND deleted_at IS NULL`).bind(truckId).first();
       if (!truck) throw Errors.badRequest("Truck yang dipilih tidak ditemukan.");
     }
     if (mitraId) {
-      const mitra = await ctx.env.DB.prepare(`SELECT kode_mitra, aktif FROM mitras WHERE kode_mitra = ?`)
+      const mitra = await ctx.env.DB.prepare(`SELECT kode_mitra, aktif FROM mitras WHERE kode_mitra = ? AND deleted_at IS NULL`)
         .bind(mitraId)
         .first<{ kode_mitra: string; aktif: number }>();
       if (!mitra) throw Errors.badRequest("Mitra yang dipilih tidak ditemukan.");
@@ -272,12 +272,12 @@ export function registerShipmentRoutes(router: Router) {
        LEFT JOIN trucks t ON t.id = s.truck_id
        LEFT JOIN drivers d ON d.id = t.driver_id
        LEFT JOIN drivers cd ON cd.id = s.claim_driver_id
-       LEFT JOIN trucks ct ON ct.id = (SELECT id FROM trucks WHERE driver_id = s.claim_driver_id ORDER BY nomor_unit LIMIT 1)
+       LEFT JOIN trucks ct ON ct.id = (SELECT id FROM trucks WHERE driver_id = s.claim_driver_id AND deleted_at IS NULL ORDER BY nomor_unit LIMIT 1)
        LEFT JOIN mitras m ON m.kode_mitra = s.mitra_id
        LEFT JOIN order_recovery_requests rr ON rr.id = (
          SELECT x.id FROM order_recovery_requests x WHERE x.awb = s.awb ORDER BY x.requested_at DESC LIMIT 1
        )
-       WHERE s.awb = ?`,
+       WHERE s.awb = ? AND s.deleted_at IS NULL`,
     )
       .bind(params.awb)
       .first<Record<string, unknown>>();
@@ -324,7 +324,7 @@ export function registerShipmentRoutes(router: Router) {
     router.get("/api/shipments/:awb/position", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "shipments.view");
     const row = await ctx.env.DB.prepare(
-    `SELECT status, customer_id, mitra_id FROM shipments WHERE awb = ?`,
+    `SELECT status, customer_id, mitra_id FROM shipments WHERE awb = ? AND deleted_at IS NULL`,
     )
     .bind(params.awb)
     .first<{ status: string; customer_id: string | null; mitra_id: string | null }>();
@@ -360,7 +360,7 @@ export function registerShipmentRoutes(router: Router) {
     const isClient = actor.role === "Client";
     if (!isClient) requirePermission(ctx, "shipments.update_info");
     const shipment = await ctx.env.DB.prepare(
-      `SELECT status, tanggal_dibuat, sla_value, estimasi_tiba, layanan, customer_id FROM shipments WHERE awb = ?`,
+      `SELECT status, tanggal_dibuat, sla_value, estimasi_tiba, layanan, customer_id FROM shipments WHERE awb = ? AND deleted_at IS NULL`,
     )
       .bind(params.awb)
       .first<{ status: string; tanggal_dibuat: string; sla_value: number | null; estimasi_tiba: string | null; layanan: string; customer_id: string | null }>();
@@ -482,7 +482,7 @@ export function registerShipmentRoutes(router: Router) {
     if (actor.role !== "Client" && actor.role !== "Superadmin" && actor.role !== "Admin") {
       throw Errors.forbidden();
     }
-    const shipment = await ctx.env.DB.prepare(`SELECT status, customer_id FROM shipments WHERE awb = ?`)
+    const shipment = await ctx.env.DB.prepare(`SELECT status, customer_id FROM shipments WHERE awb = ? AND deleted_at IS NULL`)
       .bind(params.awb)
       .first<{ status: string; customer_id: string | null }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
@@ -527,7 +527,7 @@ export function registerShipmentRoutes(router: Router) {
     if (actor.role !== "Client" && actor.role !== "Superadmin" && actor.role !== "Admin") {
       throw Errors.forbidden();
     }
-    const shipment = await ctx.env.DB.prepare(`SELECT status, customer_id, kota_asal FROM shipments WHERE awb = ?`)
+    const shipment = await ctx.env.DB.prepare(`SELECT status, customer_id, kota_asal FROM shipments WHERE awb = ? AND deleted_at IS NULL`)
       .bind(params.awb)
       .first<{ status: string; customer_id: string | null; kota_asal: string }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
@@ -578,7 +578,7 @@ export function registerShipmentRoutes(router: Router) {
 
   router.post("/api/shipments/:awb/timeline", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "tracking.update");
-    const shipment = await ctx.env.DB.prepare(`SELECT * FROM shipments WHERE awb = ?`).bind(params.awb).first<
+    const shipment = await ctx.env.DB.prepare(`SELECT * FROM shipments WHERE awb = ? AND deleted_at IS NULL`).bind(params.awb).first<
       Record<string, unknown>
     >();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
@@ -629,7 +629,7 @@ export function registerShipmentRoutes(router: Router) {
       );
     }
     if (truckId) {
-      const truck = await ctx.env.DB.prepare(`SELECT id FROM trucks WHERE id = ?`).bind(truckId).first();
+      const truck = await ctx.env.DB.prepare(`SELECT id FROM trucks WHERE id = ? AND deleted_at IS NULL`).bind(truckId).first();
       if (!truck) throw Errors.badRequest("Truck yang dipilih tidak ditemukan.");
     }
 
@@ -742,7 +742,7 @@ export function registerShipmentRoutes(router: Router) {
   // The unit a claiming driver would run the shipment with: the truck assigned to
   // that driver in Master Armada. One definition for the list, confirm and reject
   // so what the admin sees is exactly what gets assigned.
-  const CLAIM_TRUCK_ID = `(SELECT id FROM trucks WHERE driver_id = s.claim_driver_id ORDER BY nomor_unit LIMIT 1)`;
+  const CLAIM_TRUCK_ID = `(SELECT id FROM trucks WHERE driver_id = s.claim_driver_id AND deleted_at IS NULL ORDER BY nomor_unit LIMIT 1)`;
 
   // Shipments a driver has requested to claim - across all AWBs, so admin
   // doesn't have to open each shipment detail to notice a pending request.
@@ -755,7 +755,7 @@ export function registerShipmentRoutes(router: Router) {
        FROM shipments s
        JOIN drivers d ON d.id = s.claim_driver_id
        LEFT JOIN trucks t ON t.id = ${CLAIM_TRUCK_ID}
-       WHERE s.claim_status = 'pending'
+       WHERE s.claim_status = 'pending' AND s.deleted_at IS NULL
        ORDER BY s.claim_requested_at ASC`,
     ).all();
     return ok({
@@ -785,7 +785,7 @@ export function registerShipmentRoutes(router: Router) {
        FROM shipments s
        LEFT JOIN drivers d ON d.id = s.claim_driver_id
        LEFT JOIN trucks t ON t.id = ${CLAIM_TRUCK_ID}
-       WHERE s.awb = ?`,
+       WHERE s.awb = ? AND s.deleted_at IS NULL`,
     )
       .bind(awb)
       .first<{
@@ -870,7 +870,7 @@ export function registerShipmentRoutes(router: Router) {
   // a driver mid-trip.
   router.post("/api/shipments/:awb/unassign", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "shipments.update_info");
-    const shipment = await ctx.env.DB.prepare(`SELECT status, truck_id FROM shipments WHERE awb = ?`)
+    const shipment = await ctx.env.DB.prepare(`SELECT status, truck_id FROM shipments WHERE awb = ? AND deleted_at IS NULL`)
       .bind(params.awb)
       .first<{ status: string; truck_id: string | null }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
@@ -904,7 +904,7 @@ export function registerShipmentRoutes(router: Router) {
   // "shipments.update_info" permission at all (see rbac.ts).
   router.post("/api/shipments/:awb/assign-mitra", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "shipments.update_info");
-    const shipment = await ctx.env.DB.prepare(`SELECT status, mitra_id FROM shipments WHERE awb = ?`)
+    const shipment = await ctx.env.DB.prepare(`SELECT status, mitra_id FROM shipments WHERE awb = ? AND deleted_at IS NULL`)
       .bind(params.awb)
       .first<{ status: string; mitra_id: string | null }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
@@ -919,7 +919,7 @@ export function registerShipmentRoutes(router: Router) {
 
     let mitraNama: string | null = null;
     if (mitraId) {
-      const mitra = await ctx.env.DB.prepare(`SELECT kode_mitra, nama, aktif FROM mitras WHERE kode_mitra = ?`)
+      const mitra = await ctx.env.DB.prepare(`SELECT kode_mitra, nama, aktif FROM mitras WHERE kode_mitra = ? AND deleted_at IS NULL`)
         .bind(mitraId)
         .first<{ kode_mitra: string; nama: string; aktif: number }>();
       if (!mitra) throw Errors.badRequest("Mitra yang dipilih tidak ditemukan.");

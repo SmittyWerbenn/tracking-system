@@ -36,7 +36,7 @@ export function registerLayananRoutes(router: Router) {
     const rows = await ctx.env.DB.prepare(
       `SELECT l.id, l.nama, l.deskripsi, l.aktif, l.created_at,
               (SELECT COUNT(*) FROM shipments s WHERE s.layanan = l.nama COLLATE NOCASE) AS jumlah_order
-       FROM layanans l ${onlyActive ? "WHERE l.aktif = 1" : ""}
+       FROM layanans l WHERE l.deleted_at IS NULL ${onlyActive ? "AND l.aktif = 1" : ""}
        ORDER BY l.nama`,
     ).all<{ id: string; nama: string; deskripsi: string | null; aktif: number; created_at: string; jumlah_order: number }>();
     const items = (rows.results ?? []).map((r) => ({
@@ -90,7 +90,7 @@ export function registerLayananRoutes(router: Router) {
 
   router.patch("/api/layanan/:id", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "users.manage");
-    const layanan = await ctx.env.DB.prepare(`SELECT id, nama, aktif, deskripsi FROM layanans WHERE id = ?`)
+    const layanan = await ctx.env.DB.prepare(`SELECT id, nama, aktif, deskripsi FROM layanans WHERE id = ? AND deleted_at IS NULL`)
       .bind(params.id)
       .first<{ id: string; nama: string; aktif: number; deskripsi: string | null }>();
     if (!layanan) throw Errors.notFound("Layanan tidak ditemukan.");
@@ -169,33 +169,5 @@ export function registerLayananRoutes(router: Router) {
     });
 
     return ok({ updated: true });
-  });
-
-  router.delete("/api/layanan/:id", async (ctx: Ctx, params) => {
-    const actor = requirePermission(ctx, "users.manage");
-    const layanan = await ctx.env.DB.prepare(`SELECT id, nama FROM layanans WHERE id = ?`)
-      .bind(params.id)
-      .first<{ id: string; nama: string }>();
-    if (!layanan) throw Errors.notFound("Layanan tidak ditemukan.");
-    if (isFallbackLayanan(layanan.nama)) throw Errors.conflict(FALLBACK_PROTECTED);
-
-    const used = await ctx.env.DB.prepare(`SELECT COUNT(*) AS c FROM shipments WHERE layanan = ? COLLATE NOCASE`)
-      .bind(layanan.nama)
-      .first<{ c: number }>();
-    if ((used?.c ?? 0) > 0) {
-      throw Errors.conflict(
-        `Layanan "${layanan.nama}" sudah dipakai ${used!.c} order sehingga tidak bisa dihapus. Nonaktifkan saja agar tidak muncul untuk order baru.`,
-      );
-    }
-
-    await ctx.env.DB.prepare(`DELETE FROM layanans WHERE id = ?`).bind(layanan.id).run();
-    await writeAuditLog(ctx.env, actor, {
-      action: "DELETE_LAYANAN",
-      actionLabel: "DELETE LAYANAN",
-      module: "Layanan",
-      description: `Layanan "${layanan.nama}" dihapus.`,
-    });
-
-    return ok({ deleted: true });
   });
 }

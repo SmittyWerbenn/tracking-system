@@ -13,6 +13,7 @@ import {
 } from "../../components/master/MasterData";
 import { useMitras, type Mitra, type MitraFormData } from "../../store/MitraContext";
 import { ApiError } from "../../utils/apiClient";
+import { DeleteButton } from "../../components/DeleteButton";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
@@ -205,6 +206,12 @@ export default function MitraList() {
                   >
                     {m.aktif ? <Ban size={16} /> : <RotateCcw size={16} />}
                   </button>
+                  <DeleteButton
+                    entityType="mitra"
+                    id={m.kodeMitra}
+                    details={[["Nama", m.nama], ["Kode", m.kodeMitra]]}
+                    onDone={refresh}
+                  />
                 </div>
               </td>
             </tr>

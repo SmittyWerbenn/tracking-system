@@ -69,7 +69,7 @@ export function registerRecoveryRoutes(router: Router) {
   router.post("/api/shipments/:awb/recovery-request", async (ctx: Ctx, params) => {
     const actor = requireAuth(ctx);
     if (actor.role !== "Client") throw Errors.forbidden("Hanya Client yang dapat mengajukan pemulihan order.");
-    const shipment = await ctx.env.DB.prepare(`SELECT status, customer_id FROM shipments WHERE awb = ?`)
+    const shipment = await ctx.env.DB.prepare(`SELECT status, customer_id FROM shipments WHERE awb = ? AND deleted_at IS NULL`)
       .bind(params.awb)
       .first<{ status: string; customer_id: string | null }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
@@ -152,7 +152,7 @@ export function registerRecoveryRoutes(router: Router) {
     const shipment = await ctx.env.DB.prepare(
       `SELECT awb, tanggal_dibuat, jam_dibuat, status, pengirim_nama, penerima_nama, alamat_asal, kota_asal, alamat_tujuan, kota_tujuan,
               deskripsi_barang, layanan, berat_kg, jumlah_koli
-       FROM shipments WHERE awb = ?`,
+       FROM shipments WHERE awb = ? AND deleted_at IS NULL`,
     )
       .bind(r.awb)
       .first();
@@ -171,7 +171,7 @@ export function registerRecoveryRoutes(router: Router) {
     if (req.status !== "PENDING") throw Errors.conflict(ALREADY_PROCESSED);
 
     // Re-check the order itself: it may have changed since the request was made.
-    const shipment = await ctx.env.DB.prepare(`SELECT status, kota_asal FROM shipments WHERE awb = ?`)
+    const shipment = await ctx.env.DB.prepare(`SELECT status, kota_asal FROM shipments WHERE awb = ? AND deleted_at IS NULL`)
       .bind(req.awb)
       .first<{ status: string; kota_asal: string }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");

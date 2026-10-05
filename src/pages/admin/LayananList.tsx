@@ -1,4 +1,4 @@
-import { AlertTriangle, Ban, Layers, Pencil, RotateCcw, ShieldCheck, Trash2, X } from "lucide-react";
+import { AlertTriangle, Ban, Layers, Pencil, RotateCcw, ShieldCheck, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import {
@@ -12,6 +12,7 @@ import {
 } from "../../components/master/MasterData";
 import { useLayanan, type Layanan } from "../../store/LayananContext";
 import { ApiError } from "../../utils/apiClient";
+import { DeleteButton } from "../../components/DeleteButton";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
@@ -21,7 +22,7 @@ const CUSTOM = "__custom__";
 type StatusFilter = "semua" | "aktif" | "nonaktif";
 
 export default function LayananList() {
-  const { layanans, standardOptions, fallback, isLoading, refresh, createLayanan, updateLayanan, deleteLayanan } =
+  const { layanans, standardOptions, fallback, isLoading, refresh, createLayanan, updateLayanan } =
     useLayanan();
   const [refreshing, setRefreshing] = useState(false);
   async function handleRefresh() {
@@ -133,19 +134,6 @@ export default function LayananList() {
       await updateLayanan(l.id, { aktif: next });
     } catch (err) {
       setPageError(err instanceof ApiError ? err.message : "Gagal mengubah status layanan.");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function handleDelete(l: Layanan) {
-    if (!window.confirm(`Hapus layanan ${l.nama}? Tindakan ini tidak bisa dibatalkan.`)) return;
-    setBusyId(l.id);
-    setPageError(null);
-    try {
-      await deleteLayanan(l.id);
-    } catch (err) {
-      setPageError(err instanceof ApiError ? err.message : "Gagal menghapus layanan.");
     } finally {
       setBusyId(null);
     }
@@ -273,14 +261,14 @@ export default function LayananList() {
                   >
                     {l.aktif ? <Ban size={16} /> : <RotateCcw size={16} />}
                   </button>
-                  <button
-                    onClick={() => handleDelete(l)}
-                    disabled={busyId === l.id || l.fallback}
-                    title={l.fallback ? "Layanan default tidak bisa dihapus" : "Hapus"}
-                    className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-500"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  {!l.fallback && (
+                    <DeleteButton
+                      entityType="layanan"
+                      id={l.id}
+                      details={[["Layanan", l.nama]]}
+                      onDone={refresh}
+                    />
+                  )}
                 </div>
               </td>
             </tr>

@@ -102,8 +102,8 @@ export function registerLocationRoutes(router: Router) {
     const url = new URL(ctx.request.url);
     const onlyActive = url.searchParams.get("active") === "true";
     const query = onlyActive
-      ? `SELECT * FROM locations WHERE aktif = 1 ORDER BY nama_kota`
-      : `SELECT * FROM locations ORDER BY nama_kota`;
+      ? `SELECT * FROM locations WHERE aktif = 1 AND deleted_at IS NULL ORDER BY nama_kota`
+      : `SELECT * FROM locations WHERE deleted_at IS NULL ORDER BY nama_kota`;
     const rows = await ctx.env.DB.prepare(query).all();
     return ok({ items: rows.results });
   });
@@ -220,7 +220,7 @@ export function registerLocationRoutes(router: Router) {
   router.patch("/api/locations/:id", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "locations.manage");
     const existing = await ctx.env.DB.prepare(
-      `SELECT id, nama_kota, nama_titik, provinsi, nama_area FROM locations WHERE id = ?`,
+      `SELECT id, nama_kota, nama_titik, provinsi, nama_area FROM locations WHERE id = ? AND deleted_at IS NULL`,
     )
       .bind(params.id)
       .first<{ id: string; nama_kota: string; nama_titik: string | null; provinsi: string; nama_area: string | null }>();
@@ -287,36 +287,5 @@ export function registerLocationRoutes(router: Router) {
     });
 
     return ok({ updated: true });
-  });
-
-  router.delete("/api/locations/:id", async (ctx: Ctx, params) => {
-    const actor = requirePermission(ctx, "locations.manage");
-    const existing = await ctx.env.DB.prepare(`SELECT id, nama_kota FROM locations WHERE id = ?`)
-      .bind(params.id)
-      .first<{ id: string; nama_kota: string }>();
-    if (!existing) throw Errors.notFound("Lokasi tidak ditemukan.");
-
-    // Tracking history points at locations by id. Refuse (instead of letting the
-    // foreign key blow up) when a titik is referenced; deactivating it keeps
-    // the history intact.
-    const used = await ctx.env.DB.prepare(`SELECT COUNT(*) AS c FROM shipment_timeline_events WHERE titik_id = ?`)
-      .bind(params.id)
-      .first<{ c: number }>();
-    if ((used?.c ?? 0) > 0) {
-      throw Errors.conflict(
-        `Titik "${existing.nama_kota}" dipakai oleh ${used!.c} riwayat tracking sehingga tidak bisa dihapus. Nonaktifkan saja.`,
-      );
-    }
-
-    await ctx.env.DB.prepare(`DELETE FROM locations WHERE id = ?`).bind(params.id).run();
-
-    await writeAuditLog(ctx.env, actor, {
-      action: "DELETE_LOCATION",
-      actionLabel: "DELETE LOCATION",
-      module: "Master Kota",
-      description: `Titik lokasi "${existing.nama_kota}" (${params.id}) dihapus.`,
-    });
-
-    return ok({ deleted: true });
   });
 }

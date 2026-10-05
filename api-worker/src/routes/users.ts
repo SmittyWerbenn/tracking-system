@@ -20,7 +20,8 @@ export function registerUserRoutes(router: Router) {
       `SELECT d.id, d.nama, d.telepon, d.user_id, u.nama as linked_user_nama, t.nomor_unit
        FROM drivers d
        LEFT JOIN users u ON u.id = d.user_id
-       LEFT JOIN trucks t ON t.driver_id = d.id
+       LEFT JOIN trucks t ON t.driver_id = d.id AND t.deleted_at IS NULL
+       WHERE u.id IS NULL OR u.deleted_at IS NULL
        ORDER BY d.nama`,
     ).all();
     return ok({ items: rows.results });
@@ -33,7 +34,7 @@ export function registerUserRoutes(router: Router) {
   // selesai/terkirim" email.
   router.get("/api/admin-emails", async (ctx: Ctx) => {
     requireAuth(ctx);
-    const rows = await ctx.env.DB.prepare(`SELECT nama, email FROM users WHERE role = 'Admin' AND aktif = 1`).all();
+    const rows = await ctx.env.DB.prepare(`SELECT nama, email FROM users WHERE role = 'Admin' AND aktif = 1 AND deleted_at IS NULL`).all();
     return ok({ items: rows.results });
   });
 
@@ -53,7 +54,7 @@ export function registerUserRoutes(router: Router) {
     const { page, limit, offset } = parsePagination(url);
     const q = url.searchParams;
 
-    const where: string[] = [];
+    const where: string[] = ["u.deleted_at IS NULL"];
     const params: unknown[] = [];
     const like = (value: string) => `%${value.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
@@ -144,10 +145,10 @@ export function registerUserRoutes(router: Router) {
       ctx.env.DB.prepare(`SELECT customer_id, nama, kota, kontrak_no_pelanggan, aktif, created_at FROM clients`).all<{ customer_id: string; nama: string; kota: string | null; kontrak_no_pelanggan: string | null; aktif: number; created_at: string }>(),
       ctx.env.DB.prepare(
         `SELECT id, nama, email, aktif, created_at, customer_id, role
-         FROM users WHERE customer_id IS NOT NULL ORDER BY created_at ASC`,
+         FROM users WHERE customer_id IS NOT NULL AND deleted_at IS NULL ORDER BY created_at ASC`,
       ).all<{ id: string; nama: string; email: string; aktif: number; created_at: string; customer_id: string; role: string }>(),
       ctx.env.DB.prepare(
-        `SELECT customer_id, COUNT(*) as c FROM shipments WHERE customer_id IS NOT NULL GROUP BY customer_id`,
+        `SELECT customer_id, COUNT(*) as c FROM shipments WHERE customer_id IS NOT NULL AND deleted_at IS NULL GROUP BY customer_id`,
       ).all<{ customer_id: string; c: number }>(),
     ]);
 
@@ -333,7 +334,7 @@ export function registerUserRoutes(router: Router) {
       throw Errors.badRequest("Mitra hanya berlaku untuk role Mitra.");
     }
     if (mitraId) {
-      const known = await ctx.env.DB.prepare(`SELECT kode_mitra, aktif FROM mitras WHERE kode_mitra = ?`)
+      const known = await ctx.env.DB.prepare(`SELECT kode_mitra, aktif FROM mitras WHERE kode_mitra = ? AND deleted_at IS NULL`)
         .bind(mitraId)
         .first<{ kode_mitra: string; aktif: number }>();
       if (!known) throw Errors.badRequest("Mitra belum terdaftar. Tambahkan dulu di menu Master Mitra.");
@@ -391,7 +392,7 @@ export function registerUserRoutes(router: Router) {
 
   router.patch("/api/users/:id", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "users.manage");
-    const target = await ctx.env.DB.prepare(`SELECT id, role, customer_id, mitra_id FROM users WHERE id = ?`).bind(params.id).first<{
+    const target = await ctx.env.DB.prepare(`SELECT id, role, customer_id, mitra_id FROM users WHERE id = ? AND deleted_at IS NULL`).bind(params.id).first<{
       id: string;
       role: string;
       customer_id: string | null;
@@ -429,7 +430,7 @@ export function registerUserRoutes(router: Router) {
     const mitraIdProvided = Object.prototype.hasOwnProperty.call(body, "mitraId");
     let mitraId = mitraIdProvided ? optString(body, "mitraId") ?? null : undefined;
     if (mitraId && mitraId !== target.mitra_id) {
-      const known = await ctx.env.DB.prepare(`SELECT kode_mitra FROM mitras WHERE kode_mitra = ?`)
+      const known = await ctx.env.DB.prepare(`SELECT kode_mitra FROM mitras WHERE kode_mitra = ? AND deleted_at IS NULL`)
         .bind(mitraId)
         .first<{ kode_mitra: string }>();
       if (!known) throw Errors.badRequest("Mitra belum terdaftar. Tambahkan dulu di menu Master Mitra.");

@@ -13,6 +13,7 @@ import {
   Package,
   PackagePlus,
   Settings,
+  Trash2,
   Truck,
   Users,
   X,
@@ -100,6 +101,7 @@ function getNavGroups(role: UserRole): { title: string; items: NavItem[] }[] {
         { to: adminPath("/users"), label: "Manajemen User", icon: Users, end: true, roles: ["Superadmin", "Admin"] },
         { to: adminPath("/users-driver"), label: "Manajemen User Driver", icon: Truck, end: true, roles: ["Superadmin", "Admin"] },
         { to: adminPath("/audit-log"), label: "Audit Log", icon: History, end: true, roles: ["Superadmin", "Admin"] },
+        { to: adminPath("/recycle-bin"), label: "Recycle Bin", icon: Trash2, end: true, roles: ["Superadmin"] },
         {
           to: adminPath("/pengaturan/tracking"),
           label: "Pengaturan",

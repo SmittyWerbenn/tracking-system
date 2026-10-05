@@ -29,7 +29,7 @@ export function registerAuthRoutes(router: Router) {
     checkRateLimit(`${ip}:${email}`);
 
     const user = await ctx.env.DB.prepare(
-      `SELECT id, nama, email, password_hash, role, aktif, customer_id, mitra_id FROM users WHERE email = ?`,
+      `SELECT id, nama, email, password_hash, role, aktif, customer_id, mitra_id FROM users WHERE email = ? AND deleted_at IS NULL`,
     )
       .bind(email)
       .first<{
@@ -49,7 +49,7 @@ export function registerAuthRoutes(router: Router) {
       ? !!(await ctx.env.DB.prepare(`SELECT 1 FROM clients WHERE customer_id = ? AND aktif = 0`).bind(user.customer_id).first())
       : false;
     const mitraFrozen = user?.mitra_id
-      ? !!(await ctx.env.DB.prepare(`SELECT 1 FROM mitras WHERE kode_mitra = ? AND aktif = 0`).bind(user.mitra_id).first())
+      ? !!(await ctx.env.DB.prepare(`SELECT 1 FROM mitras WHERE kode_mitra = ? AND (aktif = 0 OR deleted_at IS NOT NULL)`).bind(user.mitra_id).first())
       : false;
     if (user && validPassword && user.aktif === 1 && (clientFrozen || mitraFrozen)) {
       await writeAuditLog(ctx.env, null, {

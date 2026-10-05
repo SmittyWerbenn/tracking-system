@@ -16,7 +16,8 @@ export type Permission =
   | "settings.view"
   | "settings.manage"
   | "files.upload"
-  | "recovery.review";
+  | "recovery.review"
+  | "recycle.manage";
 
 const ALL: Permission[] = [
   "users.manage",
@@ -35,6 +36,7 @@ const ALL: Permission[] = [
   "settings.manage",
   "files.upload",
   "recovery.review",
+  "recycle.manage",
 ];
 
 const ROLE_PERMISSIONS: Record<Role, Set<Permission>> = {

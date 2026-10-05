@@ -14,6 +14,7 @@ import { exportShipmentsCsv } from "../../utils/exportCsv";
 import { formatTanggalJam, formatTanggalPendek, stripKeteranganMeta, todayISO, isoToWib } from "../../utils/format";
 import { getStagnantShipments } from "../../utils/stagnant";
 import { SHIPMENT_STATUS_OPTIONS } from "../../utils/status";
+import { DeleteButton } from "../../components/DeleteButton";
 
 const NO_CLIENT = "__none__";
 
@@ -607,6 +608,12 @@ export default function ShipmentList() {
                           <Ban size={16} />
                         </button>
                       )}
+                      <DeleteButton
+                        entityType="shipment"
+                        id={s.awb}
+                        details={[["AWB", s.awb], ["Rute", `${s.kotaAsal} → ${s.kotaTujuan}`], ["Status", s.status]]}
+                        onDone={() => refresh({ status: statusFilter === "Semua" ? undefined : statusFilter, q: debouncedQuery || undefined })}
+                      />
                     </div>
                   </td>
                 </tr>

@@ -23,23 +23,23 @@ export function registerDashboardRoutes(router: Router) {
     const cancelWhere = hideCancelled ? `AND status != 'Dibatalkan'` : "";
 
     const [byStatus, total, stagnant, trucks, avgRating, recent] = await Promise.all([
-      ctx.env.DB.prepare(`SELECT status, COUNT(*) as c FROM shipments WHERE 1=1 ${custWhere} ${cancelWhere} GROUP BY status`)
+      ctx.env.DB.prepare(`SELECT status, COUNT(*) as c FROM shipments WHERE deleted_at IS NULL ${custWhere} ${cancelWhere} GROUP BY status`)
         .bind(...custBind())
         .all<{ status: string; c: number }>(),
-      ctx.env.DB.prepare(`SELECT COUNT(*) as c FROM shipments WHERE 1=1 ${custWhere} ${cancelWhere}`)
+      ctx.env.DB.prepare(`SELECT COUNT(*) as c FROM shipments WHERE deleted_at IS NULL ${custWhere} ${cancelWhere}`)
         .bind(...custBind())
         .first<{ c: number }>(),
       ctx.env.DB.prepare(
-        `SELECT COUNT(*) as c FROM shipments WHERE status NOT IN ('Selesai / Terkirim', 'Dibatalkan') AND updated_at < ? ${custWhere}`,
+        `SELECT COUNT(*) as c FROM shipments WHERE deleted_at IS NULL AND status NOT IN ('Selesai / Terkirim', 'Dibatalkan') AND updated_at < ? ${custWhere}`,
       )
         .bind(...custBind(stagnantCutoff))
         .first<{ c: number }>(),
       ctx.env.DB.prepare(
-        `SELECT status, COUNT(*) as c FROM trucks GROUP BY status`,
+        `SELECT status, COUNT(*) as c FROM trucks WHERE deleted_at IS NULL GROUP BY status`,
       ).all<{ status: string; c: number }>(),
       ctx.env.DB.prepare(`SELECT AVG(rating) as avg FROM feedback`).first<{ avg: number | null }>(),
       ctx.env.DB.prepare(
-        `SELECT awb, status, kota_asal, kota_tujuan, tanggal_dibuat FROM shipments WHERE 1=1 ${custWhere} ${cancelWhere} ORDER BY tanggal_dibuat DESC, jam_dibuat DESC LIMIT 5`,
+        `SELECT awb, status, kota_asal, kota_tujuan, tanggal_dibuat FROM shipments WHERE deleted_at IS NULL ${custWhere} ${cancelWhere} ORDER BY tanggal_dibuat DESC, jam_dibuat DESC LIMIT 5`,
       )
         .bind(...custBind())
         .all(),

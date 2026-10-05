@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { RequireAdmin, RequireAuth, RequireDriver, RequireShipmentCreator, RequireTrackingUpdater } from "./components/RequireAuth";
+import { RequireAdmin, RequireAuth, RequireDriver, RequireShipmentCreator, RequireSuperadmin, RequireTrackingUpdater } from "./components/RequireAuth";
 import { AuditLogProvider } from "./store/AuditLogContext";
 import { AuthProvider } from "./store/AuthContext";
 import { FeedbackProvider } from "./store/FeedbackContext";
@@ -17,6 +17,8 @@ import { UserManagementProvider } from "./store/UserManagementContext";
 
 import AccountSettings from "./pages/admin/AccountSettings";
 import AuditLogPage from "./pages/admin/AuditLogPage";
+import RecycleBin from "./pages/admin/RecycleBin";
+import { ToastProvider } from "./components/Toast";
 import CreateShipment from "./pages/admin/CreateShipment";
 import CustomerList from "./pages/admin/CustomerList";
 import Dashboard from "./pages/admin/Dashboard";
@@ -83,7 +85,9 @@ function AppProviders({ children }: { children: React.ReactNode }) {
                       <LayananProvider>
                         <UserManagementProvider>
                           <SettingsProvider>
-                            <ShipmentProvider>{children}</ShipmentProvider>
+                            <ShipmentProvider>
+                              <ToastProvider>{children}</ToastProvider>
+                            </ShipmentProvider>
                           </SettingsProvider>
                         </UserManagementProvider>
                       </LayananProvider>
@@ -152,6 +156,7 @@ export default function App() {
               <Route path={adminPath("/feedback")} element={<RequireAuth><FeedbackAdmin /></RequireAuth>} />
               <Route path={adminPath("/audit-log")} element={<RequireAdmin><AuditLogPage /></RequireAdmin>} />
               <Route path={adminPath("/users")} element={<RequireAdmin><UserManagement /></RequireAdmin>} />
+              <Route path={adminPath("/recycle-bin")} element={<RequireSuperadmin><RecycleBin /></RequireSuperadmin>} />
               <Route path={adminPath("/pemulihan-order")} element={<RequireAdmin><RecoveryRequests /></RequireAdmin>} />
               <Route path={adminPath("/users-driver")} element={<RequireAdmin><DriverUserManagement /></RequireAdmin>} />
               <Route path={adminPath("/pengaturan/tracking")} element={<RequireAdmin><SettingsPage /></RequireAdmin>} />

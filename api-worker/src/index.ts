@@ -20,6 +20,8 @@ import { registerOngkirRoutes } from "./routes/ongkir";
 import { registerRecoveryRoutes } from "./routes/recovery";
 import { registerDashboardRoutes } from "./routes/dashboard";
 import { registerDriverRoutes } from "./routes/driver";
+import { registerRecycleRoutes } from "./routes/recycle";
+import { purgeExpired } from "./recycle";
 
 const router = new Router();
 registerAuthRoutes(router);
@@ -40,6 +42,7 @@ registerOngkirRoutes(router);
 registerRecoveryRoutes(router);
 registerDashboardRoutes(router);
 registerDriverRoutes(router);
+registerRecycleRoutes(router);
 
 router.get("/api/health", async () => ok({ status: "ok", time: new Date().toISOString() }));
 
@@ -105,5 +108,9 @@ export default {
       );
       return new Response(resp.body, { status: resp.status, headers });
     }
+  },
+  async scheduled(_event: ScheduledController, env: Env): Promise<void> {
+    const r = await purgeExpired(env);
+    console.log(JSON.stringify({ job: "recycle-purge", ...r }));
   },
 };

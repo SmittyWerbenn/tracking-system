@@ -20,6 +20,7 @@ import { ROLE_BADGE_CLASS } from "../../utils/roleTheme";
 import { exportUsersXlsx } from "../../utils/userExport";
 import { useFileUrl } from "../../utils/useFileUrl";
 import { isEmailTaken, useUserList, type UserFilters, type UserGroup } from "../../utils/useUserList";
+import { DeleteButton } from "../../components/DeleteButton";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
@@ -447,6 +448,14 @@ export default function UserManagementView({ group }: { group: UserGroup }) {
                       >
                         -
                       </span>
+                    )}
+                    {u.id !== profile?.id && (
+                      <DeleteButton
+                        entityType="user"
+                        id={u.id}
+                        details={[["Nama", u.nama], ["Email", u.email], ["Role", roleLabel(u.role)]]}
+                        onDone={handleRefresh}
+                      />
                     )}
                   </div>
                 </td>

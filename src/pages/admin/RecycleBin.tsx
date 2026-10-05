@@ -1,0 +1,450 @@
+import { AlertTriangle, Eye, Loader2, RotateCcw, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { AdminLayout } from "../../components/layout/AdminLayout";
+import { MasterDataHeader, MasterFilterSelect, MasterSearchInput, MasterTableCard, MasterTableMessage } from "../../components/master/MasterData";
+import { ReasonModal } from "../../components/ReasonModal";
+import { useToast } from "../../components/Toast";
+import { ApiError, api } from "../../utils/apiClient";
+import { formatTanggalJam, isoToWib } from "../../utils/format";
+import { purgeFromBin, restoreFromBin, summaryMessage, type RecycleSummary } from "../../utils/recycle";
+
+type BinStatus = "IN_BIN" | "RESTORED" | "PURGED";
+
+interface BinItem {
+  id: string;
+  entityType: string;
+  entityTypeLabel: string;
+  entityId: string;
+  label: string;
+  sublabel: string;
+  status: BinStatus;
+  deletedBy: string;
+  deletedAt: string;
+  deleteReason: string;
+  expiresAt: string;
+  daysLeft: number;
+  purgeError: string | null;
+  restoredBy: string | null;
+  restoredAt: string | null;
+  restoreReason: string | null;
+  purgedBy: string | null;
+  purgedAt: string | null;
+  purgeReason: string | null;
+}
+
+interface ListResponse {
+  items: BinItem[];
+  meta: { page: number; totalPages: number; total: number };
+  retentionDays: number;
+  types: { value: string; label: string }[];
+  deleters: string[];
+}
+
+const STATUS_LABEL: Record<BinStatus, string> = { IN_BIN: "Di Recycle Bin", RESTORED: "Dipulihkan", PURGED: "Dihapus Permanen" };
+const STATUS_STYLE: Record<BinStatus, string> = {
+  IN_BIN: "bg-amber-100 text-amber-800",
+  RESTORED: "bg-emerald-100 text-emerald-700",
+  PURGED: "bg-slate-200 text-slate-600",
+};
+
+const EMPTY = { q: "", type: "", deletedBy: "", status: "IN_BIN", from: "", to: "" };
+const dateInputClass =
+  "h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
+
+function fmtIso(iso: string): string {
+  const w = isoToWib(iso);
+  return formatTanggalJam(w.tanggal, w.jam);
+}
+
+function remaining(days: number): { text: string; cls: string } {
+  if (days <= 0) return { text: "Expired hari ini", cls: "bg-rose-100 text-rose-700" };
+  if (days <= 2) return { text: `${days} hari lagi`, cls: "bg-rose-100 text-rose-700" };
+  if (days <= 7) return { text: `${days} hari lagi`, cls: "bg-amber-100 text-amber-800" };
+  return { text: `Sisa ${days} hari`, cls: "bg-slate-100 text-slate-600" };
+}
+
+const FIELD_LABEL: Record<string, string> = {
+  awb: "AWB", status: "Status", customer_id: "Client ID", kota_asal: "Kota Asal", kota_tujuan: "Kota Tujuan", alamat_asal: "Alamat Asal",
+  alamat_tujuan: "Alamat Tujuan", pengirim_nama: "Pengirim", penerima_nama: "Penerima", layanan: "Layanan", tanggal_dibuat: "Tanggal Dibuat",
+  nama: "Nama", email: "Email", role: "Role", aktif: "Aktif", nomor_unit: "Nomor Unit", jenis: "Jenis", kapasitas: "Kapasitas",
+  nama_kota: "Kota / Kabupaten", nama_area: "Nama Area", provinsi: "Provinsi", kode_kota: "Kode", kode_mitra: "Kode Mitra", deskripsi: "Deskripsi",
+  mitra_id: "Mitra", id: "ID",
+};
+
+function fieldLabel(key: string): string {
+  return FIELD_LABEL[key] ?? key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+type Action = { kind: "restore" | "purge"; items: BinItem[] } | null;
+
+/** Superadmin-only: everything moved to the bin (30 days), with restore / permanent delete. Authorization is enforced by the API. */
+export default function RecycleBin() {
+  const toast = useToast();
+  const [draft, setDraft] = useState(EMPTY);
+  const [applied, setApplied] = useState(EMPTY);
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<ListResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [action, setAction] = useState<Action>(null);
+  const [detail, setDetail] = useState<(BinItem & { snapshot: Record<string, unknown> | null }) | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const q = new URLSearchParams({ page: String(page), limit: "20" });
+      for (const [k, v] of Object.entries(applied)) if (v) q.set(k, v);
+      setData(await api.get<ListResponse>(`/api/recycle?${q.toString()}`));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Gagal memuat Recycle Bin.");
+    } finally {
+      setLoading(false);
+    }
+  }, [applied, page]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  function patch(p: Partial<typeof EMPTY>) {
+    setDraft((d) => ({ ...d, ...p }));
+  }
+  function search(e?: FormEvent) {
+    e?.preventDefault();
+    setPage(1);
+    setApplied(draft);
+    setSelected(new Set());
+  }
+  function reset() {
+    setDraft(EMPTY);
+    setApplied(EMPTY);
+    setPage(1);
+    setSelected(new Set());
+  }
+
+  async function openDetail(item: BinItem) {
+    setDetail(null);
+    setDetailLoading(true);
+    try {
+      setDetail(await api.get(`/api/recycle/${item.id}`));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Gagal memuat detail.");
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
+  const items = data?.items ?? [];
+  const inBinItems = items.filter((i) => i.status === "IN_BIN");
+  const selectedItems = inBinItems.filter((i) => selected.has(i.id));
+  const hasFilter = JSON.stringify(applied) !== JSON.stringify(EMPTY);
+
+  function toggle(id: string) {
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  }
+
+  async function runAction(kind: "restore" | "purge", ids: string[], reason: string) {
+    let summary: RecycleSummary;
+    try {
+      summary = kind === "restore" ? await restoreFromBin(ids, reason) : await purgeFromBin(ids, reason);
+    } catch (err) {
+      // Someone else may have handled it meanwhile: show the real state, keep the dialog's message.
+      load();
+      throw err;
+    }
+    setSelected(new Set());
+    setAction(null);
+    setDetail(null);
+    const okText = kind === "restore" ? "Data berhasil dipulihkan." : "Data berhasil dihapus permanen.";
+    if (summary.failed > 0) setNotice(summaryMessage(summary, okText) + (summary.results.filter((r) => !r.ok).length > 1 ? " (lihat Audit Log)" : ""));
+    else {
+      setNotice(null);
+      toast(okText);
+    }
+    load();
+  }
+
+  const d = detail?.snapshot;
+
+  return (
+    <AdminLayout>
+      <MasterDataHeader
+        title="Recycle Bin"
+        description={`Data yang dihapus disimpan ${data?.retentionDays ?? 30} hari. Setelahnya dihapus permanen secara otomatis. Selama masih di sini, data dapat dipulihkan.`}
+      />
+
+      <form onSubmit={search} className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <MasterSearchInput value={draft.q} onChange={(v) => patch({ q: v })} placeholder="Cari ID / AWB / nama / alasan" />
+        <MasterFilterSelect value={draft.type} onChange={(v) => patch({ type: v })} label="Filter jenis data">
+          <option value="">Semua Jenis</option>
+          {(data?.types ?? []).map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </MasterFilterSelect>
+        <MasterFilterSelect value={draft.deletedBy} onChange={(v) => patch({ deletedBy: v })} label="Filter dihapus oleh">
+          <option value="">Semua Penghapus</option>
+          {(data?.deleters ?? []).map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </MasterFilterSelect>
+        <MasterFilterSelect value={draft.status} onChange={(v) => patch({ status: v })} label="Filter status">
+          <option value="IN_BIN">Di Recycle Bin</option>
+          <option value="RESTORED">Dipulihkan</option>
+          <option value="PURGED">Dihapus Permanen</option>
+          <option value="ALL">Semua Status</option>
+        </MasterFilterSelect>
+        <input type="date" aria-label="Dihapus dari tanggal" value={draft.from} onChange={(e) => patch({ from: e.target.value })} className={dateInputClass} />
+        <input type="date" aria-label="Dihapus sampai tanggal" value={draft.to} onChange={(e) => patch({ to: e.target.value })} className={dateInputClass} />
+        <button type="submit" className="h-10 rounded-lg bg-blue-900 px-4 text-sm font-semibold text-white hover:bg-blue-800">
+          Cari
+        </button>
+        {(hasFilter || JSON.stringify(draft) !== JSON.stringify(EMPTY)) && (
+          <button type="button" onClick={reset} className="h-10 rounded-lg px-3 text-sm font-medium text-slate-500 hover:text-slate-800">
+            Reset
+          </button>
+        )}
+      </form>
+
+      {selectedItems.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm">
+          <span className="font-medium text-blue-900">{selectedItems.length} data dipilih</span>
+          <button type="button" onClick={() => setAction({ kind: "restore", items: selectedItems })} className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">
+            <RotateCcw size={13} /> Restore Terpilih
+          </button>
+          <button type="button" onClick={() => setSelected(new Set())} className="text-xs font-medium text-slate-500 hover:text-slate-800">
+            Batal pilih
+          </button>
+        </div>
+      )}
+
+      {(error || notice) && (
+        <p className={`mt-3 flex items-start gap-1.5 text-sm font-medium ${error ? "text-red-600" : "text-amber-700"}`}>
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {error ?? notice}
+        </p>
+      )}
+
+      <MasterTableCard minWidth={1380}>
+        <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <tr>
+            <th className="w-10 px-4 py-3">
+              <input
+                type="checkbox"
+                aria-label="Pilih semua"
+                checked={inBinItems.length > 0 && selectedItems.length === inBinItems.length}
+                onChange={(e) => setSelected(e.target.checked ? new Set(inBinItems.map((i) => i.id)) : new Set())}
+              />
+            </th>
+            <th className="px-4 py-3 font-medium">Data</th>
+            <th className="px-4 py-3 font-medium">Jenis</th>
+            <th className="px-4 py-3 font-medium">Dihapus Oleh</th>
+            <th className="px-4 py-3 font-medium">Tanggal Hapus</th>
+            <th className="px-4 py-3 font-medium">Alasan</th>
+            <th className="px-4 py-3 font-medium">Auto Delete</th>
+            <th className="px-4 py-3 font-medium">Status</th>
+            <th className="px-4 py-3 font-medium">Aksi</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {(loading || items.length === 0) && (
+            <MasterTableMessage
+              colSpan={9}
+              loading={loading}
+              loadingText="Memuat..."
+              icon={Trash2}
+              title="Recycle Bin kosong"
+              description={hasFilter ? "Tidak ada data yang cocok dengan filter." : "Data yang dihapus akan muncul di sini dan disimpan selama 30 hari."}
+            />
+          )}
+          {!loading &&
+            items.map((i) => {
+              const r = remaining(i.daysLeft);
+              const live = i.status === "IN_BIN";
+              return (
+                <tr key={i.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3">
+                    {live && <input type="checkbox" aria-label={`Pilih ${i.label}`} checked={selected.has(i.id)} onChange={() => toggle(i.id)} />}
+                  </td>
+                  <td className="min-w-[10rem] px-4 py-3">
+                    <p className="font-medium text-slate-800">{i.label}</p>
+                    {i.sublabel && <p className="text-xs text-slate-500">{i.sublabel}</p>}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-slate-700">{i.entityTypeLabel}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-slate-700">{i.deletedBy}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">{fmtIso(i.deletedAt)}</td>
+                  <td className="min-w-[12rem] max-w-[18rem] px-4 py-3 text-slate-600">{i.deleteReason}</td>
+                  <td className="whitespace-nowrap px-4 py-3">
+                    {live ? (
+                      <>
+                        <p className="text-xs text-slate-500">{fmtIso(i.expiresAt)}</p>
+                        <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${r.cls}`}>{r.text}</span>
+                        {i.purgeError && <p className="mt-1 max-w-[14rem] whitespace-normal text-[11px] text-rose-600">Tertahan: {i.purgeError}</p>}
+                      </>
+                    ) : (
+                      "-"
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLE[i.status]}`}>{STATUS_LABEL[i.status]}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1 whitespace-nowrap">
+                      <button type="button" onClick={() => openDetail(i)} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                        <Eye size={14} /> Detail
+                      </button>
+                      {live && (
+                        <>
+                          <button type="button" onClick={() => setAction({ kind: "restore", items: [i] })} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">
+                            <RotateCcw size={14} /> Restore
+                          </button>
+                          <button type="button" onClick={() => setAction({ kind: "purge", items: [i] })} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">
+                            <Trash2 size={14} /> Hapus Permanen
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+        </tbody>
+      </MasterTableCard>
+
+      {data && data.meta.totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+          <span>
+            Halaman {data.meta.page} dari {data.meta.totalPages} · {data.meta.total} data
+          </span>
+          <div className="flex gap-2">
+            <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="rounded-lg border border-slate-200 px-3 py-1.5 disabled:opacity-40">
+              Sebelumnya
+            </button>
+            <button type="button" disabled={page >= data.meta.totalPages} onClick={() => setPage((p) => p + 1)} className="rounded-lg border border-slate-200 px-3 py-1.5 disabled:opacity-40">
+              Berikutnya
+            </button>
+          </div>
+        </div>
+      )}
+
+      {(detail || detailLoading) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-lg font-semibold text-slate-900">Detail Data Terhapus</h2>
+              <button type="button" aria-label="Tutup" onClick={() => setDetail(null)} className="rounded-md p-1 text-slate-400 hover:bg-slate-100">
+                <X size={18} />
+              </button>
+            </div>
+            {detailLoading || !detail ? (
+              <p className="mt-6 flex items-center gap-2 text-sm text-slate-500">
+                <Loader2 size={16} className="animate-spin" /> Memuat...
+              </p>
+            ) : (
+              <>
+                <dl className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+                  {(
+                    [
+                      ["Jenis Data", detail.entityTypeLabel],
+                      ["Entity ID", detail.entityId],
+                      ["Dihapus Oleh", detail.deletedBy],
+                      ["Tanggal Hapus", fmtIso(detail.deletedAt)],
+                      ["Alasan Hapus", detail.deleteReason],
+                      ["Auto Delete", detail.status === "IN_BIN" ? `${fmtIso(detail.expiresAt)} (${remaining(detail.daysLeft).text})` : "-"],
+                      ...(detail.restoredAt ? [["Dipulihkan", `${detail.restoredBy} · ${fmtIso(detail.restoredAt)} · ${detail.restoreReason}`]] : []),
+                      ...(detail.purgedAt ? [["Dihapus Permanen", `${detail.purgedBy} · ${fmtIso(detail.purgedAt)} · ${detail.purgeReason}`]] : []),
+                    ] as Array<[string, string]>
+                  ).map(([k, v]) => (
+                    <div key={k}>
+                      <dt className="text-xs text-slate-500">{k}</dt>
+                      <dd className="break-words font-medium text-slate-800">{v}</dd>
+                    </div>
+                  ))}
+                </dl>
+                {d && (
+                  <>
+                    <h3 className="mt-5 text-sm font-semibold text-slate-700">Data Asli</h3>
+                    <dl className="mt-2 grid gap-x-6 gap-y-2 rounded-lg bg-slate-50 p-3 text-sm sm:grid-cols-2">
+                      {Object.entries(d)
+                        .filter(([k, v]) => v !== null && v !== "" && typeof v !== "object" && k !== "created_by" && k !== "updated_by")
+                        .map(([k, v]) => (
+                          <div key={k}>
+                            <dt className="text-xs text-slate-500">{fieldLabel(k)}</dt>
+                            <dd className="break-words text-slate-800">{String(v)}</dd>
+                          </div>
+                        ))}
+                    </dl>
+                  </>
+                )}
+                {detail.status === "IN_BIN" && (
+                  <div className="mt-5 flex flex-wrap justify-end gap-2">
+                    <button type="button" onClick={() => setAction({ kind: "restore", items: [detail] })} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                      <RotateCcw size={15} /> Restore
+                    </button>
+                    <button type="button" onClick={() => setAction({ kind: "purge", items: [detail] })} className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700">
+                      <Trash2 size={15} /> Hapus Permanen
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {action?.kind === "restore" && (
+        <ReasonModal
+          title="Pulihkan Data?"
+          reasonLabel="Alasan Pemulihan"
+          placeholder="Contoh: Data terhapus karena kesalahan / masih diperlukan"
+          confirmLabel="Pulihkan Data"
+          tone="primary"
+          onClose={() => setAction(null)}
+          onConfirm={(reason) => runAction("restore", action.items.map((i) => i.id), reason)}
+        >
+          <p>{action.items.length === 1 ? "Data berikut akan dikembalikan ke sistem aktif:" : `${action.items.length} data akan dikembalikan ke sistem aktif:`}</p>
+          <ItemList items={action.items} />
+        </ReasonModal>
+      )}
+      {action?.kind === "purge" && (
+        <ReasonModal
+          title="PERINGATAN: Hapus Permanen"
+          reasonLabel="Alasan Penghapusan Permanen"
+          placeholder="Contoh: Data duplicate, sudah tidak diperlukan"
+          confirmLabel="Hapus Permanen"
+          tone="warning"
+          onClose={() => setAction(null)}
+          onConfirm={(reason) => runAction("purge", action.items.map((i) => i.id), reason)}
+        >
+          <p className="font-semibold text-rose-700">Data ini akan dihapus PERMANEN dan TIDAK DAPAT dipulihkan.</p>
+          <ItemList items={action.items} />
+        </ReasonModal>
+      )}
+    </AdminLayout>
+  );
+}
+
+function ItemList({ items }: { items: Array<{ label: string; entityTypeLabel: string; sublabel: string }> }) {
+  return (
+    <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg bg-slate-50 p-3">
+      {items.map((i, n) => (
+        <li key={n} className="text-sm">
+          <span className="font-medium text-slate-800">{i.label}</span>
+          <span className="text-slate-500"> · {i.entityTypeLabel}</span>
+          {i.sublabel && <span className="block text-xs text-slate-500">{i.sublabel}</span>}
+        </li>
+      ))}
+    </ul>
+  );
+}

@@ -25,7 +25,7 @@ export function isFallbackLayanan(nama: string): boolean {
 export async function findActiveLayanan(env: Env, raw: string | undefined | null): Promise<string | null> {
   const name = (raw ?? "").trim();
   if (!name) return null;
-  const row = await env.DB.prepare(`SELECT nama FROM layanans WHERE nama = ? AND aktif = 1`)
+  const row = await env.DB.prepare(`SELECT nama FROM layanans WHERE nama = ? AND aktif = 1 AND deleted_at IS NULL`)
     .bind(name)
     .first<{ nama: string }>();
   return row?.nama ?? null;

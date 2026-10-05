@@ -33,7 +33,6 @@ interface LayananContextValue {
   refresh: () => Promise<void>;
   createLayanan: (nama: string, deskripsi?: string) => Promise<void>;
   updateLayanan: (id: string, data: { nama?: string; deskripsi?: string; aktif?: boolean }) => Promise<void>;
-  deleteLayanan: (id: string) => Promise<void>;
 }
 
 const LayananContext = createContext<LayananContextValue | null>(null);
@@ -76,11 +75,6 @@ export function LayananProvider({ children }: { children: ReactNode }) {
     await refresh();
   }
 
-  async function deleteLayanan(id: string) {
-    await api.del(`/api/layanan/${encodeURIComponent(id)}`);
-    await refresh();
-  }
-
   return (
     <LayananContext.Provider
       value={{
@@ -92,7 +86,6 @@ export function LayananProvider({ children }: { children: ReactNode }) {
         refresh,
         createLayanan,
         updateLayanan,
-        deleteLayanan,
       }}
     >
       {children}

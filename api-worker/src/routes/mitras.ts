@@ -15,8 +15,8 @@ export function registerMitraRoutes(router: Router) {
     const url = new URL(ctx.request.url);
     const onlyActive = url.searchParams.get("active") === "true";
     const query = onlyActive
-      ? `SELECT * FROM mitras WHERE aktif = 1 ORDER BY nama`
-      : `SELECT * FROM mitras ORDER BY nama`;
+      ? `SELECT * FROM mitras WHERE aktif = 1 AND deleted_at IS NULL ORDER BY nama`
+      : `SELECT * FROM mitras WHERE deleted_at IS NULL ORDER BY nama`;
     const rows = await ctx.env.DB.prepare(query).all<Record<string, unknown>>();
     return ok({
       items: (rows.results ?? []).map((r) => ({
@@ -70,7 +70,7 @@ export function registerMitraRoutes(router: Router) {
 
   router.patch("/api/mitras/:id", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "users.manage");
-    const mitra = await ctx.env.DB.prepare(`SELECT * FROM mitras WHERE kode_mitra = ?`)
+    const mitra = await ctx.env.DB.prepare(`SELECT * FROM mitras WHERE kode_mitra = ? AND deleted_at IS NULL`)
       .bind(params.id)
       .first<Record<string, unknown>>();
     if (!mitra) throw Errors.notFound("Mitra tidak ditemukan.");

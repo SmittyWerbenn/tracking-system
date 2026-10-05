@@ -40,7 +40,7 @@ export function registerHelpRoutes(router: Router) {
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     if (!email) throw Errors.badRequest("Email wajib diisi.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw Errors.badRequest("Format email tidak valid.");
-    const user = await ctx.env.DB.prepare(`SELECT role FROM users WHERE email = ? COLLATE NOCASE`)
+    const user = await ctx.env.DB.prepare(`SELECT role FROM users WHERE email = ? COLLATE NOCASE AND deleted_at IS NULL`)
       .bind(email)
       .first<{ role: Role }>();
     // Unknown email: stop here - no WhatsApp number is handed out.

@@ -41,7 +41,7 @@ export function registerPublicRoutes(router: Router) {
     const row = await ctx.env.DB.prepare(
       `SELECT s.*, t.nomor_unit as truck_nomor_unit, t.jenis as truck_jenis, d.nama as truck_driver_nama
        FROM shipments s LEFT JOIN trucks t ON t.id = s.truck_id LEFT JOIN drivers d ON d.id = t.driver_id
-       WHERE s.awb = ?`,
+       WHERE s.awb = ? AND s.deleted_at IS NULL`,
     )
       .bind(params.awb)
       .first();
@@ -94,7 +94,7 @@ export function registerPublicRoutes(router: Router) {
 
   router.get("/api/public/locations", async (ctx: Ctx) => {
     const rows = await ctx.env.DB.prepare(
-      `SELECT id, nama_kota, kode_kota, nama_area, provinsi, nama_titik, jenis FROM locations WHERE aktif = 1 ORDER BY nama_kota`,
+      `SELECT id, nama_kota, kode_kota, nama_area, provinsi, nama_titik, jenis FROM locations WHERE aktif = 1 AND deleted_at IS NULL ORDER BY nama_kota`,
     ).all();
     return ok({ items: rows.results });
   });
@@ -106,7 +106,7 @@ export function registerPublicRoutes(router: Router) {
     const rating = reqNumber(body, "rating", { min: 1, max: 5 });
     const comment = optString(body, "comment");
 
-    const shipment = await ctx.env.DB.prepare(`SELECT status FROM shipments WHERE awb = ?`).bind(awb).first<{
+    const shipment = await ctx.env.DB.prepare(`SELECT status FROM shipments WHERE awb = ? AND deleted_at IS NULL`).bind(awb).first<{
       status: string;
     }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");

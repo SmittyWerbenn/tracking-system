@@ -20,6 +20,7 @@ import { useFleet, type TruckFormData, type TruckWithDriver } from "../../store/
 import type { ArmadaStatus } from "../../types";
 import { ApiError } from "../../utils/apiClient";
 import { ARMADA_STATUS_OPTIONS } from "../../utils/status";
+import { DeleteButton } from "../../components/DeleteButton";
 
 function isArmadaStatus(value: string): value is ArmadaStatus {
   return (ARMADA_STATUS_OPTIONS as string[]).includes(value);
@@ -443,6 +444,12 @@ export default function FleetList() {
                           <RotateCcw size={16} />
                         </button>
                       )}
+                      <DeleteButton
+                        entityType="truck"
+                        id={t.id}
+                        details={[["Nomor Unit", t.nomorUnit], ["Jenis", t.jenis], ["Driver", t.driver?.nama ?? "-"]]}
+                        onDone={refresh}
+                      />
                     </div>
                   </td>
                 </tr>

@@ -56,7 +56,7 @@ export function registerDriverRoutes(router: Router) {
   router.get("/api/driver/trucks", async (ctx: Ctx) => {
     const driverId = await requireDriverId(ctx);
     const rows = await ctx.env.DB.prepare(
-      `SELECT id, nomor_unit, jenis FROM trucks WHERE driver_id = ? ORDER BY created_at ASC`,
+      `SELECT id, nomor_unit, jenis FROM trucks WHERE driver_id = ? AND deleted_at IS NULL ORDER BY created_at ASC`,
     )
       .bind(driverId)
       .all();
@@ -77,7 +77,7 @@ export function registerDriverRoutes(router: Router) {
       `SELECT s.*, ${CUSTOMER_NAME_SQL}, t.nomor_unit as truck_nomor_unit
        FROM shipments s
        JOIN trucks t ON t.id = s.truck_id
-       WHERE t.driver_id = ? AND s.status != 'Dibatalkan'
+       WHERE t.driver_id = ? AND s.status != 'Dibatalkan' AND s.deleted_at IS NULL
        ORDER BY s.created_at DESC`,
     )
       .bind(driverId)
@@ -93,7 +93,7 @@ export function registerDriverRoutes(router: Router) {
     const rows = await ctx.env.DB.prepare(
       `SELECT s.*, ${CUSTOMER_NAME_SQL}
        FROM shipments s
-       WHERE s.truck_id IS NULL
+       WHERE s.truck_id IS NULL AND s.deleted_at IS NULL
          AND s.status != 'Dibatalkan'
          AND (s.claim_status IS NULL OR s.claim_driver_id = ?)
        ORDER BY s.created_at ASC`,
@@ -115,7 +115,7 @@ export function registerDriverRoutes(router: Router) {
     const actor = requireAuth(ctx);
     const driverId = await requireDriverId(ctx);
     const shipment = await ctx.env.DB.prepare(
-      `SELECT truck_id, claim_status, claim_driver_id, status FROM shipments WHERE awb = ?`,
+      `SELECT truck_id, claim_status, claim_driver_id, status FROM shipments WHERE awb = ? AND deleted_at IS NULL`,
     )
       .bind(params.awb)
       .first<{ truck_id: string | null; claim_status: string | null; claim_driver_id: string | null; status: string }>();
@@ -152,7 +152,7 @@ export function registerDriverRoutes(router: Router) {
     const actor = requireAuth(ctx);
     const driverId = await requireDriverId(ctx);
     const shipment = await ctx.env.DB.prepare(
-      `SELECT claim_status, claim_driver_id FROM shipments WHERE awb = ?`,
+      `SELECT claim_status, claim_driver_id FROM shipments WHERE awb = ? AND deleted_at IS NULL`,
     )
       .bind(params.awb)
       .first<{ claim_status: string | null; claim_driver_id: string | null }>();
@@ -183,7 +183,7 @@ export function registerDriverRoutes(router: Router) {
     const row = await ctx.env.DB.prepare(
       `SELECT s.*, t.nomor_unit as truck_nomor_unit, t.driver_id as truck_driver_id
        FROM shipments s LEFT JOIN trucks t ON t.id = s.truck_id
-       WHERE s.awb = ?`,
+       WHERE s.awb = ? AND s.deleted_at IS NULL`,
     )
       .bind(params.awb)
       .first<Record<string, unknown>>();
@@ -206,7 +206,7 @@ export function registerDriverRoutes(router: Router) {
     const user = requireAuth(ctx);
     const driverId = await requireDriverId(ctx);
     const owns = await ctx.env.DB.prepare(
-      `SELECT 1 FROM shipments s JOIN trucks t ON t.id = s.truck_id WHERE s.awb = ? AND t.driver_id = ?`,
+      `SELECT 1 FROM shipments s JOIN trucks t ON t.id = s.truck_id WHERE s.awb = ? AND t.driver_id = ? AND s.deleted_at IS NULL`,
     )
       .bind(params.awb, driverId)
       .first();
@@ -243,7 +243,7 @@ export function registerDriverRoutes(router: Router) {
   router.get("/api/driver/shipments/:awb/position", async (ctx: Ctx, params) => {
     const driverId = await requireDriverId(ctx);
     const owns = await ctx.env.DB.prepare(
-      `SELECT 1 FROM shipments s JOIN trucks t ON t.id = s.truck_id WHERE s.awb = ? AND t.driver_id = ?`,
+      `SELECT 1 FROM shipments s JOIN trucks t ON t.id = s.truck_id WHERE s.awb = ? AND t.driver_id = ? AND s.deleted_at IS NULL`,
     )
       .bind(params.awb, driverId)
       .first();

@@ -18,13 +18,13 @@ export function registerTruckRoutes(router: Router) {
     const rows = status
       ? await ctx.env.DB.prepare(
           `SELECT t.*, d.nama as driver_nama, d.telepon as driver_telepon FROM trucks t
-           LEFT JOIN drivers d ON d.id = t.driver_id WHERE t.status = ? ORDER BY t.nomor_unit`,
+           LEFT JOIN drivers d ON d.id = t.driver_id WHERE t.deleted_at IS NULL AND t.status = ? ORDER BY t.nomor_unit`,
         )
           .bind(status)
           .all()
       : await ctx.env.DB.prepare(
           `SELECT t.*, d.nama as driver_nama, d.telepon as driver_telepon FROM trucks t
-           LEFT JOIN drivers d ON d.id = t.driver_id ORDER BY t.nomor_unit`,
+           LEFT JOIN drivers d ON d.id = t.driver_id WHERE t.deleted_at IS NULL ORDER BY t.nomor_unit`,
         ).all();
 
     return ok({ items: rows.results });
@@ -42,7 +42,7 @@ export function registerTruckRoutes(router: Router) {
     const keterangan = optString(body, "keterangan");
 
     const dupe = await ctx.env.DB.prepare(`SELECT id FROM trucks WHERE nomor_unit = ?`).bind(nomorUnit).first();
-    if (dupe) throw Errors.conflict("Nomor unit truck sudah terdaftar.");
+    if (dupe) throw Errors.conflict("Nomor unit truck sudah terdaftar (termasuk data di Recycle Bin).");
 
     const now = new Date().toISOString();
     const driverId = newId();
@@ -70,7 +70,7 @@ export function registerTruckRoutes(router: Router) {
 
   router.patch("/api/trucks/:id", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "fleet.manage");
-    const truck = await ctx.env.DB.prepare(`SELECT id, driver_id FROM trucks WHERE id = ?`).bind(params.id).first<{
+    const truck = await ctx.env.DB.prepare(`SELECT id, driver_id FROM trucks WHERE id = ? AND deleted_at IS NULL`).bind(params.id).first<{
       id: string;
       driver_id: string;
     }>();
@@ -127,7 +127,7 @@ export function registerTruckRoutes(router: Router) {
     // Matches shipments currently assigned to this truck, plus ones that
     // used it at some earlier point in their timeline (e.g. before a
     // Transfer Unit moved them to a different truck).
-    const matchClause = `(s.truck_id = ? OR EXISTS (SELECT 1 FROM shipment_timeline_events e WHERE e.awb = s.awb AND e.truck_id = ?))`;
+    const matchClause = `s.deleted_at IS NULL AND (s.truck_id = ? OR EXISTS (SELECT 1 FROM shipment_timeline_events e WHERE e.awb = s.awb AND e.truck_id = ?))`;
     const params_: unknown[] = [params.id, params.id];
     let dateClause = "";
     if (from) { dateClause += " AND s.tanggal_dibuat >= ?"; params_.push(from); }

@@ -14,7 +14,6 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../store/AuthContext";
 import { useFleet } from "../store/FleetContext";
 import { useLayanan } from "../store/LayananContext";
-import { useLocations } from "../store/LocationContext";
 import { useShipments } from "../store/ShipmentContext";
 import type { LayananPengiriman } from "../types";
 import { api } from "../utils/apiClient";
@@ -118,7 +117,6 @@ const cellInputClass =
 export function BulkShipmentImport() {
   const { createShipment } = useShipments();
   const { trucksWithDriver } = useFleet();
-  const { activeTitikLokasi } = useLocations();
   const { activeNames: layananOptions, refresh: refreshLayanan } = useLayanan();
   const { profile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -152,7 +150,6 @@ export function BulkShipmentImport() {
       .catch(() => setCustomerIds([]));
   }, [isCustAdmin]);
 
-  const knownKota = activeTitikLokasi.map((k) => k.namaKota);
   const truckOptions = trucksWithDriver.filter((t) => t.status !== "Inactive");
 
   function updateRow<K extends keyof BulkRow>(id: string, key: K, value: BulkRow[K]) {
@@ -196,6 +193,18 @@ export function BulkShipmentImport() {
       // used; anything else falls back to LTL (the API applies the same
       // rule, this just shows it in the preview table first).
       const fallbackLayanan = layananOptions.includes("LTL") ? "LTL" : "";
+      // Canonical city spelling comes from the API (one lookup for the whole file) rather than a downloaded master list.
+      let knownKota: string[] = [];
+      try {
+        const res = await api.post<{ items: string[] }>(
+          "/api/public/locations/match-kota",
+          { names: parsed.flatMap((p) => [p.kotaAsal, p.kotaTujuan]) },
+          { auth: false },
+        );
+        knownKota = res.items;
+      } catch {
+        /* keep the imported spelling as typed */
+      }
       const imported = parsed.map((p) =>
         fromInput(
           {
@@ -330,11 +339,6 @@ export function BulkShipmentImport() {
         )}
       </div>
 
-      <datalist id="bulk-kota-suggestions">
-        {knownKota.map((k) => (
-          <option key={k} value={k} />
-        ))}
-      </datalist>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full min-w-[1400px] border-collapse text-xs">
@@ -460,7 +464,6 @@ export function BulkShipmentImport() {
                 </td>
                 <td className="border-l border-slate-100 px-2.5 py-2">
                   <input
-                    list="bulk-kota-suggestions"
                     className={cellInputClass}
                     value={row.kotaAsal}
                     onChange={(e) => updateRow(row.id, "kotaAsal", e.target.value)}
@@ -478,7 +481,6 @@ export function BulkShipmentImport() {
                 </td>
                 <td className="px-2.5 py-2">
                   <input
-                    list="bulk-kota-suggestions"
                     className={cellInputClass}
                     value={row.kotaTujuan}
                     onChange={(e) => updateRow(row.id, "kotaTujuan", e.target.value)}

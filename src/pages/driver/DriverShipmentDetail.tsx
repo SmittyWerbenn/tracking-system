@@ -22,7 +22,6 @@ import { PhotoPickerBox } from "../../components/PhotoPickerBox";
 import { RefreshButton } from "../../components/RefreshButton";
 import { DriverHelpLink } from "../../components/DriverHelpLink";
 import { toWhatsAppNumber } from "../../store/HelpContactContext";
-import { useLocations } from "../../store/LocationContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { ShipmentStatus, TimelineEventType } from "../../types";
 import { ApiError } from "../../utils/apiClient";
@@ -57,9 +56,7 @@ const SELESAI_STATUS = "Selesai / Terkirim";
 export default function DriverShipmentDetail() {
   const { awb } = useParams<{ awb: string }>();
   const { addTrackingUpdate } = useShipments();
-  const { activeTitikLokasi } = useLocations();
   // Lokasi update status mengarah ke "Nama Area" (hanya field Nama Area di Kota & Titik Transit).
-  const areaSuggestions = Array.from(new Set(activeTitikLokasi.map((t) => (t.namaArea || "").trim()).filter(Boolean)));
   const [data, setData] = useState<DriverShipmentDetailData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -449,7 +446,7 @@ export default function DriverShipmentDetail() {
                         required
                         value={statusLokasi}
                         onChange={setStatusLokasi}
-                        suggestions={areaSuggestions}
+                        kind="area"
                         placeholder="Pilih / ketik Nama Area, contoh: Semarang Barat"
                         className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                       />

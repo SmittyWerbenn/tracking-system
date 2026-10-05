@@ -5,6 +5,7 @@ import { parseJsonBody, optBool } from "../validate";
 import { newId } from "../crypto";
 import { requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
+import { parsePagination, pageMeta, likeTerm, orderBy } from "../pagination";
 
 const JENIS = ["Gudang", "Hub", "Transit", "Cabang", "Tujuan"] as const;
 type Jenis = (typeof JENIS)[number];
@@ -100,12 +101,32 @@ export function registerLocationRoutes(router: Router) {
   router.get("/api/locations", async (ctx: Ctx) => {
     requirePermission(ctx, "locations.view");
     const url = new URL(ctx.request.url);
-    const onlyActive = url.searchParams.get("active") === "true";
-    const query = onlyActive
-      ? `SELECT * FROM locations WHERE aktif = 1 AND deleted_at IS NULL ORDER BY nama_kota`
-      : `SELECT * FROM locations WHERE deleted_at IS NULL ORDER BY nama_kota`;
-    const rows = await ctx.env.DB.prepare(query).all();
-    return ok({ items: rows.results });
+    const { page, limit, offset } = parsePagination(url);
+    const where: string[] = ["deleted_at IS NULL"];
+    const params: unknown[] = [];
+    if (url.searchParams.get("active") === "true") where.push("aktif = 1");
+    const status = url.searchParams.get("status");
+    if (status === "aktif") where.push("aktif = 1");
+    else if (status === "nonaktif") where.push("aktif = 0");
+    const jenis = url.searchParams.get("jenis");
+    if (jenis) { where.push("jenis = ?"); params.push(jenis); }
+    const q = url.searchParams.get("q")?.trim();
+    if (q) {
+      where.push("(nama_kota LIKE ? ESCAPE '\\' OR provinsi LIKE ? ESCAPE '\\' OR kode_kota LIKE ? ESCAPE '\\' OR nama_area LIKE ? ESCAPE '\\')");
+      const like = likeTerm(q);
+      params.push(like, like, like, like);
+    }
+    const whereSql = `WHERE ${where.join(" AND ")}`;
+    const order = orderBy(
+      url,
+      { nama_kota: "nama_kota COLLATE NOCASE", provinsi: "provinsi COLLATE NOCASE", jenis: "jenis", nama_area: "nama_area COLLATE NOCASE", aktif: "aktif" },
+      "nama_kota COLLATE NOCASE ASC, id ASC",
+    );
+    const total = await ctx.env.DB.prepare(`SELECT COUNT(*) AS c FROM locations ${whereSql}`).bind(...params).first<{ c: number }>();
+    const rows = await ctx.env.DB.prepare(`SELECT * FROM locations ${whereSql} ORDER BY ${order} LIMIT ? OFFSET ?`)
+      .bind(...params, limit, offset)
+      .all();
+    return ok({ items: rows.results, meta: pageMeta(page, limit, total?.c ?? 0) });
   });
 
   router.post("/api/locations", async (ctx: Ctx) => {

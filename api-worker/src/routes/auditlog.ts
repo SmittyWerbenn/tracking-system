@@ -2,7 +2,7 @@ import type { Router } from "../router";
 import type { Ctx } from "../types";
 import { ok } from "../http";
 import { requirePermission } from "../authMiddleware";
-import { parsePagination, pageMeta } from "../pagination";
+import { parsePagination, pageMeta, likeTerm } from "../pagination";
 
 export function registerAuditLogRoutes(router: Router) {
   router.get("/api/audit-logs", async (ctx: Ctx) => {
@@ -22,8 +22,13 @@ export function registerAuditLogRoutes(router: Router) {
     if (action) { where.push("action = ?"); params.push(action); }
     if (module) { where.push("module = ?"); params.push(module); }
     if (awb) { where.push("awb = ?"); params.push(awb); }
-    if (userName) { where.push("user_name LIKE ?"); params.push(`%${userName}%`); }
-    if (awbContains) { where.push("awb LIKE ?"); params.push(`%${awbContains}%`); }
+    if (userName) { where.push("user_name LIKE ? ESCAPE '\\'"); params.push(likeTerm(userName)); }
+    if (awbContains) { where.push("awb LIKE ? ESCAPE '\\'"); params.push(likeTerm(awbContains)); }
+    const q = url.searchParams.get("q")?.trim();
+    if (q) {
+      where.push("(description LIKE ? ESCAPE '\\' OR user_name LIKE ? ESCAPE '\\' OR awb LIKE ? ESCAPE '\\' OR action_label LIKE ? ESCAPE '\\')");
+      params.push(likeTerm(q), likeTerm(q), likeTerm(q), likeTerm(q));
+    }
     // ISO timestamps (UTC) compare correctly as text.
     if (from) { where.push("timestamp >= ?"); params.push(from); }
     if (to) { where.push("timestamp <= ?"); params.push(to); }
@@ -39,5 +44,17 @@ export function registerAuditLogRoutes(router: Router) {
       .all();
 
     return ok({ items: rows.results, meta: pageMeta(page, limit, total?.c ?? 0) });
+  });
+
+  // Distinct values for the Audit Log filter dropdowns (users / actions / modules).
+  router.get("/api/audit-logs/facets", async (ctx: Ctx) => {
+    requirePermission(ctx, "audit.view");
+    const [users, actions, modules] = await Promise.all([
+      ctx.env.DB.prepare(`SELECT DISTINCT user_name AS v FROM audit_log WHERE user_name IS NOT NULL ORDER BY user_name COLLATE NOCASE`).all<{ v: string }>(),
+      ctx.env.DB.prepare(`SELECT DISTINCT action AS v FROM audit_log ORDER BY action`).all<{ v: string }>(),
+      ctx.env.DB.prepare(`SELECT DISTINCT module AS v FROM audit_log ORDER BY module`).all<{ v: string }>(),
+    ]);
+    const list = (r: { results?: { v: string }[] }) => (r.results ?? []).map((x) => x.v);
+    return ok({ users: list(users), actions: list(actions), modules: list(modules) });
   });
 }

@@ -5,7 +5,7 @@ import { parseJsonBody, reqString, reqEnum, optString } from "../validate";
 import { newId } from "../crypto";
 import { requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
-import { parsePagination, pageMeta } from "../pagination";
+import { parsePagination, pageMeta, likeTerm, orderBy, wantsPaging } from "../pagination";
 
 const STATUS = ["Available", "On Trip", "Maintenance", "Inactive"] as const;
 
@@ -14,20 +14,43 @@ export function registerTruckRoutes(router: Router) {
     requirePermission(ctx, "fleet.view");
     const url = new URL(ctx.request.url);
     const status = url.searchParams.get("status");
+    const paged = wantsPaging(url);
+    const where: string[] = ["t.deleted_at IS NULL"];
+    const params: unknown[] = [];
+    if (status) { where.push("t.status = ?"); params.push(status); }
+    const jenis = url.searchParams.get("jenis");
+    if (jenis) { where.push("t.jenis = ?"); params.push(jenis); }
+    const q = url.searchParams.get("q")?.trim();
+    if (q) {
+      const cols = ["t.nomor_unit", "t.jenis", "t.kapasitas", "d.nama", "d.telepon", "t.keterangan"];
+      where.push(`(${cols.map((c) => `${c} LIKE ? ESCAPE '\\'`).join(" OR ")})`);
+      for (let i = 0; i < cols.length; i++) params.push(likeTerm(q));
+    }
+    const whereSql = `WHERE ${where.join(" AND ")}`;
+    const order = orderBy(
+      url,
+      { nomor_unit: "t.nomor_unit", jenis: "t.jenis", status: "t.status", driver: "d.nama COLLATE NOCASE" },
+      "t.nomor_unit ASC",
+    );
+    const { page, limit, offset } = parsePagination(url);
+    const total = paged
+      ? await ctx.env.DB.prepare(`SELECT COUNT(*) AS c FROM trucks t LEFT JOIN drivers d ON d.id = t.driver_id ${whereSql}`).bind(...params).first<{ c: number }>()
+      : null;
+    const rows = await ctx.env.DB.prepare(
+      `SELECT t.*, d.nama as driver_nama, d.telepon as driver_telepon FROM trucks t
+       LEFT JOIN drivers d ON d.id = t.driver_id ${whereSql} ORDER BY ${order}${paged ? " LIMIT ? OFFSET ?" : ""}`,
+    )
+      .bind(...params, ...(paged ? [limit, offset] : []))
+      .all();
 
-    const rows = status
-      ? await ctx.env.DB.prepare(
-          `SELECT t.*, d.nama as driver_nama, d.telepon as driver_telepon FROM trucks t
-           LEFT JOIN drivers d ON d.id = t.driver_id WHERE t.deleted_at IS NULL AND t.status = ? ORDER BY t.nomor_unit`,
-        )
-          .bind(status)
-          .all()
-      : await ctx.env.DB.prepare(
-          `SELECT t.*, d.nama as driver_nama, d.telepon as driver_telepon FROM trucks t
-           LEFT JOIN drivers d ON d.id = t.driver_id WHERE t.deleted_at IS NULL ORDER BY t.nomor_unit`,
-        ).all();
+    return ok({ items: rows.results, ...(paged ? { meta: pageMeta(page, limit, total?.c ?? 0) } : {}) });
+  });
 
-    return ok({ items: rows.results });
+  // Distinct vehicle types for the Armada filter dropdown.
+  router.get("/api/trucks/facets", async (ctx: Ctx) => {
+    requirePermission(ctx, "fleet.view");
+    const rows = await ctx.env.DB.prepare(`SELECT DISTINCT jenis FROM trucks WHERE deleted_at IS NULL ORDER BY jenis COLLATE NOCASE`).all<{ jenis: string }>();
+    return ok({ jenis: (rows.results ?? []).map((r) => r.jenis) });
   });
 
   router.post("/api/trucks", async (ctx: Ctx) => {
@@ -132,13 +155,17 @@ export function registerTruckRoutes(router: Router) {
     let dateClause = "";
     if (from) { dateClause += " AND s.tanggal_dibuat >= ?"; params_.push(from); }
     if (to) { dateClause += " AND s.tanggal_dibuat <= ?"; params_.push(to); }
+    // state=berjalan: currently on this truck and not delivered; state=selesai: everything else.
+    const state = url.searchParams.get("state");
+    if (state === "berjalan") { dateClause += " AND s.truck_id = ? AND s.status != 'Selesai / Terkirim'"; params_.push(params.id); }
+    else if (state === "selesai") { dateClause += " AND NOT (s.truck_id = ? AND s.status != 'Selesai / Terkirim')"; params_.push(params.id); }
 
     const total = await ctx.env.DB.prepare(`SELECT COUNT(*) as c FROM shipments s WHERE ${matchClause}${dateClause}`)
       .bind(...params_)
       .first<{ c: number }>();
     const rows = await ctx.env.DB.prepare(
       `SELECT s.awb, s.status, s.kota_asal, s.kota_tujuan, s.tanggal_dibuat, s.truck_id FROM shipments s
-       WHERE ${matchClause}${dateClause} ORDER BY s.tanggal_dibuat DESC LIMIT ? OFFSET ?`,
+       WHERE ${matchClause}${dateClause} ORDER BY s.tanggal_dibuat DESC, s.awb DESC LIMIT ? OFFSET ?`,
     )
       .bind(...params_, limit, offset)
       .all();

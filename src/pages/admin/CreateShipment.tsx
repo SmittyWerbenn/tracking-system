@@ -21,7 +21,7 @@ import { SearchableSelect } from "../../components/SearchableSelect";
 import { useAuth } from "../../store/AuthContext";
 import { useFleet } from "../../store/FleetContext";
 import { useLayanan } from "../../store/LayananContext";
-import { useLocations } from "../../store/LocationContext";
+import { useLocationSuggest } from "../../utils/useLocationSuggest";
 import { useSettings } from "../../store/SettingsContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { ShipmentFormData } from "../../types";
@@ -93,7 +93,6 @@ const inputClass =
 export default function CreateShipment() {
   const { createShipment, markEmailSent } = useShipments();
   const { trucksWithDriver } = useFleet();
-  const { activeTitikLokasi } = useLocations();
   const { activeNames: layananOptions, refresh: refreshLayanan } = useLayanan();
   const { settings } = useSettings();
   const { profile } = useAuth();
@@ -246,7 +245,8 @@ export default function CreateShipment() {
       label: `${t.nomorUnit} - ${t.jenis}`,
       description: t.driver ? `Driver: ${t.driver.nama}` : undefined,
     }));
-  const kotaSuggestions = Array.from(new Set(activeTitikLokasi.map((k) => k.namaKota))).sort();
+  const kotaAsalSuggestions = useLocationSuggest("kota", form.kotaAsal);
+  const kotaTujuanSuggestions = useLocationSuggest("kota", form.kotaTujuan);
   const selectedTruck = trucksWithDriver.find((t) => t.id === form.truckId);
 
   return (
@@ -373,8 +373,8 @@ export default function CreateShipment() {
               autoComplete="off"
             />
             <datalist id="kota-asal-suggestions">
-              {kotaSuggestions.map((k) => (
-                <option key={k} value={k} />
+              {kotaAsalSuggestions.map((k) => (
+                <option key={k.nama} value={k.nama} />
               ))}
             </datalist>
           </Field>
@@ -389,8 +389,8 @@ export default function CreateShipment() {
               autoComplete="off"
             />
             <datalist id="kota-tujuan-suggestions">
-              {kotaSuggestions.map((k) => (
-                <option key={k} value={k} />
+              {kotaTujuanSuggestions.map((k) => (
+                <option key={k.nama} value={k.nama} />
               ))}
             </datalist>
           </Field>

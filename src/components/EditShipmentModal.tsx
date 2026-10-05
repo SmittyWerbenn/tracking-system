@@ -1,9 +1,9 @@
 import { AlertTriangle, Loader2, Pencil, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLayanan } from "../store/LayananContext";
-import { useLocations } from "../store/LocationContext";
 import { useShipments } from "../store/ShipmentContext";
 import type { Shipment } from "../types";
+import { useLocationSuggest } from "../utils/useLocationSuggest";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
@@ -13,9 +13,7 @@ const inputClass =
  * fields (SLA/ETA, truck, mitra) are not part of this form. */
 export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Shipment; onClose: () => void; onSaved?: () => void }) {
   const { updateShipmentInfo } = useShipments();
-  const { activeTitikLokasi } = useLocations();
   const { activeNames: layananOptions, refresh: refreshLayanan } = useLayanan();
-  const kotaSuggestions = useMemo(() => Array.from(new Set(activeTitikLokasi.map((k) => k.namaKota))).sort(), [activeTitikLokasi]);
 
   const [f, setF] = useState({
     pengirimNama: shipment.pengirim.nama,
@@ -33,6 +31,9 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
     jumlahKoli: String(shipment.jumlahKoli),
     layanan: shipment.layanan as string,
   });
+  const kotaAsalSuggestions = useLocationSuggest("kota", f.kotaAsal);
+  const kotaTujuanSuggestions = useLocationSuggest("kota", f.kotaTujuan);
+
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
@@ -110,9 +111,14 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
           AWB <span className="font-mono font-semibold">{shipment.awb}</span> · data hanya dapat diubah selama status masih Dalam Persiapan.
         </p>
 
-        <datalist id="edit-kota-suggestions">
-          {kotaSuggestions.map((k) => (
-            <option key={k} value={k} />
+        <datalist id="edit-kota-asal-suggestions">
+          {kotaAsalSuggestions.map((k) => (
+            <option key={k.nama} value={k.nama} />
+          ))}
+        </datalist>
+        <datalist id="edit-kota-tujuan-suggestions">
+          {kotaTujuanSuggestions.map((k) => (
+            <option key={k.nama} value={k.nama} />
           ))}
         </datalist>
 
@@ -128,8 +134,8 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
           <div className="sm:col-span-2">{field("Email Penerima", "penerimaEmail", { type: "email" })}</div>
 
           <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400 sm:col-span-2">Rute</p>
-          {field("Kota Asal", "kotaAsal", { list: "edit-kota-suggestions" })}
-          {field("Kota Tujuan", "kotaTujuan", { list: "edit-kota-suggestions" })}
+          {field("Kota Asal", "kotaAsal", { list: "edit-kota-asal-suggestions" })}
+          {field("Kota Tujuan", "kotaTujuan", { list: "edit-kota-tujuan-suggestions" })}
           {field("Alamat Asal", "alamatAsal", { rows: 2 })}
           {field("Alamat Tujuan", "alamatTujuan", { rows: 2 })}
 

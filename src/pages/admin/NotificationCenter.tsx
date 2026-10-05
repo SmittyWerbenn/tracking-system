@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { RefreshButton } from "../../components/RefreshButton";
-import { useNotifications } from "../../store/NotificationContext";
+import { toItem, useNotifications, type NotificationRow } from "../../store/NotificationContext";
+import { Pagination } from "../../components/Pagination";
+import { usePagedList } from "../../utils/usePagedList";
+import type { NotificationItem } from "../../types";
 import type { NotificationTrigger } from "../../types";
 import { formatTimestampWib } from "../../utils/format";
 
@@ -19,7 +22,12 @@ function formatTimestamp(iso: string): string {
 }
 
 export default function NotificationCenter() {
-  const { notifications, refresh, markAllRead } = useNotifications();
+  const { refresh: refreshBell, markAllRead } = useNotifications();
+  const list = usePagedList<NotificationRow, NotificationItem>("/api/notifications", {}, toItem);
+  const notifications = list.items;
+  const refresh = async () => {
+    await Promise.all([refreshBell(), list.reload()]);
+  };
   const [refreshing, setRefreshing] = useState(false);
   async function handleRefresh() {
     setRefreshing(true);
@@ -74,12 +82,17 @@ export default function NotificationCenter() {
             </div>
           );
         })}
-        {notifications.length === 0 && (
+        {list.loading && notifications.length === 0 && (
+          <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-400">Memuat...</div>
+        )}
+        {!list.loading && notifications.length === 0 && (
           <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-400">
-            Belum ada notifikasi.
+            Tidak ada data.
           </div>
         )}
       </div>
+
+      <Pagination meta={list.meta} page={list.page} pageSize={list.pageSize} loading={list.loading} onPage={list.setPage} onPageSize={list.setPageSize} unit="notifikasi" />
     </AdminLayout>
   );
 }

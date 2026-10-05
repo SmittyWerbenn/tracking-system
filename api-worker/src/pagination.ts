@@ -19,3 +19,23 @@ export function parsePagination(url: URL): PageParams {
 export function pageMeta(page: number, limit: number, total: number) {
   return { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) };
 }
+
+/** True when the caller asked for a page (page/limit present); lets small lookup
+ * lists keep returning everything for dropdowns while tables get real pages. */
+export function wantsPaging(url: URL): boolean {
+  return url.searchParams.has("page") || url.searchParams.has("limit");
+}
+
+/** `%term%` with LIKE wildcards in the term escaped (pair with `ESCAPE '\'`). */
+export function likeTerm(term: string): string {
+  return `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
+/** ORDER BY from `sort`/`order` params, restricted to a whitelist of columns. */
+export function orderBy(url: URL, allowed: Record<string, string>, fallback: string): string {
+  const key = url.searchParams.get("sort") ?? "";
+  const col = allowed[key];
+  if (!col) return fallback;
+  const dir = url.searchParams.get("order")?.toLowerCase() === "desc" ? "DESC" : "ASC";
+  return `${col} ${dir}, ${fallback}`;
+}

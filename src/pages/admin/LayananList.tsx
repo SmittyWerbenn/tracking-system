@@ -13,6 +13,8 @@ import {
 import { useLayanan, type Layanan } from "../../store/LayananContext";
 import { ApiError } from "../../utils/apiClient";
 import { DeleteButton } from "../../components/DeleteButton";
+import { Pagination } from "../../components/Pagination";
+import { useDebounced, usePagedList } from "../../utils/usePagedList";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
@@ -22,7 +24,7 @@ const CUSTOM = "__custom__";
 type StatusFilter = "semua" | "aktif" | "nonaktif";
 
 export default function LayananList() {
-  const { layanans, standardOptions, fallback, isLoading, refresh, createLayanan, updateLayanan } =
+  const { layanans, standardOptions, fallback, isLoading: lookupLoading, refresh: refreshLookup, createLayanan, updateLayanan } =
     useLayanan();
   const [refreshing, setRefreshing] = useState(false);
   async function handleRefresh() {
@@ -41,14 +43,14 @@ export default function LayananList() {
     setSearch("");
     setStatusFilter("semua");
   }
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return layanans.filter(
-      (l) =>
-        (!q || l.nama.toLowerCase().includes(q) || (l.deskripsi ?? "").toLowerCase().includes(q)) &&
-        (statusFilter === "semua" || (statusFilter === "aktif" ? l.aktif : !l.aktif)),
-    );
-  }, [layanans, search, statusFilter]);
+  // Search / Status are applied by the API (filter -> sort -> LIMIT/OFFSET); only the visible page is loaded.
+  const debouncedSearch = useDebounced(search.trim());
+  const list = usePagedList<Layanan>("/api/layanan", { q: debouncedSearch, status: statusFilter === "semua" ? "" : statusFilter });
+  const filtered = list.items;
+  const isLoading = lookupLoading;
+  const refresh = async () => {
+    await Promise.all([refreshLookup(), list.reload()]);
+  };
 
   const [pageError, setPageError] = useState<string | null>(null);
 
@@ -80,6 +82,7 @@ export default function LayananList() {
     setFormError(null);
     try {
       await createLayanan(nama, deskripsi.trim());
+      void list.reload();
       setModalOpen(false);
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : "Gagal menambahkan layanan. Coba lagi.");
@@ -112,6 +115,7 @@ export default function LayananList() {
       if (!editing.fallback && editName.trim() !== editing.nama) changes.nama = editName.trim();
       if (editDeskripsi.trim() !== (editing.deskripsi ?? "")) changes.deskripsi = editDeskripsi.trim();
       if (Object.keys(changes).length > 0) await updateLayanan(editing.id, changes);
+      void list.reload();
       setEditing(null);
     } catch (err) {
       setEditError(err instanceof ApiError ? err.message : "Gagal menyimpan perubahan. Coba lagi.");
@@ -132,6 +136,7 @@ export default function LayananList() {
     setPageError(null);
     try {
       await updateLayanan(l.id, { aktif: next });
+      void list.reload();
     } catch (err) {
       setPageError(err instanceof ApiError ? err.message : "Gagal mengubah status layanan.");
     } finally {
@@ -201,10 +206,10 @@ export default function LayananList() {
           {filtered.length === 0 && (
             <MasterTableMessage
               colSpan={5}
-              loading={isLoading && layanans.length === 0}
+              loading={list.loading && filtered.length === 0}
               loadingText="Memuat data layanan..."
               icon={Layers}
-              title={layanans.length > 0 ? "Tidak ada layanan yang cocok dengan filter." : "Belum ada data layanan."}
+              title={hasFilter ? "Tidak ada data." : "Belum ada data layanan."}
             />
           )}
           {filtered.map((l) => (
@@ -275,6 +280,7 @@ export default function LayananList() {
           ))}
         </tbody>
       </MasterTableCard>
+      <Pagination meta={list.meta} page={list.page} pageSize={list.pageSize} loading={list.loading} onPage={list.setPage} onPageSize={list.setPageSize} unit="layanan" />
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

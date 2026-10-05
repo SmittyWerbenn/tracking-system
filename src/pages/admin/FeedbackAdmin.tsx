@@ -1,11 +1,14 @@
 import { adminPath } from "../../utils/urls";
 import { MessageSquare, Star } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { StatCard } from "../../components/StatCard";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { RefreshButton } from "../../components/RefreshButton";
-import { useFeedback } from "../../store/FeedbackContext";
+import { toFeedback, useFeedback, type FeedbackRow } from "../../store/FeedbackContext";
+import { Pagination } from "../../components/Pagination";
+import { usePagedList } from "../../utils/usePagedList";
+import type { Feedback } from "../../types";
 import { formatTanggalPendek, isoToWib } from "../../utils/format";
 
 function StarRow({ rating }: { rating: number }) {
@@ -23,7 +26,11 @@ function StarRow({ rating }: { rating: number }) {
 }
 
 export default function FeedbackAdmin() {
-  const { feedback, refresh } = useFeedback();
+  const { refresh: refreshShared } = useFeedback();
+  const list = usePagedList<FeedbackRow, Feedback>("/api/feedback", {}, toFeedback);
+  const refresh = async () => {
+    await Promise.all([refreshShared(), list.reload()]);
+  };
   const [refreshing, setRefreshing] = useState(false);
   async function handleRefresh() {
     setRefreshing(true);
@@ -34,17 +41,15 @@ export default function FeedbackAdmin() {
     }
   }
 
-  const summary = useMemo(() => {
-    const total = feedback.length;
-    const avg = total === 0 ? 0 : feedback.reduce((sum, f) => sum + f.rating, 0) / total;
-    const byStar = [5, 4, 3, 2, 1].map((star) => ({
-      star,
-      count: feedback.filter((f) => f.rating === star).length,
-    }));
-    return { total, avg, byStar };
-  }, [feedback]);
-
-  const sorted = [...feedback].sort((a, b) => (a.submittedAt < b.submittedAt ? 1 : -1));
+  // Totals come from the API (over ALL feedback), not from the rows on this page.
+  const sum = list.extra.summary as { count: number; avg_rating: number | null; r1: number; r2: number; r3: number; r4: number; r5: number } | undefined;
+  const byStarCount: Record<number, number> = { 5: sum?.r5 ?? 0, 4: sum?.r4 ?? 0, 3: sum?.r3 ?? 0, 2: sum?.r2 ?? 0, 1: sum?.r1 ?? 0 };
+  const summary = {
+    total: sum?.count ?? 0,
+    avg: sum?.avg_rating ?? 0,
+    byStar: [5, 4, 3, 2, 1].map((star) => ({ star, count: byStarCount[star] })),
+  };
+  const sorted = list.items;
 
   return (
     <AdminLayout>
@@ -112,7 +117,7 @@ export default function FeedbackAdmin() {
                 <tr>
                   <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-400">
                     <MessageSquare size={24} className="mx-auto mb-2 text-slate-300" />
-                    Belum ada feedback dari customer.
+                    {list.loading ? "Memuat..." : "Tidak ada data."}
                   </td>
                 </tr>
               )}
@@ -120,6 +125,8 @@ export default function FeedbackAdmin() {
           </table>
         </div>
       </div>
+
+      <Pagination meta={list.meta} page={list.page} pageSize={list.pageSize} loading={list.loading} onPage={list.setPage} onPageSize={list.setPageSize} unit="feedback" />
     </AdminLayout>
   );
 }

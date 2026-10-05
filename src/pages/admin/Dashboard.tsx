@@ -22,11 +22,11 @@ import { useAuth } from "../../store/AuthContext";
 import { useFeedback } from "../../store/FeedbackContext";
 import { useNotifications } from "../../store/NotificationContext";
 import { useSettings } from "../../store/SettingsContext";
-import { useShipments } from "../../store/ShipmentContext";
-import type { ShipmentStatus } from "../../types";
+import { fetchShipmentsPage, useShipments } from "../../store/ShipmentContext";
+import type { Shipment, ShipmentStatus } from "../../types";
 import { api } from "../../utils/apiClient";
 import { formatTanggalPendek } from "../../utils/format";
-import { getStagnantShipments } from "../../utils/stagnant";
+import { getStagnantShipments, type StagnantInfo } from "../../utils/stagnant";
 
 interface DashboardStats {
   totalShipments: number;
@@ -39,6 +39,7 @@ interface DashboardStats {
 
 export default function Dashboard() {
   const { shipments, refresh: refreshShipments } = useShipments();
+  const [stagnantRows, setStagnantRows] = useState<Shipment[]>([]);
   const { profile } = useAuth();
   const canCreateShipment =
     profile?.role === "Superadmin" || profile?.role === "Admin" || profile?.role === "Client";
@@ -56,7 +57,16 @@ export default function Dashboard() {
       .catch(() => setStats(null));
   }
 
+  // Stagnant card: the 10 oldest-idle orders, filtered by the API (not carved out of a fetched list).
+  function fetchStagnant() {
+    return fetchShipmentsPage({ macet: settings.stagnantThresholdDays, limit: 10 })
+      .then(setStagnantRows)
+      .catch(() => setStagnantRows([]));
+  }
+
   useEffect(() => {
+    void refreshShipments({ limit: 5 });
+    fetchStagnant();
     fetchStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.stagnantThresholdDays]);
@@ -64,7 +74,7 @@ export default function Dashboard() {
   async function handleRefresh() {
     setRefreshing(true);
     try {
-      await Promise.all([fetchStats(), refreshShipments(), refreshNotifications(), refreshFeedback()]);
+      await Promise.all([fetchStats(), fetchStagnant(), refreshShipments({ limit: 5 }), refreshNotifications(), refreshFeedback()]);
     } finally {
       setRefreshing(false);
     }
@@ -80,9 +90,9 @@ export default function Dashboard() {
   const avgRating = stats?.avgRating ?? 0;
   const stagnantCount = stats?.stagnantCount ?? 0;
 
-  const stagnant = useMemo(
-    () => getStagnantShipments(shipments, settings.stagnantThresholdDays),
-    [shipments, settings.stagnantThresholdDays],
+  const stagnant: StagnantInfo[] = useMemo(
+    () => getStagnantShipments(stagnantRows, settings.stagnantThresholdDays),
+    [stagnantRows, settings.stagnantThresholdDays],
   );
 
   const recent = [...shipments]

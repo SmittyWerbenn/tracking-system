@@ -1,4 +1,5 @@
-import { Camera, ChevronLeft, ChevronRight, Download, Eye, Pencil, Plus, Power, Search, Shield, Upload, Users, X } from "lucide-react";
+import { Pagination } from "../../components/Pagination";
+import { Camera, Download, Eye, Pencil, Plus, Power, Search, Shield, Upload, Users, X } from "lucide-react";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { RefreshButton } from "../../components/RefreshButton";
@@ -262,8 +263,6 @@ export default function UserManagementView({ group }: { group: UserGroup }) {
   const colCount = isDriverGroup ? 5 : 6;
   const { draft, setDraft } = list;
   const patchFilter = (patch: Partial<UserFilters>) => setDraft({ ...draft, ...patch });
-  const from = list.meta.total === 0 ? 0 : (list.meta.page - 1) * list.meta.limit + 1;
-  const to = Math.min(list.meta.page * list.meta.limit, list.meta.total);
 
   return (
     <AdminLayout>
@@ -465,35 +464,7 @@ export default function UserManagementView({ group }: { group: UserGroup }) {
         </tbody>
       </MasterTableCard>
 
-      {list.meta.total > 0 && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-          <span>
-            Menampilkan <span className="font-semibold text-slate-700">{from}–{to}</span> dari{" "}
-            <span className="font-semibold text-slate-700">{list.meta.total}</span> user
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled={list.page <= 1 || list.loading}
-              onClick={() => list.setPage(list.page - 1)}
-              className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-            >
-              <ChevronLeft size={14} /> Sebelumnya
-            </button>
-            <span className="px-2">
-              Hal. {list.meta.page} / {list.meta.totalPages}
-            </span>
-            <button
-              type="button"
-              disabled={list.page >= list.meta.totalPages || list.loading}
-              onClick={() => list.setPage(list.page + 1)}
-              className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-            >
-              Berikutnya <ChevronRight size={14} />
-            </button>
-          </div>
-        </div>
-      )}
+      <Pagination meta={list.meta} page={list.page} pageSize={list.pageSize} loading={list.loading} onPage={list.setPage} onPageSize={list.setPageSize} unit="user" />
 
       {detail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setDetail(null)}>

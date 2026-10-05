@@ -1,8 +1,11 @@
+import { useLocationSuggest } from "../utils/useLocationSuggest";
+
 interface LocationTextInputProps {
   id: string;
   value: string;
   onChange: (value: string) => void;
-  suggestions: string[];
+  /** What to suggest: Nama Area or city. Suggestions are searched server-side as the user types. */
+  kind?: "kota" | "area";
   placeholder?: string;
   required?: boolean;
   className: string;
@@ -15,12 +18,13 @@ export function LocationTextInput({
   id,
   value,
   onChange,
-  suggestions,
+  kind = "area",
   placeholder,
   required,
   className,
 }: LocationTextInputProps) {
   const listId = `${id}-suggestions`;
+  const suggestions = useLocationSuggest(kind, value);
   return (
     <>
       <input
@@ -33,7 +37,7 @@ export function LocationTextInput({
       />
       <datalist id={listId}>
         {suggestions.map((s) => (
-          <option key={s} value={s} />
+          <option key={s.nama} value={s.nama} />
         ))}
       </datalist>
     </>

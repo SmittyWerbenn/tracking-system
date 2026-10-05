@@ -194,12 +194,49 @@ export interface ShipmentListParams {
   q?: string;
   page?: number;
   limit?: number;
+  /** Client ID, or "__none__" for orders without one. */
+  customer?: string;
+  /** Created-date range (YYYY-MM-DD, inclusive). */
+  from?: string;
+  to?: string;
+  /** Only stagnant orders: no tracking update for this many days. */
+  macet?: number;
+}
+
+function listQuery(params: ShipmentListParams, defaultLimit: number): URLSearchParams {
+  const search = new URLSearchParams();
+  search.set("limit", String(params.limit ?? defaultLimit));
+  search.set("page", String(params.page ?? 1));
+  if (params.status) search.set("status", params.status);
+  if (params.q) search.set("q", params.q);
+  if (params.customer) search.set("customer", params.customer);
+  if (params.from) search.set("from", params.from);
+  if (params.to) search.set("to", params.to);
+  if (params.macet) search.set("macet", String(params.macet));
+  return search;
+}
+
+/** One page of orders matching the filters, independent of the shared list state. */
+export async function fetchShipmentsPage(params: ShipmentListParams): Promise<Shipment[]> {
+  const res = await api.get<ShipmentListResponse>(`/api/shipments?${listQuery(params, 20).toString()}`);
+  return res.items.map(toShipment);
+}
+
+/** Every order matching the filters, fetched 100 per request (for exports). */
+export async function fetchAllShipments(params: ShipmentListParams): Promise<Shipment[]> {
+  const all: Shipment[] = [];
+  for (let page = 1; page <= 200; page++) {
+    const res = await api.get<ShipmentListResponse>(`/api/shipments?${listQuery({ ...params, page, limit: 100 }, 100).toString()}`);
+    all.push(...res.items.map(toShipment));
+    if (page >= res.meta.totalPages) break;
+  }
+  return all;
 }
 
 interface ShipmentContextValue {
   shipments: Shipment[];
   isLoading: boolean;
-  listMeta: { total: number; totalPages: number; page: number };
+  listMeta: { total: number; totalPages: number; page: number; limit: number };
   refresh: (params?: ShipmentListParams) => Promise<void>;
   getByAwb: (awb: string) => Promise<Shipment | null>;
   createShipment: (data: ShipmentFormData) => Promise<CreatedShipment>;
@@ -228,7 +265,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [listMeta, setListMeta] = useState({ total: 0, totalPages: 1, page: 1 });
+  const [listMeta, setListMeta] = useState({ total: 0, totalPages: 1, page: 1, limit: 100 });
 
   // Several callers refresh with different filters (the provider on login, a
   // list page with its own status/search). Only the most recent call may write
@@ -240,16 +277,11 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     const seq = ++refreshSeq.current;
     setIsLoading(true);
     try {
-      const search = new URLSearchParams();
-      search.set("limit", String(params.limit ?? 100));
-      search.set("page", String(params.page ?? 1));
-      if (params.status) search.set("status", params.status);
-      if (params.q) search.set("q", params.q);
-
+      const search = listQuery(params, 20);
       const res = await api.get<ShipmentListResponse>(`/api/shipments?${search.toString()}`);
       if (seq !== refreshSeq.current) return;
       setShipments(res.items.map(toShipment));
-      setListMeta({ total: res.meta.total, totalPages: res.meta.totalPages, page: res.meta.page });
+      setListMeta({ total: res.meta.total, totalPages: res.meta.totalPages, page: res.meta.page, limit: res.meta.limit });
     } catch {
       if (seq === refreshSeq.current) setShipments([]);
     } finally {

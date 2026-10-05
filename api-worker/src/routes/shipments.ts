@@ -6,7 +6,7 @@ import { findActiveLayanan, resolveLayananForOrder } from "../layanan";
 import { newId } from "../crypto";
 import { requireAuth, requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
-import { parsePagination, pageMeta } from "../pagination";
+import { parsePagination, pageMeta, likeTerm, orderBy } from "../pagination";
 import { generateClientAwb, isDuplicateAwbError } from "../awb";
 import { wibNow } from "../wib";
 import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, type TimelineEventType } from "../status";
@@ -134,11 +134,34 @@ export function registerShipmentRoutes(router: Router) {
       where.push("1 = 0");
     }
     if (search) {
-      where.push("(s.awb LIKE ? OR s.pengirim_nama LIKE ? OR s.penerima_nama LIKE ?)");
-      const like = `%${search}%`;
+      where.push("(s.awb LIKE ? ESCAPE '\\' OR s.pengirim_nama LIKE ? ESCAPE '\\' OR s.penerima_nama LIKE ? ESCAPE '\\')");
+      const like = likeTerm(search);
       params.push(like, like, like);
     }
+    // Client ID filter ("__none__" = orders without one), created-date range
+    // and stagnant ("macet" = no tracking update for N days, not yet delivered).
+    const customer = url.searchParams.get("customer");
+    if (customer === "__none__") where.push("s.customer_id IS NULL");
+    else if (customer) { where.push("s.customer_id = ?"); params.push(customer); }
+    const dateFrom = url.searchParams.get("from");
+    const dateTo = url.searchParams.get("to");
+    if (dateFrom) { where.push("s.tanggal_dibuat >= ?"); params.push(dateFrom); }
+    if (dateTo) { where.push("s.tanggal_dibuat <= ?"); params.push(dateTo); }
+    const macet = Number(url.searchParams.get("macet"));
+    if (Number.isFinite(macet) && macet > 0) {
+      const cutoff = new Date(Date.now() + 7 * 3600_000 - macet * 86_400_000).toISOString().slice(0, 16);
+      where.push("s.status != 'Selesai / Terkirim'");
+      where.push(
+        "(SELECT e.tanggal || 'T' || e.jam FROM shipment_timeline_events e WHERE e.awb = s.awb ORDER BY e.seq DESC LIMIT 1) <= ?",
+      );
+      params.push(cutoff);
+    }
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+    const order = orderBy(
+      url,
+      { tanggal: "s.tanggal_dibuat", awb: "s.awb", status: "s.status", pengirim: "s.pengirim_nama COLLATE NOCASE", penerima: "s.penerima_nama COLLATE NOCASE" },
+      "s.tanggal_dibuat DESC, s.jam_dibuat DESC",
+    );
 
     const total = await ctx.env.DB.prepare(`SELECT COUNT(*) as c FROM shipments s ${whereSql}`)
       .bind(...params)
@@ -172,7 +195,7 @@ export function registerShipmentRoutes(router: Router) {
          SELECT y.id FROM cancellation_requests y WHERE y.awb = s.awb ORDER BY y.requested_at DESC LIMIT 1
        )
        ${whereSql}
-       ORDER BY s.tanggal_dibuat DESC, s.jam_dibuat DESC
+       ORDER BY ${order}
        LIMIT ? OFFSET ?`,
     )
       .bind(...params, limit, offset)
@@ -182,6 +205,22 @@ export function registerShipmentRoutes(router: Router) {
       items: (rows.results ?? []).map((r) => forActor(withCancelPolicy(shipmentSummary(r), r, actor), actor.role)),
       meta: pageMeta(page, limit, total?.c ?? 0),
     });
+  });
+
+  // Distinct Client IDs (with order counts) for the list's Client filter. Same
+  // row visibility as the list itself.
+  router.get("/api/shipments/clients", async (ctx: Ctx) => {
+    const actor = requirePermission(ctx, "shipments.view");
+    const where = ["deleted_at IS NULL", "status != 'Dibatalkan'"];
+    const params: unknown[] = [];
+    if (actor.role === "Client" || (actor.role === "Viewer" && actor.customerId)) { where.push("customer_id = ?"); params.push(actor.customerId); }
+    if (actor.role === "Mitra") { where.push("mitra_id = ?"); params.push(actor.mitraId); }
+    const rows = await ctx.env.DB.prepare(
+      `SELECT customer_id, COUNT(*) AS c FROM shipments WHERE ${where.join(" AND ")} GROUP BY customer_id ORDER BY customer_id`,
+    )
+      .bind(...params)
+      .all<{ customer_id: string | null; c: number }>();
+    return ok({ items: (rows.results ?? []).map((r) => ({ customerId: r.customer_id, count: r.c })) });
   });
 
   router.post("/api/shipments", async (ctx: Ctx) => {

@@ -3,7 +3,7 @@ import type { ArmadaStatus, Driver, Truck } from "../types";
 import { api } from "../utils/apiClient";
 import { useAuth } from "./AuthContext";
 
-interface TruckRow {
+export interface TruckRow {
   id: string;
   nomor_unit: string;
   jenis: string;
@@ -29,7 +29,7 @@ export interface TruckWithDriver extends Truck {
   driver?: Driver;
 }
 
-function toTruckWithDriver(row: TruckRow): TruckWithDriver {
+export function toTruckWithDriver(row: TruckRow): TruckWithDriver {
   return {
     id: row.id,
     nomorUnit: row.nomor_unit,
@@ -60,6 +60,8 @@ export function FleetProvider({ children }: { children: ReactNode }) {
   const [trucksWithDriver, setTrucksWithDriver] = useState<TruckWithDriver[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Lookup list for dropdowns / duplicate checks (a fleet is tens of units);
+  // the Armada table itself is paged by the API (see FleetList).
   async function refresh() {
     setIsLoading(true);
     try {

@@ -1,6 +1,6 @@
 import { adminPath } from "../../utils/urls";
 import { AlertTriangle, Ban, CheckCircle2, History, Pencil, Plus, RotateCcw, Table, Truck, X } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArmadaStatusBadge } from "../../components/ArmadaStatusBadge";
 import { BulkFleetImport } from "../../components/BulkFleetImport";
@@ -16,7 +16,10 @@ import {
   MasterTableMessage,
 } from "../../components/master/MasterData";
 import { useAuth } from "../../store/AuthContext";
-import { useFleet, type TruckFormData, type TruckWithDriver } from "../../store/FleetContext";
+import { toTruckWithDriver, useFleet, type TruckFormData, type TruckRow, type TruckWithDriver } from "../../store/FleetContext";
+import { Pagination } from "../../components/Pagination";
+import { api } from "../../utils/apiClient";
+import { useDebounced, usePagedList } from "../../utils/usePagedList";
 import type { ArmadaStatus } from "../../types";
 import { ApiError } from "../../utils/apiClient";
 import { ARMADA_STATUS_OPTIONS } from "../../utils/status";
@@ -50,7 +53,7 @@ export default function FleetList() {
   async function handleRefresh() {
     setRefreshing(true);
     try {
-      await refresh();
+      await Promise.all([refresh(), list.reload()]);
     } finally {
       setRefreshing(false);
     }
@@ -107,10 +110,10 @@ export default function FleetList() {
 
   const [search, setSearch] = useState("");
   const [jenisFilter, setJenisFilter] = useState("");
-  const usedJenis = useMemo(
-    () => Array.from(new Set(trucksWithDriver.map((t) => t.jenis))).sort((x, y) => x.localeCompare(y)),
-    [trucksWithDriver],
-  );
+  const [usedJenis, setUsedJenis] = useState<string[]>([]);
+  useEffect(() => {
+    api.get<{ jenis: string[] }>("/api/trucks/facets").then((r) => setUsedJenis(r.jenis)).catch(() => {});
+  }, []);
   const hasFilter = search.trim() !== "" || jenisFilter !== "" || statusFilter !== "Semua";
   function resetFilters() {
     setSearch("");
@@ -118,18 +121,14 @@ export default function FleetList() {
     handleStatusFilterChange("Semua");
   }
 
-  const filteredTrucks = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return trucksWithDriver.filter(
-      (t) =>
-        (statusFilter === "Semua" || t.status === statusFilter) &&
-        (!jenisFilter || t.jenis === jenisFilter) &&
-        (!q ||
-          [t.nomorUnit, t.jenis, t.kapasitas, t.driver?.nama, t.driver?.telepon, t.keterangan].some((v) =>
-            v?.toLowerCase().includes(q),
-          )),
-    );
-  }, [trucksWithDriver, statusFilter, jenisFilter, search]);
+  // Search / Status / Jenis go to the API (filter -> sort -> LIMIT/OFFSET); only the visible page is loaded.
+  const debouncedSearch = useDebounced(search.trim());
+  const list = usePagedList<TruckRow, TruckWithDriver>(
+    "/api/trucks",
+    { q: debouncedSearch, jenis: jenisFilter, status: statusFilter === "Semua" ? "" : statusFilter },
+    toTruckWithDriver,
+  );
+  const filteredTrucks = list.items;
 
   async function handleCreateSubmit(e: FormEvent) {
     e.preventDefault();
@@ -138,6 +137,7 @@ export default function FleetList() {
     setCreateError(null);
     try {
       await createTruck(form);
+      void list.reload();
       setForm(emptyForm);
       setCreated(true);
       setTimeout(() => setCreated(false), 2000);
@@ -169,6 +169,7 @@ export default function FleetList() {
     setEditError(null);
     try {
       await updateTruck(editingId, editForm);
+      void list.reload();
       setEditModalOpen(false);
     } catch (err) {
       setEditError(err instanceof ApiError ? err.message : "Gagal menyimpan perubahan. Coba lagi.");
@@ -428,7 +429,7 @@ export default function FleetList() {
                       )}
                       {canEdit && t.status !== "Inactive" && (
                         <button
-                          onClick={() => setTruckStatus(t.id, "Inactive")}
+                          onClick={() => void setTruckStatus(t.id, "Inactive").then(list.reload)}
                           title="Nonaktifkan"
                           className="rounded-md p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600"
                         >
@@ -437,7 +438,7 @@ export default function FleetList() {
                       )}
                       {canEdit && t.status === "Inactive" && (
                         <button
-                          onClick={() => setTruckStatus(t.id, "Available")}
+                          onClick={() => void setTruckStatus(t.id, "Available").then(list.reload)}
                           title="Aktifkan"
                           className="rounded-md p-1.5 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600"
                         >
@@ -448,7 +449,7 @@ export default function FleetList() {
                         entityType="truck"
                         id={t.id}
                         details={[["Nomor Unit", t.nomorUnit], ["Jenis", t.jenis], ["Driver", t.driver?.nama ?? "-"]]}
-                        onDone={refresh}
+                        onDone={() => { void refresh(); void list.reload(); }}
                       />
                     </div>
                   </td>
@@ -457,13 +458,14 @@ export default function FleetList() {
           {filteredTrucks.length === 0 && (
             <MasterTableMessage
               colSpan={8}
-              loadingText=""
+              loading={list.loading}
+              loadingText="Memuat data armada..."
               icon={Truck}
               title={
-                trucksWithDriver.length > 0 ? "Tidak ada armada yang cocok dengan filter." : "Belum ada data armada."
+                hasFilter ? "Tidak ada data." : "Belum ada data armada."
               }
               action={
-                trucksWithDriver.length === 0 && canEdit ? (
+                !hasFilter && canEdit ? (
                   <MasterEmptyAction label="Tambah Truck" onClick={() => setExpanded(true)} />
                 ) : undefined
               }
@@ -471,6 +473,7 @@ export default function FleetList() {
           )}
         </tbody>
       </MasterTableCard>
+      <Pagination meta={list.meta} page={list.page} pageSize={list.pageSize} loading={list.loading} onPage={list.setPage} onPageSize={list.setPageSize} unit="armada" />
       </>
       )}
 

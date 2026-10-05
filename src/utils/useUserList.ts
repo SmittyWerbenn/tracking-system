@@ -1,3 +1,4 @@
+import { usePageSize } from "./usePagedList";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toAppUser, type UserRow } from "../store/UserManagementContext";
 import type { AppUser } from "../types";
@@ -17,7 +18,6 @@ export interface UserFilters {
 }
 
 export const EMPTY_USER_FILTERS: UserFilters = { nama: "", email: "", nopol: "", role: "", status: "" };
-export const USER_PAGE_SIZE = 20;
 
 interface PageMeta {
   page: number;
@@ -46,8 +46,9 @@ export function useUserList(group: UserGroup) {
   const [draft, setDraft] = useState<UserFilters>(EMPTY_USER_FILTERS);
   const [applied, setApplied] = useState<UserFilters>(EMPTY_USER_FILTERS);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSizeRaw] = usePageSize();
   const [items, setItems] = useState<AppUser[]>([]);
-  const [meta, setMeta] = useState<PageMeta>({ page: 1, limit: USER_PAGE_SIZE, total: 0, totalPages: 1 });
+  const [meta, setMeta] = useState<PageMeta>({ page: 1, limit: pageSize, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const latest = useRef(0);
@@ -58,7 +59,7 @@ export function useUserList(group: UserGroup) {
     setError(null);
     try {
       const res = await api.get<{ items: UserRow[]; meta: PageMeta }>(
-        `/api/users?${buildQuery(group, applied, page, USER_PAGE_SIZE)}`,
+        `/api/users?${buildQuery(group, applied, page, pageSize)}`,
       );
       if (id !== latest.current) return; // a newer request superseded this one
       setItems(res.items.map(toAppUser));
@@ -68,7 +69,17 @@ export function useUserList(group: UserGroup) {
     } finally {
       if (id === latest.current) setLoading(false);
     }
-  }, [group, applied, page]);
+  }, [group, applied, page, pageSize]);
+
+  // The page vanished (last row on it deleted): fall back to the last valid page.
+  useEffect(() => {
+    if (meta.total > 0 && page > meta.totalPages) setPage(meta.totalPages);
+  }, [meta.total, meta.totalPages, page]);
+
+  function setPageSize(n: number) {
+    setPageSizeRaw(n);
+    setPage(1);
+  }
 
   useEffect(() => {
     void load();
@@ -97,7 +108,7 @@ export function useUserList(group: UserGroup) {
   }
 
   const hasFilter = Object.entries(applied).some(([, v]) => v !== "");
-  return { draft, setDraft, applied, hasFilter, apply, reset, page, setPage, items, meta, loading, error, reload: load, fetchAll };
+  return { draft, setDraft, applied, hasFilter, apply, reset, page, setPage, pageSize, setPageSize, items, meta, loading, error, reload: load, fetchAll };
 }
 
 /** True when another account already uses this email (the API compares

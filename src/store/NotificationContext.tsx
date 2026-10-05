@@ -3,7 +3,7 @@ import type { NotificationItem, NotificationTrigger } from "../types";
 import { api } from "../utils/apiClient";
 import { useAuth } from "./AuthContext";
 
-interface NotificationRow {
+export interface NotificationRow {
   id: string;
   awb: string;
   trigger_type: NotificationTrigger;
@@ -15,7 +15,7 @@ interface NotificationRow {
   is_read: number;
 }
 
-function toItem(row: NotificationRow): NotificationItem {
+export function toItem(row: NotificationRow): NotificationItem {
   return {
     id: row.id,
     awb: row.awb,
@@ -39,7 +39,8 @@ interface NotificationContextValue {
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
 
-/** Notifications are created server-side (see api-worker/src/routes/shipments.ts)
+/** (The bell + dashboard only need the latest few, so this loads 10; the Notification Center pages through the API itself.)
+ * Notifications are created server-side (see api-worker/src/routes/shipments.ts)
  * whenever a shipment is created or reaches Kendala/Selesai - this context
  * only ever reads the feed, it never creates entries itself. */
 export function NotificationProvider({ children }: { children: ReactNode }) {
@@ -50,7 +51,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   async function refresh() {
     setIsLoading(true);
     try {
-      const res = await api.get<{ items: NotificationRow[] }>("/api/notifications?limit=100");
+      const res = await api.get<{ items: NotificationRow[] }>("/api/notifications?limit=10");
       setNotifications(res.items.map(toItem));
     } catch {
       setNotifications([]);

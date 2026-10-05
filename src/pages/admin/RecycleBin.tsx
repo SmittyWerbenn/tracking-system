@@ -1,3 +1,5 @@
+import { Pagination } from "../../components/Pagination";
+import { usePageSize } from "../../utils/usePagedList";
 import { AlertTriangle, Eye, Loader2, RotateCcw, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -34,7 +36,7 @@ interface BinItem {
 
 interface ListResponse {
   items: BinItem[];
-  meta: { page: number; totalPages: number; total: number };
+  meta: { page: number; limit: number; totalPages: number; total: number };
   retentionDays: number;
   types: { value: string; label: string }[];
   deleters: string[];
@@ -83,6 +85,11 @@ export default function RecycleBin() {
   const [draft, setDraft] = useState(EMPTY);
   const [applied, setApplied] = useState(EMPTY);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSizeRaw] = usePageSize();
+  function setPageSize(n: number) {
+    setPageSizeRaw(n);
+    setPage(1);
+  }
   const [data, setData] = useState<ListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +103,7 @@ export default function RecycleBin() {
     setLoading(true);
     setError(null);
     try {
-      const q = new URLSearchParams({ page: String(page), limit: "20" });
+      const q = new URLSearchParams({ page: String(page), limit: String(pageSize) });
       for (const [k, v] of Object.entries(applied)) if (v) q.set(k, v);
       setData(await api.get<ListResponse>(`/api/recycle?${q.toString()}`));
     } catch (err) {
@@ -104,11 +111,16 @@ export default function RecycleBin() {
     } finally {
       setLoading(false);
     }
-  }, [applied, page]);
+  }, [applied, page, pageSize]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // The page vanished (last row on it restored / deleted): fall back to the last valid page.
+  useEffect(() => {
+    if (data && data.meta.total > 0 && page > data.meta.totalPages) setPage(data.meta.totalPages);
+  }, [data, page]);
 
   function patch(p: Partial<typeof EMPTY>) {
     setDraft((d) => ({ ...d, ...p }));
@@ -322,20 +334,8 @@ export default function RecycleBin() {
         </tbody>
       </MasterTableCard>
 
-      {data && data.meta.totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
-          <span>
-            Halaman {data.meta.page} dari {data.meta.totalPages} · {data.meta.total} data
-          </span>
-          <div className="flex gap-2">
-            <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="rounded-lg border border-slate-200 px-3 py-1.5 disabled:opacity-40">
-              Sebelumnya
-            </button>
-            <button type="button" disabled={page >= data.meta.totalPages} onClick={() => setPage((p) => p + 1)} className="rounded-lg border border-slate-200 px-3 py-1.5 disabled:opacity-40">
-              Berikutnya
-            </button>
-          </div>
-        </div>
+      {data && (
+        <Pagination meta={data.meta} page={page} pageSize={pageSize} loading={loading} onPage={setPage} onPageSize={setPageSize} unit="data" />
       )}
 
       {(detail || detailLoading) && (

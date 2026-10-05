@@ -1,5 +1,7 @@
 import { Ban, Building2, Pencil, RotateCcw, X } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { Pagination } from "../../components/Pagination";
+import { useDebounced, usePagedList } from "../../utils/usePagedList";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import {
   MasterDataHeader,
@@ -45,10 +47,22 @@ export default function CustomerList() {
   // server refuses it for anyone else too, this just keeps the form honest.
   const { profile } = useAuth();
   const canEditKontrak = profile?.role === "Superadmin";
-  const [customers, setCustomers] = useState<CustomerRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("semua");
+  const [kotaFilter, setKotaFilter] = useState("");
+  // Search / Status / Kota are applied by the API (filter -> sort -> page); only the visible page is loaded.
+  const debouncedSearch = useDebounced(search.trim());
+  const list = usePagedList<CustomerRow>("/api/customers", {
+    q: debouncedSearch,
+    status: statusFilter === "semua" ? "" : statusFilter,
+    kota: kotaFilter,
+  });
+  const customers = list.items;
+  const isLoading = list.loading;
+  const [kotaOptions, setKotaOptions] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setError] = useState<string | null>(null);
+  const error = actionError ?? list.error;
   const [modalOpen, setModalOpen] = useState(false);
   const [newId, setNewId] = useState("");
   const [newNama, setNewNama] = useState("");
@@ -157,42 +171,21 @@ export default function CustomerList() {
 
   function fetchCustomers() {
     setError(null);
-    return api
-      .get<{ items: CustomerRow[] }>("/api/customers")
-      .then((res) => setCustomers(res.items))
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Gagal memuat data customer."));
+    api.get<{ items: string[] }>("/api/customers/kota").then((r) => setKotaOptions(r.items)).catch(() => {});
+    return list.reload();
   }
 
   useEffect(() => {
-    setIsLoading(true);
-    fetchCustomers().finally(() => setIsLoading(false));
+    api.get<{ items: string[] }>("/api/customers/kota").then((r) => setKotaOptions(r.items)).catch(() => {});
   }, []);
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("semua");
-  const [kotaFilter, setKotaFilter] = useState("");
   const hasFilter = search.trim() !== "" || statusFilter !== "semua" || kotaFilter !== "";
   function resetFilters() {
     setSearch("");
     setStatusFilter("semua");
     setKotaFilter("");
   }
-  const kotaOptions = useMemo(
-    () => Array.from(new Set(customers.map((c) => c.kota?.trim()).filter((k): k is string => !!k))).sort((x, y) => x.localeCompare(y)),
-    [customers],
-  );
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return customers.filter(
-      (c) =>
-        (statusFilter === "semua" || (statusFilter === "aktif" ? c.aktif : !c.aktif)) &&
-        (!kotaFilter || c.kota?.trim() === kotaFilter) &&
-        (!q ||
-          [c.customerId, c.nama, c.kota, c.kontrakNoPelanggan, ...c.accounts.flatMap((a) => [a.nama, a.email])].some((v) =>
-            v?.toLowerCase().includes(q),
-          )),
-    );
-  }, [customers, search, statusFilter, kotaFilter]);
+  const filtered = customers;
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -268,9 +261,9 @@ export default function CustomerList() {
               loading={isLoading}
               loadingText="Memuat data Client..."
               icon={Building2}
-              title={customers.length > 0 ? "Tidak ada Client yang cocok dengan filter." : "Belum ada data Client."}
-              description={customers.length === 0 ? 'Klik "Tambah Client" untuk membuat Client ID pertama.' : undefined}
-              action={customers.length === 0 ? <MasterEmptyAction label="Tambah Client" onClick={openModal} /> : undefined}
+              title={hasFilter ? "Tidak ada data." : "Belum ada data Client."}
+              description={!hasFilter ? 'Klik "Tambah Client" untuk membuat Client ID pertama.' : undefined}
+              action={!hasFilter ? <MasterEmptyAction label="Tambah Client" onClick={openModal} /> : undefined}
             />
           )}
           {filtered.map((c) => {
@@ -373,6 +366,7 @@ export default function CustomerList() {
           })}
         </tbody>
       </MasterTableCard>
+      <Pagination meta={list.meta} page={list.page} pageSize={list.pageSize} loading={list.loading} onPage={list.setPage} onPageSize={list.setPageSize} unit="client" />
 
       {editing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

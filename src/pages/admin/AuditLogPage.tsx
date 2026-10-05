@@ -1,11 +1,13 @@
 import { Download, History, Loader2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { RefreshButton } from "../../components/RefreshButton";
-import { useAuditLog } from "../../store/AuditLogContext";
-import { roleLabel, type AuditAction } from "../../types";
+import { Pagination } from "../../components/Pagination";
+import { api } from "../../utils/apiClient";
+import { useDebounced, usePagedList } from "../../utils/usePagedList";
+import { roleLabel, type AuditAction, type AuditLogEntry, type UserRole } from "../../types";
 import { exportAuditLogXlsx } from "../../utils/auditExport";
-import { formatTimestampWib, isoToWib } from "../../utils/format";
+import { formatTimestampWib } from "../../utils/format";
 
 const inputClass =
   "rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
@@ -45,28 +47,79 @@ const ACTION_STYLE: Record<AuditAction, string> = {
   FILE_DELETED: "bg-red-100 text-red-700",
 };
 
+interface AuditRow {
+  id: string;
+  timestamp: string;
+  user_name: string;
+  role: UserRole;
+  action: AuditAction;
+  action_label: string;
+  module: string;
+  awb: string | null;
+  description: string;
+}
+
+function toEntry(r: AuditRow): AuditLogEntry {
+  return {
+    id: r.id,
+    timestamp: r.timestamp,
+    userName: r.user_name,
+    role: r.role,
+    action: r.action,
+    actionLabel: r.action_label,
+    module: r.module,
+    awb: r.awb ?? undefined,
+    description: r.description,
+  };
+}
+
 export default function AuditLogPage() {
-  const { entries, refresh } = useAuditLog();
+  const [userFilter, setUserFilter] = useState("Semua");
+  const [actionFilter, setActionFilter] = useState("Semua");
+  const [moduleFilter, setModuleFilter] = useState("Semua");
+  const [awbQuery, setAwbQuery] = useState("");
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const debAwb = useDebounced(awbQuery.trim());
+  const debSearch = useDebounced(search.trim());
+
+  // Filter -> sort (newest first) -> LIMIT/OFFSET all happen in the API; the
+  // date filter is WIB while the API compares UTC ISO timestamps.
+  const list = usePagedList<AuditRow, AuditLogEntry>(
+    "/api/audit-logs",
+    {
+      user: userFilter !== "Semua" ? userFilter : undefined,
+      action: actionFilter !== "Semua" ? actionFilter : undefined,
+      module: moduleFilter !== "Semua" ? moduleFilter : undefined,
+      awbContains: debAwb || undefined,
+      q: debSearch || undefined,
+      from: dateFrom ? new Date(`${dateFrom}T00:00:00+07:00`).toISOString() : undefined,
+      to: dateTo ? new Date(`${dateTo}T23:59:59.999+07:00`).toISOString() : undefined,
+    },
+    toEntry,
+  );
+  const filtered = list.items;
+
+  const [facets, setFacets] = useState<{ users: string[]; actions: string[]; modules: string[] }>({ users: [], actions: [], modules: [] });
+  useEffect(() => {
+    api.get<typeof facets>("/api/audit-logs/facets").then(setFacets).catch(() => {});
+  }, []);
+  const { users, actions, modules } = facets;
+
   const [refreshing, setRefreshing] = useState(false);
   async function handleRefresh() {
     setRefreshing(true);
     try {
-      await refresh();
+      await list.reload();
     } finally {
       setRefreshing(false);
     }
   }
 
-  const [userFilter, setUserFilter] = useState("Semua");
-  const [actionFilter, setActionFilter] = useState("Semua");
-  const [moduleFilter, setModuleFilter] = useState("Semua");
-  const [awbQuery, setAwbQuery] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-
   const [exporting, setExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState<string | null>(null);
-  // Exports every entry matching the current filters (not just the 100 on screen).
+  // Exports every entry matching the current filters (not just the page on screen).
   async function handleExport() {
     setExporting(true);
     setExportMsg(null);
@@ -75,7 +128,7 @@ export default function AuditLogPage() {
         user: userFilter !== "Semua" ? userFilter : undefined,
         action: actionFilter !== "Semua" ? actionFilter : undefined,
         module: moduleFilter !== "Semua" ? moduleFilter : undefined,
-        awbContains: awbQuery || undefined,
+        awbContains: awbQuery.trim() || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
       });
@@ -86,23 +139,6 @@ export default function AuditLogPage() {
       setExporting(false);
     }
   }
-
-  const users = useMemo(() => Array.from(new Set(entries.map((e) => e.userName))).sort(), [entries]);
-  const modules = useMemo(() => Array.from(new Set(entries.map((e) => e.module))).sort(), [entries]);
-  const actions = useMemo(() => Array.from(new Set(entries.map((e) => e.action))).sort(), [entries]);
-
-  const filtered = useMemo(() => {
-    return entries.filter((e) => {
-      if (userFilter !== "Semua" && e.userName !== userFilter) return false;
-      if (actionFilter !== "Semua" && e.action !== actionFilter) return false;
-      if (moduleFilter !== "Semua" && e.module !== moduleFilter) return false;
-      if (awbQuery && !e.awb?.toLowerCase().includes(awbQuery.toLowerCase())) return false;
-      const date = isoToWib(e.timestamp).tanggal;
-      if (dateFrom && date < dateFrom) return false;
-      if (dateTo && date > dateTo) return false;
-      return true;
-    });
-  }, [entries, userFilter, actionFilter, moduleFilter, awbQuery, dateFrom, dateTo]);
 
   return (
     <AdminLayout>
@@ -152,6 +188,12 @@ export default function AuditLogPage() {
           ))}
         </select>
         <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Cari deskripsi / user..."
+          className={inputClass}
+        />
+        <input
           value={awbQuery}
           onChange={(e) => setAwbQuery(e.target.value)}
           placeholder="Cari AWB..."
@@ -162,13 +204,14 @@ export default function AuditLogPage() {
           <span>-</span>
           <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={inputClass} />
         </div>
-        {(userFilter !== "Semua" || actionFilter !== "Semua" || moduleFilter !== "Semua" || awbQuery || dateFrom || dateTo) && (
+        {(userFilter !== "Semua" || actionFilter !== "Semua" || moduleFilter !== "Semua" || awbQuery || search || dateFrom || dateTo) && (
           <button
             onClick={() => {
               setUserFilter("Semua");
               setActionFilter("Semua");
               setModuleFilter("Semua");
               setAwbQuery("");
+              setSearch("");
               setDateFrom("");
               setDateTo("");
             }}
@@ -187,7 +230,7 @@ export default function AuditLogPage() {
                 <History size={13} />
                 {formatTimestamp(e.timestamp)}
               </div>
-              <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${ACTION_STYLE[e.action]}`}>
+              <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${ACTION_STYLE[e.action] ?? "bg-slate-100 text-slate-600"}`}>
                 {e.actionLabel}
               </span>
             </div>
@@ -203,12 +246,18 @@ export default function AuditLogPage() {
             <p className="mt-1.5 text-sm text-slate-600">{e.description}</p>
           </div>
         ))}
-        {filtered.length === 0 && (
+        {list.loading && filtered.length === 0 && (
+          <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-400">Memuat...</div>
+        )}
+        {list.error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{list.error}</p>}
+        {!list.loading && !list.error && filtered.length === 0 && (
           <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-400">
-            Tidak ada log yang cocok dengan filter.
+            Tidak ada data.
           </div>
         )}
       </div>
+
+      <Pagination meta={list.meta} page={list.page} pageSize={list.pageSize} loading={list.loading} onPage={list.setPage} onPageSize={list.setPageSize} unit="log" />
     </AdminLayout>
   );
 }

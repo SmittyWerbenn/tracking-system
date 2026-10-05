@@ -5,6 +5,7 @@ import { ok, Errors } from "../http";
 import { parseJsonBody, reqString, reqNumber, optString } from "../validate";
 import { newId } from "../crypto";
 import { presignGet } from "../storage";
+import { likeTerm } from "../pagination";
 
 const PUBLIC_ENTITY_TYPES = new Set([
   "shipment_photo",
@@ -92,11 +93,46 @@ export function registerPublicRoutes(router: Router) {
     return ok(await loadContactInfo(ctx.env.DB));
   });
 
-  router.get("/api/public/locations", async (ctx: Ctx) => {
+  // Typeahead source for city / area inputs (no auth: Cek Ongkir is public).
+  // Searches the DB per keystroke and returns at most `limit` (<= 50) distinct
+  // names, instead of shipping the whole master list to the browser.
+  router.get("/api/public/locations/suggest", async (ctx: Ctx) => {
+    const url = new URL(ctx.request.url);
+    const kind = url.searchParams.get("kind") === "area" ? "area" : "kota";
+    const q = (url.searchParams.get("q") ?? "").trim().slice(0, 80);
+    const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
+    const col = kind === "area" ? "nama_area" : "nama_kota";
+    const where = [`aktif = 1`, `deleted_at IS NULL`, `${col} IS NOT NULL`, `TRIM(${col}) != ''`];
+    const params: unknown[] = [];
+    if (q) {
+      where.push(`${col} LIKE ? ESCAPE '\\'`);
+      params.push(likeTerm(q));
+    }
+    // Names that START with the text come first.
     const rows = await ctx.env.DB.prepare(
-      `SELECT id, nama_kota, kode_kota, nama_area, provinsi, nama_titik, jenis FROM locations WHERE aktif = 1 AND deleted_at IS NULL ORDER BY nama_kota`,
-    ).all();
-    return ok({ items: rows.results });
+      `SELECT ${col} AS nama, MIN(provinsi) AS provinsi, MIN(jenis) AS jenis FROM locations
+       WHERE ${where.join(" AND ")} GROUP BY ${col}
+       ORDER BY (${col} LIKE ? ESCAPE '\\') DESC, ${col} COLLATE NOCASE LIMIT ?`,
+    )
+      .bind(...params, `${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`, limit)
+      .all<{ nama: string; provinsi: string | null; jenis: string | null }>();
+    return ok({ items: rows.results ?? [] });
+  });
+
+  // Canonical spelling of imported city names (case/space-insensitive), for the
+  // bulk shipment import preview. Capped at 500 names per call.
+  router.post("/api/public/locations/match-kota", async (ctx: Ctx) => {
+    const body = (await parseJsonBody(ctx.request)) as { names?: unknown };
+    const names = Array.isArray(body.names)
+      ? Array.from(new Set(body.names.filter((n): n is string => typeof n === "string").map((n) => n.trim().toLowerCase().replace(/\s+/g, " ")).filter(Boolean))).slice(0, 500)
+      : [];
+    if (names.length === 0) return ok({ items: [] });
+    const rows = await ctx.env.DB.prepare(
+      `SELECT DISTINCT nama_kota FROM locations WHERE aktif = 1 AND deleted_at IS NULL AND LOWER(nama_kota) IN (${names.map(() => "?").join(",")})`,
+    )
+      .bind(...names)
+      .all<{ nama_kota: string }>();
+    return ok({ items: (rows.results ?? []).map((r) => r.nama_kota) });
   });
 
   router.post("/api/public/feedback", async (ctx: Ctx) => {

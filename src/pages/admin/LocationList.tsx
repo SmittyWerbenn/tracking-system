@@ -1,5 +1,5 @@
 import { AlertTriangle, Ban, CheckCircle2, Download, MapPinned, Pencil, RotateCcw, Table, Plus, X } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { BulkLocationImport } from "../../components/BulkLocationImport";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import {
@@ -14,7 +14,9 @@ import {
   MasterToolbarButton,
 } from "../../components/master/MasterData";
 import { useAuth } from "../../store/AuthContext";
-import { useLocations, type TitikFormData } from "../../store/LocationContext";
+import { toTitik, useLocations, type LocationRow, type TitikFormData } from "../../store/LocationContext";
+import { Pagination } from "../../components/Pagination";
+import { useDebounced, usePagedList } from "../../utils/usePagedList";
 import { ApiError } from "../../utils/apiClient";
 import type { TitikJenis, TitikLokasi } from "../../types";
 import { exportLocationsXlsx } from "../../utils/locationImport";
@@ -45,7 +47,7 @@ const JENIS_STYLE: Record<TitikJenis, string> = {
 };
 
 export default function LocationList() {
-  const { titikLokasi, isLoading, refresh, createTitik, updateTitik, setTitikAktif } = useLocations();
+  const { createTitik, updateTitik, setTitikAktif } = useLocations();
   const { profile } = useAuth();
   const canEdit = profile?.role === "Superadmin" || profile?.role === "Admin";
 
@@ -53,7 +55,7 @@ export default function LocationList() {
   async function handleRefresh() {
     setRefreshing(true);
     try {
-      await refresh();
+      await list.reload();
     } finally {
       setRefreshing(false);
     }
@@ -68,15 +70,16 @@ export default function LocationList() {
     setJenisFilter("");
     setStatusFilter("semua");
   }
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return titikLokasi.filter(
-      (t) =>
-        (!q || [t.namaKota, t.provinsi, t.kodeKota, t.namaArea].some((v) => v.toLowerCase().includes(q))) &&
-        (!jenisFilter || t.jenis === jenisFilter) &&
-        (statusFilter === "semua" || (statusFilter === "aktif" ? t.aktif : !t.aktif)),
-    );
-  }, [titikLokasi, search, jenisFilter, statusFilter]);
+  // Search / Jenis / Status are applied by the API (filter -> sort -> LIMIT/OFFSET); only the visible page is loaded.
+  const debouncedSearch = useDebounced(search.trim());
+  const list = usePagedList<LocationRow, TitikLokasi>(
+    "/api/locations",
+    { q: debouncedSearch, jenis: jenisFilter, status: statusFilter === "semua" ? "" : statusFilter },
+    toTitik,
+  );
+  const filtered = list.items;
+  const isLoading = list.loading;
+  const refresh = list.reload;
 
   const [expanded, setExpanded] = useState(false);
   const [mode, setMode] = useState<"single" | "bulk">("single");
@@ -97,24 +100,15 @@ export default function LocationList() {
   const [editForm, setEditForm] = useState<TitikFormData>(emptyForm);
   const [editError, setEditError] = useState<string | null>(null);
 
-  // Same Nama Area may repeat across different Jenis Titik, never with the same one.
-  const areaOwner = (area: string, jenis: string, exceptId = ""): string | null => {
-    const a = area.trim().toLowerCase();
-    if (!a) return null;
-    return titikLokasi.find((t) => t.id !== exceptId && t.jenis === jenis && t.namaArea.trim().toLowerCase() === a)?.namaKota ?? null;
-  };
-  const existingAreas = useMemo(
-    () => titikLokasi.filter((t) => t.namaArea.trim()).map((t) => `${t.namaArea.trim().toLowerCase()}\u0001${t.jenis}\u0001${t.namaKota}`),
-    [titikLokasi],
-  );
-  const createAreaOwner = areaOwner(form.namaArea, form.jenis);
-  const editAreaOwner = areaOwner(editForm.namaArea, editForm.jenis, editingId ?? "");
+  // Duplicate Nama Area (same Jenis Titik) is rejected by the API with a clear message.
+  const createAreaOwner: string | null = null;
+  const editAreaOwner: string | null = null;
 
   const [exporting, setExporting] = useState(false);
   async function handleExport() {
     setExporting(true);
     try {
-      await exportLocationsXlsx(titikLokasi);
+      await exportLocationsXlsx(await list.fetchAll());
     } finally {
       setExporting(false);
     }
@@ -127,6 +121,7 @@ export default function LocationList() {
     setCreateError(null);
     try {
       await createTitik(form);
+      void list.reload();
       setForm(emptyForm);
       setCreated(true);
       setTimeout(() => setCreated(false), 2000);
@@ -157,6 +152,7 @@ export default function LocationList() {
     setEditError(null);
     try {
       await updateTitik(editingId, editForm);
+      void list.reload();
       setEditModalOpen(false);
     } catch (err) {
       setEditError(err instanceof ApiError ? err.message : "Gagal menyimpan perubahan. Coba lagi.");
@@ -214,7 +210,7 @@ export default function LocationList() {
 
       {canEdit && expanded && mode === "bulk" && (
         <div className="mt-6">
-          <BulkLocationImport existingAreas={existingAreas} />
+          <BulkLocationImport onImported={() => void list.reload()} />
         </div>
       )}
 
@@ -326,7 +322,7 @@ export default function LocationList() {
                 onClick={() => void handleExport()}
                 icon={Download}
                 label="Unduh Data"
-                disabled={titikLokasi.length === 0}
+                disabled={list.meta.total === 0}
                 busy={exporting}
               />
             }
@@ -371,23 +367,23 @@ export default function LocationList() {
               {filtered.length === 0 && (
                 <MasterTableMessage
                   colSpan={canEdit ? 7 : 6}
-                  loading={isLoading && titikLokasi.length === 0}
+                  loading={isLoading && filtered.length === 0}
                   loadingText="Memuat data lokasi..."
                   icon={MapPinned}
                   title={
-                    titikLokasi.length > 0
-                      ? "Tidak ada kota/titik yang cocok dengan filter."
+                    hasFilter
+                      ? "Tidak ada data."
                       : "Belum ada data kota & titik transit"
                   }
                   description={
-                    titikLokasi.length > 0
+                    hasFilter
                       ? undefined
                       : canEdit
                         ? "Tambahkan kota atau titik transit terlebih dahulu. Data ini dipakai sebagai pilihan lokasi pada pembuatan pengiriman dan update tracking."
                         : "Data ini dikelola oleh Admin dan dipakai sebagai pilihan lokasi pada pengiriman dan update tracking."
                   }
                   action={
-                    titikLokasi.length === 0 && canEdit ? (
+                    !hasFilter && canEdit ? (
                       <MasterEmptyAction label="Tambah Titik" onClick={() => setExpanded(true)} />
                     ) : undefined
                   }
@@ -430,7 +426,7 @@ export default function LocationList() {
                         </button>
                         {t.aktif ? (
                           <button
-                            onClick={() => setTitikAktif(t.id, false)}
+                            onClick={() => void setTitikAktif(t.id, false).then(list.reload)}
                             title="Nonaktifkan"
                             className="rounded-md p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600"
                           >
@@ -438,7 +434,7 @@ export default function LocationList() {
                           </button>
                         ) : (
                           <button
-                            onClick={() => setTitikAktif(t.id, true)}
+                            onClick={() => void setTitikAktif(t.id, true).then(list.reload)}
                             title="Aktifkan"
                             className="rounded-md p-1.5 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600"
                           >
@@ -458,6 +454,7 @@ export default function LocationList() {
               ))}
             </tbody>
           </MasterTableCard>
+          <Pagination meta={list.meta} page={list.page} pageSize={list.pageSize} loading={list.loading} onPage={list.setPage} onPageSize={list.setPageSize} unit="titik" />
         </>
       )}
 

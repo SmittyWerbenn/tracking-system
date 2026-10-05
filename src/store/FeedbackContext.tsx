@@ -3,7 +3,7 @@ import type { Feedback } from "../types";
 import { api, ApiError } from "../utils/apiClient";
 import { useAuth } from "./AuthContext";
 
-interface FeedbackRow {
+export interface FeedbackRow {
   id: string;
   awb: string;
   customer_name: string;
@@ -12,7 +12,7 @@ interface FeedbackRow {
   submitted_at: string;
 }
 
-function toFeedback(row: FeedbackRow): Feedback {
+export function toFeedback(row: FeedbackRow): Feedback {
   return {
     id: row.id,
     awb: row.awb,
@@ -59,7 +59,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
       const res = await api.get<{
         items: FeedbackRow[];
         summary: { count: number; avg_rating: number | null; r1: number; r2: number; r3: number; r4: number; r5: number };
-      }>("/api/feedback?limit=100");
+      }>("/api/feedback?limit=10");
       setFeedback(res.items.map(toFeedback));
       setSummary({
         count: res.summary.count,

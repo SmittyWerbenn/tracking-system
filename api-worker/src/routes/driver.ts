@@ -1,3 +1,4 @@
+import { parsePagination, pageMeta, wantsPaging } from "../pagination";
 import type { Router } from "../router";
 import type { Ctx } from "../types";
 import { ok, Errors } from "../http";
@@ -73,16 +74,32 @@ export function registerDriverRoutes(router: Router) {
   // never a raw "all shipments" list like the admin endpoint.
   router.get("/api/driver/shipments", async (ctx: Ctx) => {
     const driverId = await requireDriverId(ctx);
+    const url = new URL(ctx.request.url);
+    // Page mode (history screen): status / created-date filters + LIMIT/OFFSET in SQL.
+    // Without page/limit it returns the driver's whole list (the dashboard's status tabs need it).
+    const paged = wantsPaging(url);
+    const where = ["t.driver_id = ?", "s.status != 'Dibatalkan'", "s.deleted_at IS NULL"];
+    const params: unknown[] = [driverId];
+    const status = url.searchParams.get("status");
+    const from = url.searchParams.get("from");
+    const to = url.searchParams.get("to");
+    if (status) { where.push("s.status = ?"); params.push(status); }
+    if (from) { where.push("s.tanggal_dibuat >= ?"); params.push(from); }
+    if (to) { where.push("s.tanggal_dibuat <= ?"); params.push(to); }
+    const { page, limit, offset } = parsePagination(url);
+    const total = paged
+      ? await ctx.env.DB.prepare(`SELECT COUNT(*) AS c FROM shipments s JOIN trucks t ON t.id = s.truck_id WHERE ${where.join(" AND ")}`).bind(...params).first<{ c: number }>()
+      : null;
     const rows = await ctx.env.DB.prepare(
       `SELECT s.*, ${CUSTOMER_NAME_SQL}, t.nomor_unit as truck_nomor_unit
        FROM shipments s
        JOIN trucks t ON t.id = s.truck_id
-       WHERE t.driver_id = ? AND s.status != 'Dibatalkan' AND s.deleted_at IS NULL
-       ORDER BY s.created_at DESC`,
+       WHERE ${where.join(" AND ")}
+       ORDER BY ${paged ? "s.tanggal_dibuat DESC, s.jam_dibuat DESC, s.created_at DESC" : "s.created_at DESC"}${paged ? " LIMIT ? OFFSET ?" : ""}`,
     )
-      .bind(driverId)
+      .bind(...params, ...(paged ? [limit, offset] : []))
       .all();
-    return ok({ items: (rows.results ?? []).map(shipmentSummary) });
+    return ok({ items: (rows.results ?? []).map(shipmentSummary), ...(paged ? { meta: pageMeta(page, limit, total?.c ?? 0) } : {}) });
   });
 
   // Unassigned shipments (truck_id IS NULL) any driver may browse and

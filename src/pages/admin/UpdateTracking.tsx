@@ -20,7 +20,6 @@ import { AdminLayout } from "../../components/layout/AdminLayout";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../store/AuthContext";
 import { useLayanan } from "../../store/LayananContext";
-import { useLocations } from "../../store/LocationContext";
 import { useFleet } from "../../store/FleetContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment, TimelineEventType, TrackingUpdateFormData, UpdateShipmentInfoData } from "../../types";
@@ -28,6 +27,7 @@ import { checkPhotoSize, compressImage } from "../../utils/compressImage";
 import { formatTanggalJam, formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
 import { addBusinessDays } from "../../utils/sla";
 import { getAllowedNextEvents } from "../../utils/status";
+import { useLocationSuggest } from "../../utils/useLocationSuggest";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
@@ -37,9 +37,6 @@ export default function UpdateTracking() {
   const { getByAwb, addTrackingUpdate, updateShipmentInfo, updatePodPhoto } = useShipments();
   const { activeNames: activeLayanan, refresh: refreshLayanan } = useLayanan();
   const { trucksWithDriver } = useFleet();
-  const { activeTitikLokasi } = useLocations();
-  // Lokasi update status mengarah ke "Nama Area" (hanya field Nama Area di Kota & Titik Transit).
-  const areaSuggestions = Array.from(new Set(activeTitikLokasi.map((t) => (t.namaArea || "").trim()).filter(Boolean)));
   const { profile } = useAuth();
   const isMitra = profile?.role === "Mitra";
   // Editing shipment data (incl. the addresses) needs shipments.update_info on
@@ -71,6 +68,16 @@ export default function UpdateTracking() {
   const [editPengirim, setEditPengirim] = useState({ nama: "", telepon: "", email: "" });
   const [editPenerima, setEditPenerima] = useState({ nama: "", telepon: "", email: "" });
   const [editKotaAsal, setEditKotaAsal] = useState("");
+  // City pickers search the master data server-side as the user types.
+  const [kotaAsalQuery, setKotaAsalQuery] = useState("");
+  const [kotaTujuanQuery, setKotaTujuanQuery] = useState("");
+  const toKotaOption = (k: { nama: string; provinsi?: string | null; jenis?: string | null }) => ({
+    value: k.nama,
+    label: k.nama,
+    description: [k.jenis, k.provinsi].filter(Boolean).join(" - "),
+  });
+  const kotaAsalOptions = useLocationSuggest("kota", kotaAsalQuery).map(toKotaOption);
+  const kotaTujuanOptions = useLocationSuggest("kota", kotaTujuanQuery).map(toKotaOption);
   const [editAlamatAsal, setEditAlamatAsal] = useState("");
   const [editKotaTujuan, setEditKotaTujuan] = useState("");
   const [editAlamatTujuan, setEditAlamatTujuan] = useState("");
@@ -187,13 +194,6 @@ export default function UpdateTracking() {
   const selectedTruck = trucksWithDriver.find((t) => t.id === truckId);
   const isSelesai = type === "Selesai / Terkirim";
   const resolvedLokasi = isSelesai ? shipment.kotaTujuan : lokasi;
-  // One entry per kota: several transit points can share a kota now.
-  const kotaOptions = Array.from(new Map(activeTitikLokasi.map((k) => [k.namaKota, k])).values()).map((k) => ({
-    value: k.namaKota,
-    label: k.namaKota,
-    description: `${k.jenis} - ${k.provinsi}`,
-  }));
-
   async function handleSaveInfo(e: FormEvent) {
     e.preventDefault();
     if (!editKotaAsal || !editKotaTujuan) {
@@ -468,7 +468,8 @@ export default function UpdateTracking() {
                   <label className="block">
                     <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota Asal</span>
                     <SearchableSelect
-                      options={kotaOptions}
+                      options={kotaAsalOptions}
+                      onSearch={setKotaAsalQuery}
                       value={editKotaAsal}
                       onChange={setEditKotaAsal}
                       placeholder="Pilih kota asal"
@@ -478,7 +479,8 @@ export default function UpdateTracking() {
                   <label className="block">
                     <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota Tujuan</span>
                     <SearchableSelect
-                      options={kotaOptions}
+                      options={kotaTujuanOptions}
+                      onSearch={setKotaTujuanQuery}
                       value={editKotaTujuan}
                       onChange={setEditKotaTujuan}
                       placeholder="Pilih kota tujuan"
@@ -710,7 +712,7 @@ export default function UpdateTracking() {
                   className={inputClass}
                   value={lokasi}
                   onChange={setLokasi}
-                  suggestions={areaSuggestions}
+                  kind="area"
                   placeholder="Pilih / ketik Nama Area, contoh: Semarang Barat"
                 />
               </label>

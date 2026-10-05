@@ -5,7 +5,7 @@ import { parseJsonBody, reqString, reqEmail, reqEnum, optString, optBool } from 
 import { hashPassword, newId } from "../crypto";
 import { requireAuth, requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
-import { parsePagination, pageMeta } from "../pagination";
+import { parsePagination, pageMeta, likeTerm } from "../pagination";
 
 const ROLES = ["Admin", "Driver", "Viewer", "Client", "Mitra"] as const;
 const EMAIL_TAKEN = "Email sudah digunakan oleh user lain.";
@@ -147,20 +147,33 @@ export function registerUserRoutes(router: Router) {
         r.customer_id.toLowerCase(),
       ),
     );
-    const [clients, accounts, shipmentCounts] = await Promise.all([
+    const url = new URL(ctx.request.url);
+    const { page, limit, offset } = parsePagination(url);
+    const q = url.searchParams.get("q")?.trim().toLowerCase() ?? "";
+    const kotaFilter = url.searchParams.get("kota")?.trim().toLowerCase() ?? "";
+    const statusFilter = url.searchParams.get("status") ?? "";
+
+    // Light pass first (ids + counts only); heavy account rows are fetched for
+    // just the page on screen below.
+    const [clients, userClientIds, shipmentCounts, accountHits] = await Promise.all([
       ctx.env.DB.prepare(`SELECT customer_id, nama, kota, kontrak_no_pelanggan, aktif, created_at FROM clients WHERE deleted_at IS NULL`).all<{ customer_id: string; nama: string; kota: string | null; kontrak_no_pelanggan: string | null; aktif: number; created_at: string }>(),
-      ctx.env.DB.prepare(
-        `SELECT id, nama, email, aktif, created_at, customer_id, role
-         FROM users WHERE customer_id IS NOT NULL AND deleted_at IS NULL ORDER BY created_at ASC`,
-      ).all<{ id: string; nama: string; email: string; aktif: number; created_at: string; customer_id: string; role: string }>(),
+      ctx.env.DB.prepare(`SELECT DISTINCT customer_id FROM users WHERE customer_id IS NOT NULL AND deleted_at IS NULL`).all<{ customer_id: string }>(),
       ctx.env.DB.prepare(
         `SELECT customer_id, COUNT(*) as c FROM shipments WHERE customer_id IS NOT NULL AND deleted_at IS NULL GROUP BY customer_id`,
       ).all<{ customer_id: string; c: number }>(),
+      q
+        ? ctx.env.DB.prepare(
+            `SELECT DISTINCT customer_id FROM users WHERE customer_id IS NOT NULL AND deleted_at IS NULL AND (LOWER(nama) LIKE ? ESCAPE '\\' OR LOWER(email) LIKE ? ESCAPE '\\')`,
+          )
+            .bind(likeTerm(q), likeTerm(q))
+            .all<{ customer_id: string }>()
+        : Promise.resolve({ results: [] as { customer_id: string }[] }),
     ]);
 
     const key = (id: string) => id.toLowerCase();
     const shipmentCountByClient = new Map<string, number>();
     for (const row of shipmentCounts.results ?? []) shipmentCountByClient.set(key(row.customer_id), row.c);
+    const accountHitIds = new Set((accountHits.results ?? []).map((r) => key(r.customer_id)));
 
     type Row = {
       customerId: string; nama: string | null; kota: string | null; kontrakNoPelanggan: string | null; aktif: boolean; createdAt: string | null; shipmentCount: number;
@@ -174,20 +187,52 @@ export function registerUserRoutes(router: Router) {
       return byClient.get(key(id))!;
     };
     for (const r of clients.results ?? []) ensure(r.customer_id, r.nama, r.kota, r.kontrak_no_pelanggan, r.created_at, r.aktif === 1);
-    for (const a of accounts.results ?? []) {
-      if (binned.has(key(a.customer_id))) continue;
-      ensure(a.customer_id, null, null, null, null).accounts.push({
-        id: a.id, nama: a.nama, email: a.email, aktif: a.aktif === 1, role: a.role, createdAt: a.created_at,
-      });
+    for (const a of userClientIds.results ?? []) {
+      if (!binned.has(key(a.customer_id))) ensure(a.customer_id, null, null, null, null);
     }
-    for (const id of shipmentCountByClient.keys()) {
-      if (!byClient.has(id) && !binned.has(id)) {
-        const orig = (shipmentCounts.results ?? []).find((r) => key(r.customer_id) === id)!.customer_id;
-        ensure(orig, null, null, null, null);
+    for (const row of shipmentCounts.results ?? []) {
+      if (!binned.has(key(row.customer_id))) ensure(row.customer_id, null, null, null, null);
+    }
+
+    const all = Array.from(byClient.values())
+      .filter((r) => {
+        if (kotaFilter && (r.kota ?? "").trim().toLowerCase() !== kotaFilter) return false;
+        if (statusFilter === "aktif" && !r.aktif) return false;
+        if (statusFilter === "nonaktif" && r.aktif) return false;
+        if (!q) return true;
+        return (
+          accountHitIds.has(key(r.customerId)) ||
+          [r.customerId, r.nama, r.kota, r.kontrakNoPelanggan].some((v) => (v ?? "").toLowerCase().includes(q))
+        );
+      })
+      .sort((a, b) => a.customerId.localeCompare(b.customerId));
+
+    const pageRows = all.slice(offset, offset + limit);
+    if (pageRows.length > 0) {
+      const ids = pageRows.map((r) => r.customerId);
+      const accounts = await ctx.env.DB.prepare(
+        `SELECT id, nama, email, aktif, created_at, customer_id, role
+         FROM users WHERE customer_id IN (${ids.map(() => "?").join(",")}) AND deleted_at IS NULL ORDER BY created_at ASC`,
+      )
+        .bind(...ids)
+        .all<{ id: string; nama: string; email: string; aktif: number; created_at: string; customer_id: string; role: string }>();
+      for (const a of accounts.results ?? []) {
+        byClient.get(key(a.customer_id))?.accounts.push({
+          id: a.id, nama: a.nama, email: a.email, aktif: a.aktif === 1, role: a.role, createdAt: a.created_at,
+        });
       }
     }
 
-    return ok({ items: Array.from(byClient.values()).sort((a, b) => a.customerId.localeCompare(b.customerId)) });
+    return ok({ items: pageRows, meta: pageMeta(page, limit, all.length) });
+  });
+
+  // Distinct Kota values for the Clients filter dropdown.
+  router.get("/api/customers/kota", async (ctx: Ctx) => {
+    requirePermission(ctx, "users.manage");
+    const rows = await ctx.env.DB.prepare(
+      `SELECT DISTINCT TRIM(kota) AS kota FROM clients WHERE deleted_at IS NULL AND kota IS NOT NULL AND TRIM(kota) != '' ORDER BY kota COLLATE NOCASE`,
+    ).all<{ kota: string }>();
+    return ok({ items: (rows.results ?? []).map((r) => r.kota) });
   });
 
   // Add a Client. The Client ID is what later gets picked in Tambah User.

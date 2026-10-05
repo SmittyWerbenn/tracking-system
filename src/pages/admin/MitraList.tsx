@@ -1,5 +1,5 @@
 import { Ban, Handshake, Pencil, RotateCcw, X } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import {
   MasterDataHeader,
@@ -14,6 +14,8 @@ import {
 import { useMitras, type Mitra, type MitraFormData } from "../../store/MitraContext";
 import { ApiError } from "../../utils/apiClient";
 import { DeleteButton } from "../../components/DeleteButton";
+import { Pagination } from "../../components/Pagination";
+import { useDebounced, usePagedList } from "../../utils/usePagedList";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
@@ -23,7 +25,7 @@ type StatusFilter = "semua" | "aktif" | "nonaktif";
 const emptyForm: MitraFormData = { kodeMitra: "", nama: "", pic: "", telepon: "", email: "", alamat: "", area: "" };
 
 export default function MitraList() {
-  const { mitras, isLoading, refresh, createMitra, updateMitra, setMitraAktif } = useMitras();
+  const { refresh: refreshLookup, createMitra, updateMitra, setMitraAktif } = useMitras();
   const [refreshing, setRefreshing] = useState(false);
   async function handleRefresh() {
     setRefreshing(true);
@@ -41,14 +43,14 @@ export default function MitraList() {
     setSearch("");
     setStatusFilter("semua");
   }
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return mitras.filter(
-      (m) =>
-        (!q || [m.kodeMitra, m.nama, m.pic, m.telepon, m.email, m.area].some((v) => v?.toLowerCase().includes(q))) &&
-        (statusFilter === "semua" || (statusFilter === "aktif" ? m.aktif : !m.aktif)),
-    );
-  }, [mitras, search, statusFilter]);
+  // Search / Status are applied by the API (filter -> sort -> LIMIT/OFFSET); only the visible page is loaded.
+  const debouncedSearch = useDebounced(search.trim());
+  const list = usePagedList<Mitra>("/api/mitras", { q: debouncedSearch, status: statusFilter === "semua" ? "" : statusFilter });
+  const filtered = list.items;
+  const isLoading = list.loading;
+  const refresh = async () => {
+    await Promise.all([refreshLookup(), list.reload()]);
+  };
 
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<MitraFormData>(emptyForm);
@@ -67,6 +69,7 @@ export default function MitraList() {
     setFormError(null);
     try {
       await createMitra({ ...form, kodeMitra: form.kodeMitra.trim().toUpperCase() });
+      void list.reload();
       setModalOpen(false);
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : "Gagal menambahkan Mitra. Coba lagi.");
@@ -101,6 +104,7 @@ export default function MitraList() {
     try {
       const { kodeMitra: _kodeMitra, ...rest } = editForm;
       await updateMitra(editing.kodeMitra, rest);
+      void list.reload();
       setEditing(null);
     } catch (err) {
       setEditError(err instanceof ApiError ? err.message : "Gagal menyimpan perubahan. Coba lagi.");
@@ -119,6 +123,7 @@ export default function MitraList() {
     setTogglingId(m.kodeMitra);
     try {
       await setMitraAktif(m.kodeMitra, next);
+      void list.reload();
     } finally {
       setTogglingId(null);
     }
@@ -158,11 +163,11 @@ export default function MitraList() {
           {filtered.length === 0 && (
             <MasterTableMessage
               colSpan={8}
-              loading={isLoading && mitras.length === 0}
+              loading={isLoading && filtered.length === 0}
               loadingText="Memuat data Mitra..."
               icon={Handshake}
-              title={mitras.length > 0 ? "Tidak ada Mitra yang cocok dengan filter." : "Belum ada data Mitra."}
-              action={mitras.length === 0 ? <MasterEmptyAction label="Tambah Mitra" onClick={openAdd} /> : undefined}
+              title={hasFilter ? "Tidak ada data." : "Belum ada data Mitra."}
+              action={!hasFilter ? <MasterEmptyAction label="Tambah Mitra" onClick={openAdd} /> : undefined}
             />
           )}
           {filtered.map((m) => (
@@ -218,6 +223,7 @@ export default function MitraList() {
           ))}
         </tbody>
       </MasterTableCard>
+      <Pagination meta={list.meta} page={list.page} pageSize={list.pageSize} loading={list.loading} onPage={list.setPage} onPageSize={list.setPageSize} unit="mitra" />
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

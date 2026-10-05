@@ -1,9 +1,8 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import type { TitikJenis, TitikLokasi } from "../types";
 import { api } from "../utils/apiClient";
-import { useAuth } from "./AuthContext";
 
-interface LocationRow {
+export interface LocationRow {
   id: string;
   nama_kota: string;
   kode_kota: string;
@@ -14,7 +13,7 @@ interface LocationRow {
   aktif?: number;
 }
 
-function toTitik(row: LocationRow): TitikLokasi {
+export function toTitik(row: LocationRow): TitikLokasi {
   return {
     id: row.id,
     namaKota: row.nama_kota,
@@ -62,10 +61,6 @@ export interface TitikImportResult {
 }
 
 interface LocationContextValue {
-  titikLokasi: TitikLokasi[];
-  activeTitikLokasi: TitikLokasi[];
-  isLoading: boolean;
-  refresh: () => Promise<void>;
   createTitik: (data: TitikFormData) => Promise<TitikLokasi>;
   updateTitik: (id: string, data: TitikFormData) => Promise<void>;
   setTitikAktif: (id: string, aktif: boolean) => Promise<void>;
@@ -74,53 +69,21 @@ interface LocationContextValue {
 
 const LocationContext = createContext<LocationContextValue | null>(null);
 
+/** Write-side of Kota & Titik Transit. Reading is done page by page (GET
+ * /api/locations?page=..) by the list screen and by server-searched
+ * suggestions elsewhere - the whole master list is never loaded into the browser. */
 export function LocationProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
-  const [activeTitikLokasi, setActiveTitikLokasi] = useState<TitikLokasi[]>([]);
-  const [titikLokasi, setTitikLokasi] = useState<TitikLokasi[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  async function refresh() {
-    setIsLoading(true);
-    try {
-      // Public, active-only list - works for both anonymous visitors
-      // (Cek Ongkir) and signed-in admins picking a route/transit point.
-      const publicRes = await api.get<{ items: LocationRow[] }>("/api/public/locations", { auth: false });
-      setActiveTitikLokasi(publicRes.items.map(toTitik));
-
-      if (isAuthenticated) {
-        const adminRes = await api.get<{ items: LocationRow[] }>("/api/locations");
-        setTitikLokasi(adminRes.items.map(toTitik));
-      } else {
-        setTitikLokasi([]);
-      }
-    } catch {
-      setActiveTitikLokasi([]);
-      setTitikLokasi([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]);
-
   async function createTitik(data: TitikFormData): Promise<TitikLokasi> {
     const res = await api.post<{ id: string }>("/api/locations", data);
-    await refresh();
     return { id: res.id, namaTitik: "", ...data };
   }
 
   async function updateTitik(id: string, data: TitikFormData) {
     await api.patch(`/api/locations/${id}`, data);
-    await refresh();
   }
 
   async function setTitikAktif(id: string, aktif: boolean) {
     await api.patch(`/api/locations/${id}`, { aktif });
-    await refresh();
   }
 
   /** Imports in chunks (keeps each request small), merging per-row failures. */
@@ -132,13 +95,12 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       total.created += res.created;
       total.failed.push(...res.failed);
     }
-    await refresh();
     return total;
   }
 
   return (
     <LocationContext.Provider
-      value={{ titikLokasi, activeTitikLokasi, isLoading, refresh, createTitik, updateTitik, setTitikAktif, importTitik }}
+      value={{ createTitik, updateTitik, setTitikAktif, importTitik }}
     >
       {children}
     </LocationContext.Provider>

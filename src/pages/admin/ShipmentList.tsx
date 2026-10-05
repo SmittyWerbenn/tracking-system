@@ -1,6 +1,6 @@
 import { adminPath } from "../../utils/urls";
 import { AlertTriangle, CheckCircle2, Download, Eye, FileEdit, LayoutList, ListTree, Loader2, MapPin, PackageSearch, Pencil, Printer, RefreshCw, RotateCcw, Search, X, XCircle } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { ClaimDecisionModal } from "../../components/ClaimDecisionModal";
@@ -8,11 +8,13 @@ import { EditShipmentModal } from "../../components/EditShipmentModal";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../store/AuthContext";
 import { useSettings } from "../../store/SettingsContext";
-import { useShipments, type PendingClaim } from "../../store/ShipmentContext";
+import { fetchAllShipments, useShipments, type PendingClaim } from "../../store/ShipmentContext";
+import { Pagination } from "../../components/Pagination";
+import { usePageSize } from "../../utils/usePagedList";
+import { api } from "../../utils/apiClient";
 import type { ShipmentStatus } from "../../types";
 import { exportShipmentsCsv } from "../../utils/exportCsv";
 import { formatTanggalJam, formatTanggalPendek, stripKeteranganMeta, todayISO, isoToWib } from "../../utils/format";
-import { getStagnantShipments } from "../../utils/stagnant";
 import { SHIPMENT_STATUS_OPTIONS } from "../../utils/status";
 import { CancelOrderActions } from "../../components/CancelOrderActions";
 import { DeleteButton } from "../../components/DeleteButton";
@@ -23,12 +25,11 @@ function isShipmentStatus(value: string): value is ShipmentStatus {
   return (SHIPMENT_STATUS_OPTIONS as string[]).includes(value);
 }
 
-/** Server-side search/status filtering (debounced) via ShipmentContext.refresh,
- * matching this app's actual scale (up to the API's page cap). Date range
- * and the "macet" quick-filter refine client-side over that already-
- * filtered, already-bounded batch rather than the whole table. */
+/** Fully server-side list: search (debounced), status, Client ID, date range
+ * and "macet" are all sent to the API, which filters -> sorts -> LIMIT/OFFSETs
+ * so only the visible page is ever loaded. */
 export default function ShipmentList() {
-  const { shipments, isLoading, refresh, fetchPendingClaims, confirmClaim, rejectClaim, requestRecovery } =
+  const { shipments, isLoading, listMeta, refresh, fetchPendingClaims, confirmClaim, rejectClaim, requestRecovery } =
     useShipments();
   const { settings } = useSettings();
   const { profile } = useAuth();
@@ -115,30 +116,47 @@ export default function ShipmentList() {
     return () => clearTimeout(timer);
   }, [query]);
 
-  const reloadList = () => refresh({ status: statusFilter === "Semua" ? undefined : statusFilter, q: debouncedQuery || undefined });
+  const [pageSize, setPageSize] = usePageSize();
+  const macetDays = macetOnly ? settings.stagnantThresholdDays : undefined;
+  const filterParams = {
+    status: statusFilter === "Semua" ? undefined : statusFilter,
+    q: debouncedQuery || undefined,
+    customer: clientFilter || undefined,
+    from: dateFrom || undefined,
+    to: dateTo || undefined,
+    macet: macetDays,
+  };
+  // Page resets to 1 whenever a filter / search / page size changes.
+  const filterSig = JSON.stringify([filterParams, pageSize]);
+  const [pageState, setPageState] = useState({ sig: filterSig, page: 1 });
+  const page = pageState.sig === filterSig ? pageState.page : 1;
+  const setPage = (p: number) => setPageState({ sig: filterSig, page: Math.max(1, p) });
+
+  const reloadList = () => refresh({ ...filterParams, page, limit: pageSize });
 
   useEffect(() => {
     reloadList();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, debouncedQuery]);
+  }, [filterSig, page]);
+
+  // Page fell off the end (e.g. the last row on it was just cancelled/deleted): go back to the last valid one.
+  useEffect(() => {
+    if (!isLoading && listMeta.total > 0 && page > listMeta.totalPages) setPage(listMeta.totalPages);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, listMeta.total, listMeta.totalPages, page]);
 
   const [refreshing, setRefreshing] = useState(false);
   async function handleRefresh() {
     setRefreshing(true);
     try {
       await Promise.all([
-        refresh({ status: statusFilter === "Semua" ? undefined : statusFilter, q: debouncedQuery || undefined }),
+        reloadList(),
         canManageClaims ? fetchPendingClaims().then(setPendingClaims).catch(() => {}) : Promise.resolve(),
       ]);
     } finally {
       setRefreshing(false);
     }
   }
-
-  const stagnantAwbs = useMemo(() => {
-    if (!macetOnly) return null;
-    return new Set(getStagnantShipments(shipments, settings.stagnantThresholdDays).map((s) => s.shipment.awb));
-  }, [shipments, settings.stagnantThresholdDays, macetOnly]);
 
   function handleStatusFilterChange(value: ShipmentStatus | "Semua") {
     setSearchParams((prev) => {
@@ -160,47 +178,42 @@ export default function ShipmentList() {
     });
   }
 
-  // Client ID options come from the shipments actually loaded, so a client
-  // with no shipment in the current result never shows up. A Client-role
-  // account only ever sees its own client, so the picker is pointless there.
+  // Client ID options for the filter come from the API (distinct Client IDs the
+  // user may see), not from whatever rows happen to be on screen.
   const showClientPicker = profile?.role !== "Client";
-  const clientOptions = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const s of shipments) {
-      const id = s.customerId ?? NO_CLIENT;
-      counts.set(id, (counts.get(id) ?? 0) + 1);
-    }
-    return Array.from(counts.entries())
-      .sort((a, b) => (a[0] === NO_CLIENT ? 1 : b[0] === NO_CLIENT ? -1 : a[0].localeCompare(b[0])))
-      .map(([value, count]) => ({ value, count, label: value === NO_CLIENT ? "Tanpa Client ID" : value }));
-  }, [shipments]);
-
-  // A selection can go stale after a refresh (that client no longer has any
-  // shipment in view) - drop it instead of showing an empty table.
+  const [clientOptions, setClientOptions] = useState<{ value: string; count: number; label: string }[]>([]);
   useEffect(() => {
-    if (clientFilter && !clientOptions.some((o) => o.value === clientFilter)) setClientFilter("");
-  }, [clientFilter, clientOptions]);
+    if (!showClientPicker) return;
+    api
+      .get<{ items: { customerId: string | null; count: number }[] }>("/api/shipments/clients")
+      .then((res) =>
+        setClientOptions(
+          res.items.map((r) => ({
+            value: r.customerId ?? NO_CLIENT,
+            count: r.count,
+            label: r.customerId ?? "Tanpa Client ID",
+          })),
+        ),
+      )
+      .catch(() => {});
+  }, [showClientPicker]);
 
-  const filtered = useMemo(() => {
-    return shipments
-      .filter((s) => {
-        if (clientFilter && (s.customerId ?? NO_CLIENT) !== clientFilter) return false;
-        if (stagnantAwbs && !stagnantAwbs.has(s.awb)) return false;
-        if (dateFrom && s.tanggalDibuat < dateFrom) return false;
-        if (dateTo && s.tanggalDibuat > dateTo) return false;
-        return true;
-      })
-      .sort((a, b) => (a.tanggalDibuat + a.jamDibuat < b.tanggalDibuat + b.jamDibuat ? 1 : -1));
-  }, [shipments, stagnantAwbs, dateFrom, dateTo, clientFilter]);
+  const filtered = shipments;
 
-  // Downloads exactly what the table shows, so the Client ID filter (plus
-  // status/date/search) decides what ends up in the file.
-  function handleExport() {
-    if (filtered.length === 0) return;
+  // Exports every order matching the active filters (all pages), not just the
+  // 20 on screen.
+  const [exporting, setExporting] = useState(false);
+  async function handleExport() {
+    if (listMeta.total === 0) return;
     const slug = clientFilter
       ? `-${clientFilter === NO_CLIENT ? "tanpa-client" : clientFilter.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`
       : "";
-    exportShipmentsCsv(filtered, `data-pengiriman${slug}-${todayISO()}.csv`);
+    setExporting(true);
+    try {
+      exportShipmentsCsv(await fetchAllShipments(filterParams), `data-pengiriman${slug}-${todayISO()}.csv`);
+    } finally {
+      setExporting(false);
+    }
   }
 
   function lastUpdate(awb: string) {
@@ -397,13 +410,13 @@ export default function ShipmentList() {
         <button
           type="button"
           onClick={handleExport}
-          disabled={filtered.length === 0}
+          disabled={listMeta.total === 0 || exporting}
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
         >
-          <Download size={15} /> Export CSV
+          {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />} Export CSV
         </button>
         <div className="flex items-center gap-2">
-          <span className="hidden text-xs text-slate-400 sm:inline">{filtered.length} pengiriman</span>
+          <span className="hidden text-xs text-slate-400 sm:inline">{listMeta.total.toLocaleString("id-ID")} pengiriman</span>
           <div className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5">
             <button
               type="button"
@@ -615,6 +628,8 @@ export default function ShipmentList() {
           </table>
         </div>
       </div>
+
+      <Pagination meta={listMeta} page={page} pageSize={pageSize} loading={isLoading} onPage={setPage} onPageSize={setPageSize} unit="pengiriman" />
 
       {claimDialog && (
         <ClaimDecisionModal

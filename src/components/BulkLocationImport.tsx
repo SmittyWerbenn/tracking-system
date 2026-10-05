@@ -103,7 +103,7 @@ function rowLabel(row: BulkLocationRow, position: number): string {
 const cellInputClass =
   "w-full min-w-[140px] rounded-md border border-slate-300 px-2 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-100";
 
-export function BulkLocationImport({ existingAreas = [] }: { /** "area\u0001jenis\u0001Kota" entries already in master data (area lower-cased). */ existingAreas?: string[] }) {
+export function BulkLocationImport({ existingAreas = [], onImported }: { /** "area\u0001jenis\u0001Kota" entries already in master data (area lower-cased). */ existingAreas?: string[]; onImported?: () => void }) {
   const { importTitik } = useLocations();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -195,6 +195,7 @@ export function BulkLocationImport({ existingAreas = [] }: { /** "area\u0001jeni
           aktif: r.aktifValue,
         })),
       );
+      onImported?.();
       const failedByRow = new Map(res.failed.map((f) => [f.row, f.message]));
       const okIds = new Set<string>();
       const failedRows: (TitikImportFailure & { label: string })[] = [];

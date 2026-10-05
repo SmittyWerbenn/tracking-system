@@ -18,6 +18,8 @@ interface SearchableSelectProps {
    * different visual theme (e.g. gold focus ring) without affecting every
    * other caller's default look. */
   className?: string;
+  /** Server-side search: when set, options are NOT filtered locally; the parent reloads them for each (debounced) query. */
+  onSearch?: (query: string) => void;
 }
 
 /** A dropdown with a built-in search box, used for pickers backed by master
@@ -31,20 +33,21 @@ export function SearchableSelect({
   emptyLabel = "Tidak ada hasil.",
   disabled,
   className = "",
+  onSearch,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const selected = options.find((o) => o.value === value);
+  const selected = options.find((o) => o.value === value) ?? (value ? { value, label: value } : undefined);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return options;
+    if (!q || onSearch) return options;
     return options.filter(
       (o) => o.label.toLowerCase().includes(q) || o.description?.toLowerCase().includes(q),
     );
-  }, [options, query]);
+  }, [options, query, onSearch]);
 
   useEffect(() => {
     if (!open) return;
@@ -79,7 +82,10 @@ export function SearchableSelect({
             <input
               autoFocus
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                onSearch?.(e.target.value);
+              }}
               placeholder="Cari..."
               className="w-full text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
             />

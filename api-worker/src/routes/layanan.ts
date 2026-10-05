@@ -6,6 +6,7 @@ import { newId } from "../crypto";
 import { requireAuth, requirePermission } from "../authMiddleware";
 import { hasPermission } from "../rbac";
 import { writeAuditLog } from "../audit";
+import { parsePagination, pageMeta, likeTerm, orderBy, wantsPaging } from "../pagination";
 import { FALLBACK_LAYANAN, STANDARD_LAYANAN, canonicalLayananName, isFallbackLayanan } from "../layanan";
 
 const FALLBACK_PROTECTED =
@@ -27,18 +28,44 @@ function readDeskripsi(body: Record<string, unknown>): string | null {
  * gate as Master Mitra / Clients. GET is readable by every signed-in role
  * (order forms, incl. the Client portal, need the dropdown list) but
  * non-managers only ever receive ACTIVE entries. */
+async function fallbackReady(ctx: Ctx): Promise<boolean> {
+  const r = await ctx.env.DB.prepare(`SELECT 1 AS x FROM layanans WHERE deleted_at IS NULL AND aktif = 1 AND nama = ? COLLATE NOCASE`)
+    .bind(FALLBACK_LAYANAN)
+    .first();
+  return !!r;
+}
+
 export function registerLayananRoutes(router: Router) {
   router.get("/api/layanan", async (ctx: Ctx) => {
     const actor = requireAuth(ctx);
     const canManage = hasPermission(actor.role, "users.manage");
     const onlyActive = !canManage || new URL(ctx.request.url).searchParams.get("active") === "true";
 
+    const url = new URL(ctx.request.url);
+    const paged = wantsPaging(url);
+    const where: string[] = ["l.deleted_at IS NULL"];
+    const params: unknown[] = [];
+    if (onlyActive) where.push("l.aktif = 1");
+    const status = url.searchParams.get("status");
+    if (status === "aktif") where.push("l.aktif = 1");
+    else if (status === "nonaktif") where.push("l.aktif = 0");
+    const q = url.searchParams.get("q")?.trim();
+    if (q) {
+      where.push("(l.nama LIKE ? ESCAPE '\\' OR l.deskripsi LIKE ? ESCAPE '\\')");
+      params.push(likeTerm(q), likeTerm(q));
+    }
+    const whereSql = `WHERE ${where.join(" AND ")}`;
+    const order = orderBy(url, { nama: "l.nama COLLATE NOCASE", aktif: "l.aktif", jumlah_order: "jumlah_order" }, "l.nama COLLATE NOCASE ASC");
+    const { page, limit, offset } = parsePagination(url);
+    const total = paged ? await ctx.env.DB.prepare(`SELECT COUNT(*) AS c FROM layanans l ${whereSql}`).bind(...params).first<{ c: number }>() : null;
     const rows = await ctx.env.DB.prepare(
       `SELECT l.id, l.nama, l.deskripsi, l.aktif, l.created_at,
               (SELECT COUNT(*) FROM shipments s WHERE s.layanan = l.nama COLLATE NOCASE) AS jumlah_order
-       FROM layanans l WHERE l.deleted_at IS NULL ${onlyActive ? "AND l.aktif = 1" : ""}
-       ORDER BY l.nama`,
-    ).all<{ id: string; nama: string; deskripsi: string | null; aktif: number; created_at: string; jumlah_order: number }>();
+       FROM layanans l ${whereSql}
+       ORDER BY ${order}${paged ? " LIMIT ? OFFSET ?" : ""}`,
+    )
+      .bind(...params, ...(paged ? [limit, offset] : []))
+      .all<{ id: string; nama: string; deskripsi: string | null; aktif: number; created_at: string; jumlah_order: number }>();
     const items = (rows.results ?? []).map((r) => ({
       id: r.id,
       nama: r.nama,
@@ -51,11 +78,12 @@ export function registerLayananRoutes(router: Router) {
 
     return ok({
       items,
+      ...(paged ? { meta: pageMeta(page, limit, total?.c ?? 0) } : {}),
       standard: STANDARD_LAYANAN,
       // Lets the admin UI warn when order fallback can't work.
       fallback: {
         nama: FALLBACK_LAYANAN,
-        ready: items.some((i) => i.fallback && i.aktif),
+        ready: paged ? await fallbackReady(ctx) : items.some((i) => i.fallback && i.aktif),
       },
     });
   });

@@ -54,7 +54,7 @@ export function AuditLogProvider({ children }: { children: ReactNode }) {
   async function refresh(filters: AuditLogFilters = {}) {
     setIsLoading(true);
     try {
-      const params = new URLSearchParams({ limit: "100", ...filters } as Record<string, string>);
+      const params = new URLSearchParams({ limit: "20", ...filters } as Record<string, string>);
       const res = await api.get<{ items: AuditLogRow[] }>(`/api/audit-logs?${params.toString()}`);
       setEntries(res.items.map(toEntry));
     } catch {
@@ -64,10 +64,9 @@ export function AuditLogProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Not loaded on login anymore: the Audit Log page pages through the API itself.
   useEffect(() => {
-    if (isAuthenticated) refresh();
-    else setEntries([]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!isAuthenticated) setEntries([]);
   }, [isAuthenticated]);
 
   return <AuditLogContext.Provider value={{ entries, isLoading, refresh }}>{children}</AuditLogContext.Provider>;

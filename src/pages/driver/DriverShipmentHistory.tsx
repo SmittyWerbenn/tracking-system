@@ -1,11 +1,13 @@
 import { driverPath } from "../../utils/urls";
 import { AlertTriangle, ArrowLeft, ArrowRight, Download, FileText, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DriverLayout } from "../../components/layout/DriverLayout";
 import { RefreshButton } from "../../components/RefreshButton";
 import { useAuth } from "../../store/AuthContext";
-import { fetchDriverShipments, type DriverShipmentSummary } from "../../utils/driverApi";
+import { type DriverShipmentSummary } from "../../utils/driverApi";
+import { Pagination } from "../../components/Pagination";
+import { usePagedList } from "../../utils/usePagedList";
 import { exportDriverShipmentsCsv } from "../../utils/exportCsv";
 import { formatTanggalPanjang, todayISO } from "../../utils/format";
 import { SHIPMENT_STATUS_OPTIONS } from "../../utils/status";
@@ -38,19 +40,21 @@ function buildExportFilename(driverNama: string, ext: string): string {
  * that can't be suppressed from the page itself. */
 export default function DriverShipmentHistory() {
   const { profile } = useAuth();
-  const [shipments, setShipments] = useState<DriverShipmentSummary[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [statusFilter, setStatusFilter] = useState("Semua");
   const [pdfLoading, setPdfLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  function fetchHistory() {
-    return fetchDriverShipments()
-      .then(setShipments)
-      .catch(() => setError("Gagal memuat data pengiriman. Coba muat ulang halaman."));
-  }
+  // Status / date range are applied by the API; only the visible page is loaded.
+  const list = usePagedList<DriverShipmentSummary>("/api/driver/shipments", {
+    status: statusFilter === "Semua" ? "" : statusFilter,
+    from: dateFrom,
+    to: dateTo,
+  });
+  const shipments = list.loading && list.items.length === 0 && !list.error ? null : list.items;
+  const error = list.error;
+  const fetchHistory = () => list.reload();
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -69,7 +73,7 @@ export default function DriverShipmentHistory() {
       // every visitor downloads - only loaded when this button is used.
       const { exportDriverShipmentsPdf } = await import("../../utils/exportPdf");
       exportDriverShipmentsPdf(
-        filtered,
+        await list.fetchAll(),
         { driverNama: profile?.nama ?? "-", dateFrom, dateTo, statusFilter },
         buildExportFilename(profile?.nama ?? "", "pdf"),
       );
@@ -78,21 +82,7 @@ export default function DriverShipmentHistory() {
     }
   }
 
-  useEffect(() => {
-    fetchHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const filtered = useMemo(() => {
-    return (shipments ?? [])
-      .filter((s) => {
-        if (dateFrom && s.tanggalDibuat < dateFrom) return false;
-        if (dateTo && s.tanggalDibuat > dateTo) return false;
-        if (statusFilter !== "Semua" && s.status !== statusFilter) return false;
-        return true;
-      })
-      .sort((a, b) => (a.tanggalDibuat + a.jamDibuat < b.tanggalDibuat + b.jamDibuat ? 1 : -1));
-  }, [shipments, dateFrom, dateTo, statusFilter]);
+  const filtered = list.items;
 
   return (
     <DriverLayout wide>
@@ -150,7 +140,7 @@ export default function DriverShipmentHistory() {
         )}
         <div className="flex items-center gap-2 sm:ml-auto">
           <button
-            onClick={() => exportDriverShipmentsCsv(filtered, buildExportFilename(profile?.nama ?? "", "csv"))}
+            onClick={() => void list.fetchAll().then((all) => exportDriverShipmentsCsv(all, buildExportFilename(profile?.nama ?? "", "csv")))}
             className="inline-flex items-center gap-1.5 rounded-lg border-2 border-blue-900 bg-white px-3.5 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-50"
           >
             <Download size={15} /> Unduh Excel
@@ -179,7 +169,7 @@ export default function DriverShipmentHistory() {
 
       {shipments !== null && filtered.length === 0 && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-400">
-          Tidak ada pengiriman yang cocok dengan filter.
+          Tidak ada data.
         </div>
       )}
 
@@ -223,6 +213,10 @@ export default function DriverShipmentHistory() {
           </div>
         </div>
       )}
+
+      <div className="no-print">
+        <Pagination meta={list.meta} page={list.page} pageSize={list.pageSize} loading={list.loading} onPage={list.setPage} onPageSize={list.setPageSize} unit="pengiriman" />
+      </div>
     </DriverLayout>
   );
 }

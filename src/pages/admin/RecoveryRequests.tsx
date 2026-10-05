@@ -1,4 +1,6 @@
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Eye, Loader2, RotateCcw, X, XCircle } from "lucide-react";
+import { Pagination } from "../../components/Pagination";
+import { usePageSize } from "../../utils/usePagedList";
+import { AlertTriangle, CheckCircle2, Eye, Loader2, RotateCcw, X, XCircle } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -38,7 +40,7 @@ interface RecoveryDetail {
 
 interface ListResponse {
   items: RecoveryRequest[];
-  meta: { page: number; totalPages: number; total: number };
+  meta: { page: number; limit: number; totalPages: number; total: number };
   pendingCount: number;
 }
 
@@ -65,6 +67,11 @@ export default function RecoveryRequests() {
   const [draft, setDraft] = useState(EMPTY);
   const [applied, setApplied] = useState(EMPTY);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSizeRaw] = usePageSize();
+  function setPageSize(n: number) {
+    setPageSizeRaw(n);
+    setPage(1);
+  }
   const [data, setData] = useState<ListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +88,7 @@ export default function RecoveryRequests() {
     setLoading(true);
     setError(null);
     try {
-      const q = new URLSearchParams({ page: String(page), limit: "20" });
+      const q = new URLSearchParams({ page: String(page), limit: String(pageSize) });
       for (const [k, v] of Object.entries(applied)) if (v) q.set(k, v);
       setData(await api.get<ListResponse>(`/api/recovery-requests?${q.toString()}`));
     } catch (err) {
@@ -89,11 +96,16 @@ export default function RecoveryRequests() {
     } finally {
       setLoading(false);
     }
-  }, [applied, page]);
+  }, [applied, page, pageSize]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // The page vanished (last row on it restored / deleted): fall back to the last valid page.
+  useEffect(() => {
+    if (data && data.meta.total > 0 && page > data.meta.totalPages) setPage(data.meta.totalPages);
+  }, [data, page]);
 
   function patch(p: Partial<typeof EMPTY>) {
     setDraft((d) => ({ ...d, ...p }));
@@ -281,28 +293,8 @@ export default function RecoveryRequests() {
         </tbody>
       </MasterTableCard>
 
-      {data && data.meta.totalPages > 1 && (
-        <div className="mt-3 flex items-center justify-end gap-1 text-xs text-slate-600">
-          <button
-            type="button"
-            disabled={page <= 1 || loading}
-            onClick={() => setPage(page - 1)}
-            className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 font-semibold hover:bg-slate-50 disabled:opacity-40"
-          >
-            <ChevronLeft size={14} /> Sebelumnya
-          </button>
-          <span className="px-2">
-            Hal. {data.meta.page} / {data.meta.totalPages}
-          </span>
-          <button
-            type="button"
-            disabled={page >= data.meta.totalPages || loading}
-            onClick={() => setPage(page + 1)}
-            className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 font-semibold hover:bg-slate-50 disabled:opacity-40"
-          >
-            Berikutnya <ChevronRight size={14} />
-          </button>
-        </div>
+      {data && (
+        <Pagination meta={data.meta} page={page} pageSize={pageSize} loading={loading} onPage={setPage} onPageSize={setPageSize} unit="request" />
       )}
 
       {(detail || detailLoading) && (

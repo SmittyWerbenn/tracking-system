@@ -4,6 +4,7 @@ import { ok, Errors } from "../http";
 import { parseJsonBody, reqString, optString, optBool } from "../validate";
 import { requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
+import { parsePagination, pageMeta, likeTerm, orderBy, wantsPaging } from "../pagination";
 
 /** Master Mitra (partner agent) CRUD - Superadmin/Admin only, same gate as
  * Master Data Clients (/api/customers). Also doubles as the dropdown
@@ -14,10 +15,26 @@ export function registerMitraRoutes(router: Router) {
     requirePermission(ctx, "users.manage");
     const url = new URL(ctx.request.url);
     const onlyActive = url.searchParams.get("active") === "true";
-    const query = onlyActive
-      ? `SELECT * FROM mitras WHERE aktif = 1 AND deleted_at IS NULL ORDER BY nama`
-      : `SELECT * FROM mitras WHERE deleted_at IS NULL ORDER BY nama`;
-    const rows = await ctx.env.DB.prepare(query).all<Record<string, unknown>>();
+    const paged = wantsPaging(url);
+    const where: string[] = ["deleted_at IS NULL"];
+    const params: unknown[] = [];
+    if (onlyActive) where.push("aktif = 1");
+    const status = url.searchParams.get("status");
+    if (status === "aktif") where.push("aktif = 1");
+    else if (status === "nonaktif") where.push("aktif = 0");
+    const q = url.searchParams.get("q")?.trim();
+    if (q) {
+      where.push("(kode_mitra LIKE ? ESCAPE '\\' OR nama LIKE ? ESCAPE '\\' OR pic LIKE ? ESCAPE '\\' OR telepon LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\' OR area LIKE ? ESCAPE '\\')");
+      const like = likeTerm(q);
+      params.push(like, like, like, like, like, like);
+    }
+    const whereSql = `WHERE ${where.join(" AND ")}`;
+    const order = orderBy(url, { nama: "nama COLLATE NOCASE", kode_mitra: "kode_mitra", area: "area COLLATE NOCASE", aktif: "aktif" }, "nama COLLATE NOCASE ASC, kode_mitra ASC");
+    const { page, limit, offset } = parsePagination(url);
+    const total = paged ? await ctx.env.DB.prepare(`SELECT COUNT(*) AS c FROM mitras ${whereSql}`).bind(...params).first<{ c: number }>() : null;
+    const rows = await ctx.env.DB.prepare(`SELECT * FROM mitras ${whereSql} ORDER BY ${order}${paged ? " LIMIT ? OFFSET ?" : ""}`)
+      .bind(...params, ...(paged ? [limit, offset] : []))
+      .all<Record<string, unknown>>();
     return ok({
       items: (rows.results ?? []).map((r) => ({
         kodeMitra: r.kode_mitra,
@@ -30,6 +47,7 @@ export function registerMitraRoutes(router: Router) {
         aktif: r.aktif === 1,
         createdAt: r.created_at,
       })),
+      ...(paged ? { meta: pageMeta(page, limit, total?.c ?? 0) } : {}),
     });
   });
 

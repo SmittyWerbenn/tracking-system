@@ -1,6 +1,8 @@
+import { Pagination } from "../../components/Pagination";
+import { usePagedList } from "../../utils/usePagedList";
 import { adminPath } from "../../utils/urls";
 import { ArrowLeft, MapPin, Phone, Truck as TruckIcon, User } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArmadaStatusBadge } from "../../components/ArmadaStatusBadge";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -8,7 +10,6 @@ import { RefreshButton } from "../../components/RefreshButton";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useFleet } from "../../store/FleetContext";
 import type { ShipmentStatus } from "../../types";
-import { api } from "../../utils/apiClient";
 import { formatTanggalPendek } from "../../utils/format";
 
 type FilterMode = "Semua" | "Sedang Dibawa" | "Selesai";
@@ -30,28 +31,20 @@ export default function TruckHistory() {
   const [filter, setFilter] = useState<FilterMode>("Semua");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [rows, setRows] = useState<HistoryRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const truck = getTruck(id ?? "");
 
-  function fetchHistory() {
-    if (!id) return Promise.resolve();
-    const search = new URLSearchParams({ limit: "100" });
-    if (dateFrom) search.set("from", dateFrom);
-    if (dateTo) search.set("to", dateTo);
-    return api
-      .get<{ items: HistoryRow[] }>(`/api/trucks/${id}/history?${search.toString()}`)
-      .then((res) => setRows(res.items))
-      .catch(() => setRows([]));
-  }
-
-  useEffect(() => {
-    setIsLoading(true);
-    fetchHistory().finally(() => setIsLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, dateFrom, dateTo]);
+  // Date range + state filter go to the API; only the visible page is loaded.
+  const list = usePagedList<HistoryRow>(
+    `/api/trucks/${id ?? "-"}/history`,
+    { from: dateFrom, to: dateTo, state: filter === "Sedang Dibawa" ? "berjalan" : filter === "Selesai" ? "selesai" : "" },
+    undefined,
+    { enabled: !!id },
+  );
+  const rows = list.items;
+  const isLoading = list.loading;
+  const fetchHistory = () => list.reload();
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -67,7 +60,7 @@ export default function TruckHistory() {
     return "Selesai";
   }
 
-  const relevantShipments = rows.filter((s) => filter === "Semua" || statusForTruck(s) === filter);
+  const relevantShipments = rows;
 
   if (!truck) {
     return (
@@ -205,7 +198,7 @@ export default function TruckHistory() {
                 {!isLoading && relevantShipments.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-400">
-                      Belum ada riwayat untuk unit ini.
+                      Tidak ada data.
                     </td>
                   </tr>
                 )}
@@ -214,6 +207,8 @@ export default function TruckHistory() {
           </div>
         </div>
       </div>
+
+      <Pagination meta={list.meta} page={list.page} pageSize={list.pageSize} loading={list.loading} onPage={list.setPage} onPageSize={list.setPageSize} unit="riwayat" />
     </AdminLayout>
   );
 }

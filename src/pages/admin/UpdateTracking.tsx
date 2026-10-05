@@ -38,6 +38,8 @@ export default function UpdateTracking() {
   const { activeNames: activeLayanan, refresh: refreshLayanan } = useLayanan();
   const { trucksWithDriver } = useFleet();
   const { activeTitikLokasi } = useLocations();
+  // Lokasi update status mengarah ke "Nama Area" (fallback ke Kota bila area kosong).
+  const areaSuggestions = Array.from(new Set(activeTitikLokasi.map((t) => (t.namaArea || t.namaKota).trim()).filter(Boolean)));
   const { profile } = useAuth();
   const isMitra = profile?.role === "Mitra";
   // Editing shipment data (incl. the addresses) needs shipments.update_info on
@@ -701,15 +703,15 @@ export default function UpdateTracking() {
               </div>
             ) : (
               <label className="block">
-                <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi / Titik Transit</span>
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi (Nama Area)</span>
                 <LocationTextInput
                   id="update-tracking-lokasi"
                   required
                   className={inputClass}
                   value={lokasi}
                   onChange={setLokasi}
-                  suggestions={activeTitikLokasi.map((t) => t.namaKota)}
-                  placeholder="Ketik lokasi, contoh: Gudang Karawang"
+                  suggestions={areaSuggestions}
+                  placeholder="Pilih / ketik Nama Area, contoh: Semarang Barat"
                 />
               </label>
             )}

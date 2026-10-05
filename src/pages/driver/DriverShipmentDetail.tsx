@@ -58,6 +58,8 @@ export default function DriverShipmentDetail() {
   const { awb } = useParams<{ awb: string }>();
   const { addTrackingUpdate } = useShipments();
   const { activeTitikLokasi } = useLocations();
+  // Lokasi update status mengarah ke "Nama Area" (fallback ke Kota bila area kosong).
+  const areaSuggestions = Array.from(new Set(activeTitikLokasi.map((t) => (t.namaArea || t.namaKota).trim()).filter(Boolean)));
   const [data, setData] = useState<DriverShipmentDetailData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -441,14 +443,14 @@ export default function DriverShipmentDetail() {
                 {statusType && !isSelesaiSelected && (
                   <>
                     <label className="block">
-                      <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi</span>
+                      <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi (Nama Area)</span>
                       <LocationTextInput
                         id="driver-status-lokasi"
                         required
                         value={statusLokasi}
                         onChange={setStatusLokasi}
-                        suggestions={activeTitikLokasi.map((t) => t.namaKota)}
-                        placeholder="Contoh: Gudang Karawang"
+                        suggestions={areaSuggestions}
+                        placeholder="Pilih / ketik Nama Area, contoh: Semarang Barat"
                         className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                       />
                     </label>

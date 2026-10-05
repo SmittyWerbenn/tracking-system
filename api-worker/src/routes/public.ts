@@ -94,7 +94,7 @@ export function registerPublicRoutes(router: Router) {
 
   router.get("/api/public/locations", async (ctx: Ctx) => {
     const rows = await ctx.env.DB.prepare(
-      `SELECT id, nama_kota, kode_kota, provinsi, nama_titik, jenis FROM locations WHERE aktif = 1 ORDER BY nama_kota`,
+      `SELECT id, nama_kota, kode_kota, nama_area, provinsi, nama_titik, jenis FROM locations WHERE aktif = 1 ORDER BY nama_kota`,
     ).all();
     return ok({ items: rows.results });
   });

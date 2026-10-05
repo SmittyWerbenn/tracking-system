@@ -15,7 +15,9 @@ import {
   removeAwbHistory,
   type AwbHistoryEntry,
 } from "../../utils/awbHistory";
-import { fetchPublicShipment } from "../../utils/publicTracking";
+import { Captcha } from "../../components/Captcha";
+import { useTrackingGate } from "../../utils/useTrackingGate";
+import { getHumanPass } from "../../utils/captchaApi";
 import { useSeo } from "../../utils/seo";
 
 export default function TrackingSearch() {
@@ -31,11 +33,18 @@ export default function TrackingSearch() {
   const [history, setHistory] = useState<AwbHistoryEntry[]>(() => getAwbHistory());
   const [scannerOpen, setScannerOpen] = useState(false);
   const navigate = useNavigate();
+  const gate = useTrackingGate();
+  const [scanNotice, setScanNotice] = useState("");
 
   async function goToAwbIfExists(trimmed: string) {
     setChecking(true);
-    const result = await fetchPublicShipment(trimmed);
-    setChecking(false);
+    let result;
+    try {
+      result = await gate.lookup(trimmed);
+    } finally {
+      setChecking(false);
+    }
+    if (result === "blocked") return;
     if (result) {
       setNotFound(false);
       navigate(`/tracking/${trimmed}`);
@@ -54,7 +63,16 @@ export default function TrackingSearch() {
   function handleScanned(scannedAwb: string) {
     setScannerOpen(false);
     setAwb(scannedAwb);
-    goToAwbIfExists(scannedAwb);
+    setNotFound(false);
+    // Already verified -> go straight on. Otherwise show the scanned AWB and ask for the
+    // code once, WITHOUT reopening the scanner.
+    if (getHumanPass()) {
+      setScanNotice("");
+      goToAwbIfExists(scannedAwb);
+    } else {
+      setScanNotice(scannedAwb);
+      setTimeout(() => gate.captchaRef.current?.focus(), 150);
+    }
   }
 
   const features = [
@@ -106,23 +124,34 @@ export default function TrackingSearch() {
                 </p>
 
                 <form onSubmit={handleSubmit} className="mx-auto mt-6 w-full max-w-md lg:mx-0">
-                  <div className="flex flex-col gap-2.5 rounded-2xl bg-white p-2 shadow-2xl ring-1 ring-black/5 sm:flex-row sm:rounded-full">
+                  <div className="flex flex-col gap-3 rounded-2xl bg-white p-3 text-left shadow-2xl ring-1 ring-black/5">
                     <input
                       value={awb}
                       onChange={(e) => {
                         setAwb(e.target.value);
                         setNotFound(false);
+                        setScanNotice("");
                       }}
                       placeholder={t.trackingSearch.placeholder}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-gms-gold focus:bg-white focus:outline-none focus:ring-2 focus:ring-gms-gold/20 sm:border-0 sm:bg-transparent sm:pl-5 sm:focus:bg-transparent sm:focus:ring-0"
+                      aria-label="AWB"
+                      autoComplete="off"
+                      className="min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-base text-slate-900 focus:border-gms-gold focus:bg-white focus:outline-none focus:ring-2 focus:ring-gms-gold/20"
                     />
+                    {scanNotice && gate.needsCaptcha && (
+                      <p role="status" className="rounded-lg bg-gms-soft px-3 py-2 text-xs font-semibold text-gms-corp">
+                        {language === "id" ? `AWB ${scanNotice} terbaca. Masukkan kode verifikasi lalu tekan Lacak.` : `AWB ${scanNotice} scanned. Enter the verification code, then press Track.`}
+                      </p>
+                    )}
+                    {gate.needsCaptcha && (
+                      <Captcha ref={gate.captchaRef} idPrefix="trk" compact value={gate.code} onChange={gate.setCode} error={gate.error} />
+                    )}
                     <button
                       type="submit"
                       disabled={checking}
-                      className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-gms-corp px-6 py-3 text-sm font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-gms-deep disabled:opacity-60 sm:rounded-full"
+                      className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-gms-corp px-6 py-3 text-sm font-bold text-white shadow-lg transition-all hover:bg-gms-deep disabled:opacity-60"
                     >
                       <Search size={16} />
-                      {t.trackingSearch.submitButton}
+                      {checking ? (language === "id" ? "Memproses..." : "Processing...") : t.trackingSearch.submitButton}
                     </button>
                   </div>
                   {notFound && (

@@ -1,7 +1,10 @@
 import { Clock, Loader2, Mail, MapPin, MessageCircle, Phone, TriangleAlert } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { C } from "../../data/compro/content";
 import { toTelHref, useHelpContact } from "../../store/HelpContactContext";
+import { Captcha, type CaptchaHandle } from "../Captcha";
+import { api } from "../../utils/apiClient";
+import { CAPTCHA_MESSAGES, captchaFailureOf } from "../../utils/captchaApi";
 import { useLanguage } from "../../store/LanguageContext";
 import { Container, SectionHeader } from "./SectionHeader";
 import { Reveal, useL } from "./utils";
@@ -19,6 +22,10 @@ export function ContactForm({ prefillMessage }: { prefillMessage: string }) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [noNumber, setNoNumber] = useState(false);
+  const [captchaCode, setCaptchaCode] = useState("");
+  const [captchaError, setCaptchaError] = useState("");
+  const [serverError, setServerError] = useState("");
+  const captchaRef = useRef<CaptchaHandle>(null);
   const f = C.contact.form;
 
   useEffect(() => {
@@ -42,12 +49,25 @@ export function ContactForm({ prefillMessage }: { prefillMessage: string }) {
     return er;
   }
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy) return;
     const er = validate();
     setErrors(er);
-    if (Object.keys(er).length) return;
-    setBusy(true);
+    setServerError("");
+    const code = captchaCode.trim();
+    if (!code) {
+      setCaptchaError(l(CAPTCHA_MESSAGES.required));
+      captchaRef.current?.focus();
+    } else {
+      setCaptchaError("");
+    }
+    if (Object.keys(er).length || !code) return;
+    // No valid WhatsApp CS number configured: don't pretend it was sent.
+    if (!helpWhatsAppNumber) {
+      setNoNumber(true);
+      return;
+    }
     const lines = [
       `📋 *REQUEST QUOTATION*`,
       `🏢 GMS Logistics`,
@@ -67,15 +87,40 @@ export function ContactForm({ prefillMessage }: { prefillMessage: string }) {
       `---`,
       `${new Date().toLocaleString(language === "id" ? "id-ID" : "en-US")}`,
     ].filter(Boolean);
-    // No valid WhatsApp CS number configured: don't pretend it was sent.
-    if (!helpWhatsAppNumber) {
+    setBusy(true);
+    // Open the tab inside the click (mobile browsers block popups opened after an await).
+    const win = window.open("", "_blank");
+    if (win) win.opener = null;
+    try {
+      // The server checks the CAPTCHA (single use, 5 min, 5 attempts), rate-limits and validates before accepting.
+      await api.post(
+        "/api/public/quotation",
+        {
+          nama: v.name, perusahaan: v.company, email: v.email, telepon: v.phone, jenisPengiriman: v.type,
+          asal: v.origin, tujuan: v.destination, pesan: v.message,
+          captchaId: captchaRef.current?.id() ?? "", captchaCode: code,
+        },
+        { auth: false },
+      );
+      const url = `https://wa.me/${helpWhatsAppNumber}?text=${encodeURIComponent(lines.join(String.fromCharCode(10)))}`;
+      if (win) win.location.href = url;
+      else window.location.href = url;
+      setDone(true);
+      captchaRef.current?.refresh();
+    } catch (err) {
+      win?.close();
+      const kind = captchaFailureOf(err);
+      if (kind === "required" || kind === "invalid" || kind === "expired" || kind === "tooMany") {
+        setCaptchaError(l(CAPTCHA_MESSAGES[kind]));
+      } else if (kind) {
+        setServerError(l(CAPTCHA_MESSAGES[kind]));
+      } else {
+        setServerError(err instanceof Error ? err.message : l(CAPTCHA_MESSAGES.server));
+      }
+      captchaRef.current?.refresh();
+    } finally {
       setBusy(false);
-      setNoNumber(true);
-      return;
     }
-    window.open(`https://wa.me/${helpWhatsAppNumber}?text=${encodeURIComponent(lines.join(String.fromCharCode(10)))}`, "_blank", "noopener,noreferrer");
-    setBusy(false);
-    setDone(true);
   }
 
   const field = (k: keyof FormState, label: string, opts: { type?: string; optional?: boolean; autoComplete?: string } = {}) => {
@@ -128,6 +173,8 @@ export function ContactForm({ prefillMessage }: { prefillMessage: string }) {
         <label htmlFor="cf-message" className="mb-1 block text-base font-semibold text-gms-corp">{l(f.message)} <span className="font-normal text-slate-400">({l(f.optional)})</span></label>
         <textarea id="cf-message" rows={4} value={v.message} onChange={set("message")} className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-base text-gms-ink focus:border-gms-gold focus:outline-none focus:ring-2 focus:ring-gms-gold/30" />
       </div>
+      <Captcha ref={captchaRef} idPrefix="cf" value={captchaCode} onChange={(c) => { setCaptchaCode(c); if (c) setCaptchaError(""); }} error={captchaError} />
+      {serverError && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{serverError}</p>}
       {Object.keys(errors).length > 0 && (
         <p role="alert" className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"><TriangleAlert size={16} aria-hidden />{l(f.errors.fix)}</p>
       )}

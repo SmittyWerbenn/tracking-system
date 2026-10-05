@@ -16,6 +16,8 @@ import { registerSettingsRoutes } from "./routes/settings";
 import { registerHelpRoutes } from "./routes/help";
 import { registerFileRoutes } from "./routes/files";
 import { registerPublicRoutes } from "./routes/public";
+import { registerCaptchaRoutes } from "./routes/captcha";
+import { purgeCaptchaData } from "./captcha";
 import { registerOngkirRoutes } from "./routes/ongkir";
 import { registerRecoveryRoutes } from "./routes/recovery";
 import { registerDashboardRoutes } from "./routes/dashboard";
@@ -39,6 +41,7 @@ registerSettingsRoutes(router);
 registerHelpRoutes(router);
 registerFileRoutes(router);
 registerPublicRoutes(router);
+registerCaptchaRoutes(router);
 registerOngkirRoutes(router);
 registerRecoveryRoutes(router);
 registerDashboardRoutes(router);
@@ -53,7 +56,7 @@ function corsHeaders(origin: string | null, allowedOrigins: string[]): HeadersIn
   return {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Request-ID",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Request-ID, X-Human-Pass",
     Vary: "Origin",
   };
 }
@@ -114,5 +117,6 @@ export default {
   async scheduled(_event: ScheduledController, env: Env): Promise<void> {
     const r = await purgeExpired(env);
     console.log(JSON.stringify({ job: "recycle-purge", ...r }));
+    await purgeCaptchaData(env);
   },
 };

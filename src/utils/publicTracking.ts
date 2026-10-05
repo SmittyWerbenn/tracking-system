@@ -4,6 +4,7 @@
 // api-worker/src/routes/public.ts).
 import type { Shipment, ShipmentStatus, TimelineEvent, TimelineEventType } from "../types";
 import { api, ApiError } from "./apiClient";
+import { getHumanPass, clearHumanPass } from "./captchaApi";
 import { resolveFileUrls, type FileRef } from "./resolveFiles";
 
 interface RawPublicShipment {
@@ -48,7 +49,12 @@ export interface PublicShipmentResult {
   hasFeedback: boolean;
 }
 
+/** Thrown when the lookup needs a (new) CAPTCHA verification first. */
+export class HumanCheckRequiredError extends Error {}
+
 export async function fetchPublicShipment(awb: string): Promise<PublicShipmentResult | null> {
+  const pass = getHumanPass();
+  if (!pass) throw new HumanCheckRequiredError();
   try {
     const res = await api.get<{
       shipment: RawPublicShipment;
@@ -56,7 +62,7 @@ export async function fetchPublicShipment(awb: string): Promise<PublicShipmentRe
       pod: RawPublicPod | null;
       files: FileRef[];
       hasFeedback: boolean;
-    }>(`/api/public/shipments/${encodeURIComponent(awb)}`, { auth: false });
+    }>(`/api/public/shipments/${encodeURIComponent(awb)}`, { auth: false, headers: { "X-Human-Pass": pass } });
 
     const urlMap = await resolveFileUrls(res.files, true);
     const podBarangUrls = urlMap.get(`pod_barang:${res.shipment.awb}`) ?? [];
@@ -111,7 +117,10 @@ export async function fetchPublicShipment(awb: string): Promise<PublicShipmentRe
 
     return { shipment, hasFeedback: res.hasFeedback };
   } catch (err) {
-    if (err instanceof ApiError && err.status === 404) return null;
+    if (err instanceof ApiError && err.status === 428) {
+      clearHumanPass();
+      throw new HumanCheckRequiredError();
+    }
     return null;
   }
 }

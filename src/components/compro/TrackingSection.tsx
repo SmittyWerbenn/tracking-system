@@ -2,7 +2,8 @@ import { CheckCircle2, Loader2, Search, TriangleAlert } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../../data/compro/content";
-import { fetchPublicShipment } from "../../utils/publicTracking";
+import { Captcha } from "../Captcha";
+import { useTrackingGate } from "../../utils/useTrackingGate";
 import { Container, SectionHeader } from "./SectionHeader";
 import { Reveal, useL } from "./utils";
 
@@ -12,6 +13,7 @@ export function TrackingForm() {
   const [awb, setAwb] = useState("");
   const [error, setError] = useState<"" | "required" | "notFound">("");
   const [busy, setBusy] = useState(false);
+  const gate = useTrackingGate();
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -20,7 +22,8 @@ export function TrackingForm() {
     setBusy(true);
     setError("");
     try {
-      const res = await fetchPublicShipment(v);
+      const res = await gate.lookup(v);
+      if (res === "blocked") return;
       if (res) navigate(`/tracking/${encodeURIComponent(v)}`);
       else setError("notFound");
     } finally {
@@ -31,7 +34,7 @@ export function TrackingForm() {
   return (
     <form onSubmit={submit} noValidate className="mx-auto mt-10 max-w-2xl">
       <label htmlFor="compro-awb" className="sr-only">{l(C.tracking.label)}</label>
-      <div className="flex flex-col gap-2 rounded-2xl bg-white p-2 shadow-xl sm:flex-row">
+      <div className="flex flex-col gap-3 rounded-2xl bg-white p-3 text-left shadow-xl">
         <input
           id="compro-awb"
           value={awb}
@@ -40,8 +43,9 @@ export function TrackingForm() {
           aria-invalid={error !== ""}
           aria-describedby={error ? "compro-awb-err" : undefined}
           autoComplete="off"
-          className="min-h-12 flex-1 rounded-xl bg-transparent px-4 text-base text-gms-ink placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-gms-gold"
+          className="min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-base text-gms-ink placeholder:text-slate-400 focus:border-gms-gold focus:outline-none focus-visible:ring-2 focus-visible:ring-gms-gold"
         />
+        {gate.needsCaptcha && <Captcha ref={gate.captchaRef} idPrefix="home-trk" compact value={gate.code} onChange={gate.setCode} error={gate.error} />}
         <button
           type="submit"
           disabled={busy}

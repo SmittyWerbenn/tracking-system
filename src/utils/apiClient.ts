@@ -46,7 +46,7 @@ async function request<T>(
   method: string,
   path: string,
   body?: unknown,
-  opts: { auth?: boolean } = { auth: true },
+  opts: { auth?: boolean; headers?: Record<string, string> } = { auth: true },
 ): Promise<T> {
   const headers: Record<string, string> = {};
   let requestBody: BodyInit | undefined;
@@ -58,6 +58,7 @@ async function request<T>(
     requestBody = JSON.stringify(body);
   }
 
+  if (opts.headers) Object.assign(headers, opts.headers);
   if (opts.auth !== false) {
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -82,8 +83,8 @@ async function request<T>(
 }
 
 export const api = {
-  get: <T>(path: string, opts?: { auth?: boolean }) => request<T>("GET", path, undefined, opts),
-  post: <T>(path: string, body?: unknown, opts?: { auth?: boolean }) => request<T>("POST", path, body, opts),
+  get: <T>(path: string, opts?: { auth?: boolean; headers?: Record<string, string> }) => request<T>("GET", path, undefined, opts),
+  post: <T>(path: string, body?: unknown, opts?: { auth?: boolean; headers?: Record<string, string> }) => request<T>("POST", path, body, opts),
   patch: <T>(path: string, body?: unknown, opts?: { auth?: boolean }) => request<T>("PATCH", path, body, opts),
   del: <T>(path: string, opts?: { auth?: boolean }) => request<T>("DELETE", path, undefined, opts),
 };

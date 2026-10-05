@@ -1,6 +1,7 @@
 import { Clock, Loader2, Mail, MapPin, MessageCircle, Phone, TriangleAlert } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { C } from "../../data/compro/content";
+import { services } from "../../data/compro/servicesData";
 import { toTelHref, useHelpContact } from "../../store/HelpContactContext";
 import { Captcha, type CaptchaHandle } from "../Captcha";
 import { api } from "../../utils/apiClient";
@@ -8,6 +9,13 @@ import { CAPTCHA_MESSAGES, captchaFailureOf } from "../../utils/captchaApi";
 import { useLanguage } from "../../store/LanguageContext";
 import { Container, SectionHeader } from "./SectionHeader";
 import { Reveal, useL } from "./utils";
+
+/** Jenis Pengiriman options come from the company profile's service list (LTL, FTL, FCL, ...). */
+const typeLabel = (id: string, lang: "id" | "en") => {
+  const sv = services.find((x) => x.id === id);
+  if (!sv) return id;
+  return sv.fullName[lang] === sv.name ? sv.name : `${sv.name} (${sv.fullName[lang]})`;
+};
 
 interface FormState { name: string; company: string; email: string; phone: string; type: string; origin: string; destination: string; message: string }
 const EMPTY: FormState = { name: "", company: "", email: "", phone: "", type: "", origin: "", destination: "", message: "" };
@@ -77,7 +85,7 @@ export function ContactForm({ prefillMessage }: { prefillMessage: string }) {
       `📧 ${f.email[language]}: ${v.email}`,
       `📱 ${f.phone[language]}: ${v.phone}`,
       ``,
-      `🚚 ${f.type[language]}: *${v.type}*`,
+      `🚚 ${f.type[language]}: *${typeLabel(v.type, language)}*`,
       `📍 ${f.origin[language]}: *${v.origin}*`,
       `📍 ${f.destination[language]}: *${v.destination}*`,
       v.message && ``,
@@ -96,7 +104,7 @@ export function ContactForm({ prefillMessage }: { prefillMessage: string }) {
       await api.post(
         "/api/public/quotation",
         {
-          nama: v.name, perusahaan: v.company, email: v.email, telepon: v.phone, jenisPengiriman: v.type,
+          nama: v.name, perusahaan: v.company, email: v.email, telepon: v.phone, jenisPengiriman: typeLabel(v.type, language),
           asal: v.origin, tujuan: v.destination, pesan: v.message,
           captchaId: captchaRef.current?.id() ?? "", captchaCode: code,
         },
@@ -161,7 +169,7 @@ export function ContactForm({ prefillMessage }: { prefillMessage: string }) {
         <select id="cf-type" value={v.type} onChange={set("type")} aria-invalid={!!typeErr} aria-describedby={typeErr ? "cf-type-err" : undefined}
           className={`min-h-11 w-full rounded-lg border bg-white px-3 text-base text-gms-ink focus:outline-none focus:ring-2 ${typeErr ? "border-red-500 focus:ring-red-200" : "border-slate-300 focus:border-gms-gold focus:ring-gms-gold/30"}`}>
           <option value="">{l(f.choose)}</option>
-          {C.contact.shipmentTypes.map((t) => <option key={t.en} value={t[language]}>{t[language]}</option>)}
+          {services.map((sv) => <option key={sv.id} value={sv.id}>{typeLabel(sv.id, language)}</option>)}
         </select>
         {typeErr && <p id="cf-type-err" role="alert" className="mt-1 text-xs font-semibold text-red-600">{l(f.type)} {l(f.errors.required)}</p>}
       </div>

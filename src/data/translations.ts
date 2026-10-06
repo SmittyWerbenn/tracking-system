@@ -108,6 +108,8 @@ interface Translations {
     notAvailable: string;
     origin: string;
     destination: string;
+    sender: string;
+    receiver: string;
     shipmentDetail: string;
     resiNumberLabel: string;
     service: string;
@@ -395,6 +397,8 @@ const id: Translations = {
     notAvailable: "Belum tersedia",
     origin: "Asal",
     destination: "Tujuan",
+    sender: "Pengirim",
+    receiver: "Penerima",
     shipmentDetail: "Detail Pengiriman",
     resiNumberLabel: "Nomor Resi",
     service: "Layanan",
@@ -689,6 +693,8 @@ const en: Translations = {
     notAvailable: "Not available yet",
     origin: "Origin",
     destination: "Destination",
+    sender: "Sender",
+    receiver: "Receiver",
     shipmentDetail: "Shipment Details",
     resiNumberLabel: "Receipt Number",
     service: "Service",

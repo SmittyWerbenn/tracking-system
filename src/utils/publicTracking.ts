@@ -11,6 +11,7 @@ interface RawPublicShipment {
   awb: string;
   tanggalDibuat: string;
   status: ShipmentStatus;
+  pengirim?: { nama: string };
   penerima: { nama: string };
   alamatTujuan: string;
   kotaAsal: string;
@@ -84,7 +85,7 @@ export async function fetchPublicShipment(awb: string): Promise<PublicShipmentRe
       tanggalDibuat: res.shipment.tanggalDibuat,
       jamDibuat: "",
       status: res.shipment.status,
-      pengirim: { nama: "", telepon: "", email: "" },
+      pengirim: { nama: res.shipment.pengirim?.nama ?? "", telepon: "", email: "" },
       penerima: { nama: res.shipment.penerima.nama, telepon: "", email: "" },
       alamatAsal: "",
       kotaAsal: res.shipment.kotaAsal,

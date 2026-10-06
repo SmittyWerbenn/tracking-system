@@ -257,6 +257,16 @@ export default function TrackingResult() {
             </p>
           </div>
         </div>
+        <div className="grid grid-cols-2 divide-x divide-slate-100 border-t border-slate-100 px-5 py-4 sm:px-6">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{t.trackingResult.sender}</p>
+            <p className="mt-0.5 break-words font-mono text-base sm:text-lg font-semibold text-slate-800">{shipment.pengirim.nama || "-"}</p>
+          </div>
+          <div className="pl-4">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{t.trackingResult.receiver}</p>
+            <p className="mt-0.5 break-words font-mono text-base sm:text-lg font-semibold text-slate-800">{shipment.penerima.nama || "-"}</p>
+          </div>
+        </div>
       </div>
 
       {/* Progress stepper */}

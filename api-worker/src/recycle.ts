@@ -94,6 +94,8 @@ const shipment: EntityDef = {
       db.prepare(`DELETE FROM notifications WHERE awb = ?`).bind(a),
       db.prepare(`DELETE FROM feedback WHERE awb = ?`).bind(a),
       db.prepare(`DELETE FROM order_recovery_requests WHERE awb = ?`).bind(a),
+      db.prepare(`DELETE FROM cancellation_requests WHERE awb = ?`).bind(a),
+      db.prepare(`DELETE FROM shipment_holds WHERE awb = ?`).bind(a),
       db.prepare(`DELETE FROM shipments WHERE awb = ?`).bind(a),
     ];
   },

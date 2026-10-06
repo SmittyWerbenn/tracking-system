@@ -61,6 +61,45 @@ export function registerOngkirRoutes(router: Router) {
     return ok({ items: (r.results ?? []).map((x) => ({ id: x.id, nama: x.nama })) });
   });
 
+  // Minimum billing weight for a chosen destination + layanan, so the form can pre-fill the weight. Decided here from the
+  // database (same ltlMinimumKg rule as the price); the frontend never knows the 50/100/300 numbers itself.
+  //   provinsi only -> Jawa / Luar Jawa; + kota (+ kecamatan) -> exact area (Pelosok Remote = 300).
+  router.get("/api/public/ongkir/minimum", async (ctx: Ctx) => {
+    checkRateLimit(ctx.request.headers.get("CF-Connecting-IP") ?? "unknown");
+    const q = new URL(ctx.request.url).searchParams;
+    const provinsi = str(q.get("provinsi"));
+    const kota = str(q.get("kota"));
+    const kecamatan = str(q.get("kecamatan"));
+    const layananId = str(q.get("layananId"));
+    const none = { minimumKg: 0, minimumKategori: null as string | null };
+    if (!provinsi || !layananId) return ok(none);
+    const lay = await ctx.env.DB.prepare(`SELECT nama FROM layanans WHERE id = ? AND aktif = 1 AND deleted_at IS NULL`).bind(layananId).first<{ nama: string }>();
+    if (!lay || !isFallbackLayanan(lay.nama)) return ok(none); // only LTL has a minimum billing weight
+    let region: OriginCategory | null = null;
+    let kategoriArea = "";
+    if (kota && kecamatan) {
+      const t = await ctx.env.DB.prepare(
+        `SELECT t.kategori_area, g.kategori_origin AS r FROM price_tariffs t JOIN price_regions g ON g.id = t.region_id
+         WHERE g.provinsi = ? AND g.kabupaten_kota = ? AND t.kecamatan = ?`,
+      ).bind(provinsi, kota, kecamatan).first<{ kategori_area: string; r: OriginCategory }>();
+      if (t) { region = t.r; kategoriArea = t.kategori_area; }
+    }
+    if (!region && kota) {
+      const g = await ctx.env.DB.prepare(`SELECT kategori_origin AS r FROM price_regions WHERE provinsi = ? AND kabupaten_kota = ?`).bind(provinsi, kota).first<{ r: OriginCategory }>();
+      region = g?.r ?? null;
+    }
+    if (!region) {
+      // Province level: Luar Jawa only if every region of the province is Luar Jawa; any Jawa/Jabodetabek region -> Jawa.
+      const g = await ctx.env.DB.prepare(
+        `SELECT SUM(kategori_origin != 'LUAR_JAWA') AS jawa, COUNT(*) AS n FROM price_regions WHERE provinsi = ?`,
+      ).bind(provinsi).first<{ jawa: number | null; n: number }>();
+      if (!g || g.n === 0) return ok(none);
+      region = (g.jawa ?? 0) > 0 ? "JAWA" : "LUAR_JAWA";
+    }
+    const m = ltlMinimumKg(region, kategoriArea);
+    return ok({ minimumKg: m.kg, minimumKategori: m.kategori });
+  });
+
   // The pricing source of truth: the frontend only displays this answer.
   router.post("/api/public/ongkir", async (ctx: Ctx) => {
     checkRateLimit(ctx.request.headers.get("CF-Connecting-IP") ?? "unknown");

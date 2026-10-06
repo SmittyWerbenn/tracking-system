@@ -1,5 +1,5 @@
 import { ArrowLeft, Boxes, Calculator, Clock3, Gauge, MapPin, Truck } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "../../components/compro/Navbar";
 import { Footer } from "../../components/compro/Footer";
@@ -7,7 +7,7 @@ import { SearchableSelect } from "../../components/SearchableSelect";
 import { COMPRO_IMAGES } from "../../data/compro/imagesData";
 import { useLanguage } from "../../store/LanguageContext";
 import { ApiError } from "../../utils/apiClient";
-import { estimasiHariLabel, fetchLayananOptions, fetchOngkir, fetchWilayah, formatRupiah, type OngkirEstimate } from "../../utils/ongkir";
+import { estimasiHariLabel, fetchLayananOptions, fetchMinimumWeight, fetchOngkir, fetchWilayah, formatRupiah, type OngkirEstimate } from "../../utils/ongkir";
 import { useSeo } from "../../utils/seo";
 
 const inputClass =
@@ -40,6 +40,38 @@ export default function CekOngkir() {
       })
       .catch(() => setLayananOptions([]));
   }, []);
+  // Minimum billing weight of the chosen destination (decided by the API). The weight field is pre-filled with it and
+  // a warning shows when the user types less; the price itself is always computed by the API.
+  const [minWeight, setMinWeight] = useState<{ kg: number; kategori: string | null }>({ kg: 0, kategori: null });
+  const prevMinRef = useRef(0);
+  useEffect(() => {
+    if (!provTujuan || !layananId) {
+      setMinWeight({ kg: 0, kategori: null });
+      prevMinRef.current = 0;
+      return;
+    }
+    let live = true;
+    fetchMinimumWeight({ provinsi: provTujuan, kota: kotaTujuan, kecamatan: kecTujuan, layananId })
+      .then((r) => {
+        if (!live) return;
+        const prev = prevMinRef.current;
+        prevMinRef.current = r.minimumKg;
+        setMinWeight({ kg: r.minimumKg, kategori: r.minimumKategori });
+        // Fill the weight when empty, below the new minimum, or still holding the previous auto-filled minimum.
+        setBeratKg((cur) => {
+          const n = Number(cur);
+          if (r.minimumKg <= 0) return cur !== "" && prev > 0 && n === prev ? "" : cur;
+          if (cur === "" || !Number.isFinite(n) || n < r.minimumKg || (prev > 0 && n === prev)) return String(r.minimumKg);
+          return cur;
+        });
+      })
+      .catch(() => live && setMinWeight({ kg: 0, kategori: null }));
+    return () => {
+      live = false;
+    };
+  }, [provTujuan, kotaTujuan, kecTujuan, layananId]);
+  const belowMin = minWeight.kg > 0 && beratKg !== "" && Number(beratKg) > 0 && Number(beratKg) < minWeight.kg;
+
   const [result, setResult] = useState<OngkirEstimate | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -265,8 +297,15 @@ export default function CekOngkir() {
                     value={beratKg}
                     onChange={(e) => setBeratKg(e.target.value)}
                     placeholder={t.cekOngkir.weightPlaceholder}
-                    className={inputClass}
+                    className={`${inputClass} ${belowMin ? "!border-amber-400 !ring-2 !ring-amber-100" : ""}`}
                   />
+                  {minWeight.kg > 0 && (
+                    <p className={`mt-1.5 text-sm ${belowMin ? "font-semibold text-amber-700" : "text-slate-400"}`}>
+                      {(belowMin ? t.cekOngkir.belowMinWarning : t.cekOngkir.minWeightHint)
+                        .replace("{kategori}", minWeight.kategori ?? "")
+                        .replace("{min}", String(minWeight.kg))}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="mb-1.5 block text-base sm:text-lg font-medium text-slate-600">{t.cekOngkir.koliLabel}</label>

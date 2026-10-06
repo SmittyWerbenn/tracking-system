@@ -149,6 +149,8 @@ interface Translations {
     weightKoli: string;
     /** "{kategori}", "{min}", "{charge}" are filled in by the page. */
     minWeightNote: string;
+    minWeightHint: string;
+    belowMinWarning: string;
     noRateNote: string;
     originProvince: string;
     destinationProvince: string;
@@ -439,6 +441,8 @@ const id: Translations = {
     estimatedDistance: "Jarak Perkiraan",
     estimatedArrival: "Estimasi Tiba",
     weightKoli: "Berat / Koli",
+    minWeightHint: "Minimum berat LTL tujuan {kategori}: {min} kg.",
+    belowMinWarning: "Berat di bawah minimum LTL tujuan {kategori}. Tetap ditagih minimal {min} kg.",
     minWeightNote: "LTL tujuan {kategori}: minimum penagihan {min} kg (dihitung {charge} kg).",
     noRateNote: "Rate Publish layanan ini Rp 0, sehingga harga belum tersedia. Hubungi kami untuk penawaran.",
     originProvince: "Provinsi Asal",
@@ -729,6 +733,8 @@ const en: Translations = {
     estimatedDistance: "Estimated Distance",
     estimatedArrival: "Estimated Arrival",
     weightKoli: "Weight / Packages",
+    minWeightHint: "Minimum LTL weight to {kategori}: {min} kg.",
+    belowMinWarning: "Weight is below the LTL minimum to {kategori}. It is still billed at {min} kg minimum.",
     minWeightNote: "LTL to {kategori}: minimum billing {min} kg (charged as {charge} kg).",
     noRateNote: "This service has a published rate of Rp 0, so no price is available. Contact us for a quotation.",
     originProvince: "Origin Province",

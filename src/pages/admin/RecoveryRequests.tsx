@@ -2,6 +2,7 @@ import { actionClass } from "../../components/ActionButton";
 import { Pagination } from "../../components/Pagination";
 import { usePageSize } from "../../utils/usePagedList";
 import { AlertTriangle, CheckCircle2, Eye, Loader2, RotateCcw, X, XCircle } from "lucide-react";
+import { RefreshButton } from "../../components/RefreshButton";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -187,6 +188,7 @@ export default function RecoveryRequests() {
             )}
           </>
         }
+        actions={<RefreshButton onClick={() => void load()} refreshing={loading} />}
       />
 
       <form onSubmit={search} className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">

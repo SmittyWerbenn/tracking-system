@@ -7,7 +7,7 @@ import { requireAuth, requirePermission } from "../authMiddleware";
 import { hasPermission } from "../rbac";
 import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta, likeTerm, orderBy, wantsPaging } from "../pagination";
-import { FALLBACK_LAYANAN, STANDARD_LAYANAN, canonicalLayananName, isFallbackLayanan } from "../layanan";
+import { FALLBACK_LAYANAN, LAYANAN_ORDER_SQL, STANDARD_LAYANAN, canonicalLayananName, isFallbackLayanan } from "../layanan";
 
 const FALLBACK_PROTECTED =
   `${FALLBACK_LAYANAN} adalah layanan fallback order dan tidak bisa dinonaktifkan, dihapus, atau diganti namanya.`;
@@ -55,7 +55,7 @@ export function registerLayananRoutes(router: Router) {
       params.push(likeTerm(q), likeTerm(q));
     }
     const whereSql = `WHERE ${where.join(" AND ")}`;
-    const order = orderBy(url, { nama: "l.nama COLLATE NOCASE", aktif: "l.aktif", jumlah_order: "jumlah_order" }, "l.nama COLLATE NOCASE ASC");
+    const order = orderBy(url, { nama: "l.nama COLLATE NOCASE", aktif: "l.aktif", jumlah_order: "jumlah_order" }, LAYANAN_ORDER_SQL);
     const { page, limit, offset } = parsePagination(url);
     const total = paged ? await ctx.env.DB.prepare(`SELECT COUNT(*) AS c FROM layanans l ${whereSql}`).bind(...params).first<{ c: number }>() : null;
     const rows = await ctx.env.DB.prepare(

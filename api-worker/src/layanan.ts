@@ -9,7 +9,11 @@ export const FALLBACK_LAYANAN = "LTL";
 /** Services the "Tambah Layanan" picker offers (the first five are seeded by
  * migration 0018; LTL/FTL are added by an admin). Used only to normalise the
  * casing of a typed name - any other name is a custom layanan. */
-export const STANDARD_LAYANAN = ["Darat", "Express", "Kargo", "Regular", "Charter", "LTL", "FTL"] as const;
+export const STANDARD_LAYANAN = ["LTL", "FTL", "LCL", "FCL", "Air Express", "Project Cargo", "Darat", "Express", "Kargo", "Regular", "Charter"] as const;
+
+/** Default display order of Master Layanan: the standard services in
+ * STANDARD_LAYANAN order, then any custom layanan alphabetically. */
+export const LAYANAN_ORDER_SQL = `CASE l.nama COLLATE NOCASE ${STANDARD_LAYANAN.map((n, i) => `WHEN '${n}' THEN ${i}`).join(" ")} ELSE ${STANDARD_LAYANAN.length} END, l.nama COLLATE NOCASE ASC`;
 
 export function canonicalLayananName(raw: string): string {
   const name = raw.trim().replace(/\s+/g, " ");

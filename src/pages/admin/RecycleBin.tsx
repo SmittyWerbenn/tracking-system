@@ -9,7 +9,8 @@ import { ReasonModal } from "../../components/ReasonModal";
 import { useToast } from "../../components/Toast";
 import { ApiError, api } from "../../utils/apiClient";
 import { formatTanggalJam, isoToWib } from "../../utils/format";
-import { restoreFromBin, summaryMessage, type RecycleSummary } from "../../utils/recycle";
+import { ImpactList, useImpact } from "../../components/ImpactList";
+import { restoreFromBin, summaryMessage, type RecycleEntity, type RecycleSummary } from "../../utils/recycle";
 
 type BinStatus = "IN_BIN" | "RESTORED" | "PURGED";
 
@@ -98,6 +99,8 @@ export default function RecycleBin() {
   const [action, setAction] = useState<Action>(null);
   const [detail, setDetail] = useState<(BinItem & { snapshot: Record<string, unknown> | null }) | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  // What still references the open record (examples included), so a "Tertahan" reason can be traced.
+  const detailImpact = useImpact((detail?.entityType ?? "shipment") as RecycleEntity, detail?.entityId ?? null, !!detail && detail.status === "IN_BIN");
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -303,7 +306,7 @@ export default function RecycleBin() {
                       <>
                         <p className="text-xs text-slate-500">{fmtIso(i.expiresAt)}</p>
                         <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${r.cls}`}>{r.text}</span>
-                        {i.purgeError && <p className="mt-1 max-w-[14rem] whitespace-normal text-[11px] text-rose-600">Tertahan: {i.purgeError}</p>}
+                        {i.purgeError && <p className="mt-1 max-w-[14rem] whitespace-normal text-[11px] text-rose-600">Tertahan: {i.purgeError} <span className="font-semibold">(lihat Detail untuk data terkait)</span></p>}
                       </>
                     ) : (
                       "-"
@@ -384,6 +387,15 @@ export default function RecycleBin() {
                         ))}
                     </dl>
                   </>
+                )}
+                {detail.purgeError && (
+                  <p className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">Tertahan: {detail.purgeError}</p>
+                )}
+                {detail.status === "IN_BIN" && detailImpact && detailImpact.length > 0 && (
+                  <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
+                    <p className="font-semibold">Data terkait (penelusuran)</p>
+                    <ImpactList items={detailImpact} className="mt-2" />
+                  </div>
                 )}
                 {detail.status === "IN_BIN" && (
                   <div className="mt-5 flex flex-wrap justify-end gap-2">

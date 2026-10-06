@@ -21,6 +21,31 @@ export interface RecycleActor {
   nama: string;
 }
 
+/** One group of rows that still point at a record: how many, what they are, and a few concrete examples to trace
+ * ("awb" samples are shipment numbers the UI links to; "text" samples are shown as they are). */
+export interface ImpactRow {
+  count: number;
+  label: string;
+  kind?: "awb" | "text";
+  samples?: string[];
+}
+
+const SAMPLE_LIMIT = 5;
+
+async function samples(env: Env, sql: string, ...binds: unknown[]): Promise<string[]> {
+  const r = await env.DB.prepare(`${sql} LIMIT ${SAMPLE_LIMIT}`).bind(...binds).all<{ v: string }>();
+  return (r.results ?? []).map((x) => x.v).filter(Boolean);
+}
+
+async function group(env: Env, label: string, countSql: string, sampleSql: string | null, kind: "awb" | "text", ...binds: unknown[]): Promise<ImpactRow> {
+  return {
+    count: await count(env, countSql, ...binds),
+    label,
+    kind,
+    samples: sampleSql ? await samples(env, sampleSql, ...binds) : [],
+  };
+}
+
 export interface EntityDef {
   type: RecycleEntity;
   /** Human name used in messages/audit ("Pengiriman", "User", ...). */
@@ -43,7 +68,7 @@ export interface EntityDef {
   /** Value to record in audit_log.awb. */
   awb?(row: EntityRow): string | undefined;
   /** What still points at this row (shown as a warning before it is moved to the bin). Nothing here is deleted with it. */
-  impact?(env: Env, row: EntityRow): Promise<Array<[number, string]>>;
+  impact?(env: Env, row: EntityRow): Promise<ImpactRow[]>;
 }
 
 const FINAL_STATUSES = ["Selesai / Terkirim", "Dibatalkan"];
@@ -78,8 +103,8 @@ const shipment: EntityDef = {
   },
   async impact(env, row) {
     return [
-      [await count(env, `SELECT COUNT(*) AS c FROM shipment_timeline_events WHERE awb = ?`, row.id), "data Tracking"],
-      [await count(env, `SELECT COUNT(*) AS c FROM feedback WHERE awb = ?`, row.id), "feedback"],
+      await group(env, "data Tracking", `SELECT COUNT(*) AS c FROM shipment_timeline_events WHERE awb = ?`, `SELECT type || ' - ' || lokasi || ' (' || tanggal || ' ' || jam || ')' AS v FROM shipment_timeline_events WHERE awb = ? ORDER BY seq`, "text", row.id),
+      await group(env, "feedback", `SELECT COUNT(*) AS c FROM feedback WHERE awb = ?`, `SELECT 'Rating ' || rating AS v FROM feedback WHERE awb = ?`, "text", row.id),
     ];
   },
   async purgeStatements(env, row) {
@@ -171,13 +196,13 @@ const user: EntityDef = {
   },
   async impact(env, row) {
     const driver = await env.DB.prepare(`SELECT id FROM drivers WHERE user_id = ?`).bind(row.id).first<{ id: string }>();
-    const list: Array<[number, string]> = [
-      [await count(env, `SELECT COUNT(*) AS c FROM shipments WHERE created_by = ?`, row.id), "Order/Pengiriman (AWB) yang dibuat akun ini"],
-      [await count(env, `SELECT COUNT(*) AS c FROM shipment_timeline_events WHERE input_by_user_id = ?`, row.id), "data Tracking yang diinput"],
-      [await count(env, `SELECT COUNT(*) AS c FROM audit_log WHERE user_id = ?`, row.id), "Audit Log"],
-      [await count(env, `SELECT COUNT(*) AS c FROM driver_position_reports WHERE driver_user_id = ?`, row.id), "laporan posisi driver"],
+    const list: ImpactRow[] = [
+      await group(env, "Order/Pengiriman (AWB) yang dibuat akun ini", `SELECT COUNT(*) AS c FROM shipments WHERE created_by = ?`, `SELECT awb AS v FROM shipments WHERE created_by = ? ORDER BY created_at DESC`, "awb", row.id),
+      await group(env, "data Tracking yang diinput (AWB)", `SELECT COUNT(*) AS c FROM shipment_timeline_events WHERE input_by_user_id = ?`, `SELECT DISTINCT awb AS v FROM shipment_timeline_events WHERE input_by_user_id = ?`, "awb", row.id),
+      await group(env, "Audit Log", `SELECT COUNT(*) AS c FROM audit_log WHERE user_id = ?`, null, "text", row.id),
+      await group(env, "laporan posisi driver (AWB)", `SELECT COUNT(*) AS c FROM driver_position_reports WHERE driver_user_id = ?`, `SELECT DISTINCT awb AS v FROM driver_position_reports WHERE driver_user_id = ?`, "awb", row.id),
     ];
-    if (driver) list.push([await count(env, `SELECT COUNT(*) AS c FROM trucks WHERE driver_id = ? AND deleted_at IS NULL`, driver.id), "armada yang tertaut"]);
+    if (driver) list.push(await group(env, "armada yang tertaut", `SELECT COUNT(*) AS c FROM trucks WHERE driver_id = ? AND deleted_at IS NULL`, `SELECT nomor_unit AS v FROM trucks WHERE driver_id = ? AND deleted_at IS NULL`, "text", driver.id));
     return list;
   },
   async guardPurge(env, row) {
@@ -226,8 +251,8 @@ const truck: EntityDef = {
   },
   async impact(env, row) {
     return [
-      [await count(env, `SELECT COUNT(*) AS c FROM shipments WHERE truck_id = ? AND deleted_at IS NULL`, row.id), "pengiriman yang memakai armada ini"],
-      [await count(env, `SELECT COUNT(*) AS c FROM fleet_client_assignments WHERE truck_id = ? AND status = 'ACTIVE'`, row.id), "assignment armada dedicated aktif"],
+      await group(env, "pengiriman yang memakai armada ini (AWB)", `SELECT COUNT(*) AS c FROM shipments WHERE truck_id = ? AND deleted_at IS NULL`, `SELECT awb AS v FROM shipments WHERE truck_id = ? AND deleted_at IS NULL ORDER BY created_at DESC`, "awb", row.id),
+      await group(env, "assignment armada dedicated aktif (Client)", `SELECT COUNT(*) AS c FROM fleet_client_assignments WHERE truck_id = ? AND status = 'ACTIVE'`, `SELECT COALESCE(c.nama, a.customer_id) AS v FROM fleet_client_assignments a LEFT JOIN clients c ON c.customer_id = a.customer_id WHERE a.truck_id = ? AND a.status = 'ACTIVE'`, "text", row.id),
     ];
   },
   async guardDelete(env, row) {
@@ -279,7 +304,7 @@ const location: EntityDef = {
     };
   },
   async impact(env, row) {
-    return [[await count(env, `SELECT COUNT(*) AS c FROM shipment_timeline_events WHERE titik_id = ?`, row.id), "riwayat tracking"]];
+    return [await group(env, "riwayat tracking (AWB)", `SELECT COUNT(*) AS c FROM shipment_timeline_events WHERE titik_id = ?`, `SELECT DISTINCT awb AS v FROM shipment_timeline_events WHERE titik_id = ?`, "awb", row.id)];
   },
   async guardPurge(env, row) {
     return blockedBy(
@@ -310,7 +335,8 @@ const layanan: EntityDef = {
     };
   },
   async impact(env, row) {
-    return [[await count(env, `SELECT COUNT(*) AS c FROM shipments WHERE layanan = ? COLLATE NOCASE`, String(row.snapshot.nama)), "pengiriman"]];
+    const nama = String(row.snapshot.nama);
+    return [await group(env, "pengiriman (AWB)", `SELECT COUNT(*) AS c FROM shipments WHERE layanan = ? COLLATE NOCASE`, `SELECT awb AS v FROM shipments WHERE layanan = ? COLLATE NOCASE ORDER BY created_at DESC`, "awb", nama)];
   },
   async guardDelete(_env, row) {
     // Same rule as the old hard delete: LTL is the fallback service for orders.
@@ -348,8 +374,8 @@ const mitra: EntityDef = {
   },
   async impact(env, row) {
     return [
-      [await count(env, `SELECT COUNT(*) AS c FROM users WHERE mitra_id = ?`, row.id), "user"],
-      [await count(env, `SELECT COUNT(*) AS c FROM shipments WHERE mitra_id = ?`, row.id), "pengiriman"],
+      await group(env, "user", `SELECT COUNT(*) AS c FROM users WHERE mitra_id = ?`, `SELECT nama || ' (' || email || ')' AS v FROM users WHERE mitra_id = ?`, "text", row.id),
+      await group(env, "pengiriman (AWB)", `SELECT COUNT(*) AS c FROM shipments WHERE mitra_id = ?`, `SELECT awb AS v FROM shipments WHERE mitra_id = ? ORDER BY created_at DESC`, "awb", row.id),
     ];
   },
   async guardDelete(env, row) {
@@ -401,8 +427,8 @@ const client: EntityDef = {
   },
   async impact(env, row) {
     return [
-      [await count(env, `SELECT COUNT(*) AS c FROM users WHERE customer_id = ? COLLATE NOCASE`, row.id), "user"],
-      [await count(env, `SELECT COUNT(*) AS c FROM shipments WHERE customer_id = ? COLLATE NOCASE`, row.id), "pengiriman (AWB)"],
+      await group(env, "user", `SELECT COUNT(*) AS c FROM users WHERE customer_id = ? COLLATE NOCASE`, `SELECT nama || ' (' || email || ')' AS v FROM users WHERE customer_id = ? COLLATE NOCASE`, "text", row.id),
+      await group(env, "pengiriman (AWB)", `SELECT COUNT(*) AS c FROM shipments WHERE customer_id = ? COLLATE NOCASE`, `SELECT awb AS v FROM shipments WHERE customer_id = ? COLLATE NOCASE ORDER BY created_at DESC`, "awb", row.id),
     ];
   },
   async guardDelete(env, row) {

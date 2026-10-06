@@ -81,9 +81,10 @@ export function registerRecycleRoutes(router: Router) {
     if (!ENTITY_TYPES.includes(type) || !id) throw Errors.badRequest("Jenis data atau id tidak valid.");
     const def = ENTITIES[type];
     const row = await def.load(ctx.env, id);
-    if (!row || row.deletedAt) throw Errors.notFound("Data tidak ditemukan.");
+    // Works both for a live row (warning before Hapus) and for one already in the bin (tracing what blocks/relates to it).
+    if (!row) throw Errors.notFound("Data tidak ditemukan.");
     const rows = (await def.impact?.(ctx.env, row)) ?? [];
-    return ok({ items: rows.filter(([n]) => n > 0).map(([count, label]) => ({ count, label })), retentionDays: RETENTION_DAYS });
+    return ok({ items: rows.filter((r) => r.count > 0), retentionDays: RETENTION_DAYS });
   });
 
   router.post("/api/recycle/delete", async (ctx: Ctx) => {

@@ -24,8 +24,16 @@ export function restoreFromBin(ids: string[], reason: string) {
 }
 
 /** What still references a row (warning before moving it to the bin). Nothing listed is deleted with it. */
+export interface ImpactItem {
+  count: number;
+  label: string;
+  /** "awb" samples are shipment numbers (linkable); "text" samples are shown as they are. */
+  kind?: "awb" | "text";
+  samples?: string[];
+}
+
 export function getDeleteImpact(entityType: RecycleEntity, id: string) {
-  return api.get<{ items: Array<{ count: number; label: string }>; retentionDays: number }>(
+  return api.get<{ items: ImpactItem[]; retentionDays: number }>(
     `/api/recycle/impact?entityType=${entityType}&id=${encodeURIComponent(id)}`,
   );
 }

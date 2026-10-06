@@ -11,7 +11,6 @@ import {
   RETENTION_DAYS,
   softDelete,
   restoreItem,
-  purgeItem,
   type RecycleEntity,
   type BinRow,
   type ItemResult,
@@ -73,6 +72,20 @@ function summarize(results: ItemResult[]) {
 
 /** Recycle Bin - Superadmin only (permission recycle.manage is granted to no other role). */
 export function registerRecycleRoutes(router: Router) {
+  // What still references a row, shown as a warning BEFORE it is moved to the bin (registered first so ":id" does not swallow it).
+  router.get("/api/recycle/impact", async (ctx: Ctx) => {
+    requirePermission(ctx, "recycle.manage");
+    const url = new URL(ctx.request.url);
+    const type = url.searchParams.get("entityType") as RecycleEntity;
+    const id = url.searchParams.get("id") ?? "";
+    if (!ENTITY_TYPES.includes(type) || !id) throw Errors.badRequest("Jenis data atau id tidak valid.");
+    const def = ENTITIES[type];
+    const row = await def.load(ctx.env, id);
+    if (!row || row.deletedAt) throw Errors.notFound("Data tidak ditemukan.");
+    const rows = (await def.impact?.(ctx.env, row)) ?? [];
+    return ok({ items: rows.filter(([n]) => n > 0).map(([count, label]) => ({ count, label })), retentionDays: RETENTION_DAYS });
+  });
+
   router.post("/api/recycle/delete", async (ctx: Ctx) => {
     const actor = requirePermission(ctx, "recycle.manage");
     const body = await parseJsonBody(ctx.request);
@@ -215,36 +228,10 @@ export function registerRecycleRoutes(router: Router) {
     return ok(summary);
   });
 
+  // Manual permanent delete does not exist: rows leave the bin only through the nightly auto-purge after the
+  // retention window. Kept as an explicit refusal (rather than a missing route) so a direct call gets a clear answer.
   router.post("/api/recycle/purge", async (ctx: Ctx) => {
-    const actor = requirePermission(ctx, "recycle.manage");
-    const body = await parseJsonBody(ctx.request);
-    const reason = readReason(body);
-    const ids = readIds(body);
-    const results: ItemResult[] = [];
-    for (const id of ids) {
-      const r = await purgeItem(ctx.env, id, reason, { id: actor.id, nama: actor.nama });
-      results.push({ id: r.id, ok: r.ok, message: r.message });
-      if (r.ok && r.bin) {
-        const def = ENTITIES[r.bin.entity_type];
-        await writeAuditLog(
-          ctx.env,
-          actor,
-          {
-            action: "RECYCLE_PURGE",
-            actionLabel: "HAPUS PERMANEN",
-            module: "Recycle Bin",
-            awb: r.bin.entity_type === "shipment" ? r.bin.entity_id : undefined,
-            description: `${def.title} "${r.bin.label}" (${r.bin.entity_id}) dihapus permanen. Alasan: ${reason}`,
-          },
-          ctx.request.headers.get("CF-Connecting-IP") ?? undefined,
-        );
-      }
-    }
-    const summary = summarize(results);
-    if (ids.length === 1 && summary.failed === 1) {
-      const msg = results[0].message ?? "Gagal menghapus permanen.";
-      throw msg.includes("sudah tidak berada") ? Errors.conflict(msg) : Errors.unprocessable(msg);
-    }
-    return ok(summary);
+    requirePermission(ctx, "recycle.manage");
+    throw Errors.forbidden(`Penghapusan permanen manual tidak tersedia. Data dihapus permanen otomatis oleh sistem setelah ${RETENTION_DAYS} hari di Recycle Bin.`);
   });
 }

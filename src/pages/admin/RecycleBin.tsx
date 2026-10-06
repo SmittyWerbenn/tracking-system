@@ -9,7 +9,7 @@ import { ReasonModal } from "../../components/ReasonModal";
 import { useToast } from "../../components/Toast";
 import { ApiError, api } from "../../utils/apiClient";
 import { formatTanggalJam, isoToWib } from "../../utils/format";
-import { purgeFromBin, restoreFromBin, summaryMessage, type RecycleSummary } from "../../utils/recycle";
+import { restoreFromBin, summaryMessage, type RecycleSummary } from "../../utils/recycle";
 
 type BinStatus = "IN_BIN" | "RESTORED" | "PURGED";
 
@@ -78,9 +78,9 @@ function fieldLabel(key: string): string {
   return FIELD_LABEL[key] ?? key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-type Action = { kind: "restore" | "purge"; items: BinItem[] } | null;
+type Action = { kind: "restore"; items: BinItem[] } | null;
 
-/** Superadmin-only: everything moved to the bin (30 days), with restore / permanent delete. Authorization is enforced by the API. */
+/** Superadmin-only: everything moved to the bin (kept 90 days), with restore. There is no manual permanent delete: the nightly job purges expired rows. Authorization is enforced by the API. */
 export default function RecycleBin() {
   const toast = useToast();
   const [draft, setDraft] = useState(EMPTY);
@@ -165,10 +165,10 @@ export default function RecycleBin() {
     });
   }
 
-  async function runAction(kind: "restore" | "purge", ids: string[], reason: string) {
+  async function runAction(ids: string[], reason: string) {
     let summary: RecycleSummary;
     try {
-      summary = kind === "restore" ? await restoreFromBin(ids, reason) : await purgeFromBin(ids, reason);
+      summary = await restoreFromBin(ids, reason);
     } catch (err) {
       // Someone else may have handled it meanwhile: show the real state, keep the dialog's message.
       load();
@@ -177,7 +177,7 @@ export default function RecycleBin() {
     setSelected(new Set());
     setAction(null);
     setDetail(null);
-    const okText = kind === "restore" ? "Data berhasil dipulihkan." : "Data berhasil dihapus permanen.";
+    const okText = "Data berhasil dipulihkan.";
     if (summary.failed > 0) setNotice(summaryMessage(summary, okText) + (summary.results.filter((r) => !r.ok).length > 1 ? " (lihat Audit Log)" : ""));
     else {
       setNotice(null);
@@ -278,7 +278,7 @@ export default function RecycleBin() {
               loadingText="Memuat..."
               icon={Trash2}
               title="Recycle Bin kosong"
-              description={hasFilter ? "Tidak ada data yang cocok dengan filter." : "Data yang dihapus akan muncul di sini dan disimpan selama 30 hari."}
+              description={hasFilter ? "Tidak ada data yang cocok dengan filter." : "Data yang dihapus akan muncul di sini dan disimpan selama 90 hari, lalu dihapus permanen otomatis oleh sistem."}
             />
           )}
           {!loading &&
@@ -321,9 +321,6 @@ export default function RecycleBin() {
                         <>
                           <button type="button" onClick={() => setAction({ kind: "restore", items: [i] })} className={actionClass("success", true)}>
                             <RotateCcw size={14} /> Restore
-                          </button>
-                          <button type="button" onClick={() => setAction({ kind: "purge", items: [i] })} className={actionClass("danger", true)}>
-                            <Trash2 size={14} /> Hapus Permanen
                           </button>
                         </>
                       )}
@@ -393,9 +390,6 @@ export default function RecycleBin() {
                     <button type="button" onClick={() => setAction({ kind: "restore", items: [detail] })} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
                       <RotateCcw size={15} /> Restore
                     </button>
-                    <button type="button" onClick={() => setAction({ kind: "purge", items: [detail] })} className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700">
-                      <Trash2 size={15} /> Hapus Permanen
-                    </button>
                   </div>
                 )}
               </>
@@ -412,23 +406,9 @@ export default function RecycleBin() {
           confirmLabel="Pulihkan Data"
           tone="primary"
           onClose={() => setAction(null)}
-          onConfirm={(reason) => runAction("restore", action.items.map((i) => i.id), reason)}
+          onConfirm={(reason) => runAction(action.items.map((i) => i.id), reason)}
         >
           <p>{action.items.length === 1 ? "Data berikut akan dikembalikan ke sistem aktif:" : `${action.items.length} data akan dikembalikan ke sistem aktif:`}</p>
-          <ItemList items={action.items} />
-        </ReasonModal>
-      )}
-      {action?.kind === "purge" && (
-        <ReasonModal
-          title="PERINGATAN: Hapus Permanen"
-          reasonLabel="Alasan Penghapusan Permanen"
-          placeholder="Contoh: Data duplicate, sudah tidak diperlukan"
-          confirmLabel="Hapus Permanen"
-          tone="warning"
-          onClose={() => setAction(null)}
-          onConfirm={(reason) => runAction("purge", action.items.map((i) => i.id), reason)}
-        >
-          <p className="font-semibold text-rose-700">Data ini akan dihapus PERMANEN dan TIDAK DAPAT dipulihkan.</p>
           <ItemList items={action.items} />
         </ReasonModal>
       )}

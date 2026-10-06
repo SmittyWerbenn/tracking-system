@@ -3,8 +3,8 @@ import { newId } from "./crypto";
 import { deleteObject } from "./storage";
 import { writeAuditLog } from "./audit";
 
-/** Days a binned row is kept before the nightly job purges it. */
-export const RETENTION_DAYS = 30;
+/** Days a binned row is kept before the nightly job purges it (the ONLY way a binned row is permanently deleted). */
+export const RETENTION_DAYS = 90;
 
 export type RecycleEntity = "shipment" | "user" | "truck" | "location" | "layanan" | "mitra" | "client";
 
@@ -42,6 +42,8 @@ export interface EntityDef {
   purgeStatements(env: Env, row: EntityRow): Promise<D1PreparedStatement[]>;
   /** Value to record in audit_log.awb. */
   awb?(row: EntityRow): string | undefined;
+  /** What still points at this row (shown as a warning before it is moved to the bin). Nothing here is deleted with it. */
+  impact?(env: Env, row: EntityRow): Promise<Array<[number, string]>>;
 }
 
 const FINAL_STATUSES = ["Selesai / Terkirim", "Dibatalkan"];
@@ -73,6 +75,12 @@ const shipment: EntityDef = {
       deletedAt: (s.deleted_at as string | null) ?? null,
       snapshot: s,
     };
+  },
+  async impact(env, row) {
+    return [
+      [await count(env, `SELECT COUNT(*) AS c FROM shipment_timeline_events WHERE awb = ?`, row.id), "data Tracking"],
+      [await count(env, `SELECT COUNT(*) AS c FROM feedback WHERE awb = ?`, row.id), "feedback"],
+    ];
   },
   async purgeStatements(env, row) {
     const db = env.DB;
@@ -159,6 +167,17 @@ const user: EntityDef = {
     );
     return dupe > 0 ? "Data tidak dapat dipulihkan karena terdapat data aktif dengan identifier yang sama." : null;
   },
+  async impact(env, row) {
+    const driver = await env.DB.prepare(`SELECT id FROM drivers WHERE user_id = ?`).bind(row.id).first<{ id: string }>();
+    const list: Array<[number, string]> = [
+      [await count(env, `SELECT COUNT(*) AS c FROM shipments WHERE created_by = ?`, row.id), "Order/Pengiriman (AWB) yang dibuat akun ini"],
+      [await count(env, `SELECT COUNT(*) AS c FROM shipment_timeline_events WHERE input_by_user_id = ?`, row.id), "data Tracking yang diinput"],
+      [await count(env, `SELECT COUNT(*) AS c FROM audit_log WHERE user_id = ?`, row.id), "Audit Log"],
+      [await count(env, `SELECT COUNT(*) AS c FROM driver_position_reports WHERE driver_user_id = ?`, row.id), "laporan posisi driver"],
+    ];
+    if (driver) list.push([await count(env, `SELECT COUNT(*) AS c FROM trucks WHERE driver_id = ? AND deleted_at IS NULL`, driver.id), "armada yang tertaut"]);
+    return list;
+  },
   async guardPurge(env, row) {
     const driver = await env.DB.prepare(`SELECT id FROM drivers WHERE user_id = ?`).bind(row.id).first<{ id: string }>();
     const rows: Array<[number, string]> = [
@@ -202,6 +221,12 @@ const truck: EntityDef = {
       deletedAt: (t.deleted_at as string | null) ?? null,
       snapshot: t,
     };
+  },
+  async impact(env, row) {
+    return [
+      [await count(env, `SELECT COUNT(*) AS c FROM shipments WHERE truck_id = ? AND deleted_at IS NULL`, row.id), "pengiriman yang memakai armada ini"],
+      [await count(env, `SELECT COUNT(*) AS c FROM fleet_client_assignments WHERE truck_id = ? AND status = 'ACTIVE'`, row.id), "assignment armada dedicated aktif"],
+    ];
   },
   async guardDelete(env, row) {
     const dedicated = await count(env, `SELECT COUNT(*) AS c FROM fleet_client_assignments WHERE truck_id = ? AND status = 'ACTIVE'`, row.id);
@@ -251,6 +276,9 @@ const location: EntityDef = {
       snapshot: l,
     };
   },
+  async impact(env, row) {
+    return [[await count(env, `SELECT COUNT(*) AS c FROM shipment_timeline_events WHERE titik_id = ?`, row.id), "riwayat tracking"]];
+  },
   async guardPurge(env, row) {
     return blockedBy(
       [[await count(env, `SELECT COUNT(*) AS c FROM shipment_timeline_events WHERE titik_id = ?`, row.id), "riwayat tracking"]],
@@ -278,6 +306,9 @@ const layanan: EntityDef = {
       deletedAt: (l.deleted_at as string | null) ?? null,
       snapshot: l,
     };
+  },
+  async impact(env, row) {
+    return [[await count(env, `SELECT COUNT(*) AS c FROM shipments WHERE layanan = ? COLLATE NOCASE`, String(row.snapshot.nama)), "pengiriman"]];
   },
   async guardDelete(_env, row) {
     // Same rule as the old hard delete: LTL is the fallback service for orders.
@@ -312,6 +343,12 @@ const mitra: EntityDef = {
       deletedAt: (m.deleted_at as string | null) ?? null,
       snapshot: m,
     };
+  },
+  async impact(env, row) {
+    return [
+      [await count(env, `SELECT COUNT(*) AS c FROM users WHERE mitra_id = ?`, row.id), "user"],
+      [await count(env, `SELECT COUNT(*) AS c FROM shipments WHERE mitra_id = ?`, row.id), "pengiriman"],
+    ];
   },
   async guardDelete(env, row) {
     const users = await count(env, `SELECT COUNT(*) AS c FROM users WHERE mitra_id = ? AND deleted_at IS NULL`, row.id);
@@ -359,6 +396,12 @@ const client: EntityDef = {
       deletedAt: (c.deleted_at as string | null) ?? null,
       snapshot: c,
     };
+  },
+  async impact(env, row) {
+    return [
+      [await count(env, `SELECT COUNT(*) AS c FROM users WHERE customer_id = ? COLLATE NOCASE`, row.id), "user"],
+      [await count(env, `SELECT COUNT(*) AS c FROM shipments WHERE customer_id = ? COLLATE NOCASE`, row.id), "pengiriman (AWB)"],
+    ];
   },
   async guardDelete(env, row) {
     const users = await count(env, `SELECT COUNT(*) AS c FROM users WHERE customer_id = ? COLLATE NOCASE AND deleted_at IS NULL`, row.id);
@@ -485,6 +528,10 @@ export async function purgeItem(
   const bin = await env.DB.prepare(`SELECT * FROM recycle_bin WHERE id = ?`).bind(binId).first<BinRow>();
   if (!bin) return { id: binId, ok: false, message: "Data tidak ditemukan di Recycle Bin." };
   if (bin.status !== "IN_BIN") return { id: binId, ok: false, message: "Data ini sudah tidak berada di Recycle Bin." };
+  // The nightly job (no actor) must only ever purge rows that really passed their retention window.
+  if (!actor && bin.expires_at > new Date().toISOString()) {
+    return { id: binId, ok: false, message: "Belum melewati masa penyimpanan Recycle Bin." };
+  }
   const def = ENTITIES[bin.entity_type];
   const row = await def.load(env, bin.entity_id);
 

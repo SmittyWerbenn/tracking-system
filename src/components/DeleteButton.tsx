@@ -1,8 +1,8 @@
 import { actionClass } from "./ActionButton";
 import { Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../store/AuthContext";
-import { moveToRecycleBin, type RecycleEntity } from "../utils/recycle";
+import { getDeleteImpact, moveToRecycleBin, type RecycleEntity } from "../utils/recycle";
 import { ReasonModal } from "./ReasonModal";
 import { useToast } from "./Toast";
 
@@ -27,6 +27,19 @@ export function DeleteButton({ entityType, id, details, onDone, variant = "icon"
   const isSuperadmin = useIsSuperadmin();
   const toast = useToast();
   const [open, setOpen] = useState(false);
+  // What still points at this row; loaded when the dialog opens. Nothing listed is deleted with it.
+  const [impact, setImpact] = useState<Array<{ count: number; label: string }> | null>(null);
+  useEffect(() => {
+    if (!open || !isSuperadmin) return;
+    let cancelled = false;
+    setImpact(null);
+    getDeleteImpact(entityType, id)
+      .then((r) => !cancelled && setImpact(r.items))
+      .catch(() => !cancelled && setImpact([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isSuperadmin, entityType, id]);
   if (!isSuperadmin) return null;
 
   return (
@@ -48,7 +61,7 @@ export function DeleteButton({ entityType, id, details, onDone, variant = "icon"
           title="Hapus Data?"
           reasonLabel="Alasan Penghapusan"
           placeholder="Contoh: Data duplicate / input salah / data testing"
-          confirmLabel="Pindahkan ke Recycle Bin"
+          confirmLabel={impact && impact.length > 0 ? "Lanjutkan Hapus" : "Pindahkan ke Recycle Bin"}
           onClose={() => setOpen(false)}
           onConfirm={async (reason) => {
             await moveToRecycleBin(entityType, [id], reason);
@@ -66,7 +79,23 @@ export function DeleteButton({ entityType, id, details, onDone, variant = "icon"
               </div>
             ))}
           </dl>
-          <p className="mt-3">Data akan disimpan di Recycle Bin selama 30 hari sebelum dihapus permanen.</p>
+          {impact === null && <p className="mt-3 text-xs text-slate-400">Memeriksa keterkaitan data...</p>}
+          {impact && impact.length > 0 && (
+            <div className="mt-3 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-900">
+              <p className="font-semibold">⚠️ Peringatan: data ini masih terhubung dengan:</p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                {impact.map((i) => (
+                  <li key={i.label}>
+                    {i.count.toLocaleString("id-ID")} {i.label}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs">Data terkait tidak akan ikut dihapus secara langsung.</p>
+            </div>
+          )}
+          <p className="mt-3">
+            Data akan disimpan di Recycle Bin selama 90 hari, lalu dihapus permanen otomatis oleh sistem. Selama itu data masih bisa dipulihkan.
+          </p>
         </ReasonModal>
       )}
     </>

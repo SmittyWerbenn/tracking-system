@@ -23,8 +23,11 @@ export function restoreFromBin(ids: string[], reason: string) {
   return api.post<RecycleSummary>("/api/recycle/restore", { ids, reason });
 }
 
-export function purgeFromBin(ids: string[], reason: string) {
-  return api.post<RecycleSummary>("/api/recycle/purge", { ids, reason });
+/** What still references a row (warning before moving it to the bin). Nothing listed is deleted with it. */
+export function getDeleteImpact(entityType: RecycleEntity, id: string) {
+  return api.get<{ items: Array<{ count: number; label: string }>; retentionDays: number }>(
+    `/api/recycle/impact?entityType=${entityType}&id=${encodeURIComponent(id)}`,
+  );
 }
 
 /** First failure message of a bulk result, for a one-line toast. */

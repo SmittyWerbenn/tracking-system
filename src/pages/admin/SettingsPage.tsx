@@ -1,4 +1,4 @@
-import { Building2, CheckCircle2, Clock, LifeBuoy, Mail, MessageCircle, Phone, Settings as SettingsIcon } from "lucide-react";
+import { CheckCircle2, Clock, LifeBuoy, Mail, MapPin, MessageCircle, Phone, Settings as SettingsIcon } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { useAuth } from "../../store/AuthContext";
@@ -240,7 +240,7 @@ export default function SettingsPage() {
 
           <label className="block">
             <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-600">
-              <Building2 size={13} className="text-slate-400" /> Head Office (Alamat)
+              <MapPin size={13} className="text-slate-400" /> Alamat
             </span>
             <textarea
               required

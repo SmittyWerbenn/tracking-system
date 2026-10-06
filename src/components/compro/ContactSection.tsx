@@ -1,4 +1,4 @@
-import { Building2, Clock, Loader2, Mail, MessageCircle, Phone, TriangleAlert } from "lucide-react";
+import { Clock, Loader2, Mail, MapPin, MessageCircle, Phone, TriangleAlert } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { C } from "../../data/compro/content";
 import { services } from "../../data/compro/servicesData";
@@ -211,7 +211,7 @@ export function ContactSection({ prefillMessage }: { prefillMessage: string }) {
     ...(helpWhatsAppNumber
       ? [{ icon: MessageCircle, label: C.contact.whatsapp, value: helpPhoneDisplay, href: `https://wa.me/${helpWhatsAppNumber}` }]
       : []),
-    { icon: Building2, label: { id: "Head Office", en: "Head Office" }, value: headOffice },
+    { icon: MapPin, label: C.contact.address, value: headOffice },
     { icon: Clock, label: C.contact.hours, value: contactHours },
   ];
   return (

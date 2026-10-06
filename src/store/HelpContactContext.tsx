@@ -5,7 +5,6 @@ import { normalizeWhatsApp } from "../utils/whatsapp";
 // Shown on the public Contact page until/unless Superadmin edits them under
 // Pengaturan. Same text the page used to hardcode.
 export const CONTACT_DEFAULTS = {
-  contactPhone: "021-2200-8899",
   contactEmail: "cs@gms-logistics.co.id",
   contactAddress: "Jl. Raya Cakung No. 88, Cakung, Jakarta Timur, DKI Jakarta",
   contactHours: "Senin - Sabtu, 08.00 - 18.00 WIB",
@@ -34,7 +33,6 @@ interface HelpContactContextValue {
   helpPhoneDisplay: string;
   /** WhatsApp CS normalized for wa.me links; "" when unset or invalid. */
   helpWhatsAppNumber: string;
-  contactPhone: string;
   contactEmail: string;
   contactAddress: string;
   contactHours: string;
@@ -70,7 +68,6 @@ export function HelpContactProvider({ children }: { children: ReactNode }) {
       .then((res) => {
         setHelpPhoneDisplay(res.helpPhoneNumber ?? "");
         setContact({
-          contactPhone: res.contactPhone || CONTACT_DEFAULTS.contactPhone,
           contactEmail: res.contactEmail || CONTACT_DEFAULTS.contactEmail,
           contactAddress: res.contactAddress || CONTACT_DEFAULTS.contactAddress,
           contactHours: res.contactHours || CONTACT_DEFAULTS.contactHours,

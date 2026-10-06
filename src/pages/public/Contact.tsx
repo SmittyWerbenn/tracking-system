@@ -1,21 +1,20 @@
-import { ArrowLeft, Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
+import { ArrowLeft, Clock, Mail, MapPin, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { PublicLayout } from "../../components/layout/PublicLayout";
-import { toTelHref, useHelpContact } from "../../store/HelpContactContext";
+import { useHelpContact } from "../../store/HelpContactContext";
 import { useLanguage } from "../../store/LanguageContext";
 import { useDocumentTitle } from "../../utils/useDocumentTitle";
 
-const CHANNEL_ICONS = [Phone, MessageCircle, Mail];
+const CHANNEL_ICONS = [Phone, Mail];
 
 export default function Contact() {
   const { t } = useLanguage();
   useDocumentTitle(t.contact.title);
   const navigate = useNavigate();
-  const { helpPhoneDisplay, helpWhatsAppNumber, contactPhone, contactEmail, contactAddress, contactHours } =
+  const { helpPhoneDisplay, helpWhatsAppNumber, contactEmail, contactAddress, contactHours } =
     useHelpContact();
-  const channelLabels = [t.contact.channelPhone, t.contact.channelWhatsapp, t.contact.channelEmail];
+  const channelLabels = [t.contact.channelWhatsapp, t.contact.channelEmail];
   const CHANNEL_VALUES = [
-    { value: contactPhone, href: toTelHref(contactPhone) },
     // WhatsApp CS; with no valid number configured the card is shown without a link.
     { value: helpPhoneDisplay || "-", href: helpWhatsAppNumber ? `https://wa.me/${helpWhatsAppNumber}` : undefined },
     { value: contactEmail, href: `mailto:${contactEmail}` },
@@ -34,7 +33,7 @@ export default function Contact() {
         <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">{t.contact.title}</h1>
         <p className="mt-2 text-sm text-slate-500">{t.contact.desc}</p>
 
-        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {channelLabels.map((label, i) => {
             const Icon = CHANNEL_ICONS[i];
             const { value, href } = CHANNEL_VALUES[i];

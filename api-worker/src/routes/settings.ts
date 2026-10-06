@@ -12,7 +12,6 @@ const KEYS = [
   "help_phone_number",
   "help_whatsapp_admin",
   "help_whatsapp_superadmin",
-  "contact_phone",
   "contact_email",
   "contact_address",
   "contact_hours",
@@ -32,7 +31,6 @@ const DEFAULTS: Record<Key, string> = {
   help_whatsapp_superadmin: "",
   // The public Contact page (/kontak) used to hardcode these. The defaults are
   // exactly that text, so the page looks the same until a Superadmin edits it.
-  contact_phone: "021-2200-8899",
   contact_email: "cs@gms-logistics.co.id",
   contact_address: "Jl. Raya Cakung No. 88, Cakung, Jakarta Timur, DKI Jakarta",
   contact_hours: "Senin - Sabtu, 08.00 - 18.00 WIB",
@@ -47,12 +45,11 @@ export async function loadContactInfo(db: D1Database) {
   const rows = await db
     .prepare(
       `SELECT key, value FROM settings
-       WHERE key IN ('help_phone_number','contact_phone','contact_email','contact_address','contact_hours','office_head','office_branch')`,
+       WHERE key IN ('help_phone_number','contact_email','contact_address','contact_hours','office_head','office_branch')`,
     )
     .all<{ key: string; value: string }>();
   const v: Record<string, string> = {
     help_phone_number: DEFAULTS.help_phone_number,
-    contact_phone: DEFAULTS.contact_phone,
     contact_email: DEFAULTS.contact_email,
     contact_address: DEFAULTS.contact_address,
     contact_hours: DEFAULTS.contact_hours,
@@ -62,7 +59,6 @@ export async function loadContactInfo(db: D1Database) {
   for (const row of rows.results ?? []) if (row.value) v[row.key] = row.value;
   return {
     helpPhoneNumber: v.help_phone_number,
-    contactPhone: v.contact_phone,
     contactEmail: v.contact_email,
     contactAddress: v.contact_address,
     contactHours: v.contact_hours,
@@ -92,7 +88,6 @@ export function registerSettingsRoutes(router: Router) {
       helpPhoneNumber: values.help_phone_number,
       helpWhatsAppAdmin: values.help_whatsapp_admin,
       helpWhatsAppSuperadmin: values.help_whatsapp_superadmin,
-      contactPhone: values.contact_phone,
       contactEmail: values.contact_email,
       contactAddress: values.contact_address,
       contactHours: values.contact_hours,
@@ -123,7 +118,6 @@ export function registerSettingsRoutes(router: Router) {
     const helpWhatsAppSuperadmin = readOptionalWhatsApp("helpWhatsAppSuperadmin", "WhatsApp Superadmin");
 
     // Public Contact page details.
-    const contactPhone = body.contactPhone !== undefined ? reqString(body, "contactPhone", { max: 30 }) : undefined;
     const contactEmail = body.contactEmail !== undefined ? reqString(body, "contactEmail", { max: 120 }) : undefined;
     if (contactEmail !== undefined && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
       throw Errors.badRequest("Email kontak harus berupa email yang valid.");
@@ -150,7 +144,6 @@ export function registerSettingsRoutes(router: Router) {
       helpPhoneNumber !== undefined ||
       helpWhatsAppAdmin !== undefined ||
       helpWhatsAppSuperadmin !== undefined ||
-      contactPhone !== undefined ||
       contactEmail !== undefined ||
       contactAddress !== undefined ||
       contactHours !== undefined ||
@@ -166,7 +159,6 @@ export function registerSettingsRoutes(router: Router) {
     if (helpPhoneNumber !== undefined) await upsert(ctx, "help_phone_number", helpPhoneNumber, now, actor.id);
     if (helpWhatsAppAdmin !== undefined) await upsert(ctx, "help_whatsapp_admin", helpWhatsAppAdmin, now, actor.id);
     if (helpWhatsAppSuperadmin !== undefined) await upsert(ctx, "help_whatsapp_superadmin", helpWhatsAppSuperadmin, now, actor.id);
-    if (contactPhone !== undefined) await upsert(ctx, "contact_phone", contactPhone, now, actor.id);
     if (contactEmail !== undefined) await upsert(ctx, "contact_email", contactEmail, now, actor.id);
     if (contactAddress !== undefined) await upsert(ctx, "contact_address", contactAddress, now, actor.id);
     if (contactHours !== undefined) await upsert(ctx, "contact_hours", contactHours, now, actor.id);

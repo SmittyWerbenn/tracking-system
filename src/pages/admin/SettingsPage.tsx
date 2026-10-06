@@ -18,7 +18,6 @@ export default function SettingsPage() {
     helpPhoneNumber: settings.helpPhoneNumber,
     helpWhatsAppAdmin: settings.helpWhatsAppAdmin,
     helpWhatsAppSuperadmin: settings.helpWhatsAppSuperadmin,
-    contactPhone: settings.contactPhone,
     contactEmail: settings.contactEmail,
     contactAddress: settings.contactAddress,
     contactHours: settings.contactHours,
@@ -38,14 +37,13 @@ export default function SettingsPage() {
       helpPhoneNumber: settings.helpPhoneNumber,
       helpWhatsAppAdmin: settings.helpWhatsAppAdmin,
       helpWhatsAppSuperadmin: settings.helpWhatsAppSuperadmin,
-      contactPhone: settings.contactPhone,
-      contactEmail: settings.contactEmail,
+        contactEmail: settings.contactEmail,
       contactAddress: settings.contactAddress,
       contactHours: settings.contactHours,
       headOffice: settings.headOffice,
       branchHub: settings.branchHub,
     });
-  }, [settings.headOffice, settings.branchHub, settings.helpPhoneNumber, settings.helpWhatsAppAdmin, settings.helpWhatsAppSuperadmin, settings.contactPhone, settings.contactEmail, settings.contactAddress, settings.contactHours]);
+  }, [settings.headOffice, settings.branchHub, settings.helpPhoneNumber, settings.helpWhatsAppAdmin, settings.helpWhatsAppSuperadmin, settings.contactEmail, settings.contactAddress, settings.contactHours]);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -74,7 +72,6 @@ export default function SettingsPage() {
         helpPhoneNumber: contact.helpPhoneNumber.trim(),
         helpWhatsAppAdmin: contact.helpWhatsAppAdmin.trim(),
         helpWhatsAppSuperadmin: contact.helpWhatsAppSuperadmin.trim(),
-        contactPhone: contact.contactPhone.trim(),
         contactEmail: contact.contactEmail.trim(),
         contactAddress: contact.contactAddress.trim(),
         contactHours: contact.contactHours.trim(),
@@ -196,22 +193,6 @@ export default function SettingsPage() {
         </p>
 
         <div className="space-y-4">
-          <label className="block">
-            <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-600">
-              <Phone size={13} className="text-slate-400" /> Telepon
-            </span>
-            <input
-              type="text"
-              required
-              maxLength={30}
-              disabled={!isSuperadmin}
-              value={contact.contactPhone}
-              onChange={(e) => setContact({ ...contact, contactPhone: e.target.value })}
-              placeholder="021-2200-8899"
-              className={fieldClass}
-            />
-          </label>
-
           <label className="block">
             <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-600">
               <MessageCircle size={13} className="text-slate-400" /> WhatsApp CS

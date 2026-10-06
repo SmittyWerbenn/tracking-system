@@ -22,7 +22,7 @@ import { useSeo } from "../../utils/seo";
 
 function useHomeSeo() {
   const { language } = useLanguage();
-  const { contactPhone, contactEmail, contactAddress } = useHelpContact();
+  const { helpPhoneDisplay, contactEmail, contactAddress } = useHelpContact();
   useSeo({
     title: C.seo.title[language],
     description: C.seo.description[language],
@@ -30,7 +30,7 @@ function useHomeSeo() {
     jsonLd: [
       buildOrganizationSchema({
         description: C.seo.description[language],
-        telephone: contactPhone,
+        telephone: helpPhoneDisplay,
         email: contactEmail,
         address: contactAddress,
       }),

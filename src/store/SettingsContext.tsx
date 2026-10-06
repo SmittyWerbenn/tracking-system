@@ -11,7 +11,6 @@ interface Settings {
   helpWhatsAppAdmin: string;
   /** WhatsApp Superadmin - help for GMS-Admin accounts. */
   helpWhatsAppSuperadmin: string;
-  contactPhone: string;
   contactEmail: string;
   contactAddress: string;
   contactHours: string;
@@ -26,7 +25,6 @@ const DEFAULT_SETTINGS: Settings = {
   helpPhoneNumber: "",
   helpWhatsAppAdmin: "",
   helpWhatsAppSuperadmin: "",
-  contactPhone: "021-2200-8899",
   contactEmail: "cs@gms-logistics.co.id",
   contactAddress: "Jl. Raya Cakung No. 88, Cakung, Jakarta Timur, DKI Jakarta",
   contactHours: "Senin - Sabtu, 08.00 - 18.00 WIB",
@@ -38,7 +36,6 @@ export interface ContactInfoInput {
   helpPhoneNumber: string;
   helpWhatsAppAdmin: string;
   helpWhatsAppSuperadmin: string;
-  contactPhone: string;
   contactEmail: string;
   contactAddress: string;
   contactHours: string;

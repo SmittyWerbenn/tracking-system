@@ -8,6 +8,7 @@ export interface DriverShipmentSummary {
   status: string;
   tanggalDibuat: string;
   jamDibuat: string;
+  pengirim?: { nama: string };
   penerima: { nama: string; telepon: string };
   alamatAsal: string;
   kotaAsal: string;

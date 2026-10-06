@@ -320,6 +320,7 @@ export default function DriverShipmentDetail() {
                 <MapPin size={16} className="mt-0.5 shrink-0 text-slate-400" />
                 <div className="min-w-0">
                   <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Asal</p>
+                  {shipment.pengirim?.nama && <p className="text-sm font-medium text-slate-900">{shipment.pengirim.nama}</p>}
                   <p className="text-sm text-slate-700">{shipment.alamatAsal}, {shipment.kotaAsal}</p>
                 </div>
               </div>

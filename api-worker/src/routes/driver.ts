@@ -31,6 +31,7 @@ function shipmentSummary(row: Record<string, unknown>) {
     status: row.status,
     tanggalDibuat: row.tanggal_dibuat,
     jamDibuat: row.jam_dibuat,
+    pengirim: { nama: row.pengirim_nama },
     penerima: { nama: row.penerima_nama, telepon: row.penerima_telepon },
     alamatAsal: row.alamat_asal,
     kotaAsal: row.kota_asal,

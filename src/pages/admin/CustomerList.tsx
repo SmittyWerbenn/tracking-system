@@ -1,3 +1,4 @@
+import { ACTION_ROW, actionClass } from "../../components/ActionButton";
 import { Ban, Building2, Pencil, RotateCcw, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { Pagination } from "../../components/Pagination";
@@ -330,13 +331,13 @@ export default function CustomerList() {
                     rowSpan={rows.length}
                     className="sticky right-0 z-10 whitespace-nowrap bg-white px-5 py-3 align-top shadow-[-6px_0_6px_-6px_rgba(15,23,42,0.12)] group-hover:bg-slate-50"
                   >
-                    <div className="flex items-center gap-1">
+                    <div className={ACTION_ROW}>
                       <button
                         type="button"
                         onClick={() => openEdit(c)}
                         title="Edit"
                         aria-label="Edit"
-                        className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
+                        className={actionClass("edit")}
                       >
                         <Pencil size={16} />
                       </button>
@@ -346,9 +347,7 @@ export default function CustomerList() {
                         disabled={togglingId === c.customerId}
                         title={c.aktif ? "Nonaktifkan" : "Aktifkan"}
                         aria-label={c.aktif ? "Nonaktifkan" : "Aktifkan"}
-                        className={`rounded-md p-1.5 hover:bg-slate-100 disabled:opacity-50 ${
-                          c.aktif ? "text-slate-500 hover:text-red-600" : "text-slate-500 hover:text-emerald-600"
-                        }`}
+                        className={actionClass(c.aktif ? "danger" : "success")}
                       >
                         {c.aktif ? <Ban size={16} /> : <RotateCcw size={16} />}
                       </button>

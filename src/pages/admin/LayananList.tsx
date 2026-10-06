@@ -1,3 +1,4 @@
+import { ACTION_ROW, actionClass } from "../../components/ActionButton";
 import { AlertTriangle, Ban, Layers, Pencil, RotateCcw, ShieldCheck, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -248,11 +249,11 @@ export default function LayananList() {
                 </span>
               </td>
               <td className="px-4 py-3">
-                <div className="flex items-center gap-1">
+                <div className={ACTION_ROW}>
                   <button
                     onClick={() => openEdit(l)}
                     title="Edit"
-                    className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
+                    className={actionClass("edit")}
                   >
                     <Pencil size={16} />
                   </button>
@@ -260,9 +261,7 @@ export default function LayananList() {
                     onClick={() => handleToggleActive(l)}
                     disabled={busyId === l.id || (l.fallback && l.aktif)}
                     title={l.fallback && l.aktif ? "Layanan default tidak bisa dinonaktifkan" : l.aktif ? "Nonaktifkan" : "Aktifkan"}
-                    className={`rounded-md p-1.5 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent ${
-                      l.aktif ? "text-slate-500 hover:text-red-600" : "text-slate-500 hover:text-emerald-600"
-                    }`}
+                    className={actionClass(l.aktif ? "danger" : "success")}
                   >
                     {l.aktif ? <Ban size={16} /> : <RotateCcw size={16} />}
                   </button>

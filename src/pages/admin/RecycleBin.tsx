@@ -1,3 +1,4 @@
+import { actionClass } from "../../components/ActionButton";
 import { Pagination } from "../../components/Pagination";
 import { usePageSize } from "../../utils/usePagedList";
 import { AlertTriangle, Eye, Loader2, RotateCcw, Trash2, X } from "lucide-react";
@@ -312,16 +313,16 @@ export default function RecycleBin() {
                     <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLE[i.status]}`}>{STATUS_LABEL[i.status]}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1 whitespace-nowrap">
-                      <button type="button" onClick={() => openDetail(i)} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button type="button" onClick={() => openDetail(i)} className={actionClass("view", true)}>
                         <Eye size={14} /> Detail
                       </button>
                       {live && (
                         <>
-                          <button type="button" onClick={() => setAction({ kind: "restore", items: [i] })} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">
+                          <button type="button" onClick={() => setAction({ kind: "restore", items: [i] })} className={actionClass("success", true)}>
                             <RotateCcw size={14} /> Restore
                           </button>
-                          <button type="button" onClick={() => setAction({ kind: "purge", items: [i] })} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">
+                          <button type="button" onClick={() => setAction({ kind: "purge", items: [i] })} className={actionClass("danger", true)}>
                             <Trash2 size={14} /> Hapus Permanen
                           </button>
                         </>

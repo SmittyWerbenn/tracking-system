@@ -1,3 +1,4 @@
+import { ACTION_ROW, actionClass } from "../../components/ActionButton";
 import { AlertTriangle, Ban, CheckCircle2, Download, MapPinned, Pencil, RotateCcw, Table, Plus, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { BulkLocationImport } from "../../components/BulkLocationImport";
@@ -417,11 +418,11 @@ export default function LocationList() {
                   </td>
                   {canEdit && (
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
+                      <div className={ACTION_ROW}>
                         <button
                           onClick={() => openEdit(t)}
                           title="Edit"
-                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
+                          className={actionClass("edit")}
                         >
                           <Pencil size={16} />
                         </button>
@@ -429,7 +430,7 @@ export default function LocationList() {
                           <button
                             onClick={() => void setTitikAktif(t.id, false).then(list.reload)}
                             title="Nonaktifkan"
-                            className="rounded-md p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600"
+                            className={actionClass("danger")}
                           >
                             <Ban size={16} />
                           </button>
@@ -437,7 +438,7 @@ export default function LocationList() {
                           <button
                             onClick={() => void setTitikAktif(t.id, true).then(list.reload)}
                             title="Aktifkan"
-                            className="rounded-md p-1.5 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600"
+                            className={actionClass("success")}
                           >
                             <RotateCcw size={16} />
                           </button>

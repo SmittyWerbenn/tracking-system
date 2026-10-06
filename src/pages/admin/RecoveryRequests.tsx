@@ -1,3 +1,4 @@
+import { actionClass } from "../../components/ActionButton";
 import { Pagination } from "../../components/Pagination";
 import { usePageSize } from "../../utils/usePagedList";
 import { AlertTriangle, CheckCircle2, Eye, Loader2, RotateCcw, X, XCircle } from "lucide-react";
@@ -253,11 +254,11 @@ export default function RecoveryRequests() {
                   <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLE[r.status]}`}>{STATUS_LABEL[r.status]}</span>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       onClick={() => openDetail(r)}
-                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                      className={actionClass("view", true)}
                     >
                       <Eye size={14} /> Lihat Detail
                     </button>
@@ -269,7 +270,7 @@ export default function RecoveryRequests() {
                             setActionError(null);
                             setApproveTarget(r);
                           }}
-                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                          className={actionClass("success", true)}
                         >
                           <CheckCircle2 size={14} /> Konfirmasi
                         </button>
@@ -280,7 +281,7 @@ export default function RecoveryRequests() {
                             setRejectReason("");
                             setRejectTarget(r);
                           }}
-                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                          className={actionClass("danger", true)}
                         >
                           <XCircle size={14} /> Tolak
                         </button>

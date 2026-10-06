@@ -1,3 +1,4 @@
+import { actionClass } from "./ActionButton";
 import { PauseCircle, PlayCircle } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import type { Shipment } from "../types";
@@ -33,7 +34,7 @@ export function HoldOrderActions({ shipment, onDone, variant = "icon" }: Props) 
       title={label}
       className={
         variant === "icon"
-          ? "inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-50"
+          ? actionClass("hold", true)
           : "inline-flex items-center gap-1.5 rounded-lg border-2 border-orange-600 bg-white px-3.5 py-2 text-sm font-semibold text-orange-700 hover:bg-orange-50"
       }
     >

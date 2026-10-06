@@ -1,3 +1,4 @@
+import { actionClass } from "./ActionButton";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../store/AuthContext";
@@ -36,7 +37,7 @@ export function DeleteButton({ entityType, id, details, onDone, variant = "icon"
         onClick={() => setOpen(true)}
         className={
           variant === "icon"
-            ? "inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+            ? actionClass("danger", true)
             : "inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50"
         }
       >

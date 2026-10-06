@@ -1,3 +1,4 @@
+import { ACTION_ROW, actionClass } from "../../components/ActionButton";
 import { adminPath } from "../../utils/urls";
 import { AlertTriangle, CheckCircle2, Download, Eye, FileEdit, LayoutList, ListTree, Loader2, MapPin, PackageSearch, Pencil, Printer, RefreshCw, RotateCcw, Search, X, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -546,18 +547,18 @@ export default function ShipmentList() {
                     {lastUpdate(s.awb)}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
+                    <div className={ACTION_ROW}>
                       <Link
                         to={adminPath(`/resi/${s.awb}`)}
                         title="Detail"
-                        className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
+                        className={actionClass("view")}
                       >
                         <Eye size={16} />
                       </Link>
                       <Link
                         to={adminPath(`/tracking/${s.awb}`)}
                         title="Tracking"
-                        className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
+                        className={actionClass("track")}
                       >
                         <MapPin size={16} />
                       </Link>
@@ -565,7 +566,7 @@ export default function ShipmentList() {
                         <Link
                           to={adminPath(`/update-tracking/${s.awb}`)}
                           title="Update"
-                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
+                          className={actionClass("update")}
                         >
                           <FileEdit size={16} />
                         </Link>
@@ -573,7 +574,7 @@ export default function ShipmentList() {
                       <Link
                         to={adminPath(`/resi/${s.awb}`)}
                         title="Cetak Resi"
-                        className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
+                        className={actionClass("print")}
                       >
                         <Printer size={16} />
                       </Link>
@@ -582,7 +583,7 @@ export default function ShipmentList() {
                           type="button"
                           onClick={() => setEditTargetAwb(s.awb)}
                           title="Edit Data Pengiriman"
-                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
+                          className={actionClass("edit")}
                         >
                           <Pencil size={16} />
                         </button>
@@ -595,7 +596,7 @@ export default function ShipmentList() {
                             setRecoveryTargetAwb(s.awb);
                           }}
                           title="Ajukan Pemulihan"
-                          className="inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-xs font-semibold text-blue-800 hover:bg-blue-50"
+                          className={actionClass("view", true)}
                         >
                           <RotateCcw size={14} /> Ajukan Pemulihan
                         </button>

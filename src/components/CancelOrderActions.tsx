@@ -1,3 +1,4 @@
+import { actionClass } from "./ActionButton";
 import { Ban, Check, Loader2, Send, Undo2, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useAuth } from "../store/AuthContext";
@@ -48,7 +49,7 @@ export function CancelOrderActions({ shipment, onDone, variant = "icon" }: Props
         title={label}
         className={
           variant === "icon"
-            ? `inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-semibold ${toneCls.split(" ").slice(0, 2).join(" ")}`
+            ? actionClass(tone === "rose" ? "danger" : tone === "blue" ? "view" : "warn", true)
             : `inline-flex items-center gap-1.5 rounded-lg border-2 bg-white px-3.5 py-2 text-sm font-semibold ${toneCls}`
         }
       >

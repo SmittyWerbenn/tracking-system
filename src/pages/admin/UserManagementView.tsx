@@ -1,3 +1,4 @@
+import { ACTION_ROW, actionClass } from "../../components/ActionButton";
 import { Pagination } from "../../components/Pagination";
 import { Camera, Download, Eye, Pencil, Plus, Power, Search, Shield, Upload, Users, X } from "lucide-react";
 import { useState, type ChangeEvent, type FormEvent } from "react";
@@ -406,12 +407,12 @@ export default function UserManagementView({ group }: { group: UserGroup }) {
                   <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">{dateOrDash(u.lastLogin)}</td>
                 )}
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-1">
+                  <div className={ACTION_ROW}>
                     <button
                       onClick={() => setDetail(u)}
                       title="Detail"
                       aria-label="Detail"
-                      className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
+                      className={actionClass("view")}
                     >
                       <Eye size={16} />
                     </button>
@@ -421,7 +422,7 @@ export default function UserManagementView({ group }: { group: UserGroup }) {
                           onClick={() => openEdit(u)}
                           title="Edit"
                           aria-label="Edit"
-                          className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
+                          className={actionClass("edit")}
                         >
                           <Pencil size={16} />
                         </button>
@@ -429,9 +430,7 @@ export default function UserManagementView({ group }: { group: UserGroup }) {
                           onClick={() => void handleToggle(u)}
                           title={u.aktif ? "Nonaktifkan" : "Aktifkan"}
                           aria-label={u.aktif ? "Nonaktifkan" : "Aktifkan"}
-                          className={`rounded-md p-1.5 hover:bg-slate-100 ${
-                            u.aktif ? "text-slate-500 hover:text-red-600" : "text-slate-500 hover:text-emerald-600"
-                          }`}
+                          className={actionClass(u.aktif ? "danger" : "success")}
                         >
                           <Power size={16} />
                         </button>

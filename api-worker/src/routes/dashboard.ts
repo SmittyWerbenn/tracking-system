@@ -34,8 +34,10 @@ export function registerDashboardRoutes(router: Router) {
       )
         .bind(...custBind(stagnantCutoff))
         .first<{ c: number }>(),
-      // A Client's fleet numbers cover only its own dedicated units.
-      custScope
+      // A Client's fleet numbers cover only its own dedicated units; a Mitra gets no fleet numbers at all.
+      mitraScope
+        ? Promise.resolve({ results: [] as { status: string; c: number }[] })
+        : custScope
         ? ctx.env.DB.prepare(
             `SELECT t.status, COUNT(*) as c FROM trucks t JOIN fleet_client_assignments a ON a.truck_id = t.id AND a.status = 'ACTIVE' AND a.customer_id = ?
              WHERE t.deleted_at IS NULL GROUP BY t.status`,

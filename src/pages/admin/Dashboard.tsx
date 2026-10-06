@@ -170,6 +170,8 @@ export default function Dashboard() {
           accent="bg-red-100 text-red-700"
           to={adminPath("/pengiriman?macet=1")}
         />
+        {profile?.role !== "Mitra" && (
+          <>
         <StatCard
           label="Total Armada"
           value={totalTrucks}
@@ -184,6 +186,8 @@ export default function Dashboard() {
           accent="bg-sky-100 text-sky-700"
           to={adminPath(`/armada?status=${encodeURIComponent("On Trip")}`)}
         />
+          </>
+        )}
         <StatCard
           label="Avg. Customer Rating"
           value={avgRating.toFixed(1)}

@@ -24,7 +24,7 @@ interface Props {
 }
 
 /** "Hapus" action = move to Recycle Bin (soft delete), with a mandatory reason. Renders nothing for non-Superadmin. */
-export function DeleteButton({ entityType, id, details, onDone, variant = "icon" }: Props) {
+export function DeleteButton({ entityType, id, details, onDone }: Props) {
   const isSuperadmin = useIsSuperadmin();
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -37,14 +37,11 @@ export function DeleteButton({ entityType, id, details, onDone, variant = "icon"
       <button
         type="button"
         title="Hapus (pindahkan ke Recycle Bin)"
+        aria-label="Hapus"
         onClick={() => setOpen(true)}
-        className={
-          variant === "icon"
-            ? actionClass("danger", true)
-            : "inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50"
-        }
+        className={actionClass("danger")}
       >
-        <Trash2 size={15} /> Hapus
+        <Trash2 size={16} />
       </button>
       {open && (
         <ReasonModal

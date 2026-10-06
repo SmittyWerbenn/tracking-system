@@ -53,6 +53,23 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/** For pages a Mitra account must not open (Master Armada): everyone else who is logged in qualifies;
+ * a Mitra is bounced to the Dashboard. The API refuses the same data to Mitra as well. */
+export function RequireNotMitra({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading, profile } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) return <LoadingScreen />;
+  if (!isAuthenticated) {
+    return <Navigate to={adminPath("/login")} replace state={{ from: location }} />;
+  }
+  const redirect = driverRedirect(profile);
+  if (redirect) return redirect;
+  if (profile?.role === "Mitra") return <Navigate to={adminPath("/")} replace />;
+
+  return <>{children}</>;
+}
+
 /** For Buat Pengiriman specifically - Superadmin, Admin and Client
  * qualify (a Client creates shipments tagged to its own Nomor
  * Pelanggan). Driver and Viewer are both bounced to the Dashboard. */

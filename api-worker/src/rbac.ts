@@ -103,7 +103,6 @@ const ROLE_PERMISSIONS: Record<Role, Set<Permission>> = {
   Mitra: new Set([
     "shipments.view",
     "tracking.update",
-    "fleet.view",
     "locations.view",
     "feedback.view",
     "notifications.view",

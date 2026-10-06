@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { RequireAdmin, RequireAuth, RequireDriver, RequireShipmentCreator, RequireSuperadmin, RequireTrackingUpdater } from "./components/RequireAuth";
+import { RequireAdmin, RequireAuth, RequireNotMitra, RequireDriver, RequireShipmentCreator, RequireSuperadmin, RequireTrackingUpdater } from "./components/RequireAuth";
 import { AuditLogProvider } from "./store/AuditLogContext";
 import { AuthProvider } from "./store/AuthContext";
 import { FeedbackProvider } from "./store/FeedbackContext";
@@ -147,8 +147,8 @@ export default function App() {
               <Route path={adminPath("/tracking/:awb")} element={<RequireAuth><ShipmentTracking /></RequireAuth>} />
               <Route path={adminPath("/resi/:awb/email")} element={<RequireAuth><EmailPreview /></RequireAuth>} />
               <Route path={adminPath("/update-tracking/:awb")} element={<RequireTrackingUpdater><UpdateTracking /></RequireTrackingUpdater>} />
-              <Route path={adminPath("/armada")} element={<RequireAuth><FleetList /></RequireAuth>} />
-              <Route path={adminPath("/armada/:id")} element={<RequireAuth><TruckHistory /></RequireAuth>} />
+              <Route path={adminPath("/armada")} element={<RequireNotMitra><FleetList /></RequireNotMitra>} />
+              <Route path={adminPath("/armada/:id")} element={<RequireNotMitra><TruckHistory /></RequireNotMitra>} />
               <Route path={adminPath("/kota")} element={<RequireAuth><LocationList /></RequireAuth>} />
               <Route path={adminPath("/customer")} element={<RequireAdmin><CustomerList /></RequireAdmin>} />
               <Route path={adminPath("/mitra")} element={<RequireAdmin><MitraList /></RequireAdmin>} />

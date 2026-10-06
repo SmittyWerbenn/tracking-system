@@ -1,10 +1,13 @@
 export class HttpError extends Error {
   status: number;
   code: string;
-  constructor(status: number, code: string, message: string) {
+  /** Optional machine-readable context (e.g. the existing AWB of a duplicate reference). */
+  details?: Record<string, unknown>;
+  constructor(status: number, code: string, message: string, details?: Record<string, unknown>) {
     super(message);
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -33,7 +36,7 @@ export function ok(data: unknown, extraHeaders: HeadersInit = {}, status = 200):
 export function errorResponse(err: unknown, requestId: string, extraHeaders: HeadersInit = {}): Response {
   if (err instanceof HttpError) {
     return jsonResponse(
-      { success: false, error: { code: err.code, message: err.message, requestId } },
+      { success: false, error: { code: err.code, message: err.message, requestId, ...(err.details ? { details: err.details } : {}) } },
       err.status,
       extraHeaders,
     );

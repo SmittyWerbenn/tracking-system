@@ -48,6 +48,7 @@ const emptyForm: ShipmentFormData = {
   fotoSuratJalan: undefined,
   truckId: "",
   customerId: "",
+  reference: "",
 };
 
 function Section({
@@ -490,6 +491,19 @@ export default function CreateShipment() {
               {form.slaValue && form.slaValue > 0
                 ? `Estimasi Tiba: ${formatTanggalPanjang(addBusinessDays(todayISO(), form.slaValue))}`
                 : "Opsional. Jika diisi, sistem menghitung Estimasi Tiba otomatis dan menampilkannya ke customer."}
+            </p>
+          </Field>
+          <Field label="Referensi (Opsional)" full>
+            <input
+              className={inputClass}
+              maxLength={100}
+              placeholder="Nomor order Anda, contoh: ORD-001"
+              value={form.reference ?? ""}
+              onChange={(e) => update("reference", e.target.value)}
+              autoComplete="off"
+            />
+            <p className="mt-1.5 text-[11px] text-slate-400">
+              Pengenal order dari sisi Anda. Referensi yang sama tidak bisa dipakai dua kali, sehingga satu order tidak pernah mendapat dua AWB.
             </p>
           </Field>
           <Field label="Deskripsi Barang" full>

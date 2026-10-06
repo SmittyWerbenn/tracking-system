@@ -484,6 +484,7 @@ export default function ShipmentList() {
                 <tr key={s.awb} className="hover:bg-slate-50">
                   <td className="whitespace-nowrap px-4 py-3 font-mono font-medium text-slate-900">
                     {s.awb}
+                    {s.reference && <span className="block font-sans text-[11px] font-normal text-slate-400" title="Referensi">Ref: {s.reference}</span>}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-slate-600">
                     {formatTanggalPendek(s.tanggalDibuat)}

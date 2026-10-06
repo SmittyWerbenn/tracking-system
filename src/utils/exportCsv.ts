@@ -29,6 +29,7 @@ function receivedAtText(s: Shipment): string {
 }
 
 const COLUMNS = [
+  "Referensi",
   "AWB",
   "Client ID",
   "Tanggal",
@@ -53,6 +54,7 @@ const COLUMNS = [
  * caller) and triggers a real browser download. */
 export function exportShipmentsCsv(shipments: Shipment[], filename = "data-pengiriman.csv") {
   const rows = shipments.map((s) => [
+    s.reference ?? "-",
     s.awb,
     s.customerId ?? "-",
     formatTanggalDDMMYYYY(s.tanggalDibuat),

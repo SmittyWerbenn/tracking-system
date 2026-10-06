@@ -4,6 +4,7 @@ import { downloadCsv, normalizeHeader } from "./csv";
 export { parseCsvText } from "./csv";
 
 export const BULK_TEMPLATE_HEADERS = [
+  "Referensi",
   "Nama Pengirim",
   "No HP Pengirim",
   "Email Pengirim",
@@ -23,6 +24,8 @@ export const BULK_TEMPLATE_HEADERS = [
 ] as const;
 
 export interface BulkRowInput {
+  /** Customer's own order id; the AWB the system issues is tied to it (never to the row position). */
+  referensi: string;
   pengirimNama: string;
   pengirimTelepon: string;
   pengirimEmail: string;
@@ -42,6 +45,7 @@ export interface BulkRowInput {
 }
 
 const FIELD_ORDER: (keyof BulkRowInput)[] = [
+  "referensi",
   "pengirimNama",
   "pengirimTelepon",
   "pengirimEmail",
@@ -98,6 +102,7 @@ export function tableToBulkRows(table: unknown[][]): {
     });
 
     rows.push({
+      referensi: record.referensi ?? "",
       pengirimNama: record.pengirimNama ?? "",
       pengirimTelepon: record.pengirimTelepon ?? "",
       pengirimEmail: record.pengirimEmail ?? "",
@@ -132,6 +137,7 @@ export function normalizeLayanan(value: string, activeOptions: string[], fallbac
 export function downloadBulkShipmentTemplate() {
   downloadCsv("template-bulk-pengiriman.csv", BULK_TEMPLATE_HEADERS, [
     [
+      "ORD-001",
       "Contoh Pengirim",
       "0812-3456-7890",
       "pengirim@email.com",

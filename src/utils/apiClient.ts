@@ -26,10 +26,13 @@ export function setToken(token: string | null): void {
 export class ApiError extends Error {
   status: number;
   code: string;
-  constructor(status: number, code: string, message: string) {
+  /** Machine-readable context sent by the API (e.g. existingAwb for a duplicate Referensi). */
+  details?: Record<string, unknown>;
+  constructor(status: number, code: string, message: string, details?: Record<string, unknown>) {
     super(message);
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -39,7 +42,7 @@ interface ApiSuccess<T> {
 }
 interface ApiFailure {
   success: false;
-  error: { code: string; message: string; requestId: string };
+  error: { code: string; message: string; requestId: string; details?: Record<string, unknown> };
 }
 
 async function request<T>(
@@ -76,7 +79,7 @@ async function request<T>(
   if (!res.ok || !json || json.success === false) {
     if (res.status === 401) setToken(null);
     const err = json && json.success === false ? json.error : null;
-    throw new ApiError(res.status, err?.code ?? "UNKNOWN_ERROR", err?.message ?? `Terjadi kesalahan (${res.status}).`);
+    throw new ApiError(res.status, err?.code ?? "UNKNOWN_ERROR", err?.message ?? `Terjadi kesalahan (${res.status}).`, err?.details);
   }
 
   return (json as ApiSuccess<T>).data;

@@ -20,12 +20,14 @@ import { useAuth } from "./AuthContext";
  * substituted LTL. */
 export interface CreatedShipment {
   awb: string;
+  reference?: string | null;
   layanan?: string;
   layananFallback?: boolean;
 }
 
 interface RawShipmentSummary {
   awb: string;
+  reference?: string | null;
   tanggalDibuat: string;
   jamDibuat: string;
   status: ShipmentStatus;
@@ -112,6 +114,7 @@ interface RawPodRow {
 function toShipment(row: RawShipmentSummary): Shipment {
   return {
     awb: row.awb,
+    reference: row.reference ?? undefined,
     tanggalDibuat: row.tanggalDibuat,
     jamDibuat: row.jamDibuat,
     status: row.status,
@@ -353,6 +356,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       alamatTujuan: data.alamatTujuan,
       kotaTujuan: data.kotaTujuan,
       deskripsiBarang: data.deskripsiBarang,
+      reference: data.reference?.trim() || undefined,
       layanan: data.layanan,
       beratKg: data.beratKg,
       jumlahKoli: data.jumlahKoli,

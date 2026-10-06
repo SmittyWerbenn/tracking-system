@@ -69,6 +69,8 @@ export interface ProofOfDelivery {
 
 export interface Shipment {
   awb: string;
+  /** "Referensi": the customer's own order identifier from the order template (unique per Client ID). */
+  reference?: string;
   tanggalDibuat: string; // ISO date
   jamDibuat: string;
   status: ShipmentStatus;
@@ -174,6 +176,8 @@ export interface CancellationRequest {
 export type RecoveryStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export interface ShipmentFormData {
+  /** Optional "Referensi" (customer order id). The API refuses a second AWB for the same one. */
+  reference?: string;
   pengirim: PersonInfo;
   penerima: PersonInfo;
   alamatAsal: string;

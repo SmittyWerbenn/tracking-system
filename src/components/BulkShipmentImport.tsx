@@ -16,14 +16,18 @@ import { useFleet } from "../store/FleetContext";
 import { useLayanan } from "../store/LayananContext";
 import { useShipments } from "../store/ShipmentContext";
 import type { LayananPengiriman } from "../types";
-import { api } from "../utils/apiClient";
+import { ApiError, api } from "../utils/apiClient";
 
-interface CreatedShipmentSummary {
-  awb: string;
+/** Outcome of one imported row, tied to its Referensi (never to the row position). */
+interface ImportResultRow {
+  referensi: string;
+  status: "Berhasil" | "Sudah ada" | "Gagal";
+  awb?: string;
+  keterangan: string;
   kotaAsal: string;
   kotaTujuan: string;
 }
-import { readTableFromFile } from "../utils/csv";
+import { downloadCsv, readTableFromFile } from "../utils/csv";
 import {
   downloadBulkShipmentTemplate,
   normalizeLayanan,
@@ -45,6 +49,7 @@ function newRowId() {
 function emptyRow(): BulkRow {
   return {
     id: newRowId(),
+    referensi: "",
     pengirimNama: "",
     pengirimTelepon: "",
     pengirimEmail: "",
@@ -87,8 +92,14 @@ function resolveKota(value: string, knownKota: string[]): string {
   return knownKota.find((k) => k.toLowerCase() === loose) ?? trimmed;
 }
 
-function rowErrors(row: BulkRow): string[] {
+const normRef = (r: string) => r.trim().replace(/\s+/g, " ").toLowerCase();
+
+function rowErrors(row: BulkRow, duplicateRows?: number[]): string[] {
   const errs: string[] = [];
+  if (row.referensi.trim().length > 100) errs.push("Referensi maksimal 100 karakter");
+  if (duplicateRows && duplicateRows.length > 1) {
+    errs.push(`Referensi ${row.referensi.trim()} ditemukan lebih dari satu kali (baris ${duplicateRows.join(", ")})`);
+  }
   if (!row.pengirimNama.trim()) errs.push("Nama pengirim kosong");
   if (!row.pengirimTelepon.trim()) errs.push("No HP pengirim kosong");
   if (!row.pengirimEmail.trim()) errs.push("Email pengirim kosong");
@@ -135,7 +146,7 @@ export function BulkShipmentImport() {
   const [importError, setImportError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{ created: CreatedShipmentSummary[]; skipped: number } | null>(null);
+  const [result, setResult] = useState<{ rows: ImportResultRow[]; skipped: number } | null>(null);
   const [hoveredStatusRowId, setHoveredStatusRowId] = useState<string | null>(null);
   // Bulk import applies one Client ID to the whole batch, rather than
   // a per-row column - keeps the import table/template unchanged.
@@ -235,41 +246,74 @@ export function BulkShipmentImport() {
       setImportError("Client ID wajib diisi sebelum menerbitkan resi.");
       return;
     }
-    const withErrors = rows.map((r) => ({ row: r, errors: rowErrors(r) }));
+    if (submitting) return;
+    const withErrors = rowsWithErrors;
     const validRows = withErrors.filter((r) => r.errors.length === 0).map((r) => r.row);
     const skipped = rows.length - validRows.length;
     if (validRows.length === 0) return;
 
     setImportError(null);
     setSubmitting(true);
-    const created: CreatedShipmentSummary[] = [];
+    // One request per row; the AWB comes back in THAT row's own response and is recorded against its Referensi.
+    // A row that fails (or is a duplicate Referensi) never affects the others, and no AWB is borrowed from another row.
+    const outcome: ImportResultRow[] = [];
+    const failedIds = new Set<string>();
     for (const row of validRows) {
       const truck = truckOptions.find(
         (t) => t.nomorUnit.replace(/\s+/g, "").toLowerCase() === row.nomorPolisiTruck.replace(/\s+/g, "").toLowerCase(),
       );
-      const { awb } = await createShipment({
-        pengirim: { nama: row.pengirimNama, telepon: row.pengirimTelepon, email: row.pengirimEmail },
-        penerima: { nama: row.penerimaNama, telepon: row.penerimaTelepon, email: row.penerimaEmail },
-        alamatAsal: row.alamatAsal,
-        kotaAsal: row.kotaAsal,
-        alamatTujuan: row.alamatTujuan,
-        kotaTujuan: row.kotaTujuan,
-        deskripsiBarang: row.deskripsiBarang,
-        layanan: layananOf(row),
-        beratKg: Number(row.beratKg),
-        jumlahKoli: Number(row.jumlahKoli),
-        truckId: truck?.id ?? "",
-        slaValue: row.slaValue.trim() ? Number(row.slaValue) : undefined,
-        customerId: customerId.trim(),
-      });
-      created.push({ awb, kotaAsal: row.kotaAsal, kotaTujuan: row.kotaTujuan });
+      const base = { referensi: row.referensi.trim() || "-", kotaAsal: row.kotaAsal, kotaTujuan: row.kotaTujuan };
+      try {
+        const { awb } = await createShipment({
+          reference: row.referensi.trim() || undefined,
+          pengirim: { nama: row.pengirimNama, telepon: row.pengirimTelepon, email: row.pengirimEmail },
+          penerima: { nama: row.penerimaNama, telepon: row.penerimaTelepon, email: row.penerimaEmail },
+          alamatAsal: row.alamatAsal,
+          kotaAsal: row.kotaAsal,
+          alamatTujuan: row.alamatTujuan,
+          kotaTujuan: row.kotaTujuan,
+          deskripsiBarang: row.deskripsiBarang,
+          layanan: layananOf(row),
+          beratKg: Number(row.beratKg),
+          jumlahKoli: Number(row.jumlahKoli),
+          truckId: truck?.id ?? "",
+          slaValue: row.slaValue.trim() ? Number(row.slaValue) : undefined,
+          customerId: customerId.trim(),
+        });
+        outcome.push({ ...base, status: "Berhasil", awb, keterangan: "AWB berhasil dibuat" });
+      } catch (err) {
+        if (err instanceof ApiError && err.code === "DUPLICATE_REFERENCE") {
+          const existing = String(err.details?.existingAwb ?? "");
+          outcome.push({ ...base, status: "Sudah ada", awb: existing || undefined, keterangan: "Referensi sudah pernah dibuat, AWB tidak dibuat ulang" });
+        } else {
+          outcome.push({ ...base, status: "Gagal", keterangan: err instanceof Error ? err.message : "Gagal membuat AWB" });
+          failedIds.add(row.id);
+        }
+      }
     }
-    setResult({ created, skipped });
-    setRows([emptyRow(), emptyRow(), emptyRow()]);
+    setResult({ rows: outcome, skipped });
+    // Rows that failed stay in the table so they can be corrected and retried; finished ones are cleared.
+    const keep = withErrors.filter((r) => failedIds.has(r.row.id) || r.errors.length > 0).map((r) => r.row);
+    setRows(keep.length > 0 ? keep : [emptyRow(), emptyRow(), emptyRow()]);
     setSubmitting(false);
   }
 
-  const rowsWithErrors = rows.map((r) => ({ row: r, errors: rowErrors(r) }));
+  function downloadResult() {
+    if (!result) return;
+    downloadCsv(
+      "hasil-import-pengiriman.csv",
+      ["Referensi", "Status", "AWB", "Keterangan"],
+      result.rows.map((r) => [r.referensi, r.status, r.awb ?? "-", r.keterangan]),
+    );
+  }
+
+  // Same Referensi twice in one batch: every affected row is flagged (with its row numbers) and none is created.
+  const refRows = new Map<string, number[]>();
+  rows.forEach((r, i) => {
+    const k = normRef(r.referensi);
+    if (k) refRows.set(k, [...(refRows.get(k) ?? []), i + 1]);
+  });
+  const rowsWithErrors = rows.map((r) => ({ row: r, errors: rowErrors(r, refRows.get(normRef(r.referensi))) }));
   const validCount = rowsWithErrors.filter((r) => r.errors.length === 0).length;
 
   return (
@@ -341,11 +385,12 @@ export function BulkShipmentImport() {
 
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full min-w-[1400px] border-collapse text-xs">
+        <table className="w-full min-w-[1550px] border-collapse text-xs">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-100 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500">
               <th className="px-2.5 py-1.5"></th>
-              <th colSpan={3} className="px-2.5 py-1.5 text-blue-800">
+              <th className="px-2.5 py-1.5 text-blue-800">Order</th>
+              <th colSpan={3} className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">
                 Pengirim
               </th>
               <th colSpan={3} className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">
@@ -360,7 +405,8 @@ export function BulkShipmentImport() {
             </tr>
             <tr className="border-b border-slate-200 bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               <th className="px-2.5 py-2.5">Status</th>
-              <th className="px-2.5 py-2.5">Nama</th>
+              <th className="px-2.5 py-2.5">Referensi</th>
+              <th className="border-l border-slate-200 px-2.5 py-2.5">Nama</th>
               <th className="px-2.5 py-2.5">No HP</th>
               <th className="px-2.5 py-2.5">Email</th>
               <th className="border-l border-slate-200 px-2.5 py-2.5">Nama</th>
@@ -415,6 +461,15 @@ export function BulkShipmentImport() {
                   )}
                 </td>
                 <td className="px-2.5 py-2">
+                  <input
+                    className={`${cellInputClass} min-w-[120px] font-mono`}
+                    value={row.referensi}
+                    maxLength={100}
+                    onChange={(e) => updateRow(row.id, "referensi", e.target.value)}
+                    placeholder="ORD-001"
+                  />
+                </td>
+                <td className="border-l border-slate-200 px-2.5 py-2">
                   <input
                     className={cellInputClass}
                     value={row.pengirimNama}
@@ -614,26 +669,62 @@ export function BulkShipmentImport() {
       </div>
 
       {result && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm sm:p-6">
-          <div className="flex items-center gap-2 text-emerald-800">
-            <CheckCircle2 size={18} />
-            <p className="text-sm font-semibold">
-              {result.created.length} resi berhasil dibuat
-              {result.skipped > 0 ? `, ${result.skipped} baris dilewati karena tidak valid.` : "."}
-            </p>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-slate-800">
+              <CheckCircle2 size={18} className="text-emerald-600" />
+              <p className="text-sm font-semibold">
+                {result.rows.filter((r) => r.status === "Berhasil").length} AWB dibuat
+                {result.rows.some((r) => r.status === "Sudah ada") ? `, ${result.rows.filter((r) => r.status === "Sudah ada").length} sudah ada` : ""}
+                {result.rows.some((r) => r.status === "Gagal") ? `, ${result.rows.filter((r) => r.status === "Gagal").length} gagal` : ""}
+                {result.skipped > 0 ? `, ${result.skipped} baris dilewati karena tidak valid` : ""}.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={downloadResult}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              <Download size={14} /> Unduh Hasil (CSV)
+            </button>
           </div>
-          <div className="mt-3 flex flex-col gap-1.5">
-            {result.created.map((s) => (
-              <div key={s.awb} className="flex items-center justify-between rounded-lg bg-white px-3.5 py-2 text-xs">
-                <span className="font-mono font-medium text-slate-800">{s.awb}</span>
-                <span className="text-slate-500">
-                  {s.kotaAsal} &rarr; {s.kotaTujuan}
-                </span>
-                <Link to={adminPath(`/resi/${s.awb}`)} className="font-medium text-blue-700 hover:underline">
-                  Lihat Detail
-                </Link>
-              </div>
-            ))}
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[560px] text-left text-xs">
+              <thead className="text-[11px] uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="py-1.5 pr-3 font-medium">Referensi</th>
+                  <th className="py-1.5 pr-3 font-medium">Status</th>
+                  <th className="py-1.5 pr-3 font-medium">AWB</th>
+                  <th className="py-1.5 font-medium">Keterangan</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.rows.map((r, n) => (
+                  <tr key={n} className="border-t border-slate-100">
+                    <td className="py-2 pr-3 font-mono font-medium text-slate-800">{r.referensi}</td>
+                    <td className="py-2 pr-3">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          r.status === "Berhasil" ? "bg-emerald-100 text-emerald-700" : r.status === "Sudah ada" ? "bg-amber-100 text-amber-700" : "bg-rose-100 text-rose-700"
+                        }`}
+                      >
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-3">
+                      {r.awb ? (
+                        <Link to={adminPath(`/resi/${r.awb}`)} className="font-mono font-medium text-blue-700 hover:underline">
+                          {r.awb}
+                        </Link>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td className="py-2 text-slate-600">{r.keterangan}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

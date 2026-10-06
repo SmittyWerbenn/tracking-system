@@ -1,6 +1,6 @@
 import type { Router } from "../router";
 import type { Ctx, AuthedUser } from "../types";
-import { ok, Errors } from "../http";
+import { ok, Errors, HttpError } from "../http";
 import { parseJsonBody, reqString, reqEnum, reqNumber, reqEmail, optString, optNumber } from "../validate";
 import { findActiveLayanan, resolveLayananForOrder } from "../layanan";
 import { newId } from "../crypto";
@@ -25,6 +25,7 @@ function forActor(summary: ReturnType<typeof shipmentSummary>, role: string) {
 function shipmentSummary(row: Record<string, unknown>) {
   return {
     awb: row.awb,
+    reference: row.reference ?? null,
     tanggalDibuat: row.tanggal_dibuat,
     jamDibuat: row.jam_dibuat,
     status: row.status,
@@ -165,9 +166,9 @@ export function registerShipmentRoutes(router: Router) {
       where.push("1 = 0");
     }
     if (search) {
-      where.push("(s.awb LIKE ? ESCAPE '\\' OR s.pengirim_nama LIKE ? ESCAPE '\\' OR s.penerima_nama LIKE ? ESCAPE '\\')");
+      where.push("(s.awb LIKE ? ESCAPE '\\' OR s.reference LIKE ? ESCAPE '\\' OR s.pengirim_nama LIKE ? ESCAPE '\\' OR s.penerima_nama LIKE ? ESCAPE '\\')");
       const like = likeTerm(search);
-      params.push(like, like, like);
+      params.push(like, like, like, like);
     }
     // Client ID filter ("__none__" = orders without one), created-date range
     // and stagnant ("macet" = no tracking update for N days, not yet delivered).
@@ -281,6 +282,10 @@ export function registerShipmentRoutes(router: Router) {
     const jumlahKoli = reqNumber(body, "jumlahKoli", { min: 1, max: 100000 });
     const truckId = optString(body, "truckId");
     const slaValue = optNumber(body, "slaValue", { min: 1, max: 365 });
+    // "Referensi": the customer's own order identifier (optional). Unique per Client ID, case-insensitive.
+    const referenceRaw = optString(body, "reference");
+    const reference = referenceRaw ? referenceRaw.trim().replace(/\s+/g, " ") : null;
+    if (reference && reference.length > 100) throw Errors.badRequest("Referensi maksimal 100 karakter.");
     // Client can only ever create shipments tagged with its own
     // customer_id - any value it sends in the body is ignored. Every other
     // creator role must supply one explicitly.
@@ -302,6 +307,18 @@ export function registerShipmentRoutes(router: Router) {
       if (!holdReason) throw Errors.badRequest("Alasan Hold wajib diisi.");
       if (holdReason.length > 500) throw Errors.badRequest("Alasan Hold maksimal 500 karakter.");
     }
+
+    // Same Referensi again (re-import, retry, double click): never a second AWB - answer with the one that exists.
+    const dupReference = async () => {
+      if (!reference) return;
+      const existing = await ctx.env.DB.prepare(`SELECT awb FROM shipments WHERE customer_id = ? AND reference = ? COLLATE NOCASE`)
+        .bind(customerId, reference)
+        .first<{ awb: string }>();
+      if (existing) {
+        throw new HttpError(409, "DUPLICATE_REFERENCE", `Referensi ${reference} sudah digunakan oleh AWB ${existing.awb}.`, { existingAwb: existing.awb, reference });
+      }
+    };
+    await dupReference();
 
     if (truckId) {
       const truck = await ctx.env.DB.prepare(`SELECT id, status FROM trucks WHERE id = ? AND deleted_at IS NULL`).bind(truckId).first<{ id: string; status: string }>();
@@ -348,8 +365,8 @@ export function registerShipmentRoutes(router: Router) {
               alamat_asal, kota_asal, alamat_tujuan, kota_tujuan,
               deskripsi_barang, layanan, berat_kg, jumlah_koli, truck_id,
               sla_value, sla_unit, estimasi_tiba, customer_id, mitra_id,
-              email_terkirim, created_at, updated_at, created_by, updated_by, created_by_role, created_by_name
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`,
+              email_terkirim, created_at, updated_at, created_by, updated_by, created_by_role, created_by_name, reference
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
           ).bind(
             awb, tanggalDibuat, jamDibuat, holdAtCreate ? "Hold" : "Dalam Persiapan",
             pengirimNama, pengirimTelepon, pengirimEmail,
@@ -357,7 +374,7 @@ export function registerShipmentRoutes(router: Router) {
             alamatAsal, kotaAsal, alamatTujuan, kotaTujuan,
             deskripsiBarang, layanan, beratKg, jumlahKoli, truckId ?? null,
             slaValue ?? null, slaUnit, estimasiTiba, customerId, mitraId ?? null,
-            nowIso, nowIso, actor.id, actor.id, actor.role, actor.nama,
+            nowIso, nowIso, actor.id, actor.id, actor.role, actor.nama, reference,
           ),
           ctx.env.DB.prepare(
             `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, truck_id, input_by_user_id, input_by_name, input_at, created_at)
@@ -374,6 +391,10 @@ export function registerShipmentRoutes(router: Router) {
         ]);
         saved = true;
       } catch (err) {
+        // Lost a race on the same Referensi (two requests at once): report the AWB that won.
+        if (reference && String((err as Error)?.message ?? "").includes("reference")) {
+          await dupReference();
+        }
         if (!isDuplicateAwbError(err)) throw err;
       }
     }
@@ -396,7 +417,7 @@ export function registerShipmentRoutes(router: Router) {
           : ""),
     });
 
-    return ok({ awb, layanan, layananFallback: layananFellBack, hold: holdAtCreate }, {}, 201);
+    return ok({ awb, reference, layanan, layananFallback: layananFellBack, hold: holdAtCreate }, {}, 201);
   });
 
   router.get("/api/shipments/:awb", async (ctx: Ctx, params) => {

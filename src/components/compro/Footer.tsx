@@ -1,4 +1,4 @@
-import { Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
+import { Building2, Clock, Mail, MapPin, MessageCircle, Phone, Warehouse } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
 import { C } from "../../data/compro/content";
@@ -11,7 +11,7 @@ export function Footer() {
   const l = useL();
   const navigate = useNavigate();
   const onHome = useLocation().pathname === "/";
-  const { helpPhoneDisplay, helpWhatsAppNumber, contactPhone, contactEmail, contactAddress, contactHours } =
+  const { helpPhoneDisplay, helpWhatsAppNumber, contactPhone, contactEmail, contactAddress, contactHours, headOffice, branchHub } =
     useHelpContact();
 
   function go(id: string) {
@@ -77,6 +77,8 @@ export function Footer() {
                 <li className="flex gap-2"><MessageCircle size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><a href={`https://wa.me/${helpWhatsAppNumber}`} target="_blank" rel="noopener noreferrer" className="hover:text-gms-light">{helpPhoneDisplay}</a></li>
               )}
               <li className="flex gap-2"><Mail size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><a href={`mailto:${contactEmail}`} className="break-all hover:text-gms-light">{contactEmail}</a></li>
+              <li className="flex gap-2"><Building2 size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><span><span className="block text-xs font-bold uppercase tracking-wider text-gms-light">Head Office</span>{headOffice}</span></li>
+              <li className="flex gap-2"><Warehouse size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><span><span className="block text-xs font-bold uppercase tracking-wider text-gms-light">Branch / Operational Hub</span>{branchHub}</span></li>
               <li className="flex gap-2"><MapPin size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><span>{contactAddress}</span></li>
               <li className="flex gap-2"><Clock size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><span>{contactHours}</span></li>
             </ul>

@@ -15,6 +15,9 @@ interface Settings {
   contactEmail: string;
   contactAddress: string;
   contactHours: string;
+  /** Compro "Head Office" / "Branch / Operational Hub" (editable, no code change needed). */
+  headOffice: string;
+  branchHub: string;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -27,6 +30,8 @@ const DEFAULT_SETTINGS: Settings = {
   contactEmail: "cs@gms-logistics.co.id",
   contactAddress: "Jl. Raya Cakung No. 88, Cakung, Jakarta Timur, DKI Jakarta",
   contactHours: "Senin - Sabtu, 08.00 - 18.00 WIB",
+  headOffice: "Surabaya",
+  branchHub: "Jakarta (Cakung)",
 };
 
 export interface ContactInfoInput {
@@ -37,6 +42,8 @@ export interface ContactInfoInput {
   contactEmail: string;
   contactAddress: string;
   contactHours: string;
+  headOffice: string;
+  branchHub: string;
 }
 
 interface SettingsContextValue {

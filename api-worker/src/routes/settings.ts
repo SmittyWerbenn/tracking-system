@@ -4,6 +4,7 @@ import { ok, Errors } from "../http";
 import { parseJsonBody, reqNumber, reqString, optBool } from "../validate";
 import { requirePermission } from "../authMiddleware";
 import { requireValidWhatsApp } from "../help";
+import { writeAuditLog } from "../audit";
 
 const KEYS = [
   "stagnant_threshold_days",
@@ -15,6 +16,8 @@ const KEYS = [
   "contact_email",
   "contact_address",
   "contact_hours",
+  "office_head",
+  "office_branch",
 ] as const;
 type Key = (typeof KEYS)[number];
 
@@ -33,6 +36,9 @@ const DEFAULTS: Record<Key, string> = {
   contact_email: "cs@gms-logistics.co.id",
   contact_address: "Jl. Raya Cakung No. 88, Cakung, Jakarta Timur, DKI Jakarta",
   contact_hours: "Senin - Sabtu, 08.00 - 18.00 WIB",
+  // "Office & Operational Hub" shown on the Compro; editable under Pengaturan (no code change needed).
+  office_head: "Surabaya",
+  office_branch: "Jakarta (Cakung)",
 };
 
 /** Contact details shown on the public Contact page. Shared by the admin
@@ -41,7 +47,7 @@ export async function loadContactInfo(db: D1Database) {
   const rows = await db
     .prepare(
       `SELECT key, value FROM settings
-       WHERE key IN ('help_phone_number','contact_phone','contact_email','contact_address','contact_hours')`,
+       WHERE key IN ('help_phone_number','contact_phone','contact_email','contact_address','contact_hours','office_head','office_branch')`,
     )
     .all<{ key: string; value: string }>();
   const v: Record<string, string> = {
@@ -50,6 +56,8 @@ export async function loadContactInfo(db: D1Database) {
     contact_email: DEFAULTS.contact_email,
     contact_address: DEFAULTS.contact_address,
     contact_hours: DEFAULTS.contact_hours,
+    office_head: DEFAULTS.office_head,
+    office_branch: DEFAULTS.office_branch,
   };
   for (const row of rows.results ?? []) if (row.value) v[row.key] = row.value;
   return {
@@ -58,6 +66,8 @@ export async function loadContactInfo(db: D1Database) {
     contactEmail: v.contact_email,
     contactAddress: v.contact_address,
     contactHours: v.contact_hours,
+    headOffice: v.office_head,
+    branchHub: v.office_branch,
   };
 }
 
@@ -86,6 +96,8 @@ export function registerSettingsRoutes(router: Router) {
       contactEmail: values.contact_email,
       contactAddress: values.contact_address,
       contactHours: values.contact_hours,
+      headOffice: values.office_head,
+      branchHub: values.office_branch,
     });
   });
 
@@ -118,6 +130,17 @@ export function registerSettingsRoutes(router: Router) {
     }
     const contactAddress = body.contactAddress !== undefined ? reqString(body, "contactAddress", { max: 300 }) : undefined;
     const contactHours = body.contactHours !== undefined ? reqString(body, "contactHours", { max: 150 }) : undefined;
+    // Office & Operational Hub (Compro): required, trimmed, validated here regardless of the form.
+    const readOffice = (field: string, label: string): string | undefined => {
+      if (body[field] === undefined) return undefined;
+      if (typeof body[field] !== "string") throw Errors.badRequest(`${label} harus berupa teks.`);
+      const v = (body[field] as string).trim().replace(/\s+/g, " ");
+      if (!v) throw Errors.badRequest(`${label} wajib diisi.`);
+      if (v.length > 100) throw Errors.badRequest(`${label} maksimal 100 karakter.`);
+      return v;
+    };
+    const headOffice = readOffice("headOffice", "Head Office");
+    const branchHub = readOffice("branchHub", "Branch / Operational Hub");
 
     // Nomor Bantuan and the Contact page details are Superadmin-only - they're
     // meant to stay stable across an Admin/GMS-Admin turnover, so a GMS-Admin
@@ -130,7 +153,9 @@ export function registerSettingsRoutes(router: Router) {
       contactPhone !== undefined ||
       contactEmail !== undefined ||
       contactAddress !== undefined ||
-      contactHours !== undefined;
+      contactHours !== undefined ||
+      headOffice !== undefined ||
+      branchHub !== undefined;
     if (touchesContact && actor.role !== "Superadmin") {
       throw Errors.forbidden("Hanya Superadmin yang dapat mengubah informasi kontak.");
     }
@@ -145,6 +170,28 @@ export function registerSettingsRoutes(router: Router) {
     if (contactEmail !== undefined) await upsert(ctx, "contact_email", contactEmail, now, actor.id);
     if (contactAddress !== undefined) await upsert(ctx, "contact_address", contactAddress, now, actor.id);
     if (contactHours !== undefined) await upsert(ctx, "contact_hours", contactHours, now, actor.id);
+    if (headOffice !== undefined || branchHub !== undefined) {
+      const before = await ctx.env.DB.prepare(`SELECT key, value FROM settings WHERE key IN ('office_head','office_branch')`).all<{ key: string; value: string }>();
+      const prev: Record<string, string> = { office_head: DEFAULTS.office_head, office_branch: DEFAULTS.office_branch };
+      for (const r of before.results ?? []) prev[r.key] = r.value;
+      const changes: string[] = [];
+      if (headOffice !== undefined && headOffice !== prev.office_head) {
+        await upsert(ctx, "office_head", headOffice, now, actor.id);
+        changes.push(`Head Office: "${prev.office_head}" -> "${headOffice}"`);
+      }
+      if (branchHub !== undefined && branchHub !== prev.office_branch) {
+        await upsert(ctx, "office_branch", branchHub, now, actor.id);
+        changes.push(`Branch / Operational Hub: "${prev.office_branch}" -> "${branchHub}"`);
+      }
+      if (changes.length) {
+        await writeAuditLog(ctx.env, actor, {
+          action: "UPDATE_OFFICE_HUB",
+          actionLabel: "UPDATE OFFICE & OPERATIONAL HUB",
+          module: "Pengaturan",
+          description: `Office & Operational Hub diperbarui. ${changes.join("; ")}`,
+        });
+      }
+    }
 
     return ok({ updated: true });
   });

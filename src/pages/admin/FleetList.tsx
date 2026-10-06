@@ -1,5 +1,5 @@
 import { adminPath } from "../../utils/urls";
-import { AlertTriangle, Ban, CheckCircle2, History, Pencil, Plus, RotateCcw, Table, Truck, X } from "lucide-react";
+import { AlertTriangle, Ban, CheckCircle2, History, Pencil, Plus, RotateCcw, Table, Truck, UserMinus, UserPlus, X } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArmadaStatusBadge } from "../../components/ArmadaStatusBadge";
@@ -24,6 +24,8 @@ import type { ArmadaStatus } from "../../types";
 import { ApiError } from "../../utils/apiClient";
 import { ARMADA_STATUS_OPTIONS } from "../../utils/status";
 import { DeleteButton } from "../../components/DeleteButton";
+import { ReasonModal } from "../../components/ReasonModal";
+import { useToast } from "../../components/Toast";
 
 function isArmadaStatus(value: string): value is ArmadaStatus {
   return (ARMADA_STATUS_OPTIONS as string[]).includes(value);
@@ -48,6 +50,42 @@ export default function FleetList() {
   const { trucksWithDriver, refresh, createTruck, updateTruck, setTruckStatus } = useFleet();
   const { profile } = useAuth();
   const canEdit = profile?.role === "Superadmin" || profile?.role === "Admin";
+  const isClientSide = profile?.role === "Client" || profile?.role === "Viewer";
+  const toast = useToast();
+
+  // Armada Dedicated: staff assign a unit to one Client; the API enforces everything (exclusive, audit).
+  const [clients, setClients] = useState<{ customerId: string; nama: string | null }[]>([]);
+  useEffect(() => {
+    if (!canEdit) return;
+    api.get<{ clients: { customerId: string; nama: string | null }[] }>("/api/customer-ids").then((r) => setClients(r.clients)).catch(() => {});
+  }, [canEdit]);
+  const [dedicatedFilter, setDedicatedFilter] = useState("");
+  const [assignTarget, setAssignTarget] = useState<TruckWithDriver | null>(null);
+  const [assignClient, setAssignClient] = useState("");
+  const [assignNote, setAssignNote] = useState("");
+  const [assignError, setAssignError] = useState<string | null>(null);
+  const [assignBusy, setAssignBusy] = useState(false);
+  const [unassignTarget, setUnassignTarget] = useState<TruckWithDriver | null>(null);
+  async function submitAssign() {
+    if (!assignTarget || !assignClient) {
+      setAssignError("Pilih Client terlebih dahulu.");
+      return;
+    }
+    setAssignBusy(true);
+    setAssignError(null);
+    try {
+      await api.post(`/api/trucks/${assignTarget.id}/assign`, { customerId: assignClient, alasan: assignNote.trim() || undefined });
+      toast(`Armada ${assignTarget.nomorUnit} didedikasikan untuk Client.`);
+      setAssignTarget(null);
+      setAssignClient("");
+      setAssignNote("");
+      void list.reload();
+    } catch (err) {
+      setAssignError(err instanceof ApiError ? err.message : "Gagal menyimpan assignment.");
+    } finally {
+      setAssignBusy(false);
+    }
+  }
 
   const [refreshing, setRefreshing] = useState(false);
   async function handleRefresh() {
@@ -114,10 +152,11 @@ export default function FleetList() {
   useEffect(() => {
     api.get<{ jenis: string[] }>("/api/trucks/facets").then((r) => setUsedJenis(r.jenis)).catch(() => {});
   }, []);
-  const hasFilter = search.trim() !== "" || jenisFilter !== "" || statusFilter !== "Semua";
+  const hasFilter = search.trim() !== "" || jenisFilter !== "" || statusFilter !== "Semua" || dedicatedFilter !== "";
   function resetFilters() {
     setSearch("");
     setJenisFilter("");
+    setDedicatedFilter("");
     handleStatusFilterChange("Semua");
   }
 
@@ -125,7 +164,7 @@ export default function FleetList() {
   const debouncedSearch = useDebounced(search.trim());
   const list = usePagedList<TruckRow, TruckWithDriver>(
     "/api/trucks",
-    { q: debouncedSearch, jenis: jenisFilter, status: statusFilter === "Semua" ? "" : statusFilter },
+    { q: debouncedSearch, jenis: jenisFilter, status: statusFilter === "Semua" ? "" : statusFilter, dedicated: dedicatedFilter },
     toTruckWithDriver,
   );
   const filteredTrucks = list.items;
@@ -184,10 +223,12 @@ export default function FleetList() {
         ))}
       </datalist>
       <MasterDataHeader
-        title="Master Armada"
+        title={isClientSide ? "Master Armada Dedicated" : "Master Armada"}
         description={
           !expanded
-            ? "Kelola data unit truck dan driver."
+            ? isClientSide
+              ? "Armada yang ditugaskan khusus untuk Anda oleh GMS."
+              : "Kelola data unit truck dan driver."
             : mode === "single"
               ? "Tambah satu unit truck ke master armada."
               : "Tambah banyak unit truck sekaligus dengan mengisi tabel atau mengimpor file Excel/CSV."
@@ -377,6 +418,18 @@ export default function FleetList() {
             </option>
           ))}
         </MasterFilterSelect>
+        {canEdit && (
+          <MasterFilterSelect value={dedicatedFilter} onChange={setDedicatedFilter} label="Filter dedicated">
+            <option value="">Semua Dedicated</option>
+            <option value="assigned">Sudah Assigned</option>
+            <option value="unassigned">Belum Assigned</option>
+            {clients.map((c) => (
+              <option key={c.customerId} value={c.customerId}>
+                {c.nama ?? c.customerId} ({c.customerId})
+              </option>
+            ))}
+          </MasterFilterSelect>
+        )}
         <MasterFilterReset visible={hasFilter} onReset={resetFilters} />
       </MasterDataToolbar>
 
@@ -389,6 +442,7 @@ export default function FleetList() {
             <th className="px-4 py-3 font-medium">Driver</th>
             <th className="px-4 py-3 font-medium">No. HP Driver</th>
             <th className="px-4 py-3 font-medium">Status</th>
+            {canEdit && <th className="px-4 py-3 font-medium">Dedicated To</th>}
             <th className="px-4 py-3 font-medium">Keterangan</th>
             <th className="px-4 py-3 font-medium">Aksi</th>
           </tr>
@@ -406,6 +460,15 @@ export default function FleetList() {
                   <td className="whitespace-nowrap px-4 py-3">
                     <ArmadaStatusBadge status={t.status} size="sm" />
                   </td>
+                  {canEdit && (
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                      {t.dedicatedCustomerId ? (
+                        <span className="font-medium text-blue-900">{t.dedicatedCustomerNama ?? t.dedicatedCustomerId}</span>
+                      ) : (
+                        <span className="text-slate-400">Belum Assigned</span>
+                      )}
+                    </td>
+                  )}
                   <td className="max-w-[220px] truncate px-4 py-3 text-xs text-slate-500" title={t.keterangan}>
                     {t.keterangan ?? "-"}
                   </td>
@@ -425,6 +488,24 @@ export default function FleetList() {
                           className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-700"
                         >
                           <Pencil size={16} />
+                        </button>
+                      )}
+                      {canEdit && !t.dedicatedCustomerId && (
+                        <button
+                          onClick={() => { setAssignTarget(t); setAssignClient(""); setAssignNote(""); setAssignError(null); }}
+                          title="Assign ke Client (Dedicated)"
+                          className="rounded-md p-1.5 text-slate-500 hover:bg-blue-50 hover:text-blue-700"
+                        >
+                          <UserPlus size={16} />
+                        </button>
+                      )}
+                      {canEdit && t.dedicatedCustomerId && (
+                        <button
+                          onClick={() => setUnassignTarget(t)}
+                          title="Cabut Assignment"
+                          className="rounded-md p-1.5 text-slate-500 hover:bg-amber-50 hover:text-amber-700"
+                        >
+                          <UserMinus size={16} />
                         </button>
                       )}
                       {canEdit && t.status !== "Inactive" && (
@@ -457,12 +538,12 @@ export default function FleetList() {
               ))}
           {filteredTrucks.length === 0 && (
             <MasterTableMessage
-              colSpan={8}
+              colSpan={canEdit ? 9 : 8}
               loading={list.loading}
               loadingText="Memuat data armada..."
               icon={Truck}
               title={
-                hasFilter ? "Tidak ada data." : "Belum ada data armada."
+                hasFilter ? "Tidak ada data." : isClientSide ? "Belum ada armada dedicated untuk Anda. Hubungi GMS untuk penugasan armada." : "Belum ada data armada."
               }
               action={
                 !hasFilter && canEdit ? (
@@ -475,6 +556,60 @@ export default function FleetList() {
       </MasterTableCard>
       <Pagination meta={list.meta} page={list.page} pageSize={list.pageSize} loading={list.loading} onPage={list.setPage} onPageSize={list.setPageSize} unit="armada" />
       </>
+      )}
+
+      {assignTarget && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="text-lg font-semibold text-slate-900">Assign Armada Dedicated</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Armada <span className="font-mono font-semibold">{assignTarget.nomorUnit}</span> ({assignTarget.jenis}) akan menjadi armada dedicated satu Client dan hanya dapat dipakai Client tersebut.
+            </p>
+            <label className="mt-4 block">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Client <span className="text-rose-600">*</span></span>
+              <select className={inputClass} value={assignClient} onChange={(e) => setAssignClient(e.target.value)}>
+                <option value="">Pilih Client</option>
+                {clients.map((c) => (
+                  <option key={c.customerId} value={c.customerId}>
+                    {c.nama ?? c.customerId} ({c.customerId})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="mt-3 block">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan (opsional)</span>
+              <textarea rows={2} maxLength={500} className={inputClass} value={assignNote} onChange={(e) => setAssignNote(e.target.value)} placeholder="Contoh: Standby harian di gudang Client" />
+            </label>
+            {assignError && <p className="mt-3 text-sm font-medium text-red-600">{assignError}</p>}
+            <div className="mt-5 flex justify-end gap-2.5">
+              <button type="button" onClick={() => setAssignTarget(null)} disabled={assignBusy} className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-60">Batal</button>
+              <button type="button" onClick={() => void submitAssign()} disabled={assignBusy} className="rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60">Simpan Assignment</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {unassignTarget && (
+        <ReasonModal
+          title="Cabut Armada Dedicated"
+          reasonLabel="Alasan"
+          placeholder="Contoh: Kontrak dedicated berakhir"
+          confirmLabel="Cabut Assignment"
+          tone="warning"
+          onClose={() => setUnassignTarget(null)}
+          onConfirm={async (reason) => {
+            await api.post(`/api/trucks/${unassignTarget.id}/unassign`, { alasan: reason });
+            toast("Assignment armada dicabut.");
+            setUnassignTarget(null);
+            void list.reload();
+          }}
+        >
+          <p>Armada tidak akan lagi tersedia untuk Client ini. Order lama tetap menampilkan nomor polisinya.</p>
+          <dl className="mt-1 space-y-1 rounded-lg bg-slate-50 p-3 text-sm">
+            <div className="flex gap-2"><dt className="w-16 shrink-0 text-xs text-slate-500">Armada</dt><dd className="font-mono font-medium text-slate-800">{unassignTarget.nomorUnit}</dd></div>
+            <div className="flex gap-2"><dt className="w-16 shrink-0 text-xs text-slate-500">Client</dt><dd className="font-medium text-slate-800">{unassignTarget.dedicatedCustomerNama ?? unassignTarget.dedicatedCustomerId}</dd></div>
+          </dl>
+        </ReasonModal>
       )}
 
       {editModalOpen && (

@@ -13,6 +13,8 @@ export interface TruckRow {
   keterangan: string | null;
   driver_nama: string | null;
   driver_telepon: string | null;
+  dedicated_customer_id?: string | null;
+  dedicated_customer_nama?: string | null;
 }
 
 export interface TruckFormData {
@@ -38,6 +40,8 @@ export function toTruckWithDriver(row: TruckRow): TruckWithDriver {
     driverId: row.driver_id ?? "",
     status: row.status,
     keterangan: row.keterangan ?? undefined,
+    dedicatedCustomerId: row.dedicated_customer_id ?? undefined,
+    dedicatedCustomerNama: row.dedicated_customer_nama ?? undefined,
     driver: row.driver_nama ? { id: row.driver_id ?? "", nama: row.driver_nama, telepon: row.driver_telepon ?? "" } : undefined,
   };
 }

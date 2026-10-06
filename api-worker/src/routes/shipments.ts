@@ -304,8 +304,15 @@ export function registerShipmentRoutes(router: Router) {
     }
 
     if (truckId) {
-      const truck = await ctx.env.DB.prepare(`SELECT id FROM trucks WHERE id = ? AND deleted_at IS NULL`).bind(truckId).first();
+      const truck = await ctx.env.DB.prepare(`SELECT id, status FROM trucks WHERE id = ? AND deleted_at IS NULL`).bind(truckId).first<{ id: string; status: string }>();
       if (!truck) throw Errors.badRequest("Truck yang dipilih tidak ditemukan.");
+      // A Client may only use units dedicated to ITS OWN Client ID (from the session), with an ACTIVE assignment and an active unit.
+      if (actor.role === "Client") {
+        const own = await ctx.env.DB.prepare(
+          `SELECT 1 FROM fleet_client_assignments WHERE truck_id = ? AND customer_id = ? AND status = 'ACTIVE'`,
+        ).bind(truckId, customerId).first();
+        if (!own || truck.status === "Inactive") throw Errors.badRequest("Armada yang dipilih tidak tersedia untuk Client Anda.");
+      }
     }
     if (mitraId) {
       const mitra = await ctx.env.DB.prepare(`SELECT kode_mitra, aktif FROM mitras WHERE kode_mitra = ? AND deleted_at IS NULL`)

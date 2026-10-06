@@ -204,6 +204,8 @@ const truck: EntityDef = {
     };
   },
   async guardDelete(env, row) {
+    const dedicated = await count(env, `SELECT COUNT(*) AS c FROM fleet_client_assignments WHERE truck_id = ? AND status = 'ACTIVE'`, row.id);
+    if (dedicated > 0) return "Armada ini masih didedikasikan untuk Client. Cabut assignment terlebih dahulu.";
     const n = await count(
       env,
       `SELECT COUNT(*) AS c FROM shipments WHERE truck_id = ? AND deleted_at IS NULL AND status NOT IN (?, ?)`,

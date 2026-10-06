@@ -9,6 +9,7 @@ export type Permission =
   | "tracking.update"
   | "fleet.view"
   | "fleet.manage"
+  | "fleet.assign"
   | "locations.view"
   | "locations.manage"
   | "feedback.view"
@@ -29,6 +30,7 @@ const ALL: Permission[] = [
   "tracking.update",
   "fleet.view",
   "fleet.manage",
+  "fleet.assign",
   "locations.view",
   "locations.manage",
   "feedback.view",
@@ -52,6 +54,7 @@ const ROLE_PERMISSIONS: Record<Role, Set<Permission>> = {
     "tracking.update",
     "fleet.view",
     "fleet.manage",
+    "fleet.assign",
     "locations.view",
     "locations.manage",
     "feedback.view",

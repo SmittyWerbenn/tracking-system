@@ -581,11 +581,13 @@ export default function CreateShipment() {
               value={form.truckId ?? ""}
               onChange={(v) => update("truckId", v)}
               placeholder="Pilih Unit Truck (opsional)"
-              emptyLabel="Tidak ada unit truck yang tersedia."
+              emptyLabel={isCustAdmin ? "Belum ada armada dedicated untuk Anda." : "Tidak ada unit truck yang tersedia."}
             />
             <p className="mt-1.5 text-[11px] text-slate-400">
-              Opsional. Kosongkan supaya pengiriman ini masuk ke daftar "Pesanan Terbuka" - semua driver
-              bisa melihat dan mengajukan klaim, lalu Anda tinggal konfirmasi siapa yang mengambilnya.
+              {isCustAdmin
+                ? "Opsional. Hanya armada dedicated yang ditugaskan GMS untuk Anda yang bisa dipilih."
+                : `Opsional. Kosongkan supaya pengiriman ini masuk ke daftar "Pesanan Terbuka" - semua driver
+              bisa melihat dan mengajukan klaim, lalu Anda tinggal konfirmasi siapa yang mengambilnya.`}
             </p>
           </Field>
           {selectedTruck ? (

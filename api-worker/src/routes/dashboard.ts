@@ -34,9 +34,13 @@ export function registerDashboardRoutes(router: Router) {
       )
         .bind(...custBind(stagnantCutoff))
         .first<{ c: number }>(),
-      ctx.env.DB.prepare(
-        `SELECT status, COUNT(*) as c FROM trucks WHERE deleted_at IS NULL GROUP BY status`,
-      ).all<{ status: string; c: number }>(),
+      // A Client's fleet numbers cover only its own dedicated units.
+      custScope
+        ? ctx.env.DB.prepare(
+            `SELECT t.status, COUNT(*) as c FROM trucks t JOIN fleet_client_assignments a ON a.truck_id = t.id AND a.status = 'ACTIVE' AND a.customer_id = ?
+             WHERE t.deleted_at IS NULL GROUP BY t.status`,
+          ).bind(actor.customerId).all<{ status: string; c: number }>()
+        : ctx.env.DB.prepare(`SELECT status, COUNT(*) as c FROM trucks WHERE deleted_at IS NULL GROUP BY status`).all<{ status: string; c: number }>(),
       ctx.env.DB.prepare(`SELECT AVG(rating) as avg FROM feedback`).first<{ avg: number | null }>(),
       ctx.env.DB.prepare(
         `SELECT awb, status, kota_asal, kota_tujuan, tanggal_dibuat FROM shipments WHERE deleted_at IS NULL ${custWhere} ${cancelWhere} ORDER BY tanggal_dibuat DESC, jam_dibuat DESC LIMIT 5`,

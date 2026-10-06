@@ -255,6 +255,9 @@ export interface Truck {
   driverId: string;
   status: ArmadaStatus;
   keterangan?: string;
+  /** Staff only: the Client this unit is currently dedicated to (null/undefined = not assigned). */
+  dedicatedCustomerId?: string;
+  dedicatedCustomerNama?: string;
 }
 
 // ---------------------------------------------------------------------------

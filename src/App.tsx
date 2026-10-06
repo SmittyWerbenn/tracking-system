@@ -160,7 +160,7 @@ export default function App() {
               <Route path={adminPath("/recycle-bin")} element={<RequireSuperadmin><RecycleBin /></RequireSuperadmin>} />
               <Route path={adminPath("/pemulihan-order")} element={<RequireAdmin><RecoveryRequests /></RequireAdmin>} />
               <Route path={adminPath("/users-driver")} element={<RequireAdmin><DriverUserManagement /></RequireAdmin>} />
-              <Route path={adminPath("/rate-publish")} element={<RequireAdmin><RatePublish /></RequireAdmin>} />
+              <Route path={adminPath("/rate-publish")} element={<RequireSuperadmin><RatePublish /></RequireSuperadmin>} />
               <Route path={adminPath("/pengaturan/tracking")} element={<RequireAdmin><SettingsPage /></RequireAdmin>} />
               <Route path={adminPath("/pengaturan/akun")} element={<RequireAuth><AccountSettings /></RequireAuth>} />
             </>

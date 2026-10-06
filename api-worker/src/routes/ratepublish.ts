@@ -4,6 +4,13 @@ import { ok, Errors, HttpError } from "../http";
 import { parseJsonBody } from "../validate";
 import { newId } from "../crypto";
 import { requirePermission } from "../authMiddleware";
+
+/** Rate Publish is Superadmin-only (settings.manage alone would also admit GMS-Admin). */
+function requireSuperadmin(ctx: Ctx) {
+  const actor = requirePermission(ctx, "settings.manage");
+  if (actor.role !== "Superadmin") throw Errors.forbidden("Rate Publish hanya dapat diakses Superadmin.");
+  return actor;
+}
 import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta, likeTerm, orderBy } from "../pagination";
 
@@ -13,8 +20,8 @@ import { parsePagination, pageMeta, likeTerm, orderBy } from "../pagination";
  * layanan multiplier, minimum kg, koli fee and rounding all stay in pricing.ts. Cek Ongkir queries the table on every
  * request (no cache), so an edit is live immediately. Shipments store no prices, so past orders are untouched.
  *
- * Permission: settings.manage (Superadmin/Admin) for everything - settings.view is also held by Client accounts,
- * so it must not unlock the price master.
+ * Permission: Superadmin only (checked on every endpoint). settings.view is also held by Client accounts and
+ * settings.manage by GMS-Admin, so neither may unlock the price master.
  */
 const MAX_RATE = 10_000_000;
 const MAX_BULK_ROWS = 10000;
@@ -179,7 +186,7 @@ function toDto(r: Record<string, unknown>) {
 
 export function registerRatePublishRoutes(router: Router) {
   router.get("/api/rate-publish", async (ctx: Ctx) => {
-    requirePermission(ctx, "settings.manage");
+    requireSuperadmin(ctx);
     const url = new URL(ctx.request.url);
     const { page, limit, offset } = parsePagination(url);
     const { whereSql, params } = listWhere(url);
@@ -190,7 +197,7 @@ export function registerRatePublishRoutes(router: Router) {
   });
 
   router.get("/api/rate-publish/facets", async (ctx: Ctx) => {
-    requirePermission(ctx, "settings.manage");
+    requireSuperadmin(ctx);
     const url = new URL(ctx.request.url);
     const provinsi = url.searchParams.get("provinsi");
     const [prov, kota, kat] = await Promise.all([
@@ -205,7 +212,7 @@ export function registerRatePublishRoutes(router: Router) {
 
   // Data download for editing in Excel (same filters as the list; ID is the key the bulk update matches on).
   router.get("/api/rate-publish/export", async (ctx: Ctx) => {
-    requirePermission(ctx, "settings.manage");
+    requireSuperadmin(ctx);
     const url = new URL(ctx.request.url);
     const { whereSql, params } = listWhere(url);
     const rows = await ctx.env.DB.prepare(`${LIST_SELECT} ${whereSql} ORDER BY ${DEFAULT_SORT} LIMIT 20000`).bind(...params).all();
@@ -213,7 +220,7 @@ export function registerRatePublishRoutes(router: Router) {
   });
 
   router.patch("/api/rate-publish/:id", async (ctx: Ctx, params) => {
-    const actor = requirePermission(ctx, "settings.manage");
+    const actor = requireSuperadmin(ctx);
     const id = Number(params.id);
     if (!Number.isInteger(id) || id <= 0) throw Errors.notFound("Data area tidak ditemukan.");
     const body = await parseJsonBody(ctx.request);
@@ -243,7 +250,7 @@ export function registerRatePublishRoutes(router: Router) {
 
   // Step 1 of Bulk Update: validate + show what WOULD change. Writes nothing.
   router.post("/api/rate-publish/bulk/preview", async (ctx: Ctx) => {
-    requirePermission(ctx, "settings.manage");
+    requireSuperadmin(ctx);
     const body = await parseJsonBody(ctx.request);
     const results = await validateRows(ctx.env, body.rows);
     return ok({ summary: summarize(results), rows: results });
@@ -251,7 +258,7 @@ export function registerRatePublishRoutes(router: Router) {
 
   // Step 2: re-validate against the live data and apply ALL changes in one transaction (or none).
   router.post("/api/rate-publish/bulk/commit", async (ctx: Ctx) => {
-    const actor = requirePermission(ctx, "settings.manage");
+    const actor = requireSuperadmin(ctx);
     const body = await parseJsonBody(ctx.request);
     const results = await validateRows(ctx.env, body.rows);
     const summary = summarize(results);

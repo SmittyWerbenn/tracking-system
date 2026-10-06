@@ -201,20 +201,6 @@ export default function RecycleBin() {
             </option>
           ))}
         </MasterFilterSelect>
-        <MasterFilterSelect value={draft.deletedBy} onChange={(v) => patch({ deletedBy: v })} label="Filter dihapus oleh">
-          <option value="">Semua Penghapus</option>
-          {(data?.deleters ?? []).map((n) => (
-            <option key={n} value={n}>
-              {n}
-            </option>
-          ))}
-        </MasterFilterSelect>
-        <MasterFilterSelect value={draft.status} onChange={(v) => patch({ status: v })} label="Filter status">
-          <option value="IN_BIN">Di Recycle Bin</option>
-          <option value="RESTORED">Dipulihkan</option>
-          <option value="PURGED">Dihapus Permanen</option>
-          <option value="ALL">Semua Status</option>
-        </MasterFilterSelect>
         <input type="date" aria-label="Dihapus dari tanggal" value={draft.from} onChange={(e) => patch({ from: e.target.value })} className={dateInputClass} />
         <input type="date" aria-label="Dihapus sampai tanggal" value={draft.to} onChange={(e) => patch({ to: e.target.value })} className={dateInputClass} />
         <button type="submit" className="h-10 rounded-lg bg-blue-900 px-4 text-sm font-semibold text-white hover:bg-blue-800">
@@ -262,7 +248,6 @@ export default function RecycleBin() {
             <th className="px-4 py-3 font-medium">Tanggal Hapus</th>
             <th className="px-4 py-3 font-medium">Alasan</th>
             <th className="px-4 py-3 font-medium">Status</th>
-            <th className="px-4 py-3 font-medium">Status</th>
             <th className="px-4 py-3 font-medium">Aksi</th>
           </tr>
         </thead>
@@ -274,7 +259,7 @@ export default function RecycleBin() {
               loadingText="Memuat..."
               icon={Trash2}
               title="Recycle Bin kosong"
-              description={hasFilter ? "Tidak ada data yang cocok dengan filter." : "Data yang dihapus akan disimpan di sini. Penghapusan permanen otomatis sementara dinonaktifkan."}
+              description={hasFilter ? "Tidak ada data yang cocok dengan filter." : "Data yang dihapus akan muncul di sini dan dapat dipulihkan."}
             />
           )}
           {!loading &&
@@ -293,18 +278,9 @@ export default function RecycleBin() {
                   <td className="whitespace-nowrap px-4 py-3 text-slate-700">{i.deletedBy}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-slate-600">{fmtIso(i.deletedAt)}</td>
                   <td className="min-w-[12rem] max-w-[18rem] px-4 py-3 text-slate-600">{i.deleteReason}</td>
-                  <td className="whitespace-nowrap px-4 py-3">
-                    {live ? (
-                      <>
-                        <span className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">Di Recycle Bin</span>
-                        {i.purgeError && <p className="mt-1 max-w-[14rem] whitespace-normal text-[11px] text-rose-600">Catatan: {i.purgeError} <span className="font-semibold">(lihat Detail untuk data terkait)</span></p>}
-                      </>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
                   <td className="px-4 py-3">
                     <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLE[i.status]}`}>{STATUS_LABEL[i.status]}</span>
+                    {live && i.purgeError && <p className="mt-1 max-w-[14rem] whitespace-normal text-[11px] text-rose-600">Catatan: {i.purgeError} <span className="font-semibold">(lihat Detail untuk data terkait)</span></p>}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap items-center gap-2">
@@ -353,7 +329,6 @@ export default function RecycleBin() {
                       ["Dihapus Oleh", detail.deletedBy],
                       ["Tanggal Hapus", fmtIso(detail.deletedAt)],
                       ["Alasan Hapus", detail.deleteReason],
-                      ["Penghapusan Permanen", detail.status === "IN_BIN" ? "Otomatis dinonaktifkan sementara; data tetap tersimpan" : "-"],
                       ...(detail.restoredAt ? [["Dipulihkan", `${detail.restoredBy} · ${fmtIso(detail.restoredAt)} · ${detail.restoreReason}`]] : []),
                       ...(detail.purgedAt ? [["Dihapus Permanen", `${detail.purgedBy} · ${fmtIso(detail.purgedAt)} · ${detail.purgeReason}`]] : []),
                     ] as Array<[string, string]>

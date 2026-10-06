@@ -74,7 +74,7 @@ export function DeactivateModal({ entityLabel, details, note, onConfirm, onClose
             type="button"
             onClick={() => void confirm()}
             disabled={pending}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
           >
             {pending && <Loader2 size={15} className="animate-spin" />}
             {pending ? "Menonaktifkan..." : "Ya, Nonaktifkan"}

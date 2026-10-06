@@ -31,6 +31,7 @@ import Login from "./pages/admin/Login";
 import MitraList from "./pages/admin/MitraList";
 import NotificationCenter from "./pages/admin/NotificationCenter";
 import SettingsPage from "./pages/admin/SettingsPage";
+import RatePublish from "./pages/admin/RatePublish";
 import ShipmentDetail from "./pages/admin/ShipmentDetail";
 import ShipmentList from "./pages/admin/ShipmentList";
 import ShipmentTracking from "./pages/admin/ShipmentTracking";
@@ -159,6 +160,7 @@ export default function App() {
               <Route path={adminPath("/recycle-bin")} element={<RequireSuperadmin><RecycleBin /></RequireSuperadmin>} />
               <Route path={adminPath("/pemulihan-order")} element={<RequireAdmin><RecoveryRequests /></RequireAdmin>} />
               <Route path={adminPath("/users-driver")} element={<RequireAdmin><DriverUserManagement /></RequireAdmin>} />
+              <Route path={adminPath("/rate-publish")} element={<RequireAdmin><RatePublish /></RequireAdmin>} />
               <Route path={adminPath("/pengaturan/tracking")} element={<RequireAdmin><SettingsPage /></RequireAdmin>} />
               <Route path={adminPath("/pengaturan/akun")} element={<RequireAuth><AccountSettings /></RequireAuth>} />
             </>

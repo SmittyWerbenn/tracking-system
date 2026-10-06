@@ -1,11 +1,12 @@
 import { ArrowRight } from "lucide-react";
 import { C } from "../../data/compro/content";
-import { clientsAsset } from "../../data/compro/assetsMap";
+import { clientLogos } from "../../data/compro/assetsMap";
 import { Container, SectionHeader } from "./SectionHeader";
 import { Reveal, scrollToSection, useL } from "./utils";
 
-/** One ready-made image that already contains every client logo. Shown whole:
- * no cropping, no recolouring, width 100% with the natural 3:1 ratio kept. */
+/** Client logo showcase: each of the 13 logos is its own <img> (no collage), in file-number order. The logos are
+ * opaque images with different proportions, so each sits whole (object-contain, never cropped) in an equal card;
+ * the last, shorter row is centred. 2 columns on mobile, 3 on tablet, 4 on desktop. */
 export function Clients() {
   const l = useL();
   return (
@@ -13,15 +14,23 @@ export function Clients() {
       <Container>
         <SectionHeader title={l(C.clients.title)} sub={l(C.clients.sub)} />
         <Reveal className="mt-10">
-          <img
-            src={clientsAsset}
-            alt={l({ id: "Logo client GMS Logistics", en: "GMS Logistics clients" })}
-            width={2172}
-            height={724}
-            loading="lazy"
-            decoding="async"
-            className="mx-auto block h-auto w-full max-w-6xl object-contain"
-          />
+          <ul className="mx-auto flex max-w-6xl flex-wrap justify-center gap-3 sm:gap-5">
+            {clientLogos.map((c) => (
+              <li key={c.file} className="w-[calc(50%-0.375rem)] sm:w-[calc(33.333%-0.85rem)] lg:w-[calc(25%-0.95rem)]">
+                <div className="flex aspect-[3/2] items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-md sm:p-4">
+                  <img
+                    src={c.src}
+                    alt={c.name}
+                    width={c.width}
+                    height={c.height}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
         </Reveal>
       </Container>
     </section>

@@ -1,3 +1,4 @@
+import { DeactivateModal } from "../../components/DeactivateModal";
 import { ACTION_ROW, actionClass } from "../../components/ActionButton";
 import { Pagination } from "../../components/Pagination";
 import { Camera, Download, Eye, Pencil, Plus, Power, Search, Shield, Upload, Users, X } from "lucide-react";
@@ -249,7 +250,10 @@ export default function UserManagementView({ group }: { group: UserGroup }) {
     }
   }
 
+  const [deactTarget, setDeactTarget] = useState<AppUser | null>(null);
   async function handleToggle(u: AppUser) {
+    // Nonaktifkan always goes through the confirmation modal (API is only called from its confirm button).
+    if (u.aktif) { setDeactTarget(u); return; }
     try {
       await setUserActive(u.id, !u.aktif);
       await list.reload();
@@ -267,6 +271,24 @@ export default function UserManagementView({ group }: { group: UserGroup }) {
 
   return (
     <AdminLayout>
+      {deactTarget && (
+        <DeactivateModal
+          entityLabel={deactTarget.role === "Driver" ? "driver" : "user"}
+          details={[
+            ["Nama", deactTarget.nama],
+            ["Email", deactTarget.email],
+            ["Role", deactTarget.role],
+            ...(deactTarget.nopol ? ([["Nopol", deactTarget.nopol]] as Array<[string, string]>) : []),
+            ["Status", "Aktif"],
+          ]}
+          note="Akun ini tidak akan bisa login sampai diaktifkan kembali."
+          onClose={() => setDeactTarget(null)}
+          onConfirm={async () => {
+            await setUserActive(deactTarget.id, false);
+            await list.reload();
+          }}
+        />
+      )}
       {/* Actions top-right; the (many) filters get their own full-width row. */}
       <MasterDataHeader
         title={isDriverGroup ? "Manajemen User Driver" : "Manajemen User"}

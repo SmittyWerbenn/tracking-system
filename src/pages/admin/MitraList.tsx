@@ -1,3 +1,4 @@
+import { DeactivateModal } from "../../components/DeactivateModal";
 import { ACTION_ROW, actionClass } from "../../components/ActionButton";
 import { Ban, Handshake, Pencil, RotateCcw, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
@@ -115,12 +116,12 @@ export default function MitraList() {
   }
 
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deactTarget, setDeactTarget] = useState<Mitra | null>(null);
   async function handleToggleActive(m: Mitra) {
     const next = !m.aktif;
-    const msg = next
-      ? `Aktifkan kembali Mitra ${m.kodeMitra}? Akun user Mitra ini bisa login lagi.`
-      : `Nonaktifkan Mitra ${m.kodeMitra}? Akun user Mitra ini akan dibekukan dan tidak bisa login.`;
-    if (!window.confirm(msg)) return;
+    // Nonaktifkan always goes through the confirmation modal (API is only called from its confirm button).
+    if (!next) { setDeactTarget(m); return; }
+    if (!window.confirm(`Aktifkan kembali Mitra ${m.kodeMitra}? Akun user Mitra ini bisa login lagi.`)) return;
     setTogglingId(m.kodeMitra);
     try {
       await setMitraAktif(m.kodeMitra, next);
@@ -132,6 +133,18 @@ export default function MitraList() {
 
   return (
     <AdminLayout>
+      {deactTarget && (
+        <DeactivateModal
+          entityLabel="Mitra"
+          details={[["Kode", deactTarget.kodeMitra], ["Nama", deactTarget.nama], ["Status", "Aktif"]]}
+          note="Akun user Mitra ini akan dibekukan dan tidak bisa login."
+          onClose={() => setDeactTarget(null)}
+          onConfirm={async () => {
+            await setMitraAktif(deactTarget.kodeMitra, false);
+            void list.reload();
+          }}
+        />
+      )}
       <MasterDataHeader
         title="Master Mitra"
         description="Data mitra agen pihak ketiga. Tambahkan Mitra di sini terlebih dahulu, lalu kaitkan dengan akun user (role Mitra) di Manajemen User, dan teruskan/assign paket ke Mitra dari Detail Paket."

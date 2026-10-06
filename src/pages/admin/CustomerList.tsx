@@ -1,3 +1,4 @@
+import { DeactivateModal } from "../../components/DeactivateModal";
 import { ACTION_ROW, actionClass } from "../../components/ActionButton";
 import { Ban, Building2, Pencil, RotateCcw, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
@@ -114,12 +115,12 @@ export default function CustomerList() {
     }
   }
 
+  const [deactTarget, setDeactTarget] = useState<CustomerRow | null>(null);
   async function handleToggleActive(c: CustomerRow) {
     const next = !c.aktif;
-    const msg = next
-      ? `Aktifkan kembali Client ${c.customerId}? Semua akun user Client ini bisa login lagi.`
-      : `Nonaktifkan Client ${c.customerId}? Semua akun user Client ini akan dibekukan dan tidak bisa login.`;
-    if (!window.confirm(msg)) return;
+    // Nonaktifkan always goes through the confirmation modal (API is only called from its confirm button).
+    if (!next) { setDeactTarget(c); return; }
+    if (!window.confirm(`Aktifkan kembali Client ${c.customerId}? Semua akun user Client ini bisa login lagi.`)) return;
     setTogglingId(c.customerId);
     setError(null);
     try {
@@ -199,6 +200,19 @@ export default function CustomerList() {
 
   return (
     <AdminLayout>
+      {deactTarget && (
+        <DeactivateModal
+          entityLabel="Client"
+          details={[["Client ID", deactTarget.customerId], ["Nama", deactTarget.nama ?? "-"], ["Status", "Aktif"]]}
+          note="Semua akun user Client ini akan dibekukan dan tidak bisa login."
+          onClose={() => setDeactTarget(null)}
+          onConfirm={async () => {
+            await api.patch(`/api/customers/${encodeURIComponent(deactTarget.customerId)}`, { aktif: false });
+            setNotice(`Client ${deactTarget.customerId} dinonaktifkan.`);
+            await fetchCustomers();
+          }}
+        />
+      )}
       <MasterDataHeader
         title="Clients"
         description="Daftar Client beserta akun yang tertaut dan jumlah pengiriman. Client baru ditambahkan di sini terlebih dahulu, lalu dipilih saat membuat user di Manajemen User."

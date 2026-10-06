@@ -1,3 +1,4 @@
+import { DeactivateModal } from "../../components/DeactivateModal";
 import { ACTION_ROW, actionClass } from "../../components/ActionButton";
 import { adminPath } from "../../utils/urls";
 import { AlertTriangle, Ban, CheckCircle2, History, Pencil, Plus, RotateCcw, Table, Truck, UserMinus, UserPlus, X } from "lucide-react";
@@ -61,6 +62,7 @@ export default function FleetList() {
     api.get<{ clients: { customerId: string; nama: string | null }[] }>("/api/customer-ids").then((r) => setClients(r.clients)).catch(() => {});
   }, [canEdit]);
   const [dedicatedFilter, setDedicatedFilter] = useState("");
+  const [deactTruck, setDeactTruck] = useState<TruckWithDriver | null>(null);
   const [assignTarget, setAssignTarget] = useState<TruckWithDriver | null>(null);
   const [assignClient, setAssignClient] = useState("");
   const [assignNote, setAssignNote] = useState("");
@@ -511,7 +513,7 @@ export default function FleetList() {
                       )}
                       {canEdit && t.status !== "Inactive" && (
                         <button
-                          onClick={() => void setTruckStatus(t.id, "Inactive").then(list.reload)}
+                          onClick={() => setDeactTruck(t)}
                           title="Nonaktifkan"
                           className={actionClass("danger")}
                         >
@@ -557,6 +559,19 @@ export default function FleetList() {
       </MasterTableCard>
       <Pagination meta={list.meta} page={list.page} pageSize={list.pageSize} loading={list.loading} onPage={list.setPage} onPageSize={list.setPageSize} unit="armada" />
       </>
+      )}
+
+      {deactTruck && (
+        <DeactivateModal
+          entityLabel="armada"
+          details={[["Nopol", deactTruck.nomorUnit], ["Jenis", deactTruck.jenis], ["Driver", deactTruck.driver?.nama ?? "-"], ["Status", deactTruck.status]]}
+          note="Armada nonaktif tidak bisa dipilih untuk order baru. Riwayat order lama tidak berubah."
+          onClose={() => setDeactTruck(null)}
+          onConfirm={async () => {
+            await setTruckStatus(deactTruck.id, "Inactive");
+            await list.reload();
+          }}
+        />
       )}
 
       {assignTarget && (

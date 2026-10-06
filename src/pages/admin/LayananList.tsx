@@ -1,3 +1,4 @@
+import { DeactivateModal } from "../../components/DeactivateModal";
 import { ACTION_ROW, actionClass } from "../../components/ActionButton";
 import { AlertTriangle, Ban, Layers, Pencil, RotateCcw, ShieldCheck, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
@@ -127,12 +128,12 @@ export default function LayananList() {
 
   // --- Aktif/Nonaktif + Hapus
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [deactTarget, setDeactTarget] = useState<Layanan | null>(null);
   async function handleToggleActive(l: Layanan) {
     const next = !l.aktif;
-    const msg = next
-      ? `Aktifkan kembali layanan ${l.nama}? Layanan ini akan muncul lagi untuk order baru.`
-      : `Nonaktifkan layanan ${l.nama}? Layanan ini tidak akan muncul untuk order baru. Order yang sudah ada tidak berubah.`;
-    if (!window.confirm(msg)) return;
+    // Nonaktifkan always goes through the confirmation modal (API is only called from its confirm button).
+    if (!next) { setDeactTarget(l); return; }
+    if (!window.confirm(`Aktifkan kembali layanan ${l.nama}? Layanan ini akan muncul lagi untuk order baru.`)) return;
     setBusyId(l.id);
     setPageError(null);
     try {
@@ -147,6 +148,18 @@ export default function LayananList() {
 
   return (
     <AdminLayout>
+      {deactTarget && (
+        <DeactivateModal
+          entityLabel="layanan"
+          details={[["Layanan", deactTarget.nama], ["Status", "Aktif"]]}
+          note="Layanan tidak akan muncul untuk order baru. Order yang sudah ada tidak berubah."
+          onClose={() => setDeactTarget(null)}
+          onConfirm={async () => {
+            await updateLayanan(deactTarget.id, { aktif: false });
+            void list.reload();
+          }}
+        />
+      )}
       <MasterDataHeader
         title="Master Layanan"
         description={`Daftar layanan pengiriman. Hanya layanan berstatus Aktif yang bisa dipilih saat membuat atau mengedit order. Layanan yang tidak dikenali pada order baru otomatis memakai ${fallback.nama}.`}

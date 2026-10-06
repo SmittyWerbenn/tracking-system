@@ -1,3 +1,4 @@
+import { DeactivateModal } from "../../components/DeactivateModal";
 import { ACTION_ROW, actionClass } from "../../components/ActionButton";
 import { AlertTriangle, Ban, CheckCircle2, Download, MapPinned, Pencil, RotateCcw, Table, Plus, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
@@ -161,8 +162,21 @@ export default function LocationList() {
     }
   }
 
+  const [deactTarget, setDeactTarget] = useState<TitikLokasi | null>(null);
+
   return (
     <AdminLayout>
+      {deactTarget && (
+        <DeactivateModal
+          entityLabel="titik/kota"
+          details={[["Nama Area", deactTarget.namaArea], ["Kota", deactTarget.namaKota], ["Jenis", deactTarget.jenis], ["Status", "Aktif"]]}
+          onClose={() => setDeactTarget(null)}
+          onConfirm={async () => {
+            await setTitikAktif(deactTarget.id, false);
+            await list.reload();
+          }}
+        />
+      )}
       <MasterDataHeader
         title="Kota & Titik Transit"
         description={
@@ -428,7 +442,7 @@ export default function LocationList() {
                         </button>
                         {t.aktif ? (
                           <button
-                            onClick={() => void setTitikAktif(t.id, false).then(list.reload)}
+                            onClick={() => setDeactTarget(t)}
                             title="Nonaktifkan"
                             className={actionClass("danger")}
                           >

@@ -6,9 +6,10 @@
  *   -> per-kg price; total = chargeable kg x per-kg price + koli handling,
  *      rounded to the nearest Rp500.
  *
- * Harga Publish is the LTL rate: only LTL is priced from it. Every other layanan has a Rate Publish of Rp0
- * (see ratePublishFor) - the LTL rate is never reused for them. LTL also has a minimum BILLING weight by
- * destination (see ltlMinimumKg): chargeable kg = max(actual kg, existing 1 kg floor, minimum).
+ * Harga Publish is priced for TWO layanan: LTL (origin markup 0/15/25% + minimum billing weight by destination, see
+ * ltlMinimumKg) and LCL (same base rate per kg, no minimum beyond the 1 kg floor, +20% only when the ORIGIN is outside
+ * Java - see lclOriginMarkup; the destination never matters). Every other layanan has a Rate Publish of Rp0
+ * (see ratePublishFor) - the LTL/LCL rate is never reused for them.
  *
  * Base prices are never stored marked up. The origin category of every region
  * (Jabodetabek / Jawa / Luar Jawa) lives in price_regions.kategori_origin.
@@ -36,9 +37,16 @@ export function ltlMinimumKg(destRegion: OriginCategory, kategoriArea: string): 
   return { kg: LTL_MINIMUM_KG.JAWA, kategori: "Jawa" };
 }
 
-/** Rate Publish used for a layanan: the stored tariff for LTL, Rp0 for every other layanan. */
-export function ratePublishFor(isLtl: boolean, tariffPerKg: number): number {
-  return isLtl ? tariffPerKg : 0;
+/** Rate Publish used for a layanan: the stored tariff for LTL and LCL, Rp0 for every other layanan. */
+export function ratePublishFor(priced: boolean, tariffPerKg: number): number {
+  return priced ? tariffPerKg : 0;
+}
+
+/** LCL origin surcharge, decided by the ORIGIN region only (price_regions.kategori_origin): Jabodetabek / Jawa pay
+ * nothing extra, Luar Jawa +20%. LCL does not use the LTL origin markup (0 / 15 / 25%). */
+export const LCL_LUAR_JAWA_MARKUP = 0.2;
+export function lclOriginMarkup(origin: OriginCategory): number {
+  return origin === "LUAR_JAWA" ? LCL_LUAR_JAWA_MARKUP : 0;
 }
 const MIN_CHARGEABLE_KG = 1;
 const KOLI_HANDLING_FEE = 2000;
@@ -67,6 +75,8 @@ export interface PricingInput {
   jumlahKoli: number;
   /** Minimum billing weight (LTL only; 0 = none). */
   minimumKg?: number;
+  /** Markup to apply instead of the LTL origin markup (LCL passes its own rule). */
+  markup?: number;
 }
 
 export interface PricingResult {
@@ -80,7 +90,7 @@ export interface PricingResult {
 }
 
 export function calculatePricing(i: PricingInput): PricingResult {
-  const markup = getOriginMarkup(i.originCategory);
+  const markup = i.markup ?? getOriginMarkup(i.originCategory);
   const adjusted = i.basePricePerKg * (1 + markup);
   const chargeableKg = Math.max(i.beratKg, MIN_CHARGEABLE_KG, i.minimumKg ?? 0);
   // No Rate Publish (non-LTL layanan) means nothing to charge: the koli handling fee must not turn Rp0 into a price.

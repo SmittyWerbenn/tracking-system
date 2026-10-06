@@ -2,7 +2,7 @@ import type { Router } from "../router";
 import type { Ctx } from "../types";
 import { ok, Errors } from "../http";
 import { parseJsonBody } from "../validate";
-import { adjustLeadTime, calculatePricing, ltlMinimumKg, ratePublishFor, type OriginCategory } from "../pricing";
+import { adjustLeadTime, calculatePricing, lclOriginMarkup, ltlMinimumKg, ratePublishFor, type OriginCategory } from "../pricing";
 import { LAYANAN_ORDER_SQL, isFallbackLayanan } from "../layanan";
 
 const WINDOW_MS = 10 * 60 * 1000;
@@ -129,6 +129,7 @@ export function registerOngkirRoutes(router: Router) {
     if (!layananRow) throw Errors.badRequest("Jenis layanan tidak tersedia atau tidak aktif.");
     const layanan = layananRow.nama;
     const isLtl = isFallbackLayanan(layananRow.nama);
+    const isLcl = layananRow.nama.trim().toLowerCase() === "lcl";
 
     // Origin must be a known region: an unclassifiable origin is an error,
     // never a silent 0% / 15% / 25%.
@@ -148,8 +149,9 @@ export function registerOngkirRoutes(router: Router) {
       .first<{ tarif_per_kg: number; kategori_area: string; lead_min: number; lead_max: number; wilayah_tujuan: OriginCategory }>();
     if (!tarif) throw Errors.badRequest("Tarif untuk tujuan tersebut tidak ditemukan.");
 
-    // Rate Publish is the LTL rate; every other layanan is Rp0. LTL also has a minimum billing weight by destination.
-    const ratePublish = ratePublishFor(isLtl, tarif.tarif_per_kg);
+    // Rate Publish prices LTL and LCL; every other layanan is Rp0. LTL has a minimum billing weight by destination;
+    // LCL has its own origin rule (+20% when the ORIGIN is Luar Jawa, nothing otherwise) instead of the LTL markup.
+    const ratePublish = ratePublishFor(isLtl || isLcl, tarif.tarif_per_kg);
     const minimum = isLtl ? ltlMinimumKg(tarif.wilayah_tujuan, tarif.kategori_area) : null;
     const pricing = calculatePricing({
       basePricePerKg: ratePublish,
@@ -157,6 +159,7 @@ export function registerOngkirRoutes(router: Router) {
       beratKg,
       jumlahKoli,
       minimumKg: minimum?.kg ?? 0,
+      markup: isLcl ? lclOriginMarkup(origin.kategori_origin) : undefined,
     });
     if (!Number.isFinite(pricing.total) || pricing.total < 0) throw Errors.internal("Harga tidak dapat dihitung.");
     const lead = adjustLeadTime(tarif.lead_min, tarif.lead_max, layanan);
@@ -171,7 +174,7 @@ export function registerOngkirRoutes(router: Router) {
       ...pricing,
       minimumKg: minimum?.kg ?? 0,
       minimumKategori: minimum?.kategori ?? null,
-      ratePublishTersedia: isLtl,
+      ratePublishTersedia: isLtl || isLcl,
       leadTimeMin: lead.min,
       leadTimeMax: lead.max,
     });

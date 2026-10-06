@@ -147,6 +147,9 @@ interface Translations {
     estimatedDistance: string;
     estimatedArrival: string;
     weightKoli: string;
+    /** "{kategori}", "{min}", "{charge}" are filled in by the page. */
+    minWeightNote: string;
+    noRateNote: string;
     originProvince: string;
     destinationProvince: string;
     destinationDistrict: string;
@@ -161,7 +164,6 @@ interface Translations {
     priceAfterAdjustment: string;
     perKg: string;
     originAdjustmentNote: string;
-    serviceOptions: { label: string; desc: string }[];
     benefit1Title: string;
     benefit1Desc: string;
     benefit2Title: string;
@@ -437,6 +439,8 @@ const id: Translations = {
     estimatedDistance: "Jarak Perkiraan",
     estimatedArrival: "Estimasi Tiba",
     weightKoli: "Berat / Koli",
+    minWeightNote: "LTL tujuan {kategori}: minimum penagihan {min} kg (dihitung {charge} kg).",
+    noRateNote: "Rate Publish layanan ini Rp 0, sehingga harga belum tersedia. Hubungi kami untuk penawaran.",
     originProvince: "Provinsi Asal",
     destinationProvince: "Provinsi Tujuan",
     destinationDistrict: "Kecamatan Tujuan",
@@ -451,13 +455,6 @@ const id: Translations = {
     priceAfterAdjustment: "Harga Setelah Penyesuaian",
     perKg: "/kg",
     originAdjustmentNote: "Penyesuaian ditentukan oleh wilayah asal.",
-    serviceOptions: [
-      { label: "Darat", desc: "Pengiriman jalur darat, pilihan paling hemat untuk kebutuhan non-mendesak." },
-      { label: "Express", desc: "Lebih cepat sampai, biaya sedikit lebih tinggi." },
-      { label: "Kargo", desc: "Cocok untuk muatan besar/borongan, tarif per kg lebih hemat." },
-      { label: "Regular", desc: "Pilihan standar dengan waktu tempuh normal." },
-      { label: "Charter", desc: "Sewa unit khusus untuk pengiriman Anda sendiri, tercepat dan eksklusif." },
-    ],
     benefit1Title: "Estimasi Akurat",
     benefit1Desc: "Dapatkan perhitungan biaya yang transparan.",
     benefit2Title: "Informasi Waktu",
@@ -732,6 +729,8 @@ const en: Translations = {
     estimatedDistance: "Estimated Distance",
     estimatedArrival: "Estimated Arrival",
     weightKoli: "Weight / Packages",
+    minWeightNote: "LTL to {kategori}: minimum billing {min} kg (charged as {charge} kg).",
+    noRateNote: "This service has a published rate of Rp 0, so no price is available. Contact us for a quotation.",
     originProvince: "Origin Province",
     destinationProvince: "Destination Province",
     destinationDistrict: "Destination District",
@@ -746,13 +745,6 @@ const en: Translations = {
     priceAfterAdjustment: "Rate After Adjustment",
     perKg: "/kg",
     originAdjustmentNote: "The adjustment is determined by the origin region.",
-    serviceOptions: [
-      { label: "Ground", desc: "Ground shipping, the most affordable option for non-urgent needs." },
-      { label: "Express", desc: "Arrives faster, at a slightly higher cost." },
-      { label: "Cargo", desc: "Good for large/bulk loads, cheaper rate per kg." },
-      { label: "Regular", desc: "The standard option with normal transit time." },
-      { label: "Charter", desc: "Charter your own dedicated unit - fastest and exclusive." },
-    ],
     benefit1Title: "Accurate Estimate",
     benefit1Desc: "Get a transparent cost calculation.",
     benefit2Title: "Time Information",

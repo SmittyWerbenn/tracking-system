@@ -1,5 +1,4 @@
 import type { Language } from "../data/translations";
-import type { LayananPengiriman } from "../types";
 import { api } from "./apiClient";
 
 /** Answer of POST /api/public/ongkir. The backend (api-worker/src/pricing.ts) is
@@ -9,12 +8,18 @@ export interface OngkirEstimate {
   tujuan: { provinsi: string; kota: string; kecamatan: string; kategoriArea: string };
   beratKg: number;
   jumlahKoli: number;
-  layanan: LayananPengiriman;
+  layananId: string;
+  layanan: string;
   hargaPublishPerKg: number;
   originCategory: "JABODETABEK" | "JAWA" | "LUAR_JAWA";
   markupPersen: number;
   hargaSetelahPenyesuaianPerKg: number;
   chargeableKg: number;
+  /** LTL minimum billing weight (Jawa 50 / Luar Jawa 100 / Pelosok Terjauh 300); 0 for other layanan. */
+  minimumKg: number;
+  minimumKategori: string | null;
+  /** false = this layanan has no Rate Publish (Rp0). */
+  ratePublishTersedia: boolean;
   biayaKoli: number;
   total: number;
   leadTimeMin: number;
@@ -26,7 +31,14 @@ export interface OngkirRequest {
   tujuan: { provinsi: string; kota: string; kecamatan: string };
   beratKg: number;
   jumlahKoli: number;
-  layanan: LayananPengiriman;
+  /** Master Layanan id (the API validates it: active entries only). */
+  layananId: string;
+}
+
+/** Jenis layanan = the active entries of Master Layanan (Portal Admin), already in display order. */
+export async function fetchLayananOptions(): Promise<Array<{ id: string; nama: string }>> {
+  const res = await api.get<{ items: Array<{ id: string; nama: string }> }>("/api/public/ongkir/layanan", { auth: false });
+  return res.items;
 }
 
 export function fetchOngkir(req: OngkirRequest): Promise<OngkirEstimate> {

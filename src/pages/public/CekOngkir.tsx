@@ -6,15 +6,12 @@ import { Footer } from "../../components/compro/Footer";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { COMPRO_IMAGES } from "../../data/compro/imagesData";
 import { useLanguage } from "../../store/LanguageContext";
-import type { LayananPengiriman } from "../../types";
 import { ApiError } from "../../utils/apiClient";
-import { estimasiHariLabel, fetchOngkir, fetchWilayah, formatRupiah, type OngkirEstimate } from "../../utils/ongkir";
+import { estimasiHariLabel, fetchLayananOptions, fetchOngkir, fetchWilayah, formatRupiah, type OngkirEstimate } from "../../utils/ongkir";
 import { useSeo } from "../../utils/seo";
 
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-lg sm:text-xl text-slate-900 placeholder:text-slate-400 transition-colors focus:border-gms-gold focus:bg-white focus:outline-none focus:ring-2 focus:ring-gms-gold/20";
-
-const LAYANAN_KEYS: LayananPengiriman[] = ["Darat", "Express", "Kargo", "Regular", "Charter"];
 
 export default function CekOngkir() {
   const { t, language } = useLanguage();
@@ -32,7 +29,17 @@ export default function CekOngkir() {
   const [kecTujuan, setKecTujuan] = useState("");
   const [beratKg, setBeratKg] = useState("");
   const [jumlahKoli, setJumlahKoli] = useState("1");
-  const [layanan, setLayanan] = useState<LayananPengiriman>("Regular");
+  // Jenis layanan: loaded from Master Layanan (active entries) - nothing is listed in the frontend.
+  const [layananOptions, setLayananOptions] = useState<Array<{ id: string; nama: string }>>([]);
+  const [layananId, setLayananId] = useState("");
+  useEffect(() => {
+    fetchLayananOptions()
+      .then((items) => {
+        setLayananOptions(items);
+        setLayananId((cur) => (items.some((i) => i.id === cur) ? cur : (items.find((i) => i.nama === "LTL") ?? items[0])?.id ?? ""));
+      })
+      .catch(() => setLayananOptions([]));
+  }, []);
   const [result, setResult] = useState<OngkirEstimate | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -75,8 +82,6 @@ export default function CekOngkir() {
   const toOptions = (list: string[]) => list.map((v) => ({ value: v, label: v }));
   const provinsiOptions = toOptions(provinsiList);
 
-  const layananIndex = LAYANAN_KEYS.indexOf(layanan);
-  const resultLayananIndex = result ? LAYANAN_KEYS.indexOf(result.layanan) : -1;
 
   const benefits = [
     { icon: Gauge, title: t.cekOngkir.benefit1Title, desc: t.cekOngkir.benefit1Desc },
@@ -107,7 +112,7 @@ export default function CekOngkir() {
           tujuan: { provinsi: provTujuan, kota: kotaTujuan, kecamatan: kecTujuan },
           beratKg: berat,
           jumlahKoli: Number(jumlahKoli) || 1,
-          layanan,
+          layananId,
         }),
       );
     } catch (err) {
@@ -277,21 +282,18 @@ export default function CekOngkir() {
                 <div>
                   <label className="mb-1.5 block text-base sm:text-lg font-medium text-slate-600">{t.cekOngkir.serviceLabel}</label>
                   <select
-                    value={layanan}
-                    onChange={(e) => setLayanan(e.target.value as LayananPengiriman)}
+                    value={layananId}
+                    onChange={(e) => setLayananId(e.target.value)}
                     className={inputClass}
                   >
-                    {LAYANAN_KEYS.map((key, i) => (
-                      <option key={key} value={key}>
-                        {t.cekOngkir.serviceOptions[i].label}
+                    {layananOptions.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.nama}
                       </option>
                     ))}
                   </select>
                 </div>
               </div>
-              <p className="mt-2 text-sm text-slate-400">
-                {layananIndex >= 0 && t.cekOngkir.serviceOptions[layananIndex].desc}
-              </p>
 
               {error && (
                 <p className="mt-3 rounded-lg bg-red-50 px-3.5 py-2.5 text-base sm:text-lg font-medium text-red-700">{error}</p>
@@ -334,9 +336,12 @@ export default function CekOngkir() {
                   </p>
                   <p className="mt-1 text-2xl font-bold text-gms-deep sm:text-3xl">{formatRupiah(result.total)}</p>
                   <p className="mt-1 text-base sm:text-lg text-slate-500">{t.cekOngkir.resultDisclaimer}</p>
+                  {!result.ratePublishTersedia && (
+                    <p className="mt-1 text-base sm:text-lg font-medium text-amber-700">{t.cekOngkir.noRateNote}</p>
+                  )}
                 </div>
                 <span className="rounded-full bg-white px-3 py-1.5 text-base sm:text-lg font-semibold text-gms-corp ring-1 ring-inset ring-gms-gold/30">
-                  {resultLayananIndex >= 0 ? t.cekOngkir.serviceOptions[resultLayananIndex].label : result.layanan}
+                  {result.layanan}
                 </span>
               </div>
 
@@ -366,6 +371,14 @@ export default function CekOngkir() {
                   <p className="mt-1 text-lg sm:text-xl font-semibold text-slate-800">
                     {result.beratKg} kg &middot; {result.jumlahKoli} koli
                   </p>
+                  {result.minimumKg > 0 && (
+                    <p className="mt-1 text-sm text-slate-500">
+                      {t.cekOngkir.minWeightNote
+                        .replace("{kategori}", result.minimumKategori ?? "")
+                        .replace("{min}", String(result.minimumKg))
+                        .replace("{charge}", String(result.chargeableKg))}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

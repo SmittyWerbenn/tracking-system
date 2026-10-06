@@ -2,7 +2,8 @@ import type { Router } from "../router";
 import type { Ctx } from "../types";
 import { ok, Errors } from "../http";
 import { parseJsonBody } from "../validate";
-import { LAYANAN, adjustLeadTime, calculatePricing, type Layanan, type OriginCategory } from "../pricing";
+import { adjustLeadTime, calculatePricing, ltlMinimumKg, ratePublishFor, type OriginCategory } from "../pricing";
+import { LAYANAN_ORDER_SQL, isFallbackLayanan } from "../layanan";
 
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_PER_WINDOW = 120;
@@ -50,6 +51,16 @@ export function registerOngkirRoutes(router: Router) {
     return ok({ items: r.results.map((x) => x.nama) });
   });
 
+  // Jenis layanan for the Cek Ongkir picker: the ACTIVE entries of Master Layanan (Portal Admin), in its display order.
+  // Nothing is listed in the frontend; an added / deactivated layanan shows up here without a deploy.
+  router.get("/api/public/ongkir/layanan", async (ctx: Ctx) => {
+    checkRateLimit(ctx.request.headers.get("CF-Connecting-IP") ?? "unknown");
+    const r = await ctx.env.DB.prepare(
+      `SELECT l.id, l.nama FROM layanans l WHERE l.aktif = 1 AND l.deleted_at IS NULL ORDER BY ${LAYANAN_ORDER_SQL}`,
+    ).all<{ id: string; nama: string }>();
+    return ok({ items: (r.results ?? []).map((x) => ({ id: x.id, nama: x.nama })) });
+  });
+
   // The pricing source of truth: the frontend only displays this answer.
   router.post("/api/public/ongkir", async (ctx: Ctx) => {
     checkRateLimit(ctx.request.headers.get("CF-Connecting-IP") ?? "unknown");
@@ -58,14 +69,27 @@ export function registerOngkirRoutes(router: Router) {
     const tujuan = (body.tujuan ?? {}) as Record<string, unknown>;
     const beratKg = Number(body.beratKg);
     const jumlahKoli = Math.max(1, Math.floor(Number(body.jumlahKoli) || 1));
-    const layanan = str(body.layanan) as Layanan;
 
     if (!str(asal.provinsi) || !str(asal.kota)) throw Errors.badRequest("Pilih provinsi dan kabupaten/kota asal.");
     if (!str(tujuan.provinsi) || !str(tujuan.kota) || !str(tujuan.kecamatan)) {
       throw Errors.badRequest("Pilih provinsi, kabupaten/kota, dan kecamatan tujuan.");
     }
     if (!Number.isFinite(beratKg) || beratKg <= 0 || beratKg > 100000) throw Errors.badRequest("Berat paket tidak valid.");
-    if (!LAYANAN.includes(layanan)) throw Errors.badRequest("Layanan tidak dikenal.");
+    // The layanan must be an ACTIVE Master Layanan entry, looked up by its id (a name is accepted only as a fallback
+    // for older clients). Region, minimum weight and price are all decided below from the database, never from the request.
+    const layananId = str(body.layananId);
+    const layananName = str(body.layanan);
+    if (!layananId && !layananName) throw Errors.badRequest("Pilih jenis layanan.");
+    const layananRow = await ctx.env.DB.prepare(
+      layananId
+        ? `SELECT id, nama FROM layanans WHERE id = ? AND aktif = 1 AND deleted_at IS NULL`
+        : `SELECT id, nama FROM layanans WHERE nama = ? COLLATE NOCASE AND aktif = 1 AND deleted_at IS NULL`,
+    )
+      .bind(layananId || layananName)
+      .first<{ id: string; nama: string }>();
+    if (!layananRow) throw Errors.badRequest("Jenis layanan tidak tersedia atau tidak aktif.");
+    const layanan = layananRow.nama;
+    const isLtl = isFallbackLayanan(layananRow.nama);
 
     // Origin must be a known region: an unclassifiable origin is an error,
     // never a silent 0% / 15% / 25%.
@@ -77,21 +101,25 @@ export function registerOngkirRoutes(router: Router) {
     if (!origin) throw Errors.badRequest("Wilayah asal tidak dikenali, sehingga harga tidak dapat dihitung.");
 
     const tarif = await ctx.env.DB.prepare(
-      `SELECT t.tarif_per_kg, t.kategori_area, t.lead_min, t.lead_max
+      `SELECT t.tarif_per_kg, t.kategori_area, t.lead_min, t.lead_max, g.kategori_origin AS wilayah_tujuan
        FROM price_tariffs t JOIN price_regions g ON g.id = t.region_id
        WHERE g.provinsi = ? AND g.kabupaten_kota = ? AND t.kecamatan = ?`,
     )
       .bind(str(tujuan.provinsi), str(tujuan.kota), str(tujuan.kecamatan))
-      .first<{ tarif_per_kg: number; kategori_area: string; lead_min: number; lead_max: number }>();
+      .first<{ tarif_per_kg: number; kategori_area: string; lead_min: number; lead_max: number; wilayah_tujuan: OriginCategory }>();
     if (!tarif) throw Errors.badRequest("Tarif untuk tujuan tersebut tidak ditemukan.");
 
+    // Rate Publish is the LTL rate; every other layanan is Rp0. LTL also has a minimum billing weight by destination.
+    const ratePublish = ratePublishFor(isLtl, tarif.tarif_per_kg);
+    const minimum = isLtl ? ltlMinimumKg(tarif.wilayah_tujuan, tarif.kategori_area) : null;
     const pricing = calculatePricing({
-      basePricePerKg: tarif.tarif_per_kg,
+      basePricePerKg: ratePublish,
       originCategory: origin.kategori_origin,
       beratKg,
       jumlahKoli,
-      layanan,
+      minimumKg: minimum?.kg ?? 0,
     });
+    if (!Number.isFinite(pricing.total) || pricing.total < 0) throw Errors.internal("Harga tidak dapat dihitung.");
     const lead = adjustLeadTime(tarif.lead_min, tarif.lead_max, layanan);
 
     return ok({
@@ -99,8 +127,12 @@ export function registerOngkirRoutes(router: Router) {
       tujuan: { provinsi: str(tujuan.provinsi), kota: str(tujuan.kota), kecamatan: str(tujuan.kecamatan), kategoriArea: tarif.kategori_area },
       beratKg,
       jumlahKoli,
+      layananId: layananRow.id,
       layanan,
       ...pricing,
+      minimumKg: minimum?.kg ?? 0,
+      minimumKategori: minimum?.kategori ?? null,
+      ratePublishTersedia: isLtl,
       leadTimeMin: lead.min,
       leadTimeMax: lead.max,
     });

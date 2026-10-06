@@ -188,7 +188,7 @@ export default function RecycleBin() {
     <AdminLayout>
       <MasterDataHeader
         title="Recycle Bin"
-        description={`Data yang dihapus disimpan ${data?.retentionDays ?? 30} hari. Setelahnya dihapus permanen secara otomatis. Selama masih di sini, data dapat dipulihkan.`}
+        description=""
       />
 
       <form onSubmit={search} className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">

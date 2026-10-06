@@ -6,7 +6,7 @@ import { parseJsonBody, reqString, reqNumber, optString } from "../validate";
 import { newId } from "../crypto";
 import { presignGet } from "../storage";
 import { likeTerm } from "../pagination";
-import { maskName } from "../mask";
+import { maskSenderName } from "../mask";
 import { TRACKING_CAPTCHA_ENABLED, clientIp, rateLimit, requirePass } from "../captcha";
 
 const PUBLIC_ENTITY_TYPES = new Set([
@@ -22,9 +22,10 @@ function shipmentSummary(row: Record<string, unknown>) {
     awb: row.awb,
     tanggalDibuat: row.tanggal_dibuat,
     status: row.status,
-    // Names are masked HERE (never sent in full): the browser only ever receives e.g. "B*** S*******".
-    pengirim: { nama: maskName(row.pengirim_nama) },
-    penerima: { nama: maskName(row.penerima_nama) },
+    // The sender name is masked HERE (never sent in full): the browser only receives first + last character.
+    // The receiver name is shown in full.
+    pengirim: { nama: maskSenderName(row.pengirim_nama) },
+    penerima: { nama: row.penerima_nama },
     alamatTujuan: row.alamat_tujuan,
     kotaAsal: row.kota_asal,
     kotaTujuan: row.kota_tujuan,
@@ -71,7 +72,6 @@ export function registerPublicRoutes(router: Router) {
     )
       .bind(params.awb)
       .first<Record<string, unknown>>();
-    if (pod) pod.nama_penerima = maskName(pod.nama_penerima);
 
     const feedbackExists = await ctx.env.DB.prepare(`SELECT id FROM feedback WHERE awb = ?`).bind(params.awb).first();
 

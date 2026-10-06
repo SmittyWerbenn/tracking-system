@@ -26,7 +26,6 @@ import { registerRecycleRoutes } from "./routes/recycle";
 import { registerCancellationRoutes } from "./routes/cancellation";
 import { registerHoldRoutes } from "./routes/hold";
 import { registerRatePublishRoutes } from "./routes/ratepublish";
-import { purgeExpired } from "./recycle";
 
 const router = new Router();
 registerAuthRoutes(router);
@@ -119,8 +118,7 @@ export default {
     }
   },
   async scheduled(_event: ScheduledController, env: Env): Promise<void> {
-    const r = await purgeExpired(env);
-    console.log(JSON.stringify({ job: "recycle-purge", ...r }));
+    // Recycle Bin auto-purge is intentionally NOT run (see AUTO_PURGE_ENABLED in recycle.ts); only the captcha cleanup remains.
     await purgeCaptchaData(env);
   },
 };

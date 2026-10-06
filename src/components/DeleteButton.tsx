@@ -75,7 +75,7 @@ export function DeleteButton({ entityType, id, details, onDone }: Props) {
             </div>
           )}
           <p className="mt-3">
-            Data akan disimpan di Recycle Bin selama 90 hari, lalu dihapus permanen otomatis oleh sistem. Selama itu data masih bisa dipulihkan.
+            Data akan disimpan di Recycle Bin dan masih bisa dipulihkan. Penghapusan permanen otomatis sementara dinonaktifkan.
           </p>
         </ReasonModal>
       )}

@@ -19,7 +19,6 @@ import { formatTanggalJam, formatTanggalPendek, stripKeteranganMeta, todayISO, i
 import { SHIPMENT_STATUS_OPTIONS } from "../../utils/status";
 import { CancelOrderActions } from "../../components/CancelOrderActions";
 import { HoldOrderActions } from "../../components/HoldOrderActions";
-import { DeleteButton } from "../../components/DeleteButton";
 
 const NO_CLIENT = "__none__";
 
@@ -604,12 +603,6 @@ export default function ShipmentList() {
                       )}
                       <HoldOrderActions shipment={s} onDone={reloadList} />
                       <CancelOrderActions shipment={s} onDone={reloadList} />
-                      <DeleteButton
-                        entityType="shipment"
-                        id={s.awb}
-                        details={[["AWB", s.awb], ["Rute", `${s.kotaAsal} → ${s.kotaTujuan}`], ["Status", s.status]]}
-                        onDone={reloadList}
-                      />
                     </div>
                   </td>
                 </tr>

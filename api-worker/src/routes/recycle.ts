@@ -9,6 +9,8 @@ import {
   ENTITIES,
   ENTITY_TYPES,
   RETENTION_DAYS,
+  AUTO_PURGE_ENABLED,
+  SHIPMENT_DELETE_BLOCKED,
   softDelete,
   restoreItem,
   type RecycleEntity,
@@ -53,6 +55,7 @@ function toDto(r: BinRow & Record<string, unknown>) {
     expiresAt: r.expires_at,
     daysLeft: daysLeft(r.expires_at),
     purgeError: r.purge_error,
+    autoPurgeEnabled: AUTO_PURGE_ENABLED,
     restoredBy: r.restored_by_name ?? null,
     restoredAt: r.restored_at ?? null,
     restoreReason: r.restore_reason ?? null,
@@ -92,6 +95,8 @@ export function registerRecycleRoutes(router: Router) {
     const body = await parseJsonBody(ctx.request);
     const type = body.entityType as RecycleEntity;
     if (!ENTITY_TYPES.includes(type)) throw Errors.badRequest("Jenis data tidak didukung.");
+    // Data Pengiriman can never be deleted (not even by Superadmin) - refused before anything is touched.
+    if (type === "shipment") throw Errors.forbidden(SHIPMENT_DELETE_BLOCKED);
     const reason = readReason(body);
     const ids = readIds(body);
     const def = ENTITIES[type];
@@ -233,6 +238,6 @@ export function registerRecycleRoutes(router: Router) {
   // retention window. Kept as an explicit refusal (rather than a missing route) so a direct call gets a clear answer.
   router.post("/api/recycle/purge", async (ctx: Ctx) => {
     requirePermission(ctx, "recycle.manage");
-    throw Errors.forbidden(`Penghapusan permanen manual tidak tersedia. Data dihapus permanen otomatis oleh sistem setelah ${RETENTION_DAYS} hari di Recycle Bin.`);
+    throw Errors.forbidden("Penghapusan permanen manual tidak tersedia. Penghapusan permanen otomatis juga sedang dinonaktifkan; data tetap tersimpan di Recycle Bin.");
   });
 }

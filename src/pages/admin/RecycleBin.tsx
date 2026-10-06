@@ -60,13 +60,6 @@ function fmtIso(iso: string): string {
   return formatTanggalJam(w.tanggal, w.jam);
 }
 
-function remaining(days: number): { text: string; cls: string } {
-  if (days <= 0) return { text: "Expired hari ini", cls: "bg-rose-100 text-rose-700" };
-  if (days <= 2) return { text: `${days} hari lagi`, cls: "bg-rose-100 text-rose-700" };
-  if (days <= 7) return { text: `${days} hari lagi`, cls: "bg-amber-100 text-amber-800" };
-  return { text: `Sisa ${days} hari`, cls: "bg-slate-100 text-slate-600" };
-}
-
 const FIELD_LABEL: Record<string, string> = {
   awb: "AWB", status: "Status", customer_id: "Client ID", kota_asal: "Kota Asal", kota_tujuan: "Kota Tujuan", alamat_asal: "Alamat Asal",
   alamat_tujuan: "Alamat Tujuan", pengirim_nama: "Pengirim", penerima_nama: "Penerima", layanan: "Layanan", tanggal_dibuat: "Tanggal Dibuat",
@@ -81,7 +74,7 @@ function fieldLabel(key: string): string {
 
 type Action = { kind: "restore"; items: BinItem[] } | null;
 
-/** Superadmin-only: everything moved to the bin (kept 90 days), with restore. There is no manual permanent delete: the nightly job purges expired rows. Authorization is enforced by the API. */
+/** Superadmin-only: everything moved to the bin, with restore. There is no manual permanent delete and the automatic purge is switched off, so nothing leaves the bin on its own. Authorization is enforced by the API. */
 export default function RecycleBin() {
   const toast = useToast();
   const [draft, setDraft] = useState(EMPTY);
@@ -268,7 +261,7 @@ export default function RecycleBin() {
             <th className="px-4 py-3 font-medium">Dihapus Oleh</th>
             <th className="px-4 py-3 font-medium">Tanggal Hapus</th>
             <th className="px-4 py-3 font-medium">Alasan</th>
-            <th className="px-4 py-3 font-medium">Auto Delete</th>
+            <th className="px-4 py-3 font-medium">Status</th>
             <th className="px-4 py-3 font-medium">Status</th>
             <th className="px-4 py-3 font-medium">Aksi</th>
           </tr>
@@ -281,12 +274,11 @@ export default function RecycleBin() {
               loadingText="Memuat..."
               icon={Trash2}
               title="Recycle Bin kosong"
-              description={hasFilter ? "Tidak ada data yang cocok dengan filter." : "Data yang dihapus akan muncul di sini dan disimpan selama 90 hari, lalu dihapus permanen otomatis oleh sistem."}
+              description={hasFilter ? "Tidak ada data yang cocok dengan filter." : "Data yang dihapus akan disimpan di sini. Penghapusan permanen otomatis sementara dinonaktifkan."}
             />
           )}
           {!loading &&
             items.map((i) => {
-              const r = remaining(i.daysLeft);
               const live = i.status === "IN_BIN";
               return (
                 <tr key={i.id} className="hover:bg-slate-50">
@@ -304,9 +296,8 @@ export default function RecycleBin() {
                   <td className="whitespace-nowrap px-4 py-3">
                     {live ? (
                       <>
-                        <p className="text-xs text-slate-500">{fmtIso(i.expiresAt)}</p>
-                        <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${r.cls}`}>{r.text}</span>
-                        {i.purgeError && <p className="mt-1 max-w-[14rem] whitespace-normal text-[11px] text-rose-600">Tertahan: {i.purgeError} <span className="font-semibold">(lihat Detail untuk data terkait)</span></p>}
+                        <span className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">Di Recycle Bin</span>
+                        {i.purgeError && <p className="mt-1 max-w-[14rem] whitespace-normal text-[11px] text-rose-600">Catatan: {i.purgeError} <span className="font-semibold">(lihat Detail untuk data terkait)</span></p>}
                       </>
                     ) : (
                       "-"
@@ -362,7 +353,7 @@ export default function RecycleBin() {
                       ["Dihapus Oleh", detail.deletedBy],
                       ["Tanggal Hapus", fmtIso(detail.deletedAt)],
                       ["Alasan Hapus", detail.deleteReason],
-                      ["Auto Delete", detail.status === "IN_BIN" ? `${fmtIso(detail.expiresAt)} (${remaining(detail.daysLeft).text})` : "-"],
+                      ["Penghapusan Permanen", detail.status === "IN_BIN" ? "Otomatis dinonaktifkan sementara; data tetap tersimpan" : "-"],
                       ...(detail.restoredAt ? [["Dipulihkan", `${detail.restoredBy} · ${fmtIso(detail.restoredAt)} · ${detail.restoreReason}`]] : []),
                       ...(detail.purgedAt ? [["Dihapus Permanen", `${detail.purgedBy} · ${fmtIso(detail.purgedAt)} · ${detail.purgeReason}`]] : []),
                     ] as Array<[string, string]>
@@ -389,7 +380,7 @@ export default function RecycleBin() {
                   </>
                 )}
                 {detail.purgeError && (
-                  <p className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">Tertahan: {detail.purgeError}</p>
+                  <p className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">Catatan: {detail.purgeError}</p>
                 )}
                 {detail.status === "IN_BIN" && detailImpact && detailImpact.length > 0 && (
                   <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">

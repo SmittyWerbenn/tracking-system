@@ -3,8 +3,12 @@ import { newId } from "./crypto";
 import { deleteObject } from "./storage";
 import { writeAuditLog } from "./audit";
 
-/** Days a binned row is kept before the nightly job purges it (the ONLY way a binned row is permanently deleted). */
+/** Days after which a binned row WOULD be eligible for the nightly auto-purge. Kept only as data (expires_at). */
 export const RETENTION_DAYS = 90;
+
+/** Automatic permanent deletion is OFF until the whole delete / restore / dependency / audit flow is signed off:
+ * nothing is purged because expires_at passed. Flip to true (and re-add the cron call) only on an explicit decision. */
+export const AUTO_PURGE_ENABLED = false;
 
 export type RecycleEntity = "shipment" | "user" | "truck" | "location" | "layanan" | "mitra" | "client";
 
@@ -83,6 +87,9 @@ function blockedBy(rows: Array<[number, string]>, what: string): string | null {
   return parts.length ? `${what} masih direferensikan oleh ${parts.join(", ")}.` : null;
 }
 
+/** Deleting Data Pengiriman is not allowed for anyone (recycle.manage is Superadmin-only, and Superadmin may not). */
+export const SHIPMENT_DELETE_BLOCKED = "Penghapusan Data Pengiriman tidak diizinkan.";
+
 const shipment: EntityDef = {
   type: "shipment",
   title: "Pengiriman",
@@ -90,6 +97,9 @@ const shipment: EntityDef = {
   table: "shipments",
   pk: "awb",
   awb: (r) => r.id,
+  async guardDelete() {
+    return SHIPMENT_DELETE_BLOCKED;
+  },
   async load(env, id) {
     const s = await env.DB.prepare(`SELECT * FROM shipments WHERE awb = ?`).bind(id).first<Record<string, unknown>>();
     if (!s) return null;
@@ -556,7 +566,11 @@ export async function purgeItem(
   const bin = await env.DB.prepare(`SELECT * FROM recycle_bin WHERE id = ?`).bind(binId).first<BinRow>();
   if (!bin) return { id: binId, ok: false, message: "Data tidak ditemukan di Recycle Bin." };
   if (bin.status !== "IN_BIN") return { id: binId, ok: false, message: "Data ini sudah tidak berada di Recycle Bin." };
-  // The nightly job (no actor) must only ever purge rows that really passed their retention window.
+  // The nightly job (no actor) is switched off: never purge automatically, whatever expires_at says.
+  if (!actor && !AUTO_PURGE_ENABLED) {
+    return { id: binId, ok: false, message: "Penghapusan permanen otomatis sedang dinonaktifkan." };
+  }
+  // ...and when it is on, it must only purge rows that really passed their retention window.
   if (!actor && bin.expires_at > new Date().toISOString()) {
     return { id: binId, ok: false, message: "Belum melewati masa penyimpanan Recycle Bin." };
   }
@@ -604,6 +618,7 @@ export async function purgeItem(
 
 /** Nightly job: permanently delete bin rows older than the retention window. */
 export async function purgeExpired(env: Env): Promise<{ purged: number; blocked: number }> {
+  if (!AUTO_PURGE_ENABLED) return { purged: 0, blocked: 0 };
   const now = new Date().toISOString();
   const due = await env.DB.prepare(
     `SELECT id FROM recycle_bin WHERE status = 'IN_BIN' AND expires_at <= ? ORDER BY expires_at LIMIT 200`,

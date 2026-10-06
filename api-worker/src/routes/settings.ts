@@ -12,11 +12,10 @@ const KEYS = [
   "help_phone_number",
   "help_whatsapp_admin",
   "help_whatsapp_superadmin",
+  "contact_phone",
   "contact_email",
-  "contact_address",
   "contact_hours",
   "office_head",
-  "office_branch",
 ] as const;
 type Key = (typeof KEYS)[number];
 
@@ -31,12 +30,11 @@ const DEFAULTS: Record<Key, string> = {
   help_whatsapp_superadmin: "",
   // The public Contact page (/kontak) used to hardcode these. The defaults are
   // exactly that text, so the page looks the same until a Superadmin edits it.
+  contact_phone: "021-2200-8899",
   contact_email: "cs@gms-logistics.co.id",
-  contact_address: "Jl. Raya Cakung No. 88, Cakung, Jakarta Timur, DKI Jakarta",
   contact_hours: "Senin - Sabtu, 08.00 - 18.00 WIB",
-  // "Office & Operational Hub" shown on the Compro; editable under Pengaturan (no code change needed).
+  // The company address shown on the Compro ("Head Office"): ONE address, editable under Pengaturan.
   office_head: "Surabaya",
-  office_branch: "Jakarta (Cakung)",
 };
 
 /** Contact details shown on the public Contact page. Shared by the admin
@@ -45,25 +43,23 @@ export async function loadContactInfo(db: D1Database) {
   const rows = await db
     .prepare(
       `SELECT key, value FROM settings
-       WHERE key IN ('help_phone_number','contact_email','contact_address','contact_hours','office_head','office_branch')`,
+       WHERE key IN ('help_phone_number','contact_phone','contact_email','contact_hours','office_head')`,
     )
     .all<{ key: string; value: string }>();
   const v: Record<string, string> = {
     help_phone_number: DEFAULTS.help_phone_number,
+    contact_phone: DEFAULTS.contact_phone,
     contact_email: DEFAULTS.contact_email,
-    contact_address: DEFAULTS.contact_address,
     contact_hours: DEFAULTS.contact_hours,
     office_head: DEFAULTS.office_head,
-    office_branch: DEFAULTS.office_branch,
   };
   for (const row of rows.results ?? []) if (row.value) v[row.key] = row.value;
   return {
     helpPhoneNumber: v.help_phone_number,
+    contactPhone: v.contact_phone,
     contactEmail: v.contact_email,
-    contactAddress: v.contact_address,
     contactHours: v.contact_hours,
     headOffice: v.office_head,
-    branchHub: v.office_branch,
   };
 }
 
@@ -88,11 +84,10 @@ export function registerSettingsRoutes(router: Router) {
       helpPhoneNumber: values.help_phone_number,
       helpWhatsAppAdmin: values.help_whatsapp_admin,
       helpWhatsAppSuperadmin: values.help_whatsapp_superadmin,
+      contactPhone: values.contact_phone,
       contactEmail: values.contact_email,
-      contactAddress: values.contact_address,
       contactHours: values.contact_hours,
       headOffice: values.office_head,
-      branchHub: values.office_branch,
     });
   });
 
@@ -118,11 +113,11 @@ export function registerSettingsRoutes(router: Router) {
     const helpWhatsAppSuperadmin = readOptionalWhatsApp("helpWhatsAppSuperadmin", "WhatsApp Superadmin");
 
     // Public Contact page details.
+    const contactPhone = body.contactPhone !== undefined ? reqString(body, "contactPhone", { max: 30 }) : undefined;
     const contactEmail = body.contactEmail !== undefined ? reqString(body, "contactEmail", { max: 120 }) : undefined;
     if (contactEmail !== undefined && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
       throw Errors.badRequest("Email kontak harus berupa email yang valid.");
     }
-    const contactAddress = body.contactAddress !== undefined ? reqString(body, "contactAddress", { max: 300 }) : undefined;
     const contactHours = body.contactHours !== undefined ? reqString(body, "contactHours", { max: 150 }) : undefined;
     // Office & Operational Hub (Compro): required, trimmed, validated here regardless of the form.
     const readOffice = (field: string, label: string): string | undefined => {
@@ -130,11 +125,10 @@ export function registerSettingsRoutes(router: Router) {
       if (typeof body[field] !== "string") throw Errors.badRequest(`${label} harus berupa teks.`);
       const v = (body[field] as string).trim().replace(/\s+/g, " ");
       if (!v) throw Errors.badRequest(`${label} wajib diisi.`);
-      if (v.length > 100) throw Errors.badRequest(`${label} maksimal 100 karakter.`);
+      if (v.length > 300) throw Errors.badRequest(`${label} maksimal 300 karakter.`);
       return v;
     };
-    const headOffice = readOffice("headOffice", "Head Office");
-    const branchHub = readOffice("branchHub", "Branch / Operational Hub");
+    const headOffice = readOffice("headOffice", "Alamat Head Office");
 
     // Nomor Bantuan and the Contact page details are Superadmin-only - they're
     // meant to stay stable across an Admin/GMS-Admin turnover, so a GMS-Admin
@@ -145,10 +139,9 @@ export function registerSettingsRoutes(router: Router) {
       helpWhatsAppAdmin !== undefined ||
       helpWhatsAppSuperadmin !== undefined ||
       contactEmail !== undefined ||
-      contactAddress !== undefined ||
+      contactPhone !== undefined ||
       contactHours !== undefined ||
-      headOffice !== undefined ||
-      branchHub !== undefined;
+      headOffice !== undefined;
     if (touchesContact && actor.role !== "Superadmin") {
       throw Errors.forbidden("Hanya Superadmin yang dapat mengubah informasi kontak.");
     }
@@ -160,27 +153,18 @@ export function registerSettingsRoutes(router: Router) {
     if (helpWhatsAppAdmin !== undefined) await upsert(ctx, "help_whatsapp_admin", helpWhatsAppAdmin, now, actor.id);
     if (helpWhatsAppSuperadmin !== undefined) await upsert(ctx, "help_whatsapp_superadmin", helpWhatsAppSuperadmin, now, actor.id);
     if (contactEmail !== undefined) await upsert(ctx, "contact_email", contactEmail, now, actor.id);
-    if (contactAddress !== undefined) await upsert(ctx, "contact_address", contactAddress, now, actor.id);
+    if (contactPhone !== undefined) await upsert(ctx, "contact_phone", contactPhone, now, actor.id);
     if (contactHours !== undefined) await upsert(ctx, "contact_hours", contactHours, now, actor.id);
-    if (headOffice !== undefined || branchHub !== undefined) {
-      const before = await ctx.env.DB.prepare(`SELECT key, value FROM settings WHERE key IN ('office_head','office_branch')`).all<{ key: string; value: string }>();
-      const prev: Record<string, string> = { office_head: DEFAULTS.office_head, office_branch: DEFAULTS.office_branch };
-      for (const r of before.results ?? []) prev[r.key] = r.value;
-      const changes: string[] = [];
-      if (headOffice !== undefined && headOffice !== prev.office_head) {
+    if (headOffice !== undefined) {
+      const before = await ctx.env.DB.prepare(`SELECT value FROM settings WHERE key = 'office_head'`).first<{ value: string }>();
+      const prev = before?.value ?? DEFAULTS.office_head;
+      if (headOffice !== prev) {
         await upsert(ctx, "office_head", headOffice, now, actor.id);
-        changes.push(`Head Office: "${prev.office_head}" -> "${headOffice}"`);
-      }
-      if (branchHub !== undefined && branchHub !== prev.office_branch) {
-        await upsert(ctx, "office_branch", branchHub, now, actor.id);
-        changes.push(`Branch / Operational Hub: "${prev.office_branch}" -> "${branchHub}"`);
-      }
-      if (changes.length) {
         await writeAuditLog(ctx.env, actor, {
           action: "UPDATE_OFFICE_HUB",
-          actionLabel: "UPDATE OFFICE & OPERATIONAL HUB",
+          actionLabel: "UPDATE HEAD OFFICE",
           module: "Pengaturan",
-          description: `Office & Operational Hub diperbarui. ${changes.join("; ")}`,
+          description: `Alamat Head Office diperbarui. "${prev}" -> "${headOffice}"`,
         });
       }
     }

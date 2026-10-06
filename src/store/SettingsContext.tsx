@@ -11,12 +11,11 @@ interface Settings {
   helpWhatsAppAdmin: string;
   /** WhatsApp Superadmin - help for GMS-Admin accounts. */
   helpWhatsAppSuperadmin: string;
+  contactPhone: string;
   contactEmail: string;
-  contactAddress: string;
   contactHours: string;
-  /** Compro "Head Office" / "Branch / Operational Hub" (editable, no code change needed). */
+  /** Company address shown on the Compro ("Head Office"): one address, editable under Pengaturan. */
   headOffice: string;
-  branchHub: string;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -25,22 +24,20 @@ const DEFAULT_SETTINGS: Settings = {
   helpPhoneNumber: "",
   helpWhatsAppAdmin: "",
   helpWhatsAppSuperadmin: "",
+  contactPhone: "021-2200-8899",
   contactEmail: "cs@gms-logistics.co.id",
-  contactAddress: "Jl. Raya Cakung No. 88, Cakung, Jakarta Timur, DKI Jakarta",
   contactHours: "Senin - Sabtu, 08.00 - 18.00 WIB",
   headOffice: "Surabaya",
-  branchHub: "Jakarta (Cakung)",
 };
 
 export interface ContactInfoInput {
   helpPhoneNumber: string;
   helpWhatsAppAdmin: string;
   helpWhatsAppSuperadmin: string;
+  contactPhone: string;
   contactEmail: string;
-  contactAddress: string;
   contactHours: string;
   headOffice: string;
-  branchHub: string;
 }
 
 interface SettingsContextValue {

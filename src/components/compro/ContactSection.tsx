@@ -1,8 +1,8 @@
-import { Building2, Clock, Loader2, Mail, MapPin, Phone, TriangleAlert, Warehouse } from "lucide-react";
+import { Building2, Clock, Loader2, Mail, MessageCircle, Phone, TriangleAlert } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { C } from "../../data/compro/content";
 import { services } from "../../data/compro/servicesData";
-import { useHelpContact } from "../../store/HelpContactContext";
+import { toTelHref, useHelpContact } from "../../store/HelpContactContext";
 import { Captcha, type CaptchaHandle } from "../Captcha";
 import { api } from "../../utils/apiClient";
 import { CAPTCHA_MESSAGES, captchaFailureOf } from "../../utils/captchaApi";
@@ -202,23 +202,16 @@ export function ContactForm({ prefillMessage }: { prefillMessage: string }) {
   );
 }
 
-const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
-const sameText = (a: string, b: string) => norm(a) === norm(b);
-
 export function ContactSection({ prefillMessage }: { prefillMessage: string }) {
   const l = useL();
-  const { helpPhoneDisplay, helpWhatsAppNumber, contactEmail, contactAddress, contactHours, headOffice, branchHub } = useHelpContact();
+  const { helpPhoneDisplay, helpWhatsAppNumber, contactPhone, contactEmail, contactHours, headOffice } = useHelpContact();
   const items = [
     { icon: Mail, label: C.contact.email, value: contactEmail, href: `mailto:${contactEmail}` },
+    { icon: Phone, label: C.contact.phone, value: contactPhone, href: toTelHref(contactPhone) },
     ...(helpWhatsAppNumber
-      ? [{ icon: Phone, label: C.contact.whatsapp, value: helpPhoneDisplay, href: `https://wa.me/${helpWhatsAppNumber}` }]
+      ? [{ icon: MessageCircle, label: C.contact.whatsapp, value: helpPhoneDisplay, href: `https://wa.me/${helpWhatsAppNumber}` }]
       : []),
     { icon: Building2, label: { id: "Head Office", en: "Head Office" }, value: headOffice },
-    { icon: Warehouse, label: { id: "Branch / Operational Hub", en: "Branch / Operational Hub" }, value: branchHub },
-    // "Alamat" is hidden when Head Office / Branch already show that same text (avoids showing it twice).
-    ...(sameText(contactAddress, headOffice) || sameText(contactAddress, branchHub)
-      ? []
-      : [{ icon: MapPin, label: C.contact.address, value: contactAddress }]),
     { icon: Clock, label: C.contact.hours, value: contactHours },
   ];
   return (

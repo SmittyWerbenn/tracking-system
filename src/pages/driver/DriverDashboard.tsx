@@ -602,20 +602,11 @@ function OpenShipmentCard({
         highlighted ? "border-violet-300 ring-2 ring-violet-100" : "border-slate-200"
       }`}
     >
-        {/* Baris 1: AWB + Nomor Pelanggan (ID saja, tanpa nama). */}
+        {/* Baris 1: AWB saja (Client ID tidak ditampilkan di kartu). */}
         <div className="flex items-baseline justify-between gap-2">
           <span className="shrink-0 font-mono text-sm font-bold text-slate-900">{item.awb}</span>
-          {item.customerId && (
-            <span
-              className="min-w-0 truncate font-mono text-xs font-semibold text-blue-800"
-              title={item.customerId}
-            >
-              {item.customerId}
-            </span>
-          )}
         </div>
-        {/* Baris 2: keterangan customer. Dilewati kalau tidak ada nama yang
-            bisa ditampilkan, supaya Nomor Pelanggan tidak terulang di bawah. */}
+        {/* Baris 2: nama Client (dilewati kalau tidak ada). */}
         {item.customerName && (
           <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
             <Building2 size={12} className="shrink-0 text-slate-400" />

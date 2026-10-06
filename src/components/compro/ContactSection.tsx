@@ -202,6 +202,9 @@ export function ContactForm({ prefillMessage }: { prefillMessage: string }) {
   );
 }
 
+const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+const sameText = (a: string, b: string) => norm(a) === norm(b);
+
 export function ContactSection({ prefillMessage }: { prefillMessage: string }) {
   const l = useL();
   const { helpPhoneDisplay, helpWhatsAppNumber, contactPhone, contactEmail, contactAddress, contactHours, headOffice, branchHub } = useHelpContact();
@@ -213,7 +216,10 @@ export function ContactSection({ prefillMessage }: { prefillMessage: string }) {
       : []),
     { icon: Building2, label: { id: "Head Office", en: "Head Office" }, value: headOffice },
     { icon: Warehouse, label: { id: "Branch / Operational Hub", en: "Branch / Operational Hub" }, value: branchHub },
-    { icon: MapPin, label: C.contact.address, value: contactAddress },
+    // "Alamat" is hidden when Head Office / Branch already show that same text (avoids showing it twice).
+    ...(sameText(contactAddress, headOffice) || sameText(contactAddress, branchHub)
+      ? []
+      : [{ icon: MapPin, label: C.contact.address, value: contactAddress }]),
     { icon: Clock, label: C.contact.hours, value: contactHours },
   ];
   return (

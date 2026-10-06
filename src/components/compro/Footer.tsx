@@ -7,6 +7,9 @@ import { toTelHref, useHelpContact } from "../../store/HelpContactContext";
 import { Container } from "./SectionHeader";
 import { useL } from "./utils";
 
+const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+const sameText = (a: string, b: string) => norm(a) === norm(b);
+
 export function Footer() {
   const l = useL();
   const navigate = useNavigate();
@@ -79,7 +82,9 @@ export function Footer() {
               <li className="flex gap-2"><Mail size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><a href={`mailto:${contactEmail}`} className="break-all hover:text-gms-light">{contactEmail}</a></li>
               <li className="flex gap-2"><Building2 size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><span><span className="block text-xs font-bold uppercase tracking-wider text-gms-light">Head Office</span>{headOffice}</span></li>
               <li className="flex gap-2"><Warehouse size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><span><span className="block text-xs font-bold uppercase tracking-wider text-gms-light">Branch / Operational Hub</span>{branchHub}</span></li>
-              <li className="flex gap-2"><MapPin size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><span>{contactAddress}</span></li>
+              {!sameText(contactAddress, headOffice) && !sameText(contactAddress, branchHub) && (
+                <li className="flex gap-2"><MapPin size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><span>{contactAddress}</span></li>
+              )}
               <li className="flex gap-2"><Clock size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><span>{contactHours}</span></li>
             </ul>
           </div>

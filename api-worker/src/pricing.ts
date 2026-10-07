@@ -36,18 +36,21 @@ export function routeMinimumKg(origin: OriginCategory, dest: OriginCategory): { 
 }
 
 /** Estimated transit time of a route. Jawa -> Jawa is 1-5 days. Any route touching Luar Jawa is SEDANG (7-12 days) or
- * JAUH (14-25 days): it is JAUH when the published lead time (price_tariffs.lead_max, from the Harga Publish data) of
- * the Luar Jawa end exceeds the top of the SEDANG band (12 days), otherwise SEDANG. Never decided by the frontend. */
+ * JAUH (14-25 days), judged PER PROVINCE of the Luar Jawa end (a distance is a property of the region, not of one
+ * kecamatan): JAUH when the province's average published lead time (price_tariffs.lead_max, Harga Publish data) is at least
+ * ETA_JAUH_MIN_AVG_LEAD days. With the current data that is exactly Papua (all 6 provinces), Maluku and NTT; every other
+ * province (Aceh, Sumatera, Kalimantan, Sulawesi, Bali, NTB, ...) is SEDANG. Never decided by the frontend. */
+export const ETA_JAUH_MIN_AVG_LEAD = 10;
 export const ETA_BANDS = {
   JAWA: { min: 1, max: 5, kategori: "Jawa - Jawa" },
   SEDANG: { min: 7, max: 12, kategori: "Luar Jawa - Jarak Sedang" },
   JAUH: { min: 14, max: 25, kategori: "Luar Jawa - Jarak Jauh" },
 } as const;
 
-/** `luarJawaLeadMax`: largest published lead_max among the Luar Jawa ends of the route (ignored for Jawa -> Jawa). */
-export function routeEta(origin: OriginCategory, dest: OriginCategory, luarJawaLeadMax: number): { min: number; max: number; kategori: string } {
+/** `luarJawaAvgLead`: the largest province-average lead_max among the Luar Jawa ends of the route (ignored for Jawa -> Jawa). */
+export function routeEta(origin: OriginCategory, dest: OriginCategory, luarJawaAvgLead: number): { min: number; max: number; kategori: string } {
   if (isJawa(origin) && isJawa(dest)) return ETA_BANDS.JAWA;
-  return luarJawaLeadMax > ETA_BANDS.SEDANG.max ? ETA_BANDS.JAUH : ETA_BANDS.SEDANG;
+  return luarJawaAvgLead >= ETA_JAUH_MIN_AVG_LEAD ? ETA_BANDS.JAUH : ETA_BANDS.SEDANG;
 }
 
 /** Rate Publish used for a layanan: the stored tariff for LTL and LCL, Rp0 for every other layanan. */

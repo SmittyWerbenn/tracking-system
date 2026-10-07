@@ -168,16 +168,18 @@ export function registerOngkirRoutes(router: Router) {
       markup: isLcl ? lclOriginMarkup(origin.kategori_origin) : undefined,
     });
     if (!Number.isFinite(pricing.total) || pricing.total < 0) throw Errors.internal("Harga tidak dapat dihitung.");
-    // ETA by route (backend decides; the frontend only shows it). The Luar Jawa end's published lead time (destination: this
-    // kecamatan; origin: average of its kab/kota's kecamatan) tells SEDANG from JAUH.
-    let originLead = 0;
-    if (origin.kategori_origin === "LUAR_JAWA") {
-      const ol = await ctx.env.DB.prepare(
-        `SELECT AVG(t.lead_max) AS a FROM price_tariffs t JOIN price_regions g ON g.id = t.region_id WHERE g.provinsi = ? AND g.kabupaten_kota = ?`,
-      ).bind(str(asal.provinsi), str(asal.kota)).first<{ a: number | null }>();
-      originLead = Math.round(ol?.a ?? 0);
-    }
-    const luarJawaLead = Math.max(tarif.wilayah_tujuan === "LUAR_JAWA" ? tarif.lead_max : 0, originLead);
+    // ETA by route (backend decides; the frontend only shows it). The distance class comes from the province of each Luar
+    // Jawa end: its average published lead time (see routeEta).
+    const provAvgLead = async (provinsi: string): Promise<number> => {
+      const r = await ctx.env.DB.prepare(
+        `SELECT AVG(t.lead_max) AS a FROM price_tariffs t JOIN price_regions g ON g.id = t.region_id WHERE g.provinsi = ?`,
+      ).bind(provinsi).first<{ a: number | null }>();
+      return r?.a ?? 0;
+    };
+    const luarJawaLead = Math.max(
+      origin.kategori_origin === "LUAR_JAWA" ? await provAvgLead(str(asal.provinsi)) : 0,
+      tarif.wilayah_tujuan === "LUAR_JAWA" ? await provAvgLead(str(tujuan.provinsi)) : 0,
+    );
     const eta = routeEta(origin.kategori_origin, tarif.wilayah_tujuan, luarJawaLead);
 
     return ok({

@@ -23,6 +23,9 @@ import { useDebounced, usePagedList } from "../../utils/usePagedList";
 interface TariffRow {
   id: number;
   provinsi: string;
+  pulau: string | null;
+  /** SEDANG / JAUH from Java (Master Wilayah); null for Java itself. */
+  jarakJawa: "SEDANG" | "JAUH" | null;
   kabupatenKota: string;
   kecamatan: string;
   kategoriArea: string;
@@ -53,6 +56,9 @@ interface Preview {
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
 
+/** Distance class from Java for display; Java itself has none. */
+const jarakLabel = (j: "SEDANG" | "JAUH" | null) => (j === "SEDANG" ? "Sedang" : j === "JAUH" ? "Jauh" : "-");
+
 const fmtIso = (iso: string) => {
   const w = isoToWib(iso);
   return formatTanggalJam(w.tanggal, w.jam);
@@ -67,24 +73,28 @@ export default function RatePublish() {
   const [provinsi, setProvinsi] = useState("");
   const [kota, setKota] = useState("");
   const [kategori, setKategori] = useState("");
-  const [facets, setFacets] = useState<{ provinsi: string[]; kota: string[]; kategori: string[] }>({ provinsi: [], kota: [], kategori: [] });
+  const [pulau, setPulau] = useState("");
+  const [jarak, setJarak] = useState("");
+  const [facets, setFacets] = useState<{ provinsi: string[]; kota: string[]; kategori: string[]; pulau: string[] }>({ provinsi: [], kota: [], kategori: [], pulau: [] });
   const [refreshing, setRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
 
   const debounced = useDebounced(search.trim());
-  const list = usePagedList<TariffRow>("/api/rate-publish", { q: debounced, provinsi, kota, kategori }, undefined, { pageSizeKey: "rate-publish", defaultPageSize: 20 });
+  const list = usePagedList<TariffRow>("/api/rate-publish", { q: debounced, provinsi, kota, kategori, pulau, jarak }, undefined, { pageSizeKey: "rate-publish", defaultPageSize: 20 });
 
   useEffect(() => {
     api.get<typeof facets>(`/api/rate-publish/facets${provinsi ? `?provinsi=${encodeURIComponent(provinsi)}` : ""}`).then(setFacets).catch(() => {});
   }, [provinsi]);
 
-  const hasFilter = !!(search.trim() || provinsi || kota || kategori);
+  const hasFilter = !!(search.trim() || provinsi || kota || kategori || pulau || jarak);
   function resetFilters() {
     setSearch("");
     setProvinsi("");
     setKota("");
     setKategori("");
+    setPulau("");
+    setJarak("");
   }
 
   async function handleRefresh() {
@@ -133,11 +143,13 @@ export default function RatePublish() {
       if (provinsi) qs.set("provinsi", provinsi);
       if (kota) qs.set("kota", kota);
       if (kategori) qs.set("kategori", kategori);
+      if (pulau) qs.set("pulau", pulau);
+      if (jarak) qs.set("jarak", jarak);
       const res = await api.get<{ items: TariffRow[] }>(`/api/rate-publish/export?${qs.toString()}`);
       downloadCsv(
         "rate-publish.csv",
-        ["ID", "Provinsi", "Kabupaten/Kota", "Kecamatan", "Kategori Area", "Rate Publish Lama", "Rate Publish Baru"],
-        res.items.map((r) => [String(r.id), r.provinsi, r.kabupatenKota, r.kecamatan, r.kategoriArea, String(r.tarifPerKg), String(r.tarifPerKg)]),
+        ["ID", "Provinsi", "Pulau", "Jarak dari Jawa", "Kabupaten/Kota", "Kecamatan", "Kategori Area", "Rate Publish Lama", "Rate Publish Baru"],
+        res.items.map((r) => [String(r.id), r.provinsi, r.pulau ?? "", jarakLabel(r.jarakJawa), r.kabupatenKota, r.kecamatan, r.kategoriArea, String(r.tarifPerKg), String(r.tarifPerKg)]),
       );
     } catch (err) {
       setPageError(err instanceof Error ? err.message : "Gagal mengunduh data.");
@@ -264,6 +276,18 @@ export default function RatePublish() {
             <option key={k} value={k}>{k}</option>
           ))}
         </MasterFilterSelect>
+        <MasterFilterSelect value={pulau} onChange={setPulau} label="Filter pulau">
+          <option value="">Semua Pulau</option>
+          {facets.pulau.map((p) => (
+            <option key={p} value={p}>{p}</option>
+          ))}
+        </MasterFilterSelect>
+        <MasterFilterSelect value={jarak} onChange={setJarak} label="Filter jarak dari Jawa">
+          <option value="">Semua Jarak</option>
+          <option value="SEDANG">Jarak Sedang</option>
+          <option value="JAUH">Jarak Jauh</option>
+          <option value="JAWA">Pulau Jawa (tanpa jarak)</option>
+        </MasterFilterSelect>
         <MasterFilterReset visible={hasFilter} onReset={resetFilters} />
       </MasterDataToolbar>
 
@@ -273,9 +297,11 @@ export default function RatePublish() {
         </div>
       )}
 
-      <MasterTableCard minWidth={980}>
+      <MasterTableCard minWidth={1180}>
         <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
           <tr>
+            <th className="px-4 py-3 font-medium">Pulau</th>
+            <th className="px-4 py-3 font-medium">Jarak dari Jawa</th>
             <th className="px-4 py-3 font-medium">Provinsi</th>
             <th className="px-4 py-3 font-medium">Kabupaten / Kota</th>
             <th className="px-4 py-3 font-medium">Kecamatan</th>
@@ -289,6 +315,14 @@ export default function RatePublish() {
         <tbody className="divide-y divide-slate-100">
           {list.items.map((t) => (
             <tr key={t.id} className="hover:bg-slate-50">
+              <td className="whitespace-nowrap px-4 py-3 text-slate-600">{t.pulau ?? "-"}</td>
+              <td className="whitespace-nowrap px-4 py-3">
+                {t.jarakJawa ? (
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${t.jarakJawa === "JAUH" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-800"}`}>{jarakLabel(t.jarakJawa)}</span>
+                ) : (
+                  <span className="text-slate-400">-</span>
+                )}
+              </td>
               <td className="px-4 py-3 text-slate-600">{t.provinsi}</td>
               <td className="px-4 py-3 text-slate-600">{t.kabupatenKota}</td>
               <td className="px-4 py-3 font-medium text-slate-900">{t.kecamatan}</td>
@@ -315,7 +349,7 @@ export default function RatePublish() {
             </tr>
           ))}
           {list.items.length === 0 && (
-            <MasterTableMessage colSpan={8} loading={list.loading} loadingText="Memuat Rate Publish..." icon={Tags} title={hasFilter ? "Tidak ada data yang cocok." : "Belum ada data Rate Publish."} />
+            <MasterTableMessage colSpan={10} loading={list.loading} loadingText="Memuat Rate Publish..." icon={Tags} title={hasFilter ? "Tidak ada data yang cocok." : "Belum ada data Rate Publish."} />
           )}
         </tbody>
       </MasterTableCard>

@@ -140,7 +140,7 @@ function summarize(results: RowResult[]) {
   };
 }
 
-const LIST_SELECT = `SELECT t.id, g.provinsi, g.kabupaten_kota, t.kecamatan, t.kategori_area, t.tarif_per_kg, t.lead_time, t.updated_at, t.updated_by_name
+const LIST_SELECT = `SELECT t.id, g.provinsi, g.pulau, g.jarak_jawa, g.kabupaten_kota, t.kecamatan, t.kategori_area, t.tarif_per_kg, t.lead_time, t.updated_at, t.updated_by_name
   FROM price_tariffs t JOIN price_regions g ON g.id = t.region_id`;
 
 function listWhere(url: URL) {
@@ -158,11 +158,19 @@ function listWhere(url: URL) {
   if (kota) { where.push("g.kabupaten_kota = ?"); params.push(kota); }
   const kategori = url.searchParams.get("kategori");
   if (kategori) { where.push("t.kategori_area = ?"); params.push(kategori); }
+  const pulau = url.searchParams.get("pulau");
+  if (pulau) { where.push("g.pulau = ?"); params.push(pulau); }
+  // jarak: SEDANG / JAUH, or "JAWA" for the Java regions (no distance class).
+  const jarak = url.searchParams.get("jarak");
+  if (jarak === "JAWA") where.push("g.jarak_jawa IS NULL");
+  else if (jarak) { where.push("g.jarak_jawa = ?"); params.push(jarak); }
   return { whereSql: where.length ? `WHERE ${where.join(" AND ")}` : "", params };
 }
 
 const SORTS = {
   provinsi: "g.provinsi COLLATE NOCASE",
+  pulau: "g.pulau COLLATE NOCASE",
+  jarak: "g.jarak_jawa",
   kota: "g.kabupaten_kota COLLATE NOCASE",
   kecamatan: "t.kecamatan COLLATE NOCASE",
   tarif: "t.tarif_per_kg",
@@ -174,6 +182,8 @@ function toDto(r: Record<string, unknown>) {
   return {
     id: r.id,
     provinsi: r.provinsi,
+    pulau: r.pulau ?? null,
+    jarakJawa: r.jarak_jawa ?? null,
     kabupatenKota: r.kabupaten_kota,
     kecamatan: r.kecamatan,
     kategoriArea: r.kategori_area,
@@ -200,14 +210,15 @@ export function registerRatePublishRoutes(router: Router) {
     requireSuperadmin(ctx);
     const url = new URL(ctx.request.url);
     const provinsi = url.searchParams.get("provinsi");
-    const [prov, kota, kat] = await Promise.all([
+    const [prov, kota, kat, pul] = await Promise.all([
       ctx.env.DB.prepare(`SELECT DISTINCT provinsi AS v FROM price_regions ORDER BY provinsi`).all<{ v: string }>(),
       provinsi
         ? ctx.env.DB.prepare(`SELECT kabupaten_kota AS v FROM price_regions WHERE provinsi = ? ORDER BY kabupaten_kota`).bind(provinsi).all<{ v: string }>()
         : Promise.resolve({ results: [] as { v: string }[] }),
       ctx.env.DB.prepare(`SELECT DISTINCT kategori_area AS v FROM price_tariffs ORDER BY kategori_area`).all<{ v: string }>(),
+      ctx.env.DB.prepare(`SELECT DISTINCT pulau AS v FROM price_regions WHERE pulau IS NOT NULL ORDER BY pulau`).all<{ v: string }>(),
     ]);
-    return ok({ provinsi: (prov.results ?? []).map((x) => x.v), kota: (kota.results ?? []).map((x) => x.v), kategori: (kat.results ?? []).map((x) => x.v) });
+    return ok({ provinsi: (prov.results ?? []).map((x) => x.v), kota: (kota.results ?? []).map((x) => x.v), kategori: (kat.results ?? []).map((x) => x.v), pulau: (pul.results ?? []).map((x) => x.v) });
   });
 
   // Data download for editing in Excel (same filters as the list; ID is the key the bulk update matches on).

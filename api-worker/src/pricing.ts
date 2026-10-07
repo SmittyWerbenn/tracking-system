@@ -36,10 +36,10 @@ export function routeMinimumKg(origin: OriginCategory, dest: OriginCategory): { 
 }
 
 /** Estimated transit time of a route. Jawa -> Jawa is 1-5 days. Any route touching Luar Jawa is SEDANG (7-12 days) or
- * JAUH (14-25 days), judged PER PROVINCE of the Luar Jawa end (a distance is a property of the region, not of one
- * kecamatan): JAUH when the province's average published lead time (price_tariffs.lead_max, Harga Publish data) is at least
- * ETA_JAUH_MIN_AVG_LEAD days. With the current data that is exactly Papua (all 6 provinces), Maluku and NTT; every other
- * province (Aceh, Sumatera, Kalimantan, Sulawesi, Bali, NTB, ...) is SEDANG. Never decided by the frontend. */
+ * JAUH (14-25 days): JAUH when a Luar Jawa end is classified JAUH in Master Wilayah (price_regions.jarak_jawa; currently
+ * every Papua province, Maluku and NTT, shown in the Rate Publish table), otherwise SEDANG. A region with no class yet
+ * falls back to its province's average published lead time (ETA_JAUH_MIN_AVG_LEAD days or more = JAUH). Never decided
+ * by the frontend. */
 export const ETA_JAUH_MIN_AVG_LEAD = 10;
 export const ETA_BANDS = {
   JAWA: { min: 1, max: 5, kategori: "Jawa - Jawa" },
@@ -47,10 +47,10 @@ export const ETA_BANDS = {
   JAUH: { min: 14, max: 25, kategori: "Luar Jawa - Jarak Jauh" },
 } as const;
 
-/** `luarJawaAvgLead`: the largest province-average lead_max among the Luar Jawa ends of the route (ignored for Jawa -> Jawa). */
-export function routeEta(origin: OriginCategory, dest: OriginCategory, luarJawaAvgLead: number): { min: number; max: number; kategori: string } {
+/** `jauh`: some Luar Jawa end of the route is classified JAUH (ignored for Jawa -> Jawa). */
+export function routeEta(origin: OriginCategory, dest: OriginCategory, jauh: boolean): { min: number; max: number; kategori: string } {
   if (isJawa(origin) && isJawa(dest)) return ETA_BANDS.JAWA;
-  return luarJawaAvgLead >= ETA_JAUH_MIN_AVG_LEAD ? ETA_BANDS.JAUH : ETA_BANDS.SEDANG;
+  return jauh ? ETA_BANDS.JAUH : ETA_BANDS.SEDANG;
 }
 
 /** Rate Publish used for a layanan: the stored tariff for LTL and LCL, Rp0 for every other layanan. */

@@ -2,7 +2,7 @@ import type { Router } from "../router";
 import type { Ctx } from "../types";
 import { ok, Errors } from "../http";
 import { parseJsonBody } from "../validate";
-import { calculatePricing, lclOriginMarkup, ratePublishFor, routeEta, routeMinimumKg, type OriginCategory } from "../pricing";
+import { ETA_JAUH_MIN_AVG_LEAD, calculatePricing, lclOriginMarkup, ratePublishFor, routeEta, routeMinimumKg, type OriginCategory } from "../pricing";
 import { LAYANAN_ORDER_SQL, isFallbackLayanan } from "../layanan";
 
 const WINDOW_MS = 10 * 60 * 1000;
@@ -139,19 +139,19 @@ export function registerOngkirRoutes(router: Router) {
     // Origin must be a known region: an unclassifiable origin is an error,
     // never a silent 0% / 15% / 25%.
     const origin = await ctx.env.DB.prepare(
-      `SELECT kategori_origin FROM price_regions WHERE provinsi = ? AND kabupaten_kota = ?`,
+      `SELECT kategori_origin, jarak_jawa FROM price_regions WHERE provinsi = ? AND kabupaten_kota = ?`,
     )
       .bind(str(asal.provinsi), str(asal.kota))
-      .first<{ kategori_origin: OriginCategory }>();
+      .first<{ kategori_origin: OriginCategory; jarak_jawa: string | null }>();
     if (!origin) throw Errors.badRequest("Wilayah asal tidak dikenali, sehingga harga tidak dapat dihitung.");
 
     const tarif = await ctx.env.DB.prepare(
-      `SELECT t.tarif_per_kg, t.kategori_area, t.lead_min, t.lead_max, g.kategori_origin AS wilayah_tujuan
+      `SELECT t.tarif_per_kg, t.kategori_area, t.lead_min, t.lead_max, g.kategori_origin AS wilayah_tujuan, g.jarak_jawa AS jarak_tujuan
        FROM price_tariffs t JOIN price_regions g ON g.id = t.region_id
        WHERE g.provinsi = ? AND g.kabupaten_kota = ? AND t.kecamatan = ?`,
     )
       .bind(str(tujuan.provinsi), str(tujuan.kota), str(tujuan.kecamatan))
-      .first<{ tarif_per_kg: number; kategori_area: string; lead_min: number; lead_max: number; wilayah_tujuan: OriginCategory }>();
+      .first<{ tarif_per_kg: number; kategori_area: string; lead_min: number; lead_max: number; wilayah_tujuan: OriginCategory; jarak_tujuan: string | null }>();
     if (!tarif) throw Errors.badRequest("Tarif untuk tujuan tersebut tidak ditemukan.");
 
     // Rate Publish prices LTL and LCL; every other layanan is Rp0. LTL has a minimum billing weight by destination;
@@ -168,19 +168,19 @@ export function registerOngkirRoutes(router: Router) {
       markup: isLcl ? lclOriginMarkup(origin.kategori_origin) : undefined,
     });
     if (!Number.isFinite(pricing.total) || pricing.total < 0) throw Errors.internal("Harga tidak dapat dihitung.");
-    // ETA by route (backend decides; the frontend only shows it). The distance class comes from the province of each Luar
-    // Jawa end: its average published lead time (see routeEta).
-    const provAvgLead = async (provinsi: string): Promise<number> => {
+    // ETA by route (backend decides; the frontend only shows it). Distance class = price_regions.jarak_jawa of each Luar
+    // Jawa end (the same value the Rate Publish table shows); an unclassified region falls back to its province's average lead time.
+    const isJauh = async (provinsi: string, jarak: string | null): Promise<boolean> => {
+      if (jarak) return jarak === "JAUH";
       const r = await ctx.env.DB.prepare(
         `SELECT AVG(t.lead_max) AS a FROM price_tariffs t JOIN price_regions g ON g.id = t.region_id WHERE g.provinsi = ?`,
       ).bind(provinsi).first<{ a: number | null }>();
-      return r?.a ?? 0;
+      return (r?.a ?? 0) >= ETA_JAUH_MIN_AVG_LEAD;
     };
-    const luarJawaLead = Math.max(
-      origin.kategori_origin === "LUAR_JAWA" ? await provAvgLead(str(asal.provinsi)) : 0,
-      tarif.wilayah_tujuan === "LUAR_JAWA" ? await provAvgLead(str(tujuan.provinsi)) : 0,
-    );
-    const eta = routeEta(origin.kategori_origin, tarif.wilayah_tujuan, luarJawaLead);
+    const jauh =
+      (origin.kategori_origin === "LUAR_JAWA" && (await isJauh(str(asal.provinsi), origin.jarak_jawa))) ||
+      (tarif.wilayah_tujuan === "LUAR_JAWA" && (await isJauh(str(tujuan.provinsi), tarif.jarak_tujuan)));
+    const eta = routeEta(origin.kategori_origin, tarif.wilayah_tujuan, jauh);
 
     return ok({
       asal: { provinsi: str(asal.provinsi), kota: str(asal.kota) },

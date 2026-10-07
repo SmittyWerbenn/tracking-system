@@ -41,11 +41,12 @@ export async function fetchLayananOptions(): Promise<Array<{ id: string; nama: s
   return res.items;
 }
 
-/** Minimum billing weight for a destination (+layanan), decided by the API (0 = none). */
-export async function fetchMinimumWeight(params: { provinsi: string; kota?: string; kecamatan?: string; layananId: string }): Promise<{ minimumKg: number; minimumKategori: string | null }> {
+/** Minimum billing weight of a route (origin + destination, per layanan), decided by the API (0 = none / not decidable yet). */
+export async function fetchMinimumWeight(params: { provinsi: string; kota?: string; asalProvinsi?: string; asalKota?: string; layananId: string }): Promise<{ minimumKg: number; minimumKategori: string | null }> {
   const qs = new URLSearchParams({ provinsi: params.provinsi, layananId: params.layananId });
   if (params.kota) qs.set("kota", params.kota);
-  if (params.kecamatan) qs.set("kecamatan", params.kecamatan);
+  if (params.asalProvinsi) qs.set("asalProvinsi", params.asalProvinsi);
+  if (params.asalKota) qs.set("asalKota", params.asalKota);
   return api.get(`/api/public/ongkir/minimum?${qs.toString()}`, { auth: false });
 }
 

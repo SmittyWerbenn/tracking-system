@@ -51,7 +51,7 @@ export default function CekOngkir() {
       return;
     }
     let live = true;
-    fetchMinimumWeight({ provinsi: provTujuan, kota: kotaTujuan, kecamatan: kecTujuan, layananId })
+    fetchMinimumWeight({ provinsi: provTujuan, kota: kotaTujuan, asalProvinsi: provAsal, asalKota: kotaAsal, layananId })
       .then((r) => {
         if (!live) return;
         const prev = prevMinRef.current;
@@ -69,7 +69,7 @@ export default function CekOngkir() {
     return () => {
       live = false;
     };
-  }, [provTujuan, kotaTujuan, kecTujuan, layananId]);
+  }, [provTujuan, kotaTujuan, provAsal, kotaAsal, layananId]);
   const belowMin = minWeight.kg > 0 && beratKg !== "" && Number(beratKg) > 0 && Number(beratKg) < minWeight.kg;
 
   const [result, setResult] = useState<OngkirEstimate | null>(null);

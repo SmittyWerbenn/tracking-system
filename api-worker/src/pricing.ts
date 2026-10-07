@@ -6,9 +6,8 @@
  *   -> per-kg price; total = chargeable kg x per-kg price + koli handling,
  *      rounded to the nearest Rp500.
  *
- * Harga Publish is priced for TWO layanan: LTL (origin markup 0/15/25% + minimum billing weight by destination, see
- * ltlMinimumKg) and LCL (same base rate per kg, no minimum beyond the 1 kg floor, +20% only when the ORIGIN is outside
- * Java - see lclOriginMarkup; the destination never matters). Every other layanan has a Rate Publish of Rp0
+ * Harga Publish is priced for TWO layanan, both with the same minimum billing weight by ROUTE (see routeMinimumKg):
+ * LTL (origin markup 0/15/25%) and LCL (+20% only when the ORIGIN is outside Java - see lclOriginMarkup). Every other layanan has a Rate Publish of Rp0
  * (see ratePublishFor) - the LTL/LCL rate is never reused for them.
  *
  * Base prices are never stored marked up. The origin category of every region
@@ -22,19 +21,33 @@ export const ORIGIN_MARKUP: Record<OriginCategory, number> = {
   LUAR_JAWA: 0.25,
 };
 
-/** Layanan names come from Master Layanan (nothing is listed here); these two keep their existing lead-time shift. */
-export type Layanan = string;
+/** Minimum billing weight (kg) of a route for the per-kg layanan (LTL and LCL): Jawa -> Jawa 50 kg, every other route
+ * (Luar Jawa involved at either end) 100 kg. "Jawa" = a region classified JABODETABEK or JAWA in Master Wilayah
+ * (price_regions.kategori_origin): DKI Jakarta, Banten, Jawa Barat, Jawa Tengah, DI Yogyakarta, Jawa Timur. */
+export const MINIMUM_KG = { JAWA_JAWA: 50, LUAR_JAWA: 100 } as const;
+export type MinimumKategori = "Jawa - Jawa" | "Rute Luar Jawa";
 
-/** Minimum billing weight (kg) for LTL, by DESTINATION: Jawa 50, Luar Jawa 100, Pelosok Terjauh 300. The area
- * categories already in price_tariffs.kategori_area are Pusat Kota / Sub-Urban / Pelosok / Pelosok Remote;
- * "Pelosok Remote..." is the farthest tier and is what "Pelosok Terjauh" means here. */
-export const LTL_MINIMUM_KG = { JAWA: 50, LUAR_JAWA: 100, PELOSOK_TERJAUH: 300 } as const;
-export type MinimumKategori = "Jawa" | "Luar Jawa" | "Pelosok Terjauh";
+export const isJawa = (r: OriginCategory) => r !== "LUAR_JAWA";
 
-export function ltlMinimumKg(destRegion: OriginCategory, kategoriArea: string): { kg: number; kategori: MinimumKategori } {
-  if (/^pelosok remote/i.test(kategoriArea.trim())) return { kg: LTL_MINIMUM_KG.PELOSOK_TERJAUH, kategori: "Pelosok Terjauh" };
-  if (destRegion === "LUAR_JAWA") return { kg: LTL_MINIMUM_KG.LUAR_JAWA, kategori: "Luar Jawa" };
-  return { kg: LTL_MINIMUM_KG.JAWA, kategori: "Jawa" };
+export function routeMinimumKg(origin: OriginCategory, dest: OriginCategory): { kg: number; kategori: MinimumKategori } {
+  return isJawa(origin) && isJawa(dest)
+    ? { kg: MINIMUM_KG.JAWA_JAWA, kategori: "Jawa - Jawa" }
+    : { kg: MINIMUM_KG.LUAR_JAWA, kategori: "Rute Luar Jawa" };
+}
+
+/** Estimated transit time of a route. Jawa -> Jawa is 1-5 days. Any route touching Luar Jawa is SEDANG (7-12 days) or
+ * JAUH (14-25 days): it is JAUH when the published lead time (price_tariffs.lead_max, from the Harga Publish data) of
+ * the Luar Jawa end exceeds the top of the SEDANG band (12 days), otherwise SEDANG. Never decided by the frontend. */
+export const ETA_BANDS = {
+  JAWA: { min: 1, max: 5, kategori: "Jawa - Jawa" },
+  SEDANG: { min: 7, max: 12, kategori: "Luar Jawa - Jarak Sedang" },
+  JAUH: { min: 14, max: 25, kategori: "Luar Jawa - Jarak Jauh" },
+} as const;
+
+/** `luarJawaLeadMax`: largest published lead_max among the Luar Jawa ends of the route (ignored for Jawa -> Jawa). */
+export function routeEta(origin: OriginCategory, dest: OriginCategory, luarJawaLeadMax: number): { min: number; max: number; kategori: string } {
+  if (isJawa(origin) && isJawa(dest)) return ETA_BANDS.JAWA;
+  return luarJawaLeadMax > ETA_BANDS.SEDANG.max ? ETA_BANDS.JAUH : ETA_BANDS.SEDANG;
 }
 
 /** Rate Publish used for a layanan: the stored tariff for LTL and LCL, Rp0 for every other layanan. */
@@ -54,17 +67,6 @@ const ROUND_TO = 500;
 
 export function getOriginMarkup(category: OriginCategory): number {
   return ORIGIN_MARKUP[category];
-}
-
-/** Express/Kargo shift the published lead time (existing behaviour); the
- * origin never does. */
-export function adjustLeadTime(min: number, max: number, layanan: Layanan): { min: number; max: number } {
-  if (layanan === "Express") {
-    const m = Math.max(1, Math.ceil(min * 0.5));
-    return { min: m, max: Math.max(m, Math.ceil(max * 0.6)) };
-  }
-  if (layanan === "Kargo") return { min: min + 1, max: max + 2 };
-  return { min, max };
 }
 
 export interface PricingInput {

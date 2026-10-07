@@ -2,7 +2,7 @@ import type { Router } from "../router";
 import type { Ctx } from "../types";
 import { ok, Errors } from "../http";
 import { parseJsonBody } from "../validate";
-import { adjustLeadTime, calculatePricing, lclOriginMarkup, ltlMinimumKg, ratePublishFor, type OriginCategory } from "../pricing";
+import { calculatePricing, lclOriginMarkup, ratePublishFor, routeEta, routeMinimumKg, type OriginCategory } from "../pricing";
 import { LAYANAN_ORDER_SQL, isFallbackLayanan } from "../layanan";
 
 const WINDOW_MS = 10 * 60 * 1000;
@@ -20,6 +20,25 @@ function checkRateLimit(key: string) {
 function str(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
 }
+
+/** Master Wilayah class of a place: the exact kab/kota when given, else the province (Luar Jawa only when EVERY region
+ * of the province is Luar Jawa). null = not a known place. */
+async function regionOf(db: D1Database, provinsi: string, kota?: string): Promise<OriginCategory | null> {
+  if (kota) {
+    const g = await db.prepare(`SELECT kategori_origin AS r FROM price_regions WHERE provinsi = ? AND kabupaten_kota = ?`).bind(provinsi, kota).first<{ r: OriginCategory }>();
+    return g?.r ?? null;
+  }
+  const g = await db
+    .prepare(`SELECT SUM(kategori_origin != 'LUAR_JAWA') AS jawa, COUNT(*) AS n FROM price_regions WHERE provinsi = ?`)
+    .bind(provinsi)
+    .first<{ jawa: number | null; n: number }>();
+  if (!g || g.n === 0) return null;
+  return (g.jawa ?? 0) > 0 ? "JAWA" : "LUAR_JAWA";
+}
+
+/** LTL and LCL are the per-kg layanan: both use the Rate Publish and the route minimum billing weight. */
+const isLtlName = (nama: string) => isFallbackLayanan(nama);
+const isLclName = (nama: string) => nama.trim().toLowerCase() === "lcl";
 
 export function registerOngkirRoutes(router: Router) {
   // Wilayah tree for the Cek Ongkir pickers, one level per call:
@@ -61,42 +80,28 @@ export function registerOngkirRoutes(router: Router) {
     return ok({ items: (r.results ?? []).map((x) => ({ id: x.id, nama: x.nama })) });
   });
 
-  // Minimum billing weight for a chosen destination + layanan, so the form can pre-fill the weight. Decided here from the
-  // database (same ltlMinimumKg rule as the price); the frontend never knows the 50/100/300 numbers itself.
-  //   provinsi only -> Jawa / Luar Jawa; + kota (+ kecamatan) -> exact area (Pelosok Remote = 300).
+  // Minimum billing weight of a ROUTE (origin + destination) for a layanan, so the form can pre-fill the weight. Decided
+  // here from Master Wilayah (same routeMinimumKg rule as the price); the frontend never knows the 50 / 100 itself.
+  // 0 = no minimum, or not decidable yet (e.g. Jawa destination while the origin is still unchosen).
   router.get("/api/public/ongkir/minimum", async (ctx: Ctx) => {
     checkRateLimit(ctx.request.headers.get("CF-Connecting-IP") ?? "unknown");
     const q = new URL(ctx.request.url).searchParams;
-    const provinsi = str(q.get("provinsi"));
-    const kota = str(q.get("kota"));
-    const kecamatan = str(q.get("kecamatan"));
-    const layananId = str(q.get("layananId"));
     const none = { minimumKg: 0, minimumKategori: null as string | null };
-    if (!provinsi || !layananId) return ok(none);
+    const layananId = str(q.get("layananId"));
+    const tProv = str(q.get("provinsi"));
+    if (!tProv || !layananId) return ok(none);
     const lay = await ctx.env.DB.prepare(`SELECT nama FROM layanans WHERE id = ? AND aktif = 1 AND deleted_at IS NULL`).bind(layananId).first<{ nama: string }>();
-    if (!lay || !isFallbackLayanan(lay.nama)) return ok(none); // only LTL has a minimum billing weight
-    let region: OriginCategory | null = null;
-    let kategoriArea = "";
-    if (kota && kecamatan) {
-      const t = await ctx.env.DB.prepare(
-        `SELECT t.kategori_area, g.kategori_origin AS r FROM price_tariffs t JOIN price_regions g ON g.id = t.region_id
-         WHERE g.provinsi = ? AND g.kabupaten_kota = ? AND t.kecamatan = ?`,
-      ).bind(provinsi, kota, kecamatan).first<{ kategori_area: string; r: OriginCategory }>();
-      if (t) { region = t.r; kategoriArea = t.kategori_area; }
+    if (!lay || !(isLtlName(lay.nama) || isLclName(lay.nama))) return ok(none);
+    const dest = await regionOf(ctx.env.DB, tProv, str(q.get("kota")) || undefined);
+    if (!dest) return ok(none);
+    const aProv = str(q.get("asalProvinsi"));
+    const origin = aProv ? await regionOf(ctx.env.DB, aProv, str(q.get("asalKota")) || undefined) : null;
+    if (!origin) {
+      // Origin not chosen yet: only a Luar Jawa destination already fixes the answer (100 kg).
+      if (dest === "LUAR_JAWA") return ok({ minimumKg: routeMinimumKg("LUAR_JAWA", dest).kg, minimumKategori: routeMinimumKg("LUAR_JAWA", dest).kategori });
+      return ok(none);
     }
-    if (!region && kota) {
-      const g = await ctx.env.DB.prepare(`SELECT kategori_origin AS r FROM price_regions WHERE provinsi = ? AND kabupaten_kota = ?`).bind(provinsi, kota).first<{ r: OriginCategory }>();
-      region = g?.r ?? null;
-    }
-    if (!region) {
-      // Province level: Luar Jawa only if every region of the province is Luar Jawa; any Jawa/Jabodetabek region -> Jawa.
-      const g = await ctx.env.DB.prepare(
-        `SELECT SUM(kategori_origin != 'LUAR_JAWA') AS jawa, COUNT(*) AS n FROM price_regions WHERE provinsi = ?`,
-      ).bind(provinsi).first<{ jawa: number | null; n: number }>();
-      if (!g || g.n === 0) return ok(none);
-      region = (g.jawa ?? 0) > 0 ? "JAWA" : "LUAR_JAWA";
-    }
-    const m = ltlMinimumKg(region, kategoriArea);
+    const m = routeMinimumKg(origin, dest);
     return ok({ minimumKg: m.kg, minimumKategori: m.kategori });
   });
 
@@ -128,8 +133,8 @@ export function registerOngkirRoutes(router: Router) {
       .first<{ id: string; nama: string }>();
     if (!layananRow) throw Errors.badRequest("Jenis layanan tidak tersedia atau tidak aktif.");
     const layanan = layananRow.nama;
-    const isLtl = isFallbackLayanan(layananRow.nama);
-    const isLcl = layananRow.nama.trim().toLowerCase() === "lcl";
+    const isLtl = isLtlName(layananRow.nama);
+    const isLcl = isLclName(layananRow.nama);
 
     // Origin must be a known region: an unclassifiable origin is an error,
     // never a silent 0% / 15% / 25%.
@@ -152,7 +157,8 @@ export function registerOngkirRoutes(router: Router) {
     // Rate Publish prices LTL and LCL; every other layanan is Rp0. LTL has a minimum billing weight by destination;
     // LCL has its own origin rule (+20% when the ORIGIN is Luar Jawa, nothing otherwise) instead of the LTL markup.
     const ratePublish = ratePublishFor(isLtl || isLcl, tarif.tarif_per_kg);
-    const minimum = isLtl ? ltlMinimumKg(tarif.wilayah_tujuan, tarif.kategori_area) : null;
+    // Minimum billing weight by route (Jawa-Jawa 50 kg, any Luar Jawa route 100 kg), for both per-kg layanan.
+    const minimum = isLtl || isLcl ? routeMinimumKg(origin.kategori_origin, tarif.wilayah_tujuan) : null;
     const pricing = calculatePricing({
       basePricePerKg: ratePublish,
       originCategory: origin.kategori_origin,
@@ -162,7 +168,17 @@ export function registerOngkirRoutes(router: Router) {
       markup: isLcl ? lclOriginMarkup(origin.kategori_origin) : undefined,
     });
     if (!Number.isFinite(pricing.total) || pricing.total < 0) throw Errors.internal("Harga tidak dapat dihitung.");
-    const lead = adjustLeadTime(tarif.lead_min, tarif.lead_max, layanan);
+    // ETA by route (backend decides; the frontend only shows it). The Luar Jawa end's published lead time (destination: this
+    // kecamatan; origin: average of its kab/kota's kecamatan) tells SEDANG from JAUH.
+    let originLead = 0;
+    if (origin.kategori_origin === "LUAR_JAWA") {
+      const ol = await ctx.env.DB.prepare(
+        `SELECT AVG(t.lead_max) AS a FROM price_tariffs t JOIN price_regions g ON g.id = t.region_id WHERE g.provinsi = ? AND g.kabupaten_kota = ?`,
+      ).bind(str(asal.provinsi), str(asal.kota)).first<{ a: number | null }>();
+      originLead = Math.round(ol?.a ?? 0);
+    }
+    const luarJawaLead = Math.max(tarif.wilayah_tujuan === "LUAR_JAWA" ? tarif.lead_max : 0, originLead);
+    const eta = routeEta(origin.kategori_origin, tarif.wilayah_tujuan, luarJawaLead);
 
     return ok({
       asal: { provinsi: str(asal.provinsi), kota: str(asal.kota) },
@@ -175,8 +191,9 @@ export function registerOngkirRoutes(router: Router) {
       minimumKg: minimum?.kg ?? 0,
       minimumKategori: minimum?.kategori ?? null,
       ratePublishTersedia: isLtl || isLcl,
-      leadTimeMin: lead.min,
-      leadTimeMax: lead.max,
+      leadTimeMin: eta.min,
+      leadTimeMax: eta.max,
+      etaKategori: eta.kategori,
     });
   });
 }

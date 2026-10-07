@@ -148,7 +148,7 @@ export default function RatePublish() {
       const res = await api.get<{ items: TariffRow[] }>(`/api/rate-publish/export?${qs.toString()}`);
       downloadCsv(
         "rate-publish.csv",
-        ["ID", "Provinsi", "Pulau", "Jarak dari Jawa", "Kabupaten/Kota", "Kecamatan", "Kategori Area", "Rate Publish Lama", "Rate Publish Baru"],
+        ["ID", "Provinsi", "Pulau", "Jarak dari P.Jawa", "Kabupaten/Kota", "Kecamatan", "Kategori Area", "Rate Publish Lama", "Rate Publish Baru"],
         res.items.map((r) => [String(r.id), r.provinsi, r.pulau ?? "", jarakLabel(r.jarakJawa), r.kabupatenKota, r.kecamatan, r.kategoriArea, String(r.tarifPerKg), String(r.tarifPerKg)]),
       );
     } catch (err) {
@@ -282,7 +282,7 @@ export default function RatePublish() {
             <option key={p} value={p}>{p}</option>
           ))}
         </MasterFilterSelect>
-        <MasterFilterSelect value={jarak} onChange={setJarak} label="Filter jarak dari Jawa">
+        <MasterFilterSelect value={jarak} onChange={setJarak} label="Filter jarak dari P.Jawa">
           <option value="">Semua Jarak</option>
           <option value="SEDANG">Jarak Sedang</option>
           <option value="JAUH">Jarak Jauh</option>
@@ -301,7 +301,7 @@ export default function RatePublish() {
         <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
           <tr>
             <th className="px-4 py-3 font-medium">Pulau</th>
-            <th className="px-4 py-3 font-medium">Jarak dari Jawa</th>
+            <th className="px-4 py-3 font-medium">Jarak dari P.Jawa</th>
             <th className="px-4 py-3 font-medium">Provinsi</th>
             <th className="px-4 py-3 font-medium">Kabupaten / Kota</th>
             <th className="px-4 py-3 font-medium">Kecamatan</th>

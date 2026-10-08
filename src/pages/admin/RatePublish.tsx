@@ -14,6 +14,7 @@ import {
 } from "../../components/master/MasterData";
 import { Pagination } from "../../components/Pagination";
 import { useToast } from "../../components/Toast";
+import { useAuth } from "../../store/AuthContext";
 import { api, ApiError } from "../../utils/apiClient";
 import { downloadCsv, normalizeHeader, readTableFromFile } from "../../utils/csv";
 import { formatTanggalJam, isoToWib } from "../../utils/format";
@@ -65,9 +66,16 @@ const fmtIso = (iso: string) => {
 };
 
 /** Superadmin / Admin: maintain the Harga Publish (price_tariffs) that Cek Ongkir reads. Only the master rate is
- * edited here - every pricing rule (markup, layanan, minimum, rounding) stays in the API's pricing service. */
+ * edited here - every pricing rule (markup, layanan, minimum, rounding) stays in the API's pricing service.
+ *
+ * Access Control (selain enforced di backend API):
+ * - Superadmin + Admin (GMS-Admin): VIEW + EDIT
+ * - Viewer + Client (Admin Client): VIEW ONLY (tanpa kolom Aksi, tanpa tombol Bulk Update/Unduh Data)
+ */
 export default function RatePublish() {
   const toast = useToast();
+  const { profile } = useAuth();
+  const canManage = profile?.role === "Superadmin" || profile?.role === "Admin";
   const fileRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
   const [provinsi, setProvinsi] = useState("");
@@ -241,11 +249,13 @@ export default function RatePublish() {
         refreshing={refreshing}
         addLabel=""
         secondary={
-          <>
-            <MasterToolbarButton onClick={() => void handleExport()} icon={Download} label="Unduh Data" busy={exporting} />
-            <MasterToolbarButton onClick={() => fileRef.current?.click()} icon={FileSpreadsheet} label="Bulk Update" busy={bulkBusy} />
-            <input ref={fileRef} type="file" accept=".xlsx,.csv,text/csv" className="hidden" onChange={handleFile} />
-          </>
+          canManage ? (
+            <>
+              <MasterToolbarButton onClick={() => void handleExport()} icon={Download} label="Unduh Data" busy={exporting} />
+              <MasterToolbarButton onClick={() => fileRef.current?.click()} icon={FileSpreadsheet} label="Bulk Update" busy={bulkBusy} />
+              <input ref={fileRef} type="file" accept=".xlsx,.csv,text/csv" className="hidden" onChange={handleFile} />
+            </>
+          ) : undefined
         }
       >
         <MasterSearchInput value={search} onChange={setSearch} placeholder="Cari provinsi, kab/kota, atau kecamatan..." />
@@ -309,7 +319,7 @@ export default function RatePublish() {
             <th className="px-4 py-3 font-medium">Lead Time</th>
             <th className="px-4 py-3 text-right font-medium">Rate Publish / kg</th>
             <th className="px-4 py-3 font-medium">Diperbarui</th>
-            <th className="px-4 py-3 font-medium">Aksi</th>
+            {canManage && <th className="px-4 py-3 font-medium">Aksi</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -330,26 +340,28 @@ export default function RatePublish() {
               <td className="whitespace-nowrap px-4 py-3 text-slate-600">{t.leadTime}</td>
               <td className="whitespace-nowrap px-4 py-3 text-right font-mono font-semibold text-slate-900">{formatRupiah(t.tarifPerKg)}</td>
               <td className="px-4 py-3 text-xs text-slate-500">{t.updatedAt ? <>{fmtIso(t.updatedAt)}<br />{t.updatedBy}</> : "-"}</td>
-              <td className="px-4 py-3">
-                <div className={ACTION_ROW}>
-                  <ActionButton
-                    tone="edit"
-                    title="Edit Rate Publish"
-                    aria-label="Edit Rate Publish"
-                    onClick={() => {
-                      setEditing(t);
-                      setEditValue(String(t.tarifPerKg));
-                      setEditError(null);
-                    }}
-                  >
-                    <Pencil size={16} />
-                  </ActionButton>
-                </div>
-              </td>
+              {canManage && (
+                <td className="px-4 py-3">
+                  <div className={ACTION_ROW}>
+                    <ActionButton
+                      tone="edit"
+                      title="Edit Rate Publish"
+                      aria-label="Edit Rate Publish"
+                      onClick={() => {
+                        setEditing(t);
+                        setEditValue(String(t.tarifPerKg));
+                        setEditError(null);
+                      }}
+                    >
+                      <Pencil size={16} />
+                    </ActionButton>
+                  </div>
+                </td>
+              )}
             </tr>
           ))}
           {list.items.length === 0 && (
-            <MasterTableMessage colSpan={10} loading={list.loading} loadingText="Memuat Rate Publish..." icon={Tags} title={hasFilter ? "Tidak ada data yang cocok." : "Belum ada data Rate Publish."} />
+            <MasterTableMessage colSpan={canManage ? 10 : 9} loading={list.loading} loadingText="Memuat Rate Publish..." icon={Tags} title={hasFilter ? "Tidak ada data yang cocok." : "Belum ada data Rate Publish."} />
           )}
         </tbody>
       </MasterTableCard>

@@ -101,7 +101,7 @@ function getNavGroups(role: UserRole): { title: string; items: NavItem[] }[] {
       items: [
         { to: adminPath("/users"), label: "Manajemen User", icon: Users, end: true, roles: ["Superadmin", "Admin"] },
         { to: adminPath("/users-driver"), label: "Manajemen User Driver", icon: Truck, end: true, roles: ["Superadmin", "Admin"] },
-        { to: adminPath("/rate-publish"), label: "Rate Publish", icon: Tags, end: true, roles: ["Superadmin"] },
+        { to: adminPath("/rate-publish"), label: "Rate Publish", icon: Tags, end: true, roles: ["Superadmin", "Admin", "Viewer", "Client"] },
         { to: adminPath("/audit-log"), label: "Audit Log", icon: History, end: true, roles: ["Superadmin", "Admin"] },
         { to: adminPath("/recycle-bin"), label: "Recycle Bin", icon: Trash2, end: true, roles: ["Superadmin"] },
         {

@@ -145,3 +145,30 @@ export function RequireSuperadmin({ children }: { children: ReactNode }) {
 
   return <>{children}</>;
 }
+
+/** Rate Publish view access: Superadmin, Admin (GMS-Admin), Viewer, dan Client (Admin Client).
+ * Semua role ini dapat melihat Rate Publish, namun hanya Superadmin + Admin yang dapat mengubah
+ * (ditentukan di komponen halaman dan enforced di backend API).
+ *
+ * Pola pengecekan mengikuti RequireShipmentCreator agar konsisten. */
+export function RequireRatePublish({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading, profile } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) return <LoadingScreen />;
+  if (!isAuthenticated) {
+    return <Navigate to={adminPath("/login")} replace state={{ from: location }} />;
+  }
+  const redirect = driverRedirect(profile);
+  if (redirect) return redirect;
+  if (
+    profile?.role !== "Superadmin" &&
+    profile?.role !== "Admin" &&
+    profile?.role !== "Viewer" &&
+    profile?.role !== "Client"
+  ) {
+    return <Navigate to={adminPath("/")} replace />;
+  }
+
+  return <>{children}</>;
+}

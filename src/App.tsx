@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { RequireAdmin, RequireAuth, RequireNotMitra, RequireDriver, RequireShipmentCreator, RequireSuperadmin, RequireTrackingUpdater } from "./components/RequireAuth";
+import { RequireAdmin, RequireAuth, RequireNotMitra, RequireDriver, RequireShipmentCreator, RequireSuperadmin, RequireTrackingUpdater, RequireRatePublish } from "./components/RequireAuth";
 import { AuditLogProvider } from "./store/AuditLogContext";
 import { AuthProvider } from "./store/AuthContext";
 import { FeedbackProvider } from "./store/FeedbackContext";
@@ -160,7 +160,7 @@ export default function App() {
               <Route path={adminPath("/recycle-bin")} element={<RequireSuperadmin><RecycleBin /></RequireSuperadmin>} />
               <Route path={adminPath("/pemulihan-order")} element={<RequireAdmin><RecoveryRequests /></RequireAdmin>} />
               <Route path={adminPath("/users-driver")} element={<RequireAdmin><DriverUserManagement /></RequireAdmin>} />
-              <Route path={adminPath("/rate-publish")} element={<RequireSuperadmin><RatePublish /></RequireSuperadmin>} />
+              <Route path={adminPath("/rate-publish")} element={<RequireRatePublish><RatePublish /></RequireRatePublish>} />
               <Route path={adminPath("/pengaturan/tracking")} element={<RequireAdmin><SettingsPage /></RequireAdmin>} />
               <Route path={adminPath("/pengaturan/akun")} element={<RequireAuth><AccountSettings /></RequireAuth>} />
             </>

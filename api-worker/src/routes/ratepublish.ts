@@ -1,5 +1,5 @@
 import type { Router } from "../router";
-import type { Ctx } from "../types";
+import type { AuthedUser, Ctx } from "../types";
 import { ok, Errors, HttpError } from "../http";
 import { parseJsonBody } from "../validate";
 import { newId } from "../crypto";
@@ -11,10 +11,21 @@ function requireRatePublishView(ctx: Ctx) {
   return requirePermission(ctx, "settings.view");
 }
 
-/** Rate Publish WRITE/MANAGE access: role dengan permission `settings.manage`
- * (Superadmin + Admin/GMS-Admin). Client dan Viewer TIDAK termasuk. */
+/** Rate Publish EXPORT access (unduh data, tidak mengubah apa pun): permission
+ * `settings.manage` - Superadmin + Admin (GMS-Admin)/GMS-Admin. */
 function requireRatePublishManage(ctx: Ctx) {
   return requirePermission(ctx, "settings.manage");
+}
+
+/** Rate Publish WRITE access (ubah Harga Publish + Bulk Update): Superadmin SAJA.
+ * Admin (GMS-Admin) hanya melihat (settings.view) dan mengunduh data
+ * (settings.manage/export) - nilai Rate Publish tidak bisa diubahnya. */
+function requireRatePublishEdit(ctx: Ctx): AuthedUser {
+  const actor = requireRatePublishManage(ctx);
+  if (actor.role !== "Superadmin") {
+    throw Errors.forbidden("Hanya Superadmin yang dapat mengubah Rate Publish.");
+  }
+  return actor;
 }
 import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta, likeTerm, orderBy } from "../pagination";
@@ -26,8 +37,9 @@ import { parsePagination, pageMeta, likeTerm, orderBy } from "../pagination";
  * request (no cache), so an edit is live immediately. Shipments store no prices, so past orders are untouched.
  *
  * Access Control (berdasarkan permission RBAC existing):
- * - VIEW (settings.view):   Superadmin, Admin (GMS-Admin), Viewer, Client (Admin Client)
- * - MANAGE (settings.manage): Superadmin + Admin (GMS-Admin) SAJA - Client dan Viewer TIDAK dapat mengubah
+ * - VIEW (settings.view):     Superadmin, Admin (GMS-Admin), Viewer, Client (Admin Client)
+ * - EXPORT (settings.manage): Superadmin + Admin (GMS-Admin) - unduh data saja, tidak mengubah nilai
+ * - WRITE/EDIT:               Superadmin SAJA (Admin/GMS-Admin, Viewer, Client tidak dapat mengubah)
  */
 const MAX_RATE = 10_000_000;
 const MAX_BULK_ROWS = 10000;
@@ -237,7 +249,7 @@ export function registerRatePublishRoutes(router: Router) {
   });
 
   router.patch("/api/rate-publish/:id", async (ctx: Ctx, params) => {
-    const actor = requireRatePublishManage(ctx);
+    const actor = requireRatePublishEdit(ctx);
     const id = Number(params.id);
     if (!Number.isInteger(id) || id <= 0) throw Errors.notFound("Data area tidak ditemukan.");
     const body = await parseJsonBody(ctx.request);
@@ -267,7 +279,7 @@ export function registerRatePublishRoutes(router: Router) {
 
   // Step 1 of Bulk Update: validate + show what WOULD change. Writes nothing.
   router.post("/api/rate-publish/bulk/preview", async (ctx: Ctx) => {
-    requireRatePublishManage(ctx);
+    requireRatePublishEdit(ctx);
     const body = await parseJsonBody(ctx.request);
     const results = await validateRows(ctx.env, body.rows);
     return ok({ summary: summarize(results), rows: results });
@@ -275,7 +287,7 @@ export function registerRatePublishRoutes(router: Router) {
 
   // Step 2: re-validate against the live data and apply ALL changes in one transaction (or none).
   router.post("/api/rate-publish/bulk/commit", async (ctx: Ctx) => {
-    const actor = requireRatePublishManage(ctx);
+    const actor = requireRatePublishEdit(ctx);
     const body = await parseJsonBody(ctx.request);
     const results = await validateRows(ctx.env, body.rows);
     const summary = summarize(results);

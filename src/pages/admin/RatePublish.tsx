@@ -65,17 +65,21 @@ const fmtIso = (iso: string) => {
   return formatTanggalJam(w.tanggal, w.jam);
 };
 
-/** Superadmin / Admin: maintain the Harga Publish (price_tariffs) that Cek Ongkir reads. Only the master rate is
- * edited here - every pricing rule (markup, layanan, minimum, rounding) stays in the API's pricing service.
+/** Rate Publish: Harga Publish (price_tariffs) yang dipakai halaman Cek Ongkir. Hanya nilai master rate yang
+ * dikelola di sini - semua aturan harga (markup asal, layanan, minimum, pembulatan) tetap di service pricing API.
  *
- * Access Control (selain enforced di backend API):
- * - Superadmin + Admin (GMS-Admin): VIEW + EDIT
- * - Viewer + Client (Admin Client): VIEW ONLY (tanpa kolom Aksi, tanpa tombol Bulk Update/Unduh Data)
+ * Access Control (ditegakkan ulang di backend API):
+ * - Superadmin: VIEW + EDIT (kolom Aksi, Bulk Update, Unduh Data)
+ * - Admin (GMS-Admin): VIEW + Unduh Data - tanpa kolom Aksi dan tanpa Bulk Update
+ * - Viewer + Client (Admin Client): VIEW ONLY (tanpa kolom Diperbarui/Aksi, tanpa Bulk Update/Unduh Data)
  */
 export default function RatePublish() {
   const toast = useToast();
   const { profile } = useAuth();
+  // Diperbarui + Unduh Data: Superadmin & Admin (GMS-Admin).
   const canManage = profile?.role === "Superadmin" || profile?.role === "Admin";
+  // Ubah Rate Publish (kolom Aksi) + Bulk Update: Superadmin saja.
+  const canEdit = profile?.role === "Superadmin";
   const fileRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
   const [provinsi, setProvinsi] = useState("");
@@ -252,8 +256,12 @@ export default function RatePublish() {
           canManage ? (
             <>
               <MasterToolbarButton onClick={() => void handleExport()} icon={Download} label="Unduh Data" busy={exporting} />
-              <MasterToolbarButton onClick={() => fileRef.current?.click()} icon={FileSpreadsheet} label="Bulk Update" busy={bulkBusy} />
-              <input ref={fileRef} type="file" accept=".xlsx,.csv,text/csv" className="hidden" onChange={handleFile} />
+              {canEdit && (
+                <>
+                  <MasterToolbarButton onClick={() => fileRef.current?.click()} icon={FileSpreadsheet} label="Bulk Update" busy={bulkBusy} />
+                  <input ref={fileRef} type="file" accept=".xlsx,.csv,text/csv" className="hidden" onChange={handleFile} />
+                </>
+              )}
             </>
           ) : undefined
         }
@@ -318,9 +326,10 @@ export default function RatePublish() {
             <th className="px-4 py-3 font-medium">Kategori</th>
             <th className="px-4 py-3 font-medium">Lead Time</th>
             <th className="px-4 py-3 text-right font-medium">Rate Publish / kg</th>
-            {/* Diperbarui hanya untuk Superadmin + Admin (GMS-Admin); Viewer + Client (Admin Client) view-only tanpa kolom ini. */}
+            {/* Diperbarui untuk Superadmin + Admin (GMS-Admin); Viewer + Client view-only tanpa kolom ini.
+                Aksi (ubah rate) hanya Superadmin. */}
             {canManage && <th className="px-4 py-3 font-medium">Diperbarui</th>}
-            {canManage && <th className="px-4 py-3 font-medium">Aksi</th>}
+            {canEdit && <th className="px-4 py-3 font-medium">Aksi</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -343,7 +352,7 @@ export default function RatePublish() {
               {canManage && (
                 <td className="px-4 py-3 text-xs text-slate-500">{t.updatedAt ? <>{fmtIso(t.updatedAt)}<br />{t.updatedBy}</> : "-"}</td>
               )}
-              {canManage && (
+              {canEdit && (
                 <td className="px-4 py-3">
                   <div className={ACTION_ROW}>
                     <ActionButton
@@ -364,7 +373,7 @@ export default function RatePublish() {
             </tr>
           ))}
           {list.items.length === 0 && (
-            <MasterTableMessage colSpan={canManage ? 10 : 8} loading={list.loading} loadingText="Memuat Rate Publish..." icon={Tags} title={hasFilter ? "Tidak ada data yang cocok." : "Belum ada data Rate Publish."} />
+            <MasterTableMessage colSpan={canEdit ? 10 : canManage ? 9 : 8} loading={list.loading} loadingText="Memuat Rate Publish..." icon={Tags} title={hasFilter ? "Tidak ada data yang cocok." : "Belum ada data Rate Publish."} />
           )}
         </tbody>
       </MasterTableCard>

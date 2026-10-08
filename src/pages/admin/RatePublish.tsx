@@ -318,6 +318,8 @@ export default function RatePublish() {
             <th className="px-4 py-3 font-medium">Kategori</th>
             <th className="px-4 py-3 font-medium">Lead Time</th>
             <th className="px-4 py-3 text-right font-medium">Rate Publish / kg</th>
+            {/* Diperbarui hanya untuk Superadmin + Admin (GMS-Admin); Viewer + Client (Admin Client) view-only tanpa kolom ini. */}
+            {canManage && <th className="px-4 py-3 font-medium">Diperbarui</th>}
             {canManage && <th className="px-4 py-3 font-medium">Aksi</th>}
           </tr>
         </thead>
@@ -338,7 +340,9 @@ export default function RatePublish() {
               <td className="whitespace-nowrap px-4 py-3 text-slate-600">{t.kategoriArea}</td>
               <td className="whitespace-nowrap px-4 py-3 text-slate-600">{t.leadTime}</td>
               <td className="whitespace-nowrap px-4 py-3 text-right font-mono font-semibold text-slate-900">{formatRupiah(t.tarifPerKg)}</td>
-              <td className="px-4 py-3 text-xs text-slate-500">{t.updatedAt ? <>{fmtIso(t.updatedAt)}<br />{t.updatedBy}</> : "-"}</td>
+              {canManage && (
+                <td className="px-4 py-3 text-xs text-slate-500">{t.updatedAt ? <>{fmtIso(t.updatedAt)}<br />{t.updatedBy}</> : "-"}</td>
+              )}
               {canManage && (
                 <td className="px-4 py-3">
                   <div className={ACTION_ROW}>
@@ -360,7 +364,7 @@ export default function RatePublish() {
             </tr>
           ))}
           {list.items.length === 0 && (
-            <MasterTableMessage colSpan={canManage ? 10 : 9} loading={list.loading} loadingText="Memuat Rate Publish..." icon={Tags} title={hasFilter ? "Tidak ada data yang cocok." : "Belum ada data Rate Publish."} />
+            <MasterTableMessage colSpan={canManage ? 10 : 8} loading={list.loading} loadingText="Memuat Rate Publish..." icon={Tags} title={hasFilter ? "Tidak ada data yang cocok." : "Belum ada data Rate Publish."} />
           )}
         </tbody>
       </MasterTableCard>

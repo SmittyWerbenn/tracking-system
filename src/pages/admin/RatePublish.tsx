@@ -318,7 +318,7 @@ export default function RatePublish() {
             <th className="px-4 py-3 font-medium">Kategori</th>
             <th className="px-4 py-3 font-medium">Lead Time</th>
             <th className="px-4 py-3 text-right font-medium">Rate Publish / kg</th>
-            <th className="px-4 py-3 font-medium">Aksi</th>
+            {canManage && <th className="px-4 py-3 font-medium">Aksi</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">

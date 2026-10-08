@@ -172,3 +172,29 @@ export function RequireRatePublish({ children }: { children: ReactNode }) {
 
   return <>{children}</>;
 }
+
+/** Master Layanan view access: Superadmin, Admin (GMS-Admin), Viewer, dan Client (Admin Client) -
+ * sama seperti Rate Publish. Hanya Superadmin + Admin yang boleh menambah/mengubah/menonaktifkan
+ * (tombol dan kolom Aksi disembunyikan di halaman, dan ditegakkan ulang di backend API lewat
+ * permission `settings.manage`). */
+export function RequireLayananView({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading, profile } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) return <LoadingScreen />;
+  if (!isAuthenticated) {
+    return <Navigate to={adminPath("/login")} replace state={{ from: location }} />;
+  }
+  const redirect = driverRedirect(profile);
+  if (redirect) return redirect;
+  if (
+    profile?.role !== "Superadmin" &&
+    profile?.role !== "Admin" &&
+    profile?.role !== "Viewer" &&
+    profile?.role !== "Client"
+  ) {
+    return <Navigate to={adminPath("/")} replace />;
+  }
+
+  return <>{children}</>;
+}

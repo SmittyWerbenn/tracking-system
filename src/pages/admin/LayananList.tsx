@@ -13,6 +13,7 @@ import {
   MasterTableMessage,
 } from "../../components/master/MasterData";
 import { useLayanan, type Layanan } from "../../store/LayananContext";
+import { useAuth } from "../../store/AuthContext";
 import { ApiError } from "../../utils/apiClient";
 import { DeleteButton } from "../../components/DeleteButton";
 import { Pagination } from "../../components/Pagination";
@@ -26,6 +27,11 @@ const CUSTOM = "__custom__";
 type StatusFilter = "semua" | "aktif" | "nonaktif";
 
 export default function LayananList() {
+  const { profile } = useAuth();
+  /** Superadmin + Admin (GMS-Admin) maintain the master data; Viewer + Client
+   * (Admin Client) may open this page but only VIEW - no Tambah button and no
+   * Aksi column. Enforced again server-side with `settings.manage`. */
+  const canManage = profile?.role === "Superadmin" || profile?.role === "Admin";
   const { layanans, standardOptions, fallback, isLoading: lookupLoading, refresh: refreshLookup, createLayanan, updateLayanan } =
     useLayanan();
   const [refreshing, setRefreshing] = useState(false);
@@ -165,7 +171,12 @@ export default function LayananList() {
         description={`Daftar layanan pengiriman. Hanya layanan berstatus Aktif yang bisa dipilih saat membuat atau mengedit order. Layanan yang tidak dikenali pada order baru otomatis memakai ${fallback.nama}.`}
       />
 
-      <MasterDataToolbar onRefresh={handleRefresh} refreshing={refreshing} addLabel="Tambah Layanan" onAdd={() => openAdd()}>
+      <MasterDataToolbar
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
+        addLabel="Tambah Layanan"
+        onAdd={canManage ? () => openAdd() : undefined}
+      >
         <MasterSearchInput value={search} onChange={setSearch} placeholder="Cari nama atau deskripsi layanan..." />
         <MasterFilterSelect value={statusFilter} onChange={(v) => setStatusFilter(v as StatusFilter)} label="Filter status">
           <option value="semua">Semua Status</option>
@@ -185,7 +196,7 @@ export default function LayananList() {
               aktif.
             </p>
           </div>
-          {!existingNames.has(fallback.nama.toLowerCase()) && (
+          {canManage && !existingNames.has(fallback.nama.toLowerCase()) && (
             <button
               type="button"
               onClick={() => openAdd(fallback.nama)}
@@ -213,13 +224,13 @@ export default function LayananList() {
             <th className="px-4 py-3 font-medium">Deskripsi</th>
             <th className="px-4 py-3 font-medium">Dipakai Order</th>
             <th className="px-4 py-3 font-medium">Status</th>
-            <th className="px-4 py-3 font-medium">Aksi</th>
+            {canManage && <th className="px-4 py-3 font-medium">Aksi</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {filtered.length === 0 && (
             <MasterTableMessage
-              colSpan={5}
+              colSpan={canManage ? 5 : 4}
               loading={list.loading && filtered.length === 0}
               loadingText="Memuat data layanan..."
               icon={Layers}
@@ -261,33 +272,35 @@ export default function LayananList() {
                   {l.aktif ? "Aktif" : "Nonaktif"}
                 </span>
               </td>
-              <td className="px-4 py-3">
-                <div className={ACTION_ROW}>
-                  <button
-                    onClick={() => openEdit(l)}
-                    title="Edit"
-                    className={actionClass("edit")}
-                  >
-                    <Pencil size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleToggleActive(l)}
-                    disabled={busyId === l.id || (l.fallback && l.aktif)}
-                    title={l.fallback && l.aktif ? "Layanan default tidak bisa dinonaktifkan" : l.aktif ? "Nonaktifkan" : "Aktifkan"}
-                    className={actionClass(l.aktif ? "danger" : "success")}
-                  >
-                    {l.aktif ? <Ban size={16} /> : <RotateCcw size={16} />}
-                  </button>
-                  {!l.fallback && (
-                    <DeleteButton
-                      entityType="layanan"
-                      id={l.id}
-                      details={[["Layanan", l.nama]]}
-                      onDone={refresh}
-                    />
-                  )}
-                </div>
-              </td>
+              {canManage && (
+                <td className="px-4 py-3">
+                  <div className={ACTION_ROW}>
+                    <button
+                      onClick={() => openEdit(l)}
+                      title="Edit"
+                      className={actionClass("edit")}
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleToggleActive(l)}
+                      disabled={busyId === l.id || (l.fallback && l.aktif)}
+                      title={l.fallback && l.aktif ? "Layanan default tidak bisa dinonaktifkan" : l.aktif ? "Nonaktifkan" : "Aktifkan"}
+                      className={actionClass(l.aktif ? "danger" : "success")}
+                    >
+                      {l.aktif ? <Ban size={16} /> : <RotateCcw size={16} />}
+                    </button>
+                    {!l.fallback && (
+                      <DeleteButton
+                        entityType="layanan"
+                        id={l.id}
+                        details={[["Layanan", l.nama]]}
+                        onDone={refresh}
+                      />
+                    )}
+                  </div>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

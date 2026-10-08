@@ -1,5 +1,5 @@
 import type { Router } from "../router";
-import type { Ctx } from "../types";
+import type { AuthedUser, Ctx } from "../types";
 import { ok, Errors } from "../http";
 import { parseJsonBody, reqString, optBool } from "../validate";
 import { newId } from "../crypto";
@@ -24,10 +24,20 @@ function readDeskripsi(body: Record<string, unknown>): string | null {
   return v || null;
 }
 
-/** Master Layanan (shipment services) CRUD - Superadmin/Admin only, same
- * gate as Master Mitra / Clients. GET is readable by every signed-in role
- * (order forms, incl. the Client portal, need the dropdown list) but
- * non-managers only ever receive ACTIVE entries. */
+/** Master Layanan MANAGE access: roles holding `settings.manage` -
+ * Superadmin + Admin (GMS-Admin) only, same gate as Master Mitra / Clients. */
+function requireLayananManage(ctx: Ctx) {
+  return requirePermission(ctx, "settings.manage");
+}
+
+/** Master Layanan VIEW access (untuk "lihat juga yang Nonaktif"): role dengan
+ * permission `settings.view` - Superadmin, Admin (GMS-Admin), Viewer, dan
+ * Client (Admin Client), sama seperti Rate Publish. Role lain (Driver, Mitra)
+ * tetap boleh membaca daftar (order form butuh dropdown-nya, lihat GET di
+ * bawah) tapi hanya menerima entri yang AKTIF. */
+function canViewAllLayanan(actor: AuthedUser): boolean {
+  return hasPermission(actor.role, "settings.view");
+}
 async function fallbackReady(ctx: Ctx): Promise<boolean> {
   const r = await ctx.env.DB.prepare(`SELECT 1 AS x FROM layanans WHERE deleted_at IS NULL AND aktif = 1 AND nama = ? COLLATE NOCASE`)
     .bind(FALLBACK_LAYANAN)
@@ -38,8 +48,8 @@ async function fallbackReady(ctx: Ctx): Promise<boolean> {
 export function registerLayananRoutes(router: Router) {
   router.get("/api/layanan", async (ctx: Ctx) => {
     const actor = requireAuth(ctx);
-    const canManage = hasPermission(actor.role, "users.manage");
-    const onlyActive = !canManage || new URL(ctx.request.url).searchParams.get("active") === "true";
+    const canViewAll = canViewAllLayanan(actor);
+    const onlyActive = !canViewAll || new URL(ctx.request.url).searchParams.get("active") === "true";
 
     const url = new URL(ctx.request.url);
     const paged = wantsPaging(url);
@@ -89,7 +99,7 @@ export function registerLayananRoutes(router: Router) {
   });
 
   router.post("/api/layanan", async (ctx: Ctx) => {
-    const actor = requirePermission(ctx, "users.manage");
+    const actor = requireLayananManage(ctx);
     const body = await parseJsonBody(ctx.request);
     const nama = canonicalLayananName(reqString(body, "nama", { max: 50 }));
     if (!nama) throw Errors.badRequest("Nama layanan wajib diisi.");
@@ -117,7 +127,7 @@ export function registerLayananRoutes(router: Router) {
   });
 
   router.patch("/api/layanan/:id", async (ctx: Ctx, params) => {
-    const actor = requirePermission(ctx, "users.manage");
+    const actor = requireLayananManage(ctx);
     const layanan = await ctx.env.DB.prepare(`SELECT id, nama, aktif, deskripsi FROM layanans WHERE id = ? AND deleted_at IS NULL`)
       .bind(params.id)
       .first<{ id: string; nama: string; aktif: number; deskripsi: string | null }>();

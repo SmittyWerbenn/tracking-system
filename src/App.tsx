@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { RequireAdmin, RequireAuth, RequireNotMitra, RequireDriver, RequireShipmentCreator, RequireSuperadmin, RequireTrackingUpdater, RequireRatePublish } from "./components/RequireAuth";
+import { RequireAdmin, RequireAuth, RequireNotMitra, RequireDriver, RequireShipmentCreator, RequireSuperadmin, RequireTrackingUpdater, RequireRatePublish, RequireLayananView } from "./components/RequireAuth";
 import { AuditLogProvider } from "./store/AuditLogContext";
 import { AuthProvider } from "./store/AuthContext";
 import { FeedbackProvider } from "./store/FeedbackContext";
@@ -152,7 +152,7 @@ export default function App() {
               <Route path={adminPath("/kota")} element={<RequireAuth><LocationList /></RequireAuth>} />
               <Route path={adminPath("/customer")} element={<RequireAdmin><CustomerList /></RequireAdmin>} />
               <Route path={adminPath("/mitra")} element={<RequireAdmin><MitraList /></RequireAdmin>} />
-              <Route path={adminPath("/layanan")} element={<RequireAdmin><LayananList /></RequireAdmin>} />
+              <Route path={adminPath("/layanan")} element={<RequireLayananView><LayananList /></RequireLayananView>} />
               <Route path={adminPath("/notifikasi")} element={<RequireAuth><NotificationCenter /></RequireAuth>} />
               <Route path={adminPath("/feedback")} element={<RequireAuth><FeedbackAdmin /></RequireAuth>} />
               <Route path={adminPath("/audit-log")} element={<RequireAdmin><AuditLogPage /></RequireAdmin>} />

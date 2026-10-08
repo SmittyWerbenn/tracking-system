@@ -85,7 +85,7 @@ function getNavGroups(role: UserRole): { title: string; items: NavItem[] }[] {
           label: "Master Layanan",
           icon: Layers,
           end: true,
-          roles: ["Superadmin", "Admin"],
+          roles: ["Superadmin", "Admin", "Viewer", "Client"],
         },
       ],
     },

@@ -146,8 +146,8 @@ export default function MitraList() {
         />
       )}
       <MasterDataHeader
-        title="Master Mitra"
-        description="Data mitra agen pihak ketiga. Tambahkan Mitra di sini terlebih dahulu, lalu kaitkan dengan akun user (role Mitra) di Manajemen User, dan teruskan/assign paket ke Mitra dari Detail Paket."
+        title="Mitra"
+        description="Data mitra agen pihak ketiga. Tambahkan Mitra di sini terlebih dahulu, lalu kaitkan dengan akun user (role Mitra) di User Admin, dan teruskan/assign paket ke Mitra dari Detail Paket."
       />
 
       <MasterDataToolbar onRefresh={handleRefresh} refreshing={refreshing} addLabel="Tambah Mitra" onAdd={openAdd}>

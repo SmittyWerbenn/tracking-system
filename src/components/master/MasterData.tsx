@@ -4,8 +4,8 @@ import { RefreshButton } from "../RefreshButton";
 
 /**
  * Shared building blocks for every Master Data page (Master Armada, Kota &
- * Titik Transit, Clients, Master Mitra, Master Layanan), so they all share
- * one layout:
+ * Titik Transit, Rate Publish, Master Layanan, plus Mitra/Clients/User Admin
+ * under Manajemen User), so they all share one layout:
  *
  *   <MasterDataHeader />   title + description
  *   <MasterDataToolbar />  [ search + filters ........ ] [ Refresh ] [ + Tambah ]

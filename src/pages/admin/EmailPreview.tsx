@@ -163,7 +163,7 @@ export default function EmailPreview() {
         <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
           Pengiriman email real sedang dinonaktifkan untuk menghemat kuota SMTP. Aktifkan kembali di{" "}
           <Link to={adminPath("/pengaturan/tracking")} className="font-semibold underline">
-            Admin &gt; Pengaturan
+            Admin &gt; Konfigurasi &gt; Tracking
           </Link>{" "}
           untuk mengirim email ini.
         </div>

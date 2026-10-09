@@ -161,7 +161,11 @@ export default function App() {
               <Route path={adminPath("/pemulihan-order")} element={<RequireAdmin><RecoveryRequests /></RequireAdmin>} />
               <Route path={adminPath("/users-driver")} element={<RequireAdmin><DriverUserManagement /></RequireAdmin>} />
               <Route path={adminPath("/rate-publish")} element={<RequireRatePublish><RatePublish /></RequireRatePublish>} />
-              <Route path={adminPath("/pengaturan/tracking")} element={<RequireAdmin><SettingsPage /></RequireAdmin>} />
+              {/* Konfigurasi (Portal Admin) - satu halaman (SettingsPage) dengan tiga menu:
+                  Tracking, Informasi CS, Informasi Bantuan. Guard & permission tetap RequireAdmin. */}
+              <Route path={adminPath("/pengaturan/tracking")} element={<RequireAdmin><SettingsPage section="tracking" /></RequireAdmin>} />
+              <Route path={adminPath("/pengaturan/informasi-cs")} element={<RequireAdmin><SettingsPage section="cs" /></RequireAdmin>} />
+              <Route path={adminPath("/pengaturan/info-bantuan")} element={<RequireAdmin><SettingsPage section="bantuan" /></RequireAdmin>} />
               <Route path={adminPath("/pengaturan/akun")} element={<RequireAuth><AccountSettings /></RequireAuth>} />
             </>
           )}

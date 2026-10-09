@@ -291,11 +291,11 @@ export default function UserManagementView({ group }: { group: UserGroup }) {
       )}
       {/* Actions top-right; the (many) filters get their own full-width row. */}
       <MasterDataHeader
-        title={isDriverGroup ? "Manajemen User Driver" : "Manajemen User"}
+        title={isDriverGroup ? "User Driver" : "User Admin"}
         description={
           isDriverGroup
-            ? "Kelola akun Driver beserta Nopol truck yang ditautkan. Akun non-Driver ada di menu Manajemen User."
-            : `Kelola akun internal dan peran akses (GMS-Admin / Viewer / Client / Mitra). Akun Driver ada di menu Manajemen User Driver.${
+            ? "Kelola akun Driver beserta Nopol truck yang ditautkan. Akun non-Driver ada di menu User Admin."
+            : `Kelola akun internal dan peran akses (GMS-Admin / Viewer / Client / Mitra). Akun Driver ada di menu User Driver.${
                 isAdminActor ? " Sebagai GMS-Admin, Anda hanya dapat menambah/mengubah akun Viewer, Client, dan Mitra." : ""
               }`
         }
@@ -731,7 +731,7 @@ export default function UserManagementView({ group }: { group: UserGroup }) {
                       ))}
                     </select>
                     <span className="mt-1.5 block text-[11px] text-slate-400">
-                      Akun ini hanya akan melihat dan meng-update paket yang sudah diteruskan ke Mitra yang dipilih. Mitra belum ada di daftar? Tambahkan dulu di menu Master Mitra.
+                      Akun ini hanya akan melihat dan meng-update paket yang sudah diteruskan ke Mitra yang dipilih. Mitra belum ada di daftar? Tambahkan dulu di menu Mitra.
                     </span>
                   </label>
                 )}

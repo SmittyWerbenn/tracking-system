@@ -1,10 +1,13 @@
 import { adminPath } from "../../utils/urls";
 import {
   Building2,
+  ChevronRight,
   Handshake,
+  Headset,
   History,
   Layers,
   LayoutDashboard,
+  LifeBuoy,
   LogOut,
   MapPinned,
   Menu,
@@ -20,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
 import { useAuth } from "../../store/AuthContext";
 import { roleLabel, type UserRole } from "../../types";
@@ -43,7 +46,22 @@ interface NavItem {
 // Every role except Mitra - used for items a Mitra account shouldn't see
 // but that stay open to everyone else (no admin-only intent otherwise).
 const NON_MITRA_ROLES: UserRole[] = ["Superadmin", "Admin", "Driver", "Viewer", "Client"];
+// Superadmin + Admin (GMS-Admin) - the existing gate for these items, kept
+// identical after the menu regroup (moved menus never gain access).
+const ADMIN_ONLY_ROLES: UserRole[] = ["Superadmin", "Admin"];
+// Menu Rate Publish & Master Layanan: Superadmin, Admin, Viewer, Client
+// (view-only for the last two) - unchanged from before the regroup.
+const PUBLISHED_VIEW_ROLES: UserRole[] = ["Superadmin", "Admin", "Viewer", "Client"];
 
+/**
+ * Portal Admin navigation. Ordered exactly as the agreed structure:
+ *   Operasional -> Master Data -> Manajemen User -> Konfigurasi -> Sistem & Keamanan.
+ * Group titles are rendered uppercase by the sidebar styling.
+ *
+ * The `roles` list of every item is the SAME gate it had before the regroup -
+ * moving an item to another group never widens access (routes/guards and the
+ * API authorization are untouched).
+ */
 function getNavGroups(role: UserRole): { title: string; items: NavItem[] }[] {
   const isMitra = role === "Mitra";
   return [
@@ -59,6 +77,8 @@ function getNavGroups(role: UserRole): { title: string; items: NavItem[] }[] {
           roles: ["Superadmin", "Admin", "Client"],
         },
         { to: adminPath("/pengiriman"), label: isMitra ? "Paket Saya" : "Data Pengiriman", icon: Package, end: true },
+        { to: adminPath("/pemulihan-order"), label: "Pemulihan Order", icon: RotateCcw, end: true, roles: ADMIN_ONLY_ROLES },
+        { to: adminPath("/feedback"), label: "Feedback Customer", icon: MessageSquare, end: true, roles: NON_MITRA_ROLES },
       ],
     },
     {
@@ -66,54 +86,57 @@ function getNavGroups(role: UserRole): { title: string; items: NavItem[] }[] {
       items: [
         { to: adminPath("/armada"), label: "Master Armada", icon: Truck, end: false, roles: NON_MITRA_ROLES },
         { to: adminPath("/kota"), label: "Kota & Titik Transit", icon: MapPinned, end: true, roles: NON_MITRA_ROLES },
-        {
-          to: adminPath("/customer"),
-          label: "Clients",
-          icon: Building2,
-          end: true,
-          roles: ["Superadmin", "Admin"],
-        },
-        {
-          to: adminPath("/mitra"),
-          label: "Master Mitra",
-          icon: Handshake,
-          end: true,
-          roles: ["Superadmin", "Admin"],
-        },
-        {
-          to: adminPath("/layanan"),
-          label: "Master Layanan",
-          icon: Layers,
-          end: true,
-          roles: ["Superadmin", "Admin", "Viewer", "Client"],
-        },
+        { to: adminPath("/rate-publish"), label: "Rate Publish", icon: Tags, end: true, roles: PUBLISHED_VIEW_ROLES },
+        { to: adminPath("/layanan"), label: "Master Layanan", icon: Layers, end: true, roles: PUBLISHED_VIEW_ROLES },
       ],
     },
     {
-      title: "Layanan",
+      title: "Manajemen User",
       items: [
-        { to: adminPath("/feedback"), label: "Feedback Customer", icon: MessageSquare, end: true, roles: NON_MITRA_ROLES },
-        { to: adminPath("/pemulihan-order"), label: "Pemulihan Order", icon: RotateCcw, end: true, roles: ["Superadmin", "Admin"] },
+        { to: adminPath("/users"), label: "User Admin", icon: Users, end: true, roles: ADMIN_ONLY_ROLES },
+        { to: adminPath("/users-driver"), label: "User Driver", icon: Truck, end: true, roles: ADMIN_ONLY_ROLES },
+        { to: adminPath("/customer"), label: "Clients", icon: Building2, end: true, roles: ADMIN_ONLY_ROLES },
+        { to: adminPath("/mitra"), label: "Mitra", icon: Handshake, end: true, roles: ADMIN_ONLY_ROLES },
       ],
     },
     {
-      title: "Sistem",
+      title: "Konfigurasi",
       items: [
-        { to: adminPath("/users"), label: "Manajemen User", icon: Users, end: true, roles: ["Superadmin", "Admin"] },
-        { to: adminPath("/users-driver"), label: "Manajemen User Driver", icon: Truck, end: true, roles: ["Superadmin", "Admin"] },
-        { to: adminPath("/rate-publish"), label: "Rate Publish", icon: Tags, end: true, roles: ["Superadmin", "Admin", "Viewer", "Client"] },
-        { to: adminPath("/audit-log"), label: "Audit Log", icon: History, end: true, roles: ["Superadmin", "Admin"] },
+        // One existing page (SettingsPage) with three sections, one menu each:
+        // "Tracking" (was labelled "Pengaturan"), Informasi CS, Informasi Bantuan.
+        { to: adminPath("/pengaturan/tracking"), label: "Tracking", icon: Settings, end: true, roles: ADMIN_ONLY_ROLES },
+        { to: adminPath("/pengaturan/informasi-cs"), label: "Informasi CS", icon: Headset, end: true, roles: ADMIN_ONLY_ROLES },
+        { to: adminPath("/pengaturan/info-bantuan"), label: "Informasi Bantuan", icon: LifeBuoy, end: true, roles: ADMIN_ONLY_ROLES },
+      ],
+    },
+    {
+      title: "Sistem & Keamanan",
+      items: [
+        { to: adminPath("/audit-log"), label: "Audit Log", icon: History, end: true, roles: ADMIN_ONLY_ROLES },
         { to: adminPath("/recycle-bin"), label: "Recycle Bin", icon: Trash2, end: true, roles: ["Superadmin"] },
-        {
-          to: adminPath("/pengaturan/tracking"),
-          label: "Pengaturan",
-          icon: Settings,
-          end: true,
-          roles: ["Superadmin", "Admin"],
-        },
       ],
     },
   ];
+}
+
+/**
+ * Breadcrumb (group > menu) derived from the SAME nav definition above, so the
+ * labels always follow the menu. The longest matching path wins, which keeps
+ * sub-pages such as /armada/:id under their own menu; `end` items only match
+ * exactly. Returns null for pages that aren't in the menu (e.g. /resi/:awb).
+ */
+function findNavCrumb(role: UserRole, pathname: string): { group: string; label: string } | null {
+  let best: { group: string; label: string; to: string } | null = null;
+  for (const group of getNavGroups(role)) {
+    for (const item of group.items) {
+      if (item.roles && !item.roles.includes(role)) continue;
+      const isMatch = item.end ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`);
+      if (isMatch && (!best || item.to.length > best.to.length)) {
+        best = { group: group.title, label: item.label, to: item.to };
+      }
+    }
+  }
+  return best ? { group: best.group, label: best.label } : null;
 }
 
 export function AdminLayout({ children }: { children: ReactNode }) {
@@ -122,8 +145,13 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const { logout, profile } = useAuth();
   const avatarUrl = useFileUrl(profile?.fotoFileId);
   const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   if (!profile) return null;
+
+  // Breadcrumb follows the (new) menu structure, so its label always matches
+  // the sidebar entry for the page being viewed.
+  const crumb = findNavCrumb(profile.role, pathname);
 
   function handleLogout() {
     setLogoutOpen(false);
@@ -239,7 +267,19 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           />
         )}
 
-        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8 print:p-0">{children}</main>
+        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8 print:p-0">
+          {crumb && (
+            <nav
+              aria-label="Breadcrumb"
+              className="no-print mb-3 flex flex-wrap items-center gap-1.5 text-xs text-slate-400"
+            >
+              <span className="uppercase tracking-wide">{crumb.group}</span>
+              <ChevronRight size={12} className="shrink-0" />
+              <span className="font-medium text-slate-600">{crumb.label}</span>
+            </nav>
+          )}
+          {children}
+        </main>
       </div>
     </div>
   );

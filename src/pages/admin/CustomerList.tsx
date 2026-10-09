@@ -162,7 +162,7 @@ export default function CustomerList() {
         ...(canEditKontrak ? { kontrakNoPelanggan: newKontrak.trim() } : {}),
       });
       setModalOpen(false);
-      setNotice(`Client ${customerId} berhasil ditambahkan. Sekarang bisa dipilih di Manajemen User > Tambah User.`);
+      setNotice(`Client ${customerId} berhasil ditambahkan. Sekarang bisa dipilih di User Admin > Tambah User.`);
       await fetchCustomers();
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : "Gagal menambahkan client.");
@@ -215,7 +215,7 @@ export default function CustomerList() {
       )}
       <MasterDataHeader
         title="Clients"
-        description="Daftar Client beserta akun yang tertaut dan jumlah pengiriman. Client baru ditambahkan di sini terlebih dahulu, lalu dipilih saat membuat user di Manajemen User."
+        description="Daftar Client beserta akun yang tertaut dan jumlah pengiriman. Client baru ditambahkan di sini terlebih dahulu, lalu dipilih saat membuat user di User Admin."
       />
 
       <MasterDataToolbar onRefresh={handleRefresh} refreshing={refreshing} addLabel="Tambah Client" onAdd={openModal}>

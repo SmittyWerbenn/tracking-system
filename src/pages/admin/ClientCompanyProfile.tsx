@@ -1,6 +1,7 @@
 import { AlertTriangle, Image as ImageIcon, Pencil, X } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 import { AdminLayout } from "../../components/layout/AdminLayout";
+import { ACTION_ROW, actionClass } from "../../components/ActionButton";
 import {
   MasterDataHeader,
   MasterDataToolbar,
@@ -232,8 +233,13 @@ export default function ClientCompanyProfile() {
               <td className="whitespace-nowrap px-4 py-3 text-slate-600">{new Date(l.createdAt).toLocaleDateString("id-ID")}</td>
               {canManage && (
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => openEdit(l)} title="Edit" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900">
+                  <div className={ACTION_ROW}>
+                    <button
+                      onClick={() => openEdit(l)}
+                      title="Edit"
+                      aria-label="Edit"
+                      className={actionClass("edit")}
+                    >
                       <Pencil size={16} />
                     </button>
                     <DeleteButton

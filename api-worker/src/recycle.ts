@@ -10,7 +10,7 @@ export const RETENTION_DAYS = 90;
  * nothing is purged because expires_at passed. Flip to true (and re-add the cron call) only on an explicit decision. */
 export const AUTO_PURGE_ENABLED = false;
 
-export type RecycleEntity = "shipment" | "user" | "truck" | "location" | "layanan" | "mitra" | "client";
+export type RecycleEntity = "shipment" | "user" | "truck" | "location" | "layanan" | "mitra" | "client" | "tariff";
 
 export interface EntityRow {
   id: string;
@@ -471,7 +471,40 @@ const client: EntityDef = {
   },
 };
 
-export const ENTITIES: Record<RecycleEntity, EntityDef> = { shipment, user, truck, location, layanan, mitra, client };
+const tariff: EntityDef = {
+  type: "tariff",
+  title: "Rate Publish",
+  module: "Rate Publish",
+  table: "price_tariffs",
+  pk: "id",
+  async load(env, id) {
+    const t = await env.DB.prepare(
+      `SELECT t.*, g.provinsi, g.kabupaten_kota, g.kecamatan AS region_kecamatan, g.pulau, g.jarak_jawa, g.kategori_origin
+       FROM price_tariffs t JOIN price_regions g ON g.id = t.region_id WHERE t.id = ?`,
+    )
+      .bind(Number(id))
+      .first<Record<string, unknown>>();
+    if (!t) return null;
+    const labelParts: string[] = [];
+    if (t.kecamatan) labelParts.push(String(t.kecamatan));
+    if (t.kabupaten_kota) labelParts.push(String(t.kabupaten_kota));
+    if (t.provinsi) labelParts.push(String(t.provinsi));
+    const label = labelParts.length > 0 ? labelParts.join(" · ") : `ID ${id}`;
+    const sublabel = t.tarif_per_kg ? `Rp${Number(t.tarif_per_kg).toLocaleString("id-ID")} / kg` : "";
+    return {
+      id: String(t.id),
+      label,
+      sublabel,
+      deletedAt: (t.deleted_at as string | null) ?? null,
+      snapshot: t,
+    };
+  },
+  async purgeStatements(env, row) {
+    return [env.DB.prepare(`DELETE FROM price_tariffs WHERE id = ?`).bind(Number(row.id))];
+  },
+};
+
+export const ENTITIES: Record<RecycleEntity, EntityDef> = { shipment, user, truck, location, layanan, mitra, client, tariff };
 export const ENTITY_TYPES = Object.keys(ENTITIES) as RecycleEntity[];
 
 export function expiresAtFrom(deletedAtIso: string): string {

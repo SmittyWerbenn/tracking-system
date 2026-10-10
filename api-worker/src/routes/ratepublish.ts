@@ -90,7 +90,7 @@ async function loadTariffs(env: Ctx["env"], ids: number[]): Promise<Map<number, 
     const part = ids.slice(i, i + ID_CHUNK);
     const r = await env.DB.prepare(
       `SELECT t.id, g.provinsi, g.kabupaten_kota, t.kecamatan, t.kategori_area, t.tarif_per_kg
-       FROM price_tariffs t JOIN price_regions g ON g.id = t.region_id WHERE t.id IN (SELECT value FROM json_each(?))`,
+       FROM price_tariffs t JOIN price_regions g ON g.id = t.region_id WHERE t.id IN (SELECT value FROM json_each(?)) AND t.deleted_at IS NULL`,
     )
       .bind(JSON.stringify(part))
       .all<TariffRow>();
@@ -162,7 +162,7 @@ const LIST_SELECT = `SELECT t.id, g.provinsi, g.pulau, g.jarak_jawa, g.kabupaten
   FROM price_tariffs t JOIN price_regions g ON g.id = t.region_id`;
 
 function listWhere(url: URL) {
-  const where: string[] = [];
+  const where: string[] = ["t.deleted_at IS NULL"];
   const params: unknown[] = [];
   const q = url.searchParams.get("q")?.trim();
   if (q) {
@@ -233,7 +233,7 @@ export function registerRatePublishRoutes(router: Router) {
       provinsi
         ? ctx.env.DB.prepare(`SELECT kabupaten_kota AS v FROM price_regions WHERE provinsi = ? ORDER BY kabupaten_kota`).bind(provinsi).all<{ v: string }>()
         : Promise.resolve({ results: [] as { v: string }[] }),
-      ctx.env.DB.prepare(`SELECT DISTINCT kategori_area AS v FROM price_tariffs ORDER BY kategori_area`).all<{ v: string }>(),
+      ctx.env.DB.prepare(`SELECT DISTINCT kategori_area AS v FROM price_tariffs WHERE deleted_at IS NULL ORDER BY kategori_area`).all<{ v: string }>(),
       ctx.env.DB.prepare(`SELECT DISTINCT pulau AS v FROM price_regions WHERE pulau IS NOT NULL ORDER BY pulau`).all<{ v: string }>(),
     ]);
     return ok({ provinsi: (prov.results ?? []).map((x) => x.v), kota: (kota.results ?? []).map((x) => x.v), kategori: (kat.results ?? []).map((x) => x.v), pulau: (pul.results ?? []).map((x) => x.v) });

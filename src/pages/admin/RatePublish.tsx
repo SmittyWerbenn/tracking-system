@@ -1,4 +1,5 @@
 import { AlertTriangle, Download, FileSpreadsheet, Loader2, Pencil, Tags } from "lucide-react";
+import { DeleteButton } from "../../components/DeleteButton";
 import { useEffect, useRef, useState } from "react";
 import { ACTION_ROW, ActionButton } from "../../components/ActionButton";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -367,6 +368,17 @@ export default function RatePublish() {
                     >
                       <Pencil size={16} />
                     </ActionButton>
+                    <DeleteButton
+                      entityType="tariff"
+                      id={String(t.id)}
+                      details={[
+                        ["Kecamatan", t.kecamatan],
+                        ["Kab/Kota", t.kabupatenKota],
+                        ["Provinsi", t.provinsi],
+                        ["Rate Saat Ini", formatRupiah(t.tarifPerKg)],
+                      ]}
+                      onDone={() => list.reload()}
+                    />
                   </div>
                 </td>
               )}

@@ -63,7 +63,7 @@ export function registerOngkirRoutes(router: Router) {
     const r = await db
       .prepare(
         `SELECT t.kecamatan AS nama FROM price_tariffs t JOIN price_regions g ON g.id = t.region_id
-         WHERE g.provinsi = ? AND g.kabupaten_kota = ? ORDER BY t.kecamatan`,
+         WHERE g.provinsi = ? AND g.kabupaten_kota = ? AND t.deleted_at IS NULL ORDER BY t.kecamatan`,
       )
       .bind(provinsi, kota)
       .all<{ nama: string }>();
@@ -148,7 +148,7 @@ export function registerOngkirRoutes(router: Router) {
     const tarif = await ctx.env.DB.prepare(
       `SELECT t.tarif_per_kg, t.kategori_area, t.lead_min, t.lead_max, g.kategori_origin AS wilayah_tujuan, g.jarak_jawa AS jarak_tujuan
        FROM price_tariffs t JOIN price_regions g ON g.id = t.region_id
-       WHERE g.provinsi = ? AND g.kabupaten_kota = ? AND t.kecamatan = ?`,
+       WHERE g.provinsi = ? AND g.kabupaten_kota = ? AND t.kecamatan = ? AND t.deleted_at IS NULL`,
     )
       .bind(str(tujuan.provinsi), str(tujuan.kota), str(tujuan.kecamatan))
       .first<{ tarif_per_kg: number; kategori_area: string; lead_min: number; lead_max: number; wilayah_tujuan: OriginCategory; jarak_tujuan: string | null }>();

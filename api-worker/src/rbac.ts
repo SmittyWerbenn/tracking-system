@@ -19,7 +19,8 @@ export type Permission =
   | "settings.manage"
   | "files.upload"
   | "recovery.review"
-  | "recycle.manage";
+  | "recycle.manage"
+  | "client_logos.manage";
 
 const ALL: Permission[] = [
   "users.manage",
@@ -41,6 +42,8 @@ const ALL: Permission[] = [
   "files.upload",
   "recovery.review",
   "recycle.manage",
+  // Client logo management on the Company Profile is Superadmin-only.
+  "client_logos.manage",
 ];
 
 const ROLE_PERMISSIONS: Record<Role, Set<Permission>> = {

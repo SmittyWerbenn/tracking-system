@@ -26,6 +26,7 @@ import { registerRecycleRoutes } from "./routes/recycle";
 import { registerCancellationRoutes } from "./routes/cancellation";
 import { registerHoldRoutes } from "./routes/hold";
 import { registerRatePublishRoutes } from "./routes/ratepublish";
+import { registerClientLogoRoutes } from "./routes/clientlogos";
 
 const router = new Router();
 registerAuthRoutes(router);
@@ -51,6 +52,7 @@ registerRecycleRoutes(router);
 registerCancellationRoutes(router);
 registerHoldRoutes(router);
 registerRatePublishRoutes(router);
+registerClientLogoRoutes(router);
 
 router.get("/api/health", async () => ok({ status: "ok", time: new Date().toISOString() }));
 

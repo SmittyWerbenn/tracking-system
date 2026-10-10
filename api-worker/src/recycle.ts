@@ -10,7 +10,7 @@ export const RETENTION_DAYS = 90;
  * nothing is purged because expires_at passed. Flip to true (and re-add the cron call) only on an explicit decision. */
 export const AUTO_PURGE_ENABLED = false;
 
-export type RecycleEntity = "shipment" | "user" | "truck" | "location" | "layanan" | "mitra" | "client" | "tariff";
+export type RecycleEntity = "shipment" | "user" | "truck" | "location" | "layanan" | "mitra" | "client" | "tariff" | "client_logo";
 
 export interface EntityRow {
   id: string;
@@ -504,7 +504,52 @@ const tariff: EntityDef = {
   },
 };
 
-export const ENTITIES: Record<RecycleEntity, EntityDef> = { shipment, user, truck, location, layanan, mitra, client, tariff };
+const clientLogo: EntityDef = {
+  type: "client_logo",
+  title: "Client Company Profile",
+  module: "Client Company Profile",
+  table: "client_logos",
+  pk: "id",
+  async load(env, id) {
+    const r = await env.DB.prepare(`SELECT * FROM client_logos WHERE id = ?`).bind(id).first<Record<string, unknown>>();
+    if (!r) return null;
+    return {
+      id: String(r.id),
+      label: String(r.nama),
+      sublabel: "Logo Company Profile",
+      deletedAt: (r.deleted_at as string | null) ?? null,
+      snapshot: r,
+    };
+  },
+  async impact() {
+    // A client logo is never referenced by other entities (it's a standalone
+    // Company Profile asset). Nothing else is deleted with it.
+    return [];
+  },
+  async guardRestore(env, row) {
+    // A soft-deleted logo keeps its name reserved; if a NEW logo took the same
+    // name after deletion, refuse the restore (same rule as users/mitras).
+    const dupe = await count(
+      env,
+      `SELECT COUNT(*) AS c FROM client_logos WHERE LOWER(TRIM(nama)) = LOWER(TRIM(?)) AND id != ? AND deleted_at IS NULL`,
+      String(row.snapshot.nama),
+      row.id,
+    );
+    return dupe > 0 ? "Data tidak dapat dipulihkan karena terdapat data aktif dengan identifier yang sama." : null;
+  },
+  async purgeStatements(env, row) {
+    const db = env.DB;
+    const stmts = [
+      // Remove the uploaded MinIO blob (only for uploaded logos; the static
+      // /assets URLs are not in the files table).
+      db.prepare(`DELETE FROM files WHERE entity_type = 'client_logo' AND entity_id = ?`).bind(row.id),
+      db.prepare(`DELETE FROM client_logos WHERE id = ?`).bind(row.id),
+    ];
+    return stmts;
+  },
+};
+
+export const ENTITIES: Record<RecycleEntity, EntityDef> = { shipment, user, truck, location, layanan, mitra, client, tariff, client_logo: clientLogo };
 export const ENTITY_TYPES = Object.keys(ENTITIES) as RecycleEntity[];
 
 export function expiresAtFrom(deletedAtIso: string): string {

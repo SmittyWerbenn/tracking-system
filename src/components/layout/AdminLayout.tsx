@@ -21,6 +21,7 @@ import {
   Truck,
   Users,
   X,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -107,6 +108,8 @@ function getNavGroups(role: UserRole): { title: string; items: NavItem[] }[] {
         { to: adminPath("/pengaturan/tracking"), label: "Tracking", icon: Settings, end: true, roles: ADMIN_ONLY_ROLES },
         { to: adminPath("/pengaturan/informasi-cs"), label: "Informasi CS", icon: Headset, end: true, roles: ADMIN_ONLY_ROLES },
         { to: adminPath("/pengaturan/info-bantuan"), label: "Informasi Bantuan", icon: LifeBuoy, end: true, roles: ADMIN_ONLY_ROLES },
+        // Client logo management on the Company Profile - Superadmin only.
+        { to: adminPath("/company-profile"), label: "Client Company Profile", icon: ImageIcon, end: true, roles: ["Superadmin"] },
       ],
     },
     {

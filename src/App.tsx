@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from "r
 import { RequireAdmin, RequireAuth, RequireNotMitra, RequireDriver, RequireShipmentCreator, RequireSuperadmin, RequireTrackingUpdater, RequireRatePublish, RequireLayananView } from "./components/RequireAuth";
 import { AuditLogProvider } from "./store/AuditLogContext";
 import { AuthProvider } from "./store/AuthContext";
+import { ClientLogoProvider } from "./store/ClientLogoContext";
 import { FeedbackProvider } from "./store/FeedbackContext";
 import { FleetProvider } from "./store/FleetContext";
 import { HelpContactProvider } from "./store/HelpContactContext";
@@ -17,6 +18,7 @@ import { UserManagementProvider } from "./store/UserManagementContext";
 
 import AccountSettings from "./pages/admin/AccountSettings";
 import AuditLogPage from "./pages/admin/AuditLogPage";
+import ClientCompanyProfile from "./pages/admin/ClientCompanyProfile";
 import RecycleBin from "./pages/admin/RecycleBin";
 import { ToastProvider } from "./components/Toast";
 import CreateShipment from "./pages/admin/CreateShipment";
@@ -77,27 +79,29 @@ function AppProviders({ children }: { children: React.ReactNode }) {
     <LanguageProvider>
       <HelpContactProvider>
         <AuthProvider>
-          <AuditLogProvider>
-            <NotificationProvider>
-              <FeedbackProvider>
-                <FleetProvider>
-                  <LocationProvider>
-                    <MitraProvider>
-                      <LayananProvider>
-                        <UserManagementProvider>
-                          <SettingsProvider>
-                            <ShipmentProvider>
-                              <ToastProvider>{children}</ToastProvider>
-                            </ShipmentProvider>
-                          </SettingsProvider>
-                        </UserManagementProvider>
-                      </LayananProvider>
-                    </MitraProvider>
-                  </LocationProvider>
-                </FleetProvider>
-              </FeedbackProvider>
-            </NotificationProvider>
-          </AuditLogProvider>
+          <ClientLogoProvider>
+            <AuditLogProvider>
+              <NotificationProvider>
+                <FeedbackProvider>
+                  <FleetProvider>
+                    <LocationProvider>
+                      <MitraProvider>
+                        <LayananProvider>
+                          <UserManagementProvider>
+                            <SettingsProvider>
+                              <ShipmentProvider>
+                                <ToastProvider>{children}</ToastProvider>
+                              </ShipmentProvider>
+                            </SettingsProvider>
+                          </UserManagementProvider>
+                        </LayananProvider>
+                      </MitraProvider>
+                    </LocationProvider>
+                  </FleetProvider>
+                </FeedbackProvider>
+              </NotificationProvider>
+            </AuditLogProvider>
+          </ClientLogoProvider>
         </AuthProvider>
       </HelpContactProvider>
     </LanguageProvider>
@@ -158,6 +162,7 @@ export default function App() {
               <Route path={adminPath("/audit-log")} element={<RequireAdmin><AuditLogPage /></RequireAdmin>} />
               <Route path={adminPath("/users")} element={<RequireAdmin><UserManagement /></RequireAdmin>} />
               <Route path={adminPath("/recycle-bin")} element={<RequireSuperadmin><RecycleBin /></RequireSuperadmin>} />
+              <Route path={adminPath("/company-profile")} element={<RequireSuperadmin><ClientCompanyProfile /></RequireSuperadmin>} />
               <Route path={adminPath("/pemulihan-order")} element={<RequireAdmin><RecoveryRequests /></RequireAdmin>} />
               <Route path={adminPath("/users-driver")} element={<RequireAdmin><DriverUserManagement /></RequireAdmin>} />
               <Route path={adminPath("/rate-publish")} element={<RequireRatePublish><RatePublish /></RequireRatePublish>} />

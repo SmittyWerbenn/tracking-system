@@ -479,7 +479,7 @@ const tariff: EntityDef = {
   pk: "id",
   async load(env, id) {
     const t = await env.DB.prepare(
-      `SELECT t.*, g.provinsi, g.kabupaten_kota, g.kecamatan AS region_kecamatan, g.pulau, g.jarak_jawa, g.kategori_origin
+      `SELECT t.*, g.provinsi, g.kabupaten_kota, g.pulau, g.jarak_jawa, g.kategori_origin
        FROM price_tariffs t JOIN price_regions g ON g.id = t.region_id WHERE t.id = ?`,
     )
       .bind(Number(id))

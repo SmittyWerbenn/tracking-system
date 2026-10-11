@@ -37,10 +37,6 @@ function readReason(body: Record<string, unknown>, field = "reason"): string {
   return v;
 }
 
-function fmt(n: number): string {
-  return `Rp${n.toLocaleString("id-ID")}`;
-}
-
 import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta, likeTerm, orderBy } from "../pagination";
 

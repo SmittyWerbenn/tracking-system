@@ -27,6 +27,20 @@ function requireRatePublishEdit(ctx: Ctx): AuthedUser {
   }
   return actor;
 }
+
+/** Read and validate a reason string (same pattern as recycle.ts). */
+function readReason(body: Record<string, unknown>, field = "reason"): string {
+  const raw = body[field];
+  const v = typeof raw === "string" ? raw.trim() : "";
+  if (!v) throw Errors.badRequest("Alasan wajib diisi.");
+  if (v.length > 500) throw Errors.badRequest("Alasan maksimal 500 karakter.");
+  return v;
+}
+
+function fmt(n: number): string {
+  return `Rp${n.toLocaleString("id-ID")}`;
+}
+
 import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta, likeTerm, orderBy } from "../pagination";
 
@@ -326,5 +340,48 @@ export function registerRatePublishRoutes(router: Router) {
       description: `Bulk update Rate Publish: ${summary.total} baris diproses, ${changes.length} diubah, ${summary.sama} tidak berubah, 0 gagal. Batch ${batchId}. Contoh: ${sample}${changes.length > 10 ? `; dan ${changes.length - 10} lainnya` : ""}`,
     });
     return ok({ batchId, changed: changes.length, unchanged: summary.sama });
+  });
+
+  // Permanent delete (bypass Recycle Bin) - SUPERADMIN ONLY.
+  // Hanya tersedia untuk Rate Publish langsung dari tabel (bukan dari Recycle Bin).
+  router.post("/api/rate-publish/:id/force-delete", async (ctx: Ctx, params) => {
+    const actor = requireRatePublishEdit(ctx);
+    const id = Number(params.id);
+    if (!Number.isInteger(id) || id <= 0) throw Errors.notFound("Data area tidak ditemukan.");
+
+    const body = await parseJsonBody(ctx.request);
+    const reason = readReason(body);
+
+    // Load data untuk konfirmasi dan audit (jika sudah di-soft-delete, tidak bisa ditemukan di list tapi masih ada di DB)
+    const t = await ctx.env.DB.prepare(
+      `SELECT t.*, g.provinsi, g.kabupaten_kota
+       FROM price_tariffs t JOIN price_regions g ON g.id = t.region_id WHERE t.id = ?`,
+    )
+      .bind(id)
+      .first<Record<string, unknown>>();
+    if (!t) throw Errors.notFound("Data area tidak ditemukan.");
+
+    const labelParts: string[] = [];
+    if (t.kecamatan) labelParts.push(String(t.kecamatan));
+    if (t.kabupaten_kota) labelParts.push(String(t.kabupaten_kota));
+    if (t.provinsi) labelParts.push(String(t.provinsi));
+    const label = labelParts.length > 0 ? labelParts.join(" · ") : `ID ${id}`;
+    const tarifPerKg = typeof t.tarif_per_kg === "number" ? t.tarif_per_kg : null;
+
+    // 1. Set NULL referensi di price_tariff_history agar history tetap ada sebagai audit trail
+    await ctx.env.DB.prepare(`UPDATE price_tariff_history SET tariff_id = NULL WHERE tariff_id = ?`).bind(id).run();
+
+    // 2. DELETE permanen row dari price_tariffs
+    await ctx.env.DB.prepare(`DELETE FROM price_tariffs WHERE id = ?`).bind(id).run();
+
+    // 3. Audit Log
+    await writeAuditLog(ctx.env, actor, {
+      action: "PERMANENT_DELETE_RATE_PUBLISH",
+      actionLabel: "HAPUS PERMANEN RATE PUBLISH",
+      module: "Rate Publish",
+      description: `Rate Publish "${label}" (ID ${id}) dihapus permanen. Alasan: ${reason}. Rate sebelumnya: ${tarifPerKg !== null ? fmt(tarifPerKg) : "-"} / kg`,
+    });
+
+    return ok({ ok: true });
   });
 }

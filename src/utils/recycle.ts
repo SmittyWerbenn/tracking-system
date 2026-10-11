@@ -19,6 +19,11 @@ export function moveToRecycleBin(entityType: RecycleEntity, ids: string[], reaso
   return api.post<RecycleSummary>("/api/recycle/delete", { entityType, ids, reason });
 }
 
+/** Permanent delete a Rate Publish (tariff) directly, bypassing Recycle Bin. Superadmin only - API re-checks role. */
+export function forceDeleteRatePublish(id: string, reason: string) {
+  return api.post<{ ok: boolean }>(`/api/rate-publish/${id}/force-delete`, { reason });
+}
+
 export function restoreFromBin(ids: string[], reason: string) {
   return api.post<RecycleSummary>("/api/recycle/restore", { ids, reason });
 }

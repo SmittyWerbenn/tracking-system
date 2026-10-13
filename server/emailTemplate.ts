@@ -49,7 +49,9 @@ export function buildEmailHtml(data: EmailTemplateData): string {
       ? "Notifikasi internal - pengiriman berikut telah berstatus <strong>Selesai / Terkirim</strong>. Berikut ringkasan pengiriman:"
       : recipientRole === "pengirim"
         ? "Terima kasih telah mempercayakan pengiriman barang Anda kepada kami. Resi pengiriman Anda telah berhasil diterbitkan. Berikut detail resi pengiriman Anda:"
-        : "Pengiriman Anda telah berhasil dibuat dan sedang kami proses. Berikut detail resi pengiriman Anda:";
+        : status === "Selesai / Terkirim"
+          ? "Pengiriman Anda telah selesai/terkirim. Berikut detail resi/AWB pengiriman Anda:"
+          : "Pengiriman Anda telah berhasil dibuat dan sedang kami proses. Berikut detail resi pengiriman Anda:";
 
   const footerNote =
     recipientRole === "admin"

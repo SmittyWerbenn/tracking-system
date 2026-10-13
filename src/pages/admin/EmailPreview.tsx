@@ -233,8 +233,9 @@ export default function EmailPreview() {
                   Halo Bapak/Ibu <strong>{shipment.penerima.nama}</strong>,
                 </p>
                 <p className="mt-3 text-sm text-slate-700">
-                  Pengiriman Anda telah berhasil dibuat dan sedang kami proses. Berikut detail resi
-                  pengiriman Anda:
+                  {shipment.status === "Selesai / Terkirim"
+                    ? "Pengiriman Anda telah selesai/terkirim. Berikut detail resi/AWB pengiriman Anda:"
+                    : "Pengiriman Anda telah berhasil dibuat dan sedang kami proses. Berikut detail resi pengiriman Anda:"}
                 </p>
 
                 <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">

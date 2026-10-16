@@ -116,6 +116,7 @@ export default function DriverLogin() {
             <ContactAdminButton
               variant="link"
               label="Lupa Password?"
+              confirmFirst
               email={email}
               message={(info) =>
                 `Halo ${info.target === "superadmin" ? "Superadmin" : "Admin"} GMS, saya driver dan lupa password akun ${email.trim()}. Mohon bantuannya.`

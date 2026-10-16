@@ -10,13 +10,18 @@ export function registerNotificationRoutes(router: Router) {
     const url = new URL(ctx.request.url);
     const { page, limit, offset } = parsePagination(url);
 
-    // A Mitra account only sees notifications for AWB/resi assigned to its own
-    // mitra (shipments.mitra_id). The scope comes from the authenticated user
-    // (actor.mitraId), never from the client. All other roles keep the global
-    // feed unchanged.
+    // Scoping rules (applied server-side, never from the client):
+    //   Client / Viewer (with customerId) → only AWBs of their own customer
+    //   Mitra → only AWBs assigned to that partner
+    //   Superadmin / Admin / Driver → global feed (unchanged)
+    const custScope = actor.role === "Client" || (actor.role === "Viewer" && !!actor.customerId);
     const mitraScope = actor.role === "Mitra";
-    const where = mitraScope ? "WHERE n.awb IN (SELECT awb FROM shipments WHERE mitra_id = ?)" : "";
-    const bind = mitraScope ? [actor.mitraId] : [];
+    const where = custScope
+      ? "WHERE n.awb IN (SELECT awb FROM shipments WHERE customer_id = ?)"
+      : mitraScope
+        ? "WHERE n.awb IN (SELECT awb FROM shipments WHERE mitra_id = ?)"
+        : "";
+    const bind: unknown[] = custScope ? [actor.customerId] : mitraScope ? [actor.mitraId] : [];
 
     const total = await ctx.env.DB.prepare(
       `SELECT COUNT(*) as c FROM notifications n ${where}`,
@@ -35,20 +40,31 @@ export function registerNotificationRoutes(router: Router) {
   // Marks every still-unread notification as read - fired when the admin
   // opens the notification bell/center, so the unread badge clears once
   // they've actually seen the list (shared read state, not per-user).
-  // For a Mitra, only notifications belonging to its own assigned AWB are
-  // marked - it must never touch other mitras'/clients' notifications.
+  // Scoped roles (Client/Viewer/Mitra) only mark notifications belonging
+  // to their own scope — they must never touch other customers' data.
   router.post("/api/notifications/read-all", async (ctx: Ctx) => {
     const actor = requirePermission(ctx, "notifications.view");
-    if (actor.role === "Mitra") {
+    const custScope = actor.role === "Client" || (actor.role === "Viewer" && !!actor.customerId);
+    const mitraScope = actor.role === "Mitra";
+    const now = new Date().toISOString();
+
+    if (custScope) {
+      await ctx.env.DB.prepare(
+        `UPDATE notifications SET is_read = 1, read_at = ?
+         WHERE is_read = 0 AND awb IN (SELECT awb FROM shipments WHERE customer_id = ?)`,
+      )
+        .bind(now, actor.customerId)
+        .run();
+    } else if (mitraScope) {
       await ctx.env.DB.prepare(
         `UPDATE notifications SET is_read = 1, read_at = ?
          WHERE is_read = 0 AND awb IN (SELECT awb FROM shipments WHERE mitra_id = ?)`,
       )
-        .bind(new Date().toISOString(), actor.mitraId)
+        .bind(now, actor.mitraId)
         .run();
     } else {
       await ctx.env.DB.prepare(`UPDATE notifications SET is_read = 1, read_at = ? WHERE is_read = 0`)
-        .bind(new Date().toISOString())
+        .bind(now)
         .run();
     }
     return ok({ updated: true });

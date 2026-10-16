@@ -779,6 +779,32 @@ export function registerShipmentRoutes(router: Router) {
       .bind(newStatus, truckId ?? null, nowIso, actor.id, params.awb)
       .run();
 
+    // --- ETA recalculation on Berangkat ---
+    // When the shipment first departs, ETA is recalculated from the actual
+    // departure date (the timeline event's "tanggal") instead of the order
+    // creation date. This applies to both normal orders and those that came
+    // through Hold → UNHOLD → Berangkat. A second Berangkat event is
+    // impossible (pipeline rank prevents backward transitions), so this runs
+    // exactly once.
+    if (newStatus === "Berangkat") {
+      const slaValue = shipment.sla_value as number | null;
+      if (slaValue != null) {
+        const newEta = addBusinessDays(tanggal, slaValue);
+        await ctx.env.DB.prepare(
+          `UPDATE shipments SET estimasi_tiba = ?, updated_at = ?, updated_by = ? WHERE awb = ?`,
+        )
+          .bind(newEta, nowIso, actor.id, params.awb)
+          .run();
+        await writeAuditLog(ctx.env, actor, {
+          action: "UPDATE_ETA",
+          actionLabel: "UPDATE ETA",
+          module: "Shipment",
+          awb: params.awb,
+          description: `Status berubah menjadi Berangkat. ETA diperbarui: ${shipment.estimasi_tiba ?? "-"} -> ${newEta}.`,
+        });
+      }
+    }
+
     // Cargo is moving: a still-pending cancellation request can no longer be honoured.
     await ctx.env.DB.prepare(
       `UPDATE cancellation_requests SET status = 'EXPIRED', decided_at = ?, decided_by_name = 'System', decided_by_role = 'System', decision_reason = ?

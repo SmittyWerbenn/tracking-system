@@ -188,15 +188,16 @@ export default function Dashboard() {
         />
           </>
         )}
-        <StatCard
-          label="Avg. Customer Rating"
-          value={avgRating.toFixed(1)}
-          icon={Star}
-          accent="bg-amber-100 text-amber-700"
-          to={adminPath("/feedback")}
-        />
+        {profile?.role !== "Mitra" && (
+          <StatCard
+            label="Avg. Customer Rating"
+            value={avgRating.toFixed(1)}
+            icon={Star}
+            accent="bg-amber-100 text-amber-700"
+            to={adminPath("/feedback")}
+          />
+        )}
       </div>
-
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm lg:col-span-2">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
@@ -280,40 +281,42 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
-            <MessageSquare size={16} className="text-blue-800" />
-            <h2 className="text-sm font-semibold text-slate-800">Feedback Terbaru</h2>
-          </div>
-          {recentFeedback.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-slate-400">Belum ada feedback.</p>
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {recentFeedback.map((f) => (
-                <li key={f.id} className="px-5 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-slate-800">{f.customerName}</p>
-                    <div className="flex items-center gap-0.5">
-                      {[1, 2, 3, 4, 5].map((n) => (
-                        <Star
-                          key={n}
-                          size={12}
-                          className={n <= f.rating ? "fill-amber-400 text-amber-400" : "text-slate-200"}
-                        />
-                      ))}
+        {profile?.role !== "Mitra" && (
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
+              <MessageSquare size={16} className="text-blue-800" />
+              <h2 className="text-sm font-semibold text-slate-800">Feedback Terbaru</h2>
+            </div>
+            {recentFeedback.length === 0 ? (
+              <p className="px-5 py-8 text-center text-sm text-slate-400">Belum ada feedback.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {recentFeedback.map((f) => (
+                  <li key={f.id} className="px-5 py-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-slate-800">{f.customerName}</p>
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <Star
+                            key={n}
+                            size={12}
+                            className={n <= f.rating ? "fill-amber-400 text-amber-400" : "text-slate-200"}
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  {f.comment && <p className="mt-0.5 truncate text-xs text-slate-500">{f.comment}</p>}
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="border-t border-slate-100 px-5 py-3">
-            <Link to={adminPath("/feedback")} className="flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline">
-              Lihat semua <ArrowRight size={13} />
-            </Link>
+                    {f.comment && <p className="mt-0.5 truncate text-xs text-slate-500">{f.comment}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="border-t border-slate-100 px-5 py-3">
+              <Link to={adminPath("/feedback")} className="flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline">
+                Lihat semua <ArrowRight size={13} />
+              </Link>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </AdminLayout>
   );

@@ -120,27 +120,27 @@ export function ContactAdminButton({
       {/* Confirmation modal (only shown when confirmFirst is true) */}
       {confirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl">
-            <div className="px-6 pb-6 pt-5">
-              <div className="mb-4 flex items-center justify-between">
+          <div className="w-full max-w-sm rounded-xl bg-white shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
+            <div className="px-6 pb-6 pt-6">
+              <div className="mb-5 flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-slate-900">Lupa Password?</h2>
                 <button
                   type="button"
                   onClick={() => setConfirmOpen(false)}
-                  className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                  className="rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
                 >
                   <X size={18} />
                 </button>
               </div>
-              <p className="text-sm leading-relaxed text-slate-600">
-                Untuk membantu pemulihan password Anda, silakan hubungi Admin Bantuan melalui WhatsApp. Apakah Anda ingin melanjutkan?
+              <p className="text-center text-sm leading-6 text-slate-600">
+                Hubungi admin untuk bantuan pemulihan kata sandi Anda.
               </p>
-              <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:justify-end">
+              <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
                 <button
                   type="button"
                   onClick={() => setConfirmOpen(false)}
                   disabled={busy}
-                  className="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-60 sm:w-auto sm:min-w-[120px]"
+                  className="inline-flex flex-1 items-center justify-center rounded-lg bg-pink-100 px-5 py-2.5 text-sm font-semibold text-rose-800 shadow-sm transition-all duration-200 hover:bg-pink-200 disabled:opacity-60"
                 >
                   Batal
                 </button>
@@ -148,7 +148,7 @@ export function ContactAdminButton({
                   type="button"
                   onClick={handleConfirm}
                   disabled={busy}
-                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:opacity-60 sm:w-auto sm:min-w-[120px]"
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#0B192C] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-[#0D1B2A] disabled:opacity-60"
                 >
                   {busy ? <Loader2 size={15} className="animate-spin" /> : <MessageCircle size={15} />}
                   Hubungi Admin

@@ -38,7 +38,7 @@ const COLUMNS = [
   "Asal",
   "Tujuan",
   "Service",
-  "Total Berat (Kg)",
+  "Berat Final (Kg)",
   "Total Koli",
   "Estimasi Tiba",
   "Diterima Oleh",

@@ -463,7 +463,7 @@ export default function ShipmentList() {
                   <>
                     <th className="px-4 py-3 font-medium">Client ID</th>
                     <th className="px-4 py-3 font-medium">Service</th>
-                    <th className="px-4 py-3 font-medium">Berat (Kg)</th>
+                    <th className="px-4 py-3 font-medium">Berat Final (Kg)</th>
                     <th className="px-4 py-3 font-medium">Koli</th>
                     <th className="px-4 py-3 font-medium">Estimasi Tiba</th>
                     <th className="px-4 py-3 font-medium">Diterima Oleh</th>

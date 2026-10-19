@@ -141,7 +141,7 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
 
           <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400 sm:col-span-2">Barang</p>
           <div className="sm:col-span-2">{field("Deskripsi Barang", "deskripsiBarang", { rows: 2 })}</div>
-          {field("Berat (Kg)", "beratKg", { type: "number" })}
+          {field("Berat Final (Kg)", "beratKg", { type: "number" })}
           {field("Jumlah Koli", "jumlahKoli", { type: "number" })}
           <label className="block sm:col-span-2">
             <span className="mb-1.5 block text-xs font-medium text-slate-600">Layanan</span>

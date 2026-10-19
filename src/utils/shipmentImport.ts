@@ -16,7 +16,7 @@ export const BULK_TEMPLATE_HEADERS = [
   "Kota Tujuan",
   "Alamat Tujuan",
   "Layanan",
-  "Berat (Kg)",
+  "Berat Final (Kg)",
   "Jumlah Koli",
   "Deskripsi Barang",
   "Nomor Polisi Truck (Opsional)",
@@ -65,6 +65,16 @@ const FIELD_ORDER: (keyof BulkRowInput)[] = [
 ];
 
 const HEADER_LOOKUP = new Map(BULK_TEMPLATE_HEADERS.map((h, i) => [normalizeHeader(h), FIELD_ORDER[i]]));
+
+// Backward-compatible aliases: old header names still resolve to the same field,
+// so files exported with previous headers ("Berat (Kg)", "Berat Total (Kg)") keep working.
+const HEADER_ALIASES: [string, keyof BulkRowInput][] = [
+  [normalizeHeader("Berat (Kg)"), "beratKg"],
+  [normalizeHeader("Berat Total (Kg)"), "beratKg"],
+];
+for (const [alias, field] of HEADER_ALIASES) {
+  if (!HEADER_LOOKUP.has(alias)) HEADER_LOOKUP.set(alias, field);
+}
 
 /**
  * Converts a raw 2D table (from CSV parsing or read-excel-file) into row

@@ -112,7 +112,7 @@ function rowErrors(row: BulkRow, duplicateRows?: number[]): string[] {
   if (!row.alamatTujuan.trim()) errs.push("Alamat tujuan kosong");
   if (!row.deskripsiBarang.trim()) errs.push("Deskripsi barang kosong");
   const berat = Number(row.beratKg);
-  if (!row.beratKg || !Number.isFinite(berat) || berat <= 0) errs.push("Berat tidak valid");
+  if (!row.beratKg || !Number.isFinite(berat) || berat <= 0) errs.push("Berat Final tidak valid");
   const koli = Number(row.jumlahKoli);
   if (!row.jumlahKoli || !Number.isFinite(koli) || koli <= 0) errs.push("Jumlah koli tidak valid");
   if (row.slaValue.trim()) {
@@ -417,7 +417,7 @@ export function BulkShipmentImport() {
               <th className="px-2.5 py-2.5">Kota Tujuan</th>
               <th className="px-2.5 py-2.5">Alamat Tujuan</th>
               <th className="px-2.5 py-2.5">Layanan</th>
-              <th className="px-2.5 py-2.5">Berat (Kg)</th>
+              <th className="px-2.5 py-2.5">Berat Final (Kg)</th>
               <th className="px-2.5 py-2.5">Jumlah Koli</th>
               <th className="px-2.5 py-2.5">Deskripsi Barang</th>
               <th className="border-l border-slate-200 px-2.5 py-2.5">Truck (Opsional)</th>

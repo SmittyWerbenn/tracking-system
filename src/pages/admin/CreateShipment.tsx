@@ -179,7 +179,7 @@ export default function CreateShipment() {
       return;
     }
     if (!form.beratKg || form.beratKg <= 0) {
-      setFormError("Masukkan berat paket yang valid.");
+      setFormError("Masukkan Berat Final (Kg) yang valid.");
       return;
     }
     if (!form.jumlahKoli || form.jumlahKoli <= 0) {
@@ -453,7 +453,7 @@ export default function CreateShipment() {
               </p>
             )}
           </Field>
-          <Field label="Berat (Kg)">
+          <Field label="Berat Final (Kg)">
             <input
               required
               type="number"

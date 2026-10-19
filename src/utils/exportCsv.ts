@@ -97,7 +97,7 @@ const DRIVER_COLUMNS = [
   "Tujuan",
   "Status",
   "Service",
-  "Berat (Kg)",
+  "Berat Final (Kg)",
   "Koli",
   "Estimasi Tiba",
   "Truck",

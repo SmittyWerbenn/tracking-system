@@ -41,6 +41,9 @@ interface RawShipmentSummary {
   layanan: Shipment["layanan"];
   beratKg: number;
   jumlahKoli: number;
+  asuransi?: boolean;
+  koliAsuransi?: string | null;
+  nilaiAsuransi?: number | null;
   truckId: string | null;
   truckNomorUnit: string | null;
   truckJenis: string | null;
@@ -128,6 +131,9 @@ function toShipment(row: RawShipmentSummary): Shipment {
     layanan: row.layanan,
     beratKg: row.beratKg,
     jumlahKoli: row.jumlahKoli,
+    asuransi: row.asuransi ?? false,
+    koliAsuransi: row.koliAsuransi ?? null,
+    nilaiAsuransi: row.nilaiAsuransi ?? null,
     truck: {
       nomorUnit: row.truckNomorUnit ?? "-",
       jenis: row.truckJenis ?? "-",
@@ -365,6 +371,9 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       customerId: data.customerId || undefined,
       hold: data.hold || undefined,
       holdReason: data.hold ? data.holdReason?.trim() : undefined,
+      asuransi: data.asuransi || undefined,
+      koliAsuransi: data.asuransi ? data.koliAsuransi : undefined,
+      nilaiAsuransi: data.asuransi ? data.nilaiAsuransi : undefined,
     });
 
     if (data.fotoBarang) {
@@ -451,6 +460,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         ...(data.deskripsiBarang !== undefined ? { deskripsiBarang: data.deskripsiBarang } : {}),
         ...(data.beratKg !== undefined ? { beratKg: data.beratKg } : {}),
         ...(data.jumlahKoli !== undefined ? { jumlahKoli: data.jumlahKoli } : {}),
+        ...(data.asuransi !== undefined ? { asuransi: data.asuransi, koliAsuransi: data.koliAsuransi, nilaiAsuransi: data.nilaiAsuransi } : {}),
         ...(data.slaValue !== undefined ? { slaValue: data.slaValue } : {}),
       });
       await refresh();

@@ -339,6 +339,26 @@ export default function ShipmentDetail() {
                   {shipment.estimasiTiba ? formatTanggalPanjang(shipment.estimasiTiba) : "Belum tersedia"}
                 </p>
               </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Asuransi</p>
+                <p className="text-sm font-medium text-slate-800">
+                  {shipment.asuransi ? "Ya" : "Tidak"}
+                </p>
+              </div>
+              {shipment.asuransi && (
+                <>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Koli Diasuransi</p>
+                    <p className="text-sm font-medium text-slate-800">{shipment.koliAsuransi ?? "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Nilai Asuransi</p>
+                    <p className="text-sm font-medium text-slate-800">
+                      Rp{shipment.nilaiAsuransi?.toLocaleString("id-ID") ?? "-"}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="mt-5 border-t border-slate-100 pt-5">

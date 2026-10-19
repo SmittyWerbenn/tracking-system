@@ -95,6 +95,9 @@ export async function fetchPublicShipment(awb: string): Promise<PublicShipmentRe
       layanan: res.shipment.layanan,
       beratKg: res.shipment.beratKg,
       jumlahKoli: res.shipment.jumlahKoli,
+      asuransi: false,
+      koliAsuransi: null,
+      nilaiAsuransi: null,
       truck: {
         nomorUnit: res.shipment.truckNomorUnit ?? "-",
         jenis: res.shipment.truckJenis ?? "-",

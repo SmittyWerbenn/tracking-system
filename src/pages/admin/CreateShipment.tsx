@@ -49,6 +49,9 @@ const emptyForm: ShipmentFormData = {
   truckId: "",
   customerId: "",
   reference: "",
+  asuransi: false,
+  koliAsuransi: "",
+  nilaiAsuransi: undefined,
 };
 
 function Section({
@@ -193,6 +196,29 @@ export default function CreateShipment() {
     if (form.hold && !form.holdReason?.trim()) {
       setFormError("Alasan Hold wajib diisi.");
       return;
+    }
+    if (form.asuransi) {
+      const koliNums = (form.koliAsuransi ?? "").split(",").map(s => s.trim()).filter(Boolean);
+      if (koliNums.length === 0) {
+        setFormError("Pilih minimal satu nomor koli yang diasuransikan.");
+        return;
+      }
+      const unique = new Set(koliNums);
+      if (unique.size !== koliNums.length) {
+        setFormError("Nomor koli yang diasuransikan tidak boleh duplikat.");
+        return;
+      }
+      for (const n of koliNums) {
+        const num = Number(n);
+        if (!Number.isInteger(num) || num < 1 || num > form.jumlahKoli) {
+          setFormError(`Nomor koli "${n}" tidak valid (harus 1–${form.jumlahKoli}).`);
+          return;
+        }
+      }
+      if (!form.nilaiAsuransi || form.nilaiAsuransi <= 0) {
+        setFormError("Nilai barang yang diasuransikan wajib diisi dan lebih dari 0.");
+        return;
+      }
     }
     setFormError(null);
     setSubmitting(true);
@@ -542,6 +568,73 @@ export default function CreateShipment() {
                 onChange={(e) => update("holdReason", e.target.value)}
               />
             )}
+          </Field>
+          <Field label="Asuransi Barang" full>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <label className="flex cursor-pointer items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600"
+                  checked={!!form.asuransi}
+                  onChange={(e) => {
+                    update("asuransi", e.target.checked);
+                    if (!e.target.checked) {
+                      update("koliAsuransi", "");
+                      update("nilaiAsuransi", undefined);
+                    }
+                  }}
+                />
+                <span className="text-sm text-slate-700">
+                  <span className="font-medium">Asuransi Pengiriman</span>
+                  <span className="block text-xs text-slate-500">
+                    Centang jika barang ini diasuransikan. Pilih koli yang diasuransikan dan isi nilai barang.
+                  </span>
+                </span>
+              </label>
+              {form.asuransi && (
+                <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
+                  <div>
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                      Nomor Koli yang Diasuransikan
+                    </span>
+                    {form.jumlahKoli > 0 && Array.from({ length: form.jumlahKoli }, (_, i) => i + 1).map((n) => {
+                      const selected = (form.koliAsuransi ?? "").split(",").map(s => s.trim()).includes(String(n));
+                      return (
+                        <label key={n} className="mr-3 inline-flex items-center gap-1.5 text-sm text-slate-700">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                            checked={selected}
+                            onChange={(e) => {
+                              const current = (form.koliAsuransi ?? "").split(",").map(s => s.trim()).filter(Boolean);
+                              const next = e.target.checked
+                                ? [...current, String(n)]
+                                : current.filter(c => c !== String(n));
+                              update("koliAsuransi", next.sort((a, b) => Number(a) - Number(b)).join(","));
+                            }}
+                          />
+                          Koli {n}
+                        </label>
+                      );
+                    })}
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Pilih satu atau beberapa koli. Total koli: {form.jumlahKoli}.
+                    </p>
+                  </div>
+                  <Field label="Nilai Barang yang Diasuransikan (Rp)">
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      className={inputClass}
+                      placeholder="Contoh: 5000000"
+                      value={form.nilaiAsuransi ?? ""}
+                      onChange={(e) => update("nilaiAsuransi", e.target.value === "" ? undefined : Number(e.target.value))}
+                    />
+                  </Field>
+                </div>
+              )}
+            </div>
           </Field>
           <Field label="Foto Barang" full>
             <div className="flex items-center gap-3">

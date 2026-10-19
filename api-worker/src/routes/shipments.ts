@@ -39,6 +39,9 @@ function shipmentSummary(row: Record<string, unknown>) {
     layanan: row.layanan,
     beratKg: row.berat_kg,
     jumlahKoli: row.jumlah_koli,
+    asuransi: !!row.asuransi,
+    koliAsuransi: row.koli_asuransi ?? null,
+    nilaiAsuransi: row.nilai_asuransi ?? null,
     truckId: row.truck_id,
     truckNomorUnit: row.truck_nomor_unit ?? null,
     truckJenis: row.truck_jenis ?? null,
@@ -308,6 +311,32 @@ export function registerShipmentRoutes(router: Router) {
       if (holdReason.length > 500) throw Errors.badRequest("Alasan Hold maksimal 500 karakter.");
     }
 
+    // Insurance: optional at creation. When asuransi = true, koliAsuransi
+    // (comma-separated koli numbers) and nilaiAsuransi (Rupiah > 0) are required.
+    // Koli numbers must be 1..jumlahKoli, no duplicates.
+    const asuransi = body.asuransi === true;
+    let koliAsuransi: string | null = null;
+    let nilaiAsuransi: number | null = null;
+    if (asuransi) {
+      const rawKoli = optString(body, "koliAsuransi");
+      if (!rawKoli || !rawKoli.trim()) throw Errors.badRequest("Nomor koli yang diasuransikan wajib diisi ketika Asuransi = Ya.");
+      const nums = rawKoli.split(",").map((s) => s.trim()).filter(Boolean);
+      if (nums.length === 0) throw Errors.badRequest("Nomor koli yang diasuransikan wajib diisi ketika Asuransi = Ya.");
+      const unique = new Set(nums);
+      if (unique.size !== nums.length) throw Errors.badRequest("Nomor koli yang diasuransikan tidak boleh duplikat.");
+      for (const n of nums) {
+        const num = Number(n);
+        if (!Number.isInteger(num) || num < 1 || num > jumlahKoli) {
+          throw Errors.badRequest(`Nomor koli "${n}" tidak valid. Harus angka bulat antara 1 dan ${jumlahKoli}.`);
+        }
+      }
+      koliAsuransi = nums.join(",");
+      nilaiAsuransi = optNumber(body, "nilaiAsuransi", { min: 1, max: 10_000_000_000 }) ?? null;
+      if (nilaiAsuransi === null || nilaiAsuransi <= 0) {
+        throw Errors.badRequest("Nilai barang yang diasuransikan wajib diisi dan lebih dari 0 ketika Asuransi = Ya.");
+      }
+    }
+
     // Same Referensi again (re-import, retry, double click): never a second AWB - answer with the one that exists.
     const dupReference = async () => {
       if (!reference) return;
@@ -365,8 +394,9 @@ export function registerShipmentRoutes(router: Router) {
               alamat_asal, kota_asal, alamat_tujuan, kota_tujuan,
               deskripsi_barang, layanan, berat_kg, jumlah_koli, truck_id,
               sla_value, sla_unit, estimasi_tiba, customer_id, mitra_id,
-              email_terkirim, created_at, updated_at, created_by, updated_by, created_by_role, created_by_name, reference
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
+              email_terkirim, created_at, updated_at, created_by, updated_by, created_by_role, created_by_name, reference,
+              asuransi, koli_asuransi, nilai_asuransi
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           ).bind(
             awb, tanggalDibuat, jamDibuat, holdAtCreate ? "Hold" : "Dalam Persiapan",
             pengirimNama, pengirimTelepon, pengirimEmail,
@@ -375,6 +405,7 @@ export function registerShipmentRoutes(router: Router) {
             deskripsiBarang, layanan, beratKg, jumlahKoli, truckId ?? null,
             slaValue ?? null, slaUnit, estimasiTiba, customerId, mitraId ?? null,
             nowIso, nowIso, actor.id, actor.id, actor.role, actor.nama, reference,
+            asuransi ? 1 : 0, koliAsuransi, nilaiAsuransi,
           ),
           ctx.env.DB.prepare(
             `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, truck_id, input_by_user_id, input_by_name, input_at, created_at)
@@ -540,10 +571,10 @@ export function registerShipmentRoutes(router: Router) {
     const isClient = actor.role === "Client";
     if (!isClient) requirePermission(ctx, "shipments.update_info");
     const shipment = await ctx.env.DB.prepare(
-      `SELECT status, tanggal_dibuat, sla_value, estimasi_tiba, layanan, customer_id FROM shipments WHERE awb = ? AND deleted_at IS NULL`,
+      `SELECT status, tanggal_dibuat, sla_value, estimasi_tiba, layanan, customer_id, jumlah_koli FROM shipments WHERE awb = ? AND deleted_at IS NULL`,
     )
       .bind(params.awb)
-      .first<{ status: string; tanggal_dibuat: string; sla_value: number | null; estimasi_tiba: string | null; layanan: string; customer_id: string | null }>();
+      .first<{ status: string; tanggal_dibuat: string; sla_value: number | null; estimasi_tiba: string | null; layanan: string; customer_id: string | null; jumlah_koli: number }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
     if (isClient) {
       if (!actor.customerId || shipment.customer_id !== actor.customerId) throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
@@ -591,6 +622,37 @@ export function registerShipmentRoutes(router: Router) {
     if (has("jumlahKoli")) {
       sets.push("jumlah_koli=?");
       values.push(reqNumber(body, "jumlahKoli", { min: 1, max: 100000 }));
+    }
+    // Insurance: only touched when the "asuransi" key is present.
+    // When asuransi = true, koliAsuransi + nilaiAsuransi are required and validated
+    // against the (possibly updated) jumlahKoli. When false, clear both fields.
+    if (has("asuransi")) {
+      const asuransiOn = body.asuransi === true;
+      if (asuransiOn) {
+        // Use the updated jumlahKoli if it was sent, otherwise the DB value.
+        const effectiveKoli = has("jumlahKoli") ? reqNumber(body, "jumlahKoli", { min: 1, max: 100000 }) : shipment.jumlah_koli;
+        const rawKoli = optString(body, "koliAsuransi");
+        if (!rawKoli || !rawKoli.trim()) throw Errors.badRequest("Nomor koli yang diasuransikan wajib diisi ketika Asuransi = Ya.");
+        const nums = rawKoli.split(",").map((s) => s.trim()).filter(Boolean);
+        if (nums.length === 0) throw Errors.badRequest("Nomor koli yang diasuransikan wajib diisi ketika Asuransi = Ya.");
+        const unique = new Set(nums);
+        if (unique.size !== nums.length) throw Errors.badRequest("Nomor koli yang diasuransikan tidak boleh duplikat.");
+        for (const n of nums) {
+          const num = Number(n);
+          if (!Number.isInteger(num) || num < 1 || num > effectiveKoli) {
+            throw Errors.badRequest(`Nomor koli "${n}" tidak valid. Harus angka bulat antara 1 dan ${effectiveKoli}.`);
+          }
+        }
+        const nilaiAsuransi = optNumber(body, "nilaiAsuransi", { min: 1, max: 10_000_000_000 }) ?? null;
+        if (nilaiAsuransi === null || nilaiAsuransi <= 0) {
+          throw Errors.badRequest("Nilai barang yang diasuransikan wajib diisi dan lebih dari 0 ketika Asuransi = Ya.");
+        }
+        sets.push("asuransi=?", "koli_asuransi=?", "nilai_asuransi=?");
+        values.push(1, nums.join(","), nilaiAsuransi);
+      } else {
+        sets.push("asuransi=?", "koli_asuransi=?", "nilai_asuransi=?");
+        values.push(0, null, null);
+      }
     }
     let newEta: string | null = shipment.estimasi_tiba;
     if (slaProvided) {

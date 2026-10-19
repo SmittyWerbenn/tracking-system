@@ -84,6 +84,9 @@ export interface Shipment {
   layanan: LayananPengiriman;
   beratKg: number;
   jumlahKoli: number;
+  asuransi: boolean;
+  koliAsuransi: string | null;
+  nilaiAsuransi: number | null;
   fotoBarang?: string;
   fotoSuratJalan?: string;
   truck: TruckInfo;
@@ -202,6 +205,11 @@ export interface ShipmentFormData {
   /** Create the AWB already parked on Hold (needs holdReason). */
   hold?: boolean;
   holdReason?: string;
+  /** Insurance: when true, koliAsuransi (comma-separated koli numbers) +
+   * nilaiAsuransi (Rupiah > 0) are required. */
+  asuransi?: boolean;
+  koliAsuransi?: string;
+  nilaiAsuransi?: number;
 }
 
 export interface TrackingUpdateFormData {
@@ -234,6 +242,11 @@ export interface UpdateShipmentInfoData {
   deskripsiBarang?: string;
   beratKg?: number;
   jumlahKoli?: number;
+  /** Insurance: omit to leave untouched. When present, asuransi=true requires
+   * koliAsuransi + nilaiAsuransi; asuransi=false clears them. */
+  asuransi?: boolean;
+  koliAsuransi?: string;
+  nilaiAsuransi?: number;
   /** Omit to leave SLA/ETA untouched; pass a number to set/change it, or
    * null to clear it - either recalculates estimasiTiba server-side. */
   slaValue?: number | null;

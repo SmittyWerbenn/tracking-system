@@ -38,6 +38,11 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
   const [error, setError] = useState<string | null>(null);
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
 
+  // Insurance fields (separate state: not simple strings like the rest of f).
+  const [asuransi, setAsuransi] = useState(shipment.asuransi);
+  const [koliAsuransi, setKoliAsuransi] = useState(shipment.koliAsuransi ?? "");
+  const [nilaiAsuransi, setNilaiAsuransi] = useState(shipment.nilaiAsuransi ? String(shipment.nilaiAsuransi) : "");
+
   useEffect(() => {
     refreshLayanan();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -55,6 +60,22 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
     berat > 0 && koli >= 1;
 
   async function save() {
+    if (asuransi) {
+      const nums = koliAsuransi.split(",").map(s => s.trim()).filter(Boolean);
+      if (nums.length === 0) { setError("Pilih minimal satu nomor koli yang diasuransikan."); return; }
+      const unique = new Set(nums);
+      if (unique.size !== nums.length) { setError("Nomor koli yang diasuransikan tidak boleh duplikat."); return; }
+      const effectiveKoli = Math.floor(koli);
+      for (const n of nums) {
+        const num = Number(n);
+        if (!Number.isInteger(num) || num < 1 || num > effectiveKoli) {
+          setError(`Nomor koli "${n}" tidak valid (harus 1–${effectiveKoli}).`);
+          return;
+        }
+      }
+      const nilai = Number(nilaiAsuransi);
+      if (!nilai || nilai <= 0) { setError("Nilai barang yang diasuransikan wajib diisi dan lebih dari 0."); return; }
+    }
     setPending(true);
     setError(null);
     const result = await updateShipmentInfo(shipment.awb, {
@@ -68,6 +89,9 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
       beratKg: berat,
       jumlahKoli: Math.floor(koli),
       layanan: f.layanan,
+      asuransi,
+      koliAsuransi: asuransi ? koliAsuransi : "",
+      nilaiAsuransi: asuransi ? Number(nilaiAsuransi) : undefined,
     });
     setPending(false);
     if (result.ok) {
@@ -153,6 +177,61 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
               ))}
             </select>
           </label>
+
+          <div className="sm:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <label className="flex cursor-pointer items-start gap-2.5">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600"
+                checked={asuransi}
+                onChange={(e) => {
+                  setAsuransi(e.target.checked);
+                  if (!e.target.checked) { setKoliAsuransi(""); setNilaiAsuransi(""); }
+                }}
+              />
+              <span className="text-sm text-slate-700">
+                <span className="font-medium">Asuransi Pengiriman</span>
+                <span className="block text-xs text-slate-500">Centang jika barang ini diasuransikan.</span>
+              </span>
+            </label>
+            {asuransi && (
+              <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
+                <div>
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Nomor Koli yang Diasuransikan</span>
+                  {koli > 0 && Array.from({ length: Math.floor(koli) }, (_, i) => i + 1).map((n) => {
+                    const selected = koliAsuransi.split(",").map(s => s.trim()).includes(String(n));
+                    return (
+                      <label key={n} className="mr-3 inline-flex items-center gap-1.5 text-sm text-slate-700">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                          checked={selected}
+                          onChange={(e) => {
+                            const current = koliAsuransi.split(",").map(s => s.trim()).filter(Boolean);
+                            const next = e.target.checked ? [...current, String(n)] : current.filter(c => c !== String(n));
+                            setKoliAsuransi(next.sort((a, b) => Number(a) - Number(b)).join(","));
+                          }}
+                        />
+                        Koli {n}
+                      </label>
+                    );
+                  })}
+                </div>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">Nilai Barang yang Diasuransikan (Rp)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    className={inputClass}
+                    placeholder="Contoh: 5000000"
+                    value={nilaiAsuransi}
+                    onChange={(e) => setNilaiAsuransi(e.target.value)}
+                  />
+                </label>
+              </div>
+            )}
+          </div>
         </div>
 
         {error && (

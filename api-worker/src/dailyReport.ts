@@ -38,6 +38,9 @@ interface ShipmentRow {
   jumlah_koli: number;
   estimasi_tiba: string | null;
   status: string;
+  asuransi: number;
+  koli_asuransi: string | null;
+  nilai_asuransi: number | null;
   truck_nomor_unit: string | null;
   truck_driver_nama: string | null;
   created_by_name: string | null;
@@ -57,6 +60,9 @@ const CSV_COLUMNS = [
   "Layanan",
   "Berat Final (Kg)",
   "Jumlah Koli",
+  "Asuransi",
+  "Koli Diasuransi",
+  "Nilai Asuransi (Rp)",
   "Estimasi Tiba",
   "Status",
   "Truck",
@@ -118,6 +124,9 @@ function buildCsv(rows: ShipmentRow[]): string {
         r.layanan,
         r.berat_kg,
         r.jumlah_koli,
+        r.asuransi ? "Ya" : "Tidak",
+        r.asuransi ? (r.koli_asuransi ?? "-") : "-",
+        r.asuransi ? (r.nilai_asuransi ?? "-") : "-",
         r.estimasi_tiba ?? "",
         r.status,
         r.truck_nomor_unit ?? "",
@@ -348,6 +357,7 @@ export async function runDailyReport(
     `SELECT s.awb, s.tanggal_dibuat, s.jam_dibuat, s.reference, s.customer_id,
             s.pengirim_nama, s.penerima_nama, s.kota_asal, s.kota_tujuan,
             s.layanan, s.berat_kg, s.jumlah_koli, s.estimasi_tiba, s.status,
+            s.asuransi, s.koli_asuransi, s.nilai_asuransi,
             t.nomor_unit as truck_nomor_unit, d.nama as truck_driver_nama,
             s.created_by_name, s.created_by_role
      FROM shipments s

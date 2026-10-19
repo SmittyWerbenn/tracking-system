@@ -68,6 +68,9 @@ function emptyRow(): BulkRow {
     deskripsiBarang: "",
     nomorPolisiTruck: "",
     slaValue: "",
+    asuransi: "",
+    koliAsuransi: "",
+    nilaiAsuransi: "",
   };
 }
 
@@ -118,6 +121,17 @@ function rowErrors(row: BulkRow, duplicateRows?: number[]): string[] {
   if (row.slaValue.trim()) {
     const sla = Number(row.slaValue);
     if (!Number.isInteger(sla) || sla <= 0) errs.push("Target pengiriman harus angka bulat positif");
+  }
+  // Insurance: "Ya" requires koli + nilai.
+  const asr = row.asuransi.trim().toLowerCase();
+  const asrOn = asr === "ya" || asr === "y" || asr === "1";
+  if (asr && !asrOn && asr !== "tidak" && asr !== "t" && asr !== "0" && asr !== "tidak") {
+    errs.push("Asuransi harus diisi 'Ya' atau 'Tidak'");
+  }
+  if (asrOn) {
+    if (!row.koliAsuransi.trim()) errs.push("Koli diasuransikan wajib diisi jika Asuransi = Ya");
+    const nilai = Number(row.nilaiAsuransi);
+    if (!row.nilaiAsuransi.trim() || !Number.isFinite(nilai) || nilai <= 0) errs.push("Nilai asuransi wajib diisi > 0 jika Asuransi = Ya");
   }
   return errs;
 }
@@ -279,6 +293,9 @@ export function BulkShipmentImport() {
           truckId: truck?.id ?? "",
           slaValue: row.slaValue.trim() ? Number(row.slaValue) : undefined,
           customerId: customerId.trim(),
+          asuransi: row.asuransi.trim().toLowerCase() === "ya" || row.asuransi.trim().toLowerCase() === "y" || undefined,
+          koliAsuransi: (row.asuransi.trim().toLowerCase() === "ya" || row.asuransi.trim().toLowerCase() === "y") ? row.koliAsuransi.trim() || undefined : undefined,
+          nilaiAsuransi: (row.asuransi.trim().toLowerCase() === "ya" || row.asuransi.trim().toLowerCase() === "y") ? (row.nilaiAsuransi.trim() ? Number(row.nilaiAsuransi) : undefined) : undefined,
         });
         outcome.push({ ...base, status: "Berhasil", awb, keterangan: "AWB berhasil dibuat" });
       } catch (err) {
@@ -401,6 +418,9 @@ export function BulkShipmentImport() {
               </th>
               <th className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">Armada</th>
               <th className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">Target Pengiriman</th>
+              <th colSpan={3} className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">
+                Asuransi
+              </th>
               <th></th>
             </tr>
             <tr className="border-b border-slate-200 bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -422,6 +442,9 @@ export function BulkShipmentImport() {
               <th className="px-2.5 py-2.5">Deskripsi Barang</th>
               <th className="border-l border-slate-200 px-2.5 py-2.5">Truck (Opsional)</th>
               <th className="border-l border-slate-200 px-2.5 py-2.5">Hari (Opsional)</th>
+              <th className="border-l border-slate-200 px-2.5 py-2.5">Asuransi (Ya/Tidak)</th>
+              <th className="px-2.5 py-2.5">Koli Diasuransi</th>
+              <th className="px-2.5 py-2.5">Nilai Asuransi (Rp)</th>
               <th className="px-2.5 py-2.5"></th>
             </tr>
           </thead>
@@ -623,6 +646,40 @@ export function BulkShipmentImport() {
                     value={row.slaValue}
                     onChange={(e) => updateRow(row.id, "slaValue", e.target.value)}
                     placeholder="3"
+                  />
+                </td>
+                <td className="border-l border-slate-100 px-2.5 py-2">
+                  <input
+                    className={`${cellInputClass} min-w-[70px]`}
+                    value={row.asuransi}
+                    onChange={(e) => updateRow(row.id, "asuransi", e.target.value)}
+                    placeholder="Tidak"
+                    list="asuransi-options"
+                  />
+                  <datalist id="asuransi-options">
+                    <option value="Ya" />
+                    <option value="Tidak" />
+                  </datalist>
+                </td>
+                <td className="px-2.5 py-2">
+                  <input
+                    className={`${cellInputClass} min-w-[80px]`}
+                    value={row.koliAsuransi}
+                    onChange={(e) => updateRow(row.id, "koliAsuransi", e.target.value)}
+                    placeholder="1,3"
+                    disabled={row.asuransi.trim().toLowerCase() !== "ya" && row.asuransi.trim().toLowerCase() !== "y"}
+                  />
+                </td>
+                <td className="px-2.5 py-2">
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    className={`${cellInputClass} min-w-[100px]`}
+                    value={row.nilaiAsuransi}
+                    onChange={(e) => updateRow(row.id, "nilaiAsuransi", e.target.value)}
+                    placeholder="5000000"
+                    disabled={row.asuransi.trim().toLowerCase() !== "ya" && row.asuransi.trim().toLowerCase() !== "y"}
                   />
                 </td>
                 <td className="px-2.5 py-2">

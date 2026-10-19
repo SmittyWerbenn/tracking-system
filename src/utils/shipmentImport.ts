@@ -21,6 +21,9 @@ export const BULK_TEMPLATE_HEADERS = [
   "Deskripsi Barang",
   "Nomor Polisi Truck (Opsional)",
   "Target Pengiriman Hari (Opsional)",
+  "Asuransi (Ya/Tidak)",
+  "Koli Diasuransi",
+  "Nilai Asuransi (Rp)",
 ] as const;
 
 export interface BulkRowInput {
@@ -42,6 +45,9 @@ export interface BulkRowInput {
   deskripsiBarang: string;
   nomorPolisiTruck: string;
   slaValue: string;
+  asuransi: string;
+  koliAsuransi: string;
+  nilaiAsuransi: string;
 }
 
 const FIELD_ORDER: (keyof BulkRowInput)[] = [
@@ -62,6 +68,9 @@ const FIELD_ORDER: (keyof BulkRowInput)[] = [
   "deskripsiBarang",
   "nomorPolisiTruck",
   "slaValue",
+  "asuransi",
+  "koliAsuransi",
+  "nilaiAsuransi",
 ];
 
 const HEADER_LOOKUP = new Map(BULK_TEMPLATE_HEADERS.map((h, i) => [normalizeHeader(h), FIELD_ORDER[i]]));
@@ -129,6 +138,9 @@ export function tableToBulkRows(table: unknown[][]): {
       deskripsiBarang: record.deskripsiBarang ?? "",
       nomorPolisiTruck: record.nomorPolisiTruck ?? "",
       slaValue: record.slaValue ?? "",
+      asuransi: record.asuransi ?? "",
+      koliAsuransi: record.koliAsuransi ?? "",
+      nilaiAsuransi: record.nilaiAsuransi ?? "",
     });
   }
 
@@ -164,6 +176,9 @@ export function downloadBulkShipmentTemplate() {
       "Contoh isi paket, 1 dus (10kg)",
       "",
       "3",
+      "Tidak",
+      "",
+      "",
     ],
   ]);
 }

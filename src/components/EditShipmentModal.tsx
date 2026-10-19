@@ -196,27 +196,16 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
             </label>
             {asuransi && (
               <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
-                <div>
+                <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-slate-600">Nomor Koli yang Diasuransikan</span>
-                  {koli > 0 && Array.from({ length: Math.floor(koli) }, (_, i) => i + 1).map((n) => {
-                    const selected = koliAsuransi.split(",").map(s => s.trim()).includes(String(n));
-                    return (
-                      <label key={n} className="mr-3 inline-flex items-center gap-1.5 text-sm text-slate-700">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-slate-300 text-blue-600"
-                          checked={selected}
-                          onChange={(e) => {
-                            const current = koliAsuransi.split(",").map(s => s.trim()).filter(Boolean);
-                            const next = e.target.checked ? [...current, String(n)] : current.filter(c => c !== String(n));
-                            setKoliAsuransi(next.sort((a, b) => Number(a) - Number(b)).join(","));
-                          }}
-                        />
-                        Koli {n}
-                      </label>
-                    );
-                  })}
-                </div>
+                  <input
+                    className={inputClass}
+                    placeholder="Contoh: 1,3 (dipisah koma)"
+                    value={koliAsuransi}
+                    onChange={(e) => setKoliAsuransi(e.target.value)}
+                  />
+                </label>
+                <p className="-mt-1 text-[11px] text-slate-400">Total koli: {Math.floor(koli)}.</p>
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-slate-600">Nilai Barang yang Diasuransikan (Rp)</span>
                   <input

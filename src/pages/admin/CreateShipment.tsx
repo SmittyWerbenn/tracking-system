@@ -593,34 +593,18 @@ export default function CreateShipment() {
               </label>
               {form.asuransi && (
                 <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
-                  <div>
-                    <span className="mb-1.5 block text-xs font-medium text-slate-600">
-                      Nomor Koli yang Diasuransikan
-                    </span>
-                    {form.jumlahKoli > 0 && Array.from({ length: form.jumlahKoli }, (_, i) => i + 1).map((n) => {
-                      const selected = (form.koliAsuransi ?? "").split(",").map(s => s.trim()).includes(String(n));
-                      return (
-                        <label key={n} className="mr-3 inline-flex items-center gap-1.5 text-sm text-slate-700">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-slate-300 text-blue-600"
-                            checked={selected}
-                            onChange={(e) => {
-                              const current = (form.koliAsuransi ?? "").split(",").map(s => s.trim()).filter(Boolean);
-                              const next = e.target.checked
-                                ? [...current, String(n)]
-                                : current.filter(c => c !== String(n));
-                              update("koliAsuransi", next.sort((a, b) => Number(a) - Number(b)).join(","));
-                            }}
-                          />
-                          Koli {n}
-                        </label>
-                      );
-                    })}
-                    <p className="mt-1 text-[11px] text-slate-400">
-                      Pilih satu atau beberapa koli. Total koli: {form.jumlahKoli}.
-                    </p>
-                  </div>
+                  <Field label="Nomor Koli yang Diasuransikan">
+                    <input
+                      required={form.asuransi}
+                      className={inputClass}
+                      placeholder="Contoh: 1,3 (dipisah koma)"
+                      value={form.koliAsuransi ?? ""}
+                      onChange={(e) => update("koliAsuransi", e.target.value)}
+                    />
+                  </Field>
+                  <p className="-mt-1 text-[11px] text-slate-400">
+                    Isi nomor koli yang diasuransikan, dipisah koma. Total koli: {form.jumlahKoli}.
+                  </p>
                   <Field label="Nilai Barang yang Diasuransikan (Rp)">
                     <input
                       type="number"

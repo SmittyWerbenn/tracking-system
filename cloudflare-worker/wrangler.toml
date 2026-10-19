@@ -12,6 +12,8 @@ compatibility_flags = ["nodejs_compat"]
 #   BREVO_SENDER_NAME    - company name shown in the email body
 #   BREVO_FROM_NAME      - optional; SMTP From mailbox display name
 #                          (defaults to BREVO_SENDER_NAME if unset)
+#   REPORT_API_TOKEN     - shared secret for /send-report calls from gms-api
+#                          (set the SAME value on gms-api via its own secret)
 
 [vars]
 # Origins allowed to call this API (comma-separated), set as a plain var

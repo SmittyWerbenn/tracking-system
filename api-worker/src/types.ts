@@ -6,6 +6,12 @@ export interface Env {
   MINIO_ACCESS_KEY: string;
   MINIO_SECRET_KEY: string;
   SESSION_TTL_HOURS: string;
+  /** Base URL of the gms-email-api worker (e.g. https://gms-email-api.indotrans-tracking.workers.dev). */
+  EMAIL_API_URL: string;
+  /** Shared secret matching gms-email-api's REPORT_API_TOKEN; authenticates /send-report calls. */
+  REPORT_API_TOKEN: string;
+  /** "false" disables the daily report scheduler (manual trigger still works). */
+  DAILY_REPORT_ENABLED: string;
 }
 
 export type Role = "Superadmin" | "Admin" | "Driver" | "Viewer" | "Client" | "Mitra";

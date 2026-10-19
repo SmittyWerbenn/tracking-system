@@ -7,16 +7,22 @@ account_id = "aea7460c185f9ed038f60167b730c47b"
 # Secrets (never put real values here - set via `wrangler secret put <NAME>`):
 #   MINIO_ACCESS_KEY
 #   MINIO_SECRET_KEY
+#   REPORT_API_TOKEN   - shared secret with gms-email-api for /send-report
 
-# Nightly Recycle Bin cleanup, 02:00 WIB (19:00 UTC).
+# Scheduled jobs (all times UTC; WIB = UTC+7):
+#   0 4 * * *   = 11:00 WIB  daily shipment report (00:00–11:00 WIB)
+#   0 10 * * *  = 17:00 WIB  daily shipment report (00:00–17:00 WIB)
+#   0 19 * * *  = 02:00 WIB  nightly Recycle Bin cleanup (captcha purge only)
 [triggers]
-crons = ["0 19 * * *"]
+crons = ["0 4 * * *", "0 10 * * *", "0 19 * * *"]
 
 [vars]
 ALLOWED_ORIGINS = "https://gms-logistics.id,https://admin.gms-logistics.id,https://driver.gms-logistics.id,https://smittywerbenn.github.io,https://temp-gms.frel.cloud,http://localhost:5183"
 MINIO_ENDPOINT = "https://os-api.rextop.id"
 MINIO_BUCKET = "gms"
 SESSION_TTL_HOURS = "24"
+EMAIL_API_URL = "https://gms-email-api.indotrans-tracking.workers.dev"
+DAILY_REPORT_ENABLED = "true"
 
 [[d1_databases]]
 binding = "DB"

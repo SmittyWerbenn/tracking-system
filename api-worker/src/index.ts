@@ -27,6 +27,8 @@ import { registerCancellationRoutes } from "./routes/cancellation";
 import { registerHoldRoutes } from "./routes/hold";
 import { registerRatePublishRoutes } from "./routes/ratepublish";
 import { registerClientLogoRoutes } from "./routes/clientlogos";
+import { registerDailyReportRoutes } from "./routes/dailyReport";
+import { runDailyReport, type ReportSlot } from "./dailyReport";
 
 const router = new Router();
 registerAuthRoutes(router);
@@ -53,6 +55,7 @@ registerCancellationRoutes(router);
 registerHoldRoutes(router);
 registerRatePublishRoutes(router);
 registerClientLogoRoutes(router);
+registerDailyReportRoutes(router);
 
 router.get("/api/health", async () => ok({ status: "ok", time: new Date().toISOString() }));
 
@@ -119,8 +122,32 @@ export default {
       return new Response(resp.body, { status: resp.status, headers });
     }
   },
-  async scheduled(_event: ScheduledController, env: Env): Promise<void> {
-    // Recycle Bin auto-purge is intentionally NOT run (see AUTO_PURGE_ENABLED in recycle.ts); only the captcha cleanup remains.
+  async scheduled(event: ScheduledController, env: Env): Promise<void> {
+    // Captcha cleanup runs on the nightly 19:00 UTC cron (same as before).
     await purgeCaptchaData(env);
+
+    // Daily shipment email reports at 11:00 and 17:00 WIB.
+    // Cloudflare cron fires in UTC; event.cron identifies which schedule
+    // triggered, so only one report runs per fire (no concurrent duplicates).
+    if (env.DAILY_REPORT_ENABLED === "false") {
+      console.log(JSON.stringify({ module: "DailyReport", event: "disabled", cron: event.cron }));
+      return;
+    }
+    let slot: ReportSlot | null = null;
+    if (event.cron === "0 4 * * *") slot = "11";
+    else if (event.cron === "0 10 * * *") slot = "17";
+    if (slot) {
+      try {
+        await runDailyReport(env, slot);
+      } catch (err) {
+        console.error(JSON.stringify({
+          module: "DailyReport",
+          event: "scheduled_error",
+          cron: event.cron,
+          slot,
+          error: err instanceof Error ? err.message : String(err),
+        }));
+      }
+    }
   },
 };

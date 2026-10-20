@@ -666,7 +666,7 @@ export function BulkShipmentImport() {
                     className={`${cellInputClass} min-w-[80px]`}
                     value={row.koliAsuransi}
                     onChange={(e) => updateRow(row.id, "koliAsuransi", e.target.value)}
-                    placeholder="1,3"
+                    placeholder="62001, 62002"
                     disabled={row.asuransi.trim().toLowerCase() !== "ya" && row.asuransi.trim().toLowerCase() !== "y"}
                   />
                 </td>

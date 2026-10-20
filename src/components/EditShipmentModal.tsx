@@ -38,6 +38,9 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
   const [error, setError] = useState<string | null>(null);
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
 
+  // Insurance fields are locked when the order has moved past preparation.
+  const insuranceLocked = shipment.status !== "Dalam Persiapan" && shipment.status !== "Hold";
+
   // Insurance fields (separate state: not simple strings like the rest of f).
   const [asuransi, setAsuransi] = useState(shipment.asuransi);
   const [koliAsuransi, setKoliAsuransi] = useState(shipment.koliAsuransi ?? "");
@@ -61,18 +64,7 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
 
   async function save() {
     if (asuransi) {
-      const nums = koliAsuransi.split(",").map(s => s.trim()).filter(Boolean);
-      if (nums.length === 0) { setError("Pilih minimal satu nomor koli yang diasuransikan."); return; }
-      const unique = new Set(nums);
-      if (unique.size !== nums.length) { setError("Nomor koli yang diasuransikan tidak boleh duplikat."); return; }
-      const effectiveKoli = Math.floor(koli);
-      for (const n of nums) {
-        const num = Number(n);
-        if (!Number.isInteger(num) || num < 1 || num > effectiveKoli) {
-          setError(`Nomor koli "${n}" tidak valid (harus 1–${effectiveKoli}).`);
-          return;
-        }
-      }
+      if (!koliAsuransi.trim()) { setError("Nomor koli yang diasuransikan wajib diisi."); return; }
       const nilai = Number(nilaiAsuransi);
       if (!nilai || nilai <= 0) { setError("Nilai barang yang diasuransikan wajib diisi dan lebih dari 0."); return; }
     }
@@ -184,6 +176,7 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
                 type="checkbox"
                 className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600"
                 checked={asuransi}
+                disabled={insuranceLocked}
                 onChange={(e) => {
                   setAsuransi(e.target.checked);
                   if (!e.target.checked) { setKoliAsuransi(""); setNilaiAsuransi(""); }
@@ -194,18 +187,23 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
                 <span className="block text-xs text-slate-500">Centang jika barang ini diasuransikan.</span>
               </span>
             </label>
+            {insuranceLocked && (
+              <p className="mt-2 text-[11px] font-medium text-amber-600">
+                Data asuransi terkunci — hanya bisa diubah saat status masih Dalam Persiapan.
+              </p>
+            )}
             {asuransi && (
               <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-slate-600">Nomor Koli yang Diasuransikan</span>
                   <input
                     className={inputClass}
-                    placeholder="Contoh: 1,3 (dipisah koma)"
+                    placeholder="Contoh: 62001, 62004"
                     value={koliAsuransi}
+                    disabled={insuranceLocked}
                     onChange={(e) => setKoliAsuransi(e.target.value)}
                   />
                 </label>
-                <p className="-mt-1 text-[11px] text-slate-400">Total koli: {Math.floor(koli)}.</p>
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-slate-600">Nilai Barang yang Diasuransikan (Rp)</span>
                   <input
@@ -215,6 +213,7 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
                     className={inputClass}
                     placeholder="Contoh: 5000000"
                     value={nilaiAsuransi}
+                    disabled={insuranceLocked}
                     onChange={(e) => setNilaiAsuransi(e.target.value)}
                   />
                 </label>

@@ -312,25 +312,17 @@ export function registerShipmentRoutes(router: Router) {
     }
 
     // Insurance: optional at creation. When asuransi = true, koliAsuransi
-    // (comma-separated koli numbers) and nilaiAsuransi (Rupiah > 0) are required.
-    // Koli numbers must be 1..jumlahKoli, no duplicates.
+    // (free-text, e.g. "62001, 62004" or any koli identifier) and
+    // nilaiAsuransi (Rupiah > 0) are required. No range validation — the
+    // field accepts any text the user enters.
     const asuransi = body.asuransi === true;
     let koliAsuransi: string | null = null;
     let nilaiAsuransi: number | null = null;
     if (asuransi) {
       const rawKoli = optString(body, "koliAsuransi");
       if (!rawKoli || !rawKoli.trim()) throw Errors.badRequest("Nomor koli yang diasuransikan wajib diisi ketika Asuransi = Ya.");
-      const nums = rawKoli.split(",").map((s) => s.trim()).filter(Boolean);
-      if (nums.length === 0) throw Errors.badRequest("Nomor koli yang diasuransikan wajib diisi ketika Asuransi = Ya.");
-      const unique = new Set(nums);
-      if (unique.size !== nums.length) throw Errors.badRequest("Nomor koli yang diasuransikan tidak boleh duplikat.");
-      for (const n of nums) {
-        const num = Number(n);
-        if (!Number.isInteger(num) || num < 1 || num > jumlahKoli) {
-          throw Errors.badRequest(`Nomor koli "${n}" tidak valid. Harus angka bulat antara 1 dan ${jumlahKoli}.`);
-        }
-      }
-      koliAsuransi = nums.join(",");
+      koliAsuransi = rawKoli.trim();
+      if (koliAsuransi.length > 500) throw Errors.badRequest("Nomor koli yang diasuransikan maksimal 500 karakter.");
       nilaiAsuransi = optNumber(body, "nilaiAsuransi", { min: 1, max: 10_000_000_000 }) ?? null;
       if (nilaiAsuransi === null || nilaiAsuransi <= 0) {
         throw Errors.badRequest("Nilai barang yang diasuransikan wajib diisi dan lebih dari 0 ketika Asuransi = Ya.");
@@ -624,31 +616,25 @@ export function registerShipmentRoutes(router: Router) {
       values.push(reqNumber(body, "jumlahKoli", { min: 1, max: 100000 }));
     }
     // Insurance: only touched when the "asuransi" key is present.
-    // When asuransi = true, koliAsuransi + nilaiAsuransi are required and validated
-    // against the (possibly updated) jumlahKoli. When false, clear both fields.
+    // Asuransi fields are ONLY editable while status is "Dalam Persiapan" or "Hold"
+    // (before the cargo has been picked up). Once the order moves past preparation,
+    // insurance data is locked.
     if (has("asuransi")) {
+      if (shipment.status !== "Dalam Persiapan" && shipment.status !== "Hold") {
+        throw Errors.unprocessable("Data asuransi hanya dapat diubah selama status masih Dalam Persiapan.");
+      }
       const asuransiOn = body.asuransi === true;
       if (asuransiOn) {
-        // Use the updated jumlahKoli if it was sent, otherwise the DB value.
-        const effectiveKoli = has("jumlahKoli") ? reqNumber(body, "jumlahKoli", { min: 1, max: 100000 }) : shipment.jumlah_koli;
         const rawKoli = optString(body, "koliAsuransi");
         if (!rawKoli || !rawKoli.trim()) throw Errors.badRequest("Nomor koli yang diasuransikan wajib diisi ketika Asuransi = Ya.");
-        const nums = rawKoli.split(",").map((s) => s.trim()).filter(Boolean);
-        if (nums.length === 0) throw Errors.badRequest("Nomor koli yang diasuransikan wajib diisi ketika Asuransi = Ya.");
-        const unique = new Set(nums);
-        if (unique.size !== nums.length) throw Errors.badRequest("Nomor koli yang diasuransikan tidak boleh duplikat.");
-        for (const n of nums) {
-          const num = Number(n);
-          if (!Number.isInteger(num) || num < 1 || num > effectiveKoli) {
-            throw Errors.badRequest(`Nomor koli "${n}" tidak valid. Harus angka bulat antara 1 dan ${effectiveKoli}.`);
-          }
-        }
+        const koliText = rawKoli.trim();
+        if (koliText.length > 500) throw Errors.badRequest("Nomor koli yang diasuransikan maksimal 500 karakter.");
         const nilaiAsuransi = optNumber(body, "nilaiAsuransi", { min: 1, max: 10_000_000_000 }) ?? null;
         if (nilaiAsuransi === null || nilaiAsuransi <= 0) {
           throw Errors.badRequest("Nilai barang yang diasuransikan wajib diisi dan lebih dari 0 ketika Asuransi = Ya.");
         }
         sets.push("asuransi=?", "koli_asuransi=?", "nilai_asuransi=?");
-        values.push(1, nums.join(","), nilaiAsuransi);
+        values.push(1, koliText, nilaiAsuransi);
       } else {
         sets.push("asuransi=?", "koli_asuransi=?", "nilai_asuransi=?");
         values.push(0, null, null);

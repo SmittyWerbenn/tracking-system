@@ -192,7 +192,7 @@ export default function ShipmentDetail() {
   }
 
   const trackingUrl = publicTrackingUrl(shipment.awb);
-  const canEditAlamat = profile?.role === "Client" && shipment.status === "Dalam Persiapan";
+  const canEditAlamat = (profile?.role === "Client" || profile?.role === "Superadmin" || profile?.role === "Admin") && (shipment.status === "Dalam Persiapan" || shipment.status === "Hold");
 
   function printResi() {
     // The browser's print/"Save as PDF" dialog suggests document.title as the

@@ -198,22 +198,9 @@ export default function CreateShipment() {
       return;
     }
     if (form.asuransi) {
-      const koliNums = (form.koliAsuransi ?? "").split(",").map(s => s.trim()).filter(Boolean);
-      if (koliNums.length === 0) {
-        setFormError("Pilih minimal satu nomor koli yang diasuransikan.");
+      if (!(form.koliAsuransi ?? "").trim()) {
+        setFormError("Nomor koli yang diasuransikan wajib diisi.");
         return;
-      }
-      const unique = new Set(koliNums);
-      if (unique.size !== koliNums.length) {
-        setFormError("Nomor koli yang diasuransikan tidak boleh duplikat.");
-        return;
-      }
-      for (const n of koliNums) {
-        const num = Number(n);
-        if (!Number.isInteger(num) || num < 1 || num > form.jumlahKoli) {
-          setFormError(`Nomor koli "${n}" tidak valid (harus 1–${form.jumlahKoli}).`);
-          return;
-        }
       }
       if (!form.nilaiAsuransi || form.nilaiAsuransi <= 0) {
         setFormError("Nilai barang yang diasuransikan wajib diisi dan lebih dari 0.");
@@ -603,7 +590,7 @@ export default function CreateShipment() {
                     />
                   </Field>
                   <p className="-mt-1 text-[11px] text-slate-400">
-                    Isi nomor koli yang diasuransikan, dipisah koma. Total koli: {form.jumlahKoli}.
+                    Isi nomor koli yang diasuransikan, dipisah koma.
                   </p>
                   <Field label="Nilai Barang yang Diasuransikan (Rp)">
                     <input

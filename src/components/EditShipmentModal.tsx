@@ -207,14 +207,13 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-slate-600">Nilai Barang yang Diasuransikan (Rp)</span>
                   <input
-                    type="number"
-                    min={1}
-                    step={1}
+                    type="text"
+                    inputMode="numeric"
                     className={inputClass}
-                    placeholder="Contoh: 5000000"
-                    value={nilaiAsuransi}
+                    placeholder="Contoh: 1,000,000"
+                    value={nilaiAsuransi ? Number(nilaiAsuransi).toLocaleString("en-US") : ""}
                     disabled={insuranceLocked}
-                    onChange={(e) => setNilaiAsuransi(e.target.value)}
+                    onChange={(e) => setNilaiAsuransi(e.target.value.replace(/\D/g, ""))}
                   />
                 </label>
               </div>

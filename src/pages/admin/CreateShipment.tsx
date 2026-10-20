@@ -594,13 +594,15 @@ export default function CreateShipment() {
                   </p>
                   <Field label="Nilai Barang yang Diasuransikan (Rp)">
                     <input
-                      type="number"
-                      min={1}
-                      step={1}
+                      type="text"
+                      inputMode="numeric"
                       className={inputClass}
-                      placeholder="Contoh: 5000000"
-                      value={form.nilaiAsuransi ?? ""}
-                      onChange={(e) => update("nilaiAsuransi", e.target.value === "" ? undefined : Number(e.target.value))}
+                      placeholder="Contoh: 1,000,000"
+                      value={form.nilaiAsuransi ? Number(form.nilaiAsuransi).toLocaleString("en-US") : ""}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, "");
+                        update("nilaiAsuransi", digits ? Number(digits) : undefined);
+                      }}
                     />
                   </Field>
                 </div>

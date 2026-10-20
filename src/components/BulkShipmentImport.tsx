@@ -672,13 +672,12 @@ export function BulkShipmentImport() {
                 </td>
                 <td className="px-2.5 py-2">
                   <input
-                    type="number"
-                    min={1}
-                    step={1}
+                    type="text"
+                    inputMode="numeric"
                     className={`${cellInputClass} min-w-[100px]`}
-                    value={row.nilaiAsuransi}
-                    onChange={(e) => updateRow(row.id, "nilaiAsuransi", e.target.value)}
-                    placeholder="5000000"
+                    value={row.nilaiAsuransi ? Number(row.nilaiAsuransi.replace(/\D/g, "")).toLocaleString("en-US") : ""}
+                    onChange={(e) => updateRow(row.id, "nilaiAsuransi", e.target.value.replace(/\D/g, ""))}
+                    placeholder="1,000,000"
                     disabled={row.asuransi.trim().toLowerCase() !== "ya" && row.asuransi.trim().toLowerCase() !== "y"}
                   />
                 </td>

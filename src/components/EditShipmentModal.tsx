@@ -171,10 +171,10 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
           </label>
 
           <div className="sm:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <label className="flex cursor-pointer items-start gap-2.5">
+            <div className="flex items-start gap-2.5">
               <input
                 type="checkbox"
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600"
+                className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600"
                 checked={asuransi}
                 disabled={insuranceLocked}
                 onChange={(e) => {
@@ -186,7 +186,7 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
                 <span className="font-medium">Asuransi Pengiriman</span>
                 <span className="block text-xs text-slate-500">Centang jika barang ini diasuransikan.</span>
               </span>
-            </label>
+            </div>
             {insuranceLocked && (
               <p className="mt-2 text-[11px] font-medium text-amber-600">
                 Data asuransi terkunci — hanya bisa diubah saat status masih Dalam Persiapan.

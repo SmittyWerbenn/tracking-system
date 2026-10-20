@@ -530,10 +530,10 @@ export default function CreateShipment() {
             />
           </Field>
           <Field label="Status Awal" full>
-            <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div className="flex items-start gap-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3">
               <input
                 type="checkbox"
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-orange-600"
+                className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-orange-600"
                 checked={!!form.hold}
                 onChange={(e) => update("hold", e.target.checked)}
               />
@@ -543,7 +543,7 @@ export default function CreateShipment() {
                   AWB tetap diterbitkan (mis. untuk penagihan), tetapi order belum masuk ke proses Driver sampai Anda memilih Lepas Hold.
                 </span>
               </span>
-            </label>
+            </div>
             {form.hold && (
               <textarea
                 required
@@ -558,10 +558,10 @@ export default function CreateShipment() {
           </Field>
           <Field label="Asuransi Barang" full>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <label className="flex cursor-pointer items-start gap-2.5">
+              <div className="flex items-start gap-2.5">
                 <input
                   type="checkbox"
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600"
+                  className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600"
                   checked={!!form.asuransi}
                   onChange={(e) => {
                     update("asuransi", e.target.checked);
@@ -577,7 +577,7 @@ export default function CreateShipment() {
                     Centang jika barang ini diasuransikan. Pilih koli yang diasuransikan dan isi nilai barang.
                   </span>
                 </span>
-              </label>
+                </div>
               {form.asuransi && (
                 <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
                   <Field label="Nomor Koli yang Diasuransikan">

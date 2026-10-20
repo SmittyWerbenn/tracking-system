@@ -84,10 +84,10 @@ function Field({
   full?: boolean;
 }) {
   return (
-    <label className={`block ${full ? "sm:col-span-2" : ""}`}>
+    <div className={`block ${full ? "sm:col-span-2" : ""}`}>
       <span className="mb-1.5 block text-xs font-medium text-slate-600">{label}</span>
       {children}
-    </label>
+    </div>
   );
 }
 

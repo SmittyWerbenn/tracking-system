@@ -198,7 +198,7 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
                   <span className="mb-1.5 block text-xs font-medium text-slate-600">Nomor Koli yang Diasuransikan</span>
                   <input
                     className={inputClass}
-                    placeholder="Contoh: Koli 1, Koli 3"
+                    placeholder="Contoh: 62001, 62002"
                     value={koliAsuransi}
                     disabled={insuranceLocked}
                     onChange={(e) => setKoliAsuransi(e.target.value)}

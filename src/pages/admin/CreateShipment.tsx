@@ -584,7 +584,7 @@ export default function CreateShipment() {
                     <input
                       required={form.asuransi}
                       className={inputClass}
-                      placeholder="Contoh: Koli 1, Koli 3"
+                      placeholder="Contoh: 62001, 62002"
                       value={form.koliAsuransi ?? ""}
                       onChange={(e) => update("koliAsuransi", e.target.value)}
                     />

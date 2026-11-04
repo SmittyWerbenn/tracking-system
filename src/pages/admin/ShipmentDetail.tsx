@@ -193,6 +193,10 @@ export default function ShipmentDetail() {
 
   const trackingUrl = publicTrackingUrl(shipment.awb);
   const canEditAlamat = (profile?.role === "Client" || profile?.role === "Superadmin" || profile?.role === "Admin") && (shipment.status === "Dalam Persiapan" || shipment.status === "Hold");
+  // Final statuses are locked server-side (assign-mitra rejects them) - the
+  // Mitra card must not offer an action the API will refuse.
+  const isFinalStatus = shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan";
+  const isHold = shipment.status === "Hold";
 
   function printResi() {
     // The browser's print/"Save as PDF" dialog suggests document.title as the
@@ -492,12 +496,18 @@ export default function ShipmentDetail() {
 
               {mitraError && <p className="mb-2 text-xs font-medium text-red-600">{mitraError}</p>}
 
-              {canManageClaims ? (
+              {isHold && (
+                <p className="mb-2 text-xs font-medium text-amber-600">
+                  Pesanan sedang di-Hold - lepas Hold dulu sebelum meneruskan ke Mitra.
+                </p>
+              )}
+
+              {canManageClaims && !isFinalStatus ? (
                 <div className="flex flex-wrap items-center gap-2 no-print">
                   <select
                     value={mitraSelect}
                     onChange={(e) => setMitraSelect(e.target.value)}
-                    disabled={mitraPending}
+                    disabled={mitraPending || isHold}
                     className="min-w-[220px] rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   >
                     <option value="">- Belum diteruskan ke Mitra -</option>
@@ -509,7 +519,7 @@ export default function ShipmentDetail() {
                   </select>
                   <button
                     type="button"
-                    disabled={mitraPending || mitraSelect === (shipment.mitraId ?? "")}
+                    disabled={mitraPending || isHold || mitraSelect === (shipment.mitraId ?? "")}
                     onClick={handleAssignMitra}
                     className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-800 disabled:opacity-60"
                   >
@@ -519,7 +529,7 @@ export default function ShipmentDetail() {
                   {shipment.mitraId && (
                     <button
                       type="button"
-                      disabled={mitraPending}
+                      disabled={mitraPending || isHold}
                       onClick={handleUnassignMitra}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
                     >
@@ -527,6 +537,24 @@ export default function ShipmentDetail() {
                     </button>
                   )}
                 </div>
+              ) : isFinalStatus ? (
+                <>
+                  <p className="text-sm text-slate-700">
+                    {shipment.mitraId ? (
+                      <>
+                        Diteruskan ke{" "}
+                        <span className="font-semibold">{shipment.mitraNama ?? shipment.mitraId}</span>
+                      </>
+                    ) : (
+                      <>Belum diteruskan ke Mitra manapun.</>
+                    )}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Pesanan sudah{" "}
+                    {shipment.status === "Dibatalkan" ? "dibatalkan" : "selesai/terkirim"} dan tidak dapat
+                    diteruskan ke mitra.
+                  </p>
+                </>
               ) : shipment.mitraId ? (
                 <p className="text-sm text-slate-700">
                   Diteruskan ke <span className="font-semibold">{shipment.mitraNama ?? shipment.mitraId}</span>

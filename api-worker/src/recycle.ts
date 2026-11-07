@@ -1,4 +1,4 @@
-import type { Env } from "./types";
+import type { Env, AuthedUser } from "./types";
 import { newId } from "./crypto";
 import { deleteObject } from "./storage";
 import { writeAuditLog } from "./audit";
@@ -692,6 +692,64 @@ export async function purgeItem(
     }
   }
   return { id: binId, ok: true, bin, row: row ?? undefined };
+}
+
+export interface ShipmentPurgeSummary {
+  purged: number;
+  failed: number;
+  results: ItemResult[];
+}
+
+/** Every status a shipment can be in that is NOT allowed to be purged by the
+ * "hapus DATA PENGIRIMAN dibatalkan" action. NULL/empty status is kept safe too. */
+const PURGE_ELIGIBLE_STATUS = "Dibatalkan";
+
+/** Permanently delete a Data Pengiriman (shipment) row straight from the table,
+ * bypassing the Recycle Bin. Strictly limited to status "Dibatalkan": the row is
+ * re-read here and anything else is refused — the UI already screens by status, but
+ * the API is the authority (a shipment that got restored meanwhile must not be purged).
+ * Also refuses a row that is sitting in the Recycle Bin (that path has its own flow).
+ * Never throws for business reasons; returns the outcome per AWB. */
+export async function purgeCancelledShipment(env: Env, awb: string, reason: string, actor: RecycleActor | AuthedUser): Promise<ItemResult & { row?: EntityRow }> {
+  const def = ENTITIES.shipment;
+  const row = await def.load(env, awb);
+  if (!row) return { id: awb, ok: false, message: "Data pengiriman tidak ditemukan." };
+  if (row.deletedAt) return { id: awb, ok: false, message: "Data pengiriman sudah berada di Recycle Bin." };
+  if (String(row.snapshot.status ?? "") !== PURGE_ELIGIBLE_STATUS) {
+    return { id: awb, ok: false, message: `Hanya pengiriman berstatus ${PURGE_ELIGIBLE_STATUS} yang dapat dihapus permanen.` };
+  }
+
+  // Snapshot what goes away, then drop the files rows + child rows + the shipment itself in one transaction.
+  const keys = await collectShipmentObjectKeys(env, awb);
+  try {
+    await env.DB.batch(await def.purgeStatements(env, row));
+  } catch (e) {
+    return { id: awb, ok: false, message: `Gagal menghapus permanen: ${e instanceof Error ? e.message : "kesalahan database"}` };
+  }
+  await deleteObjectsQuietly(env, keys);
+  await writeAuditLog(env, { ...actor, id: actor.id ?? null } as AuthedUser, {
+    action: "PERMANENT_DELETE_SHIPMENT",
+    actionLabel: "HAPUS PERMANEN DATA PENGIRIMAN",
+    module: "Pengiriman",
+    awb,
+    description: `Pengiriman ${awb} (${row.sublabel}) berstatus ${PURGE_ELIGIBLE_STATUS} dihapus permanen. Alasan: ${reason}`,
+  });
+  return { id: awb, ok: true, row };
+}
+
+/** Bulk variant of purgeCancelledShipment (the "Hapus Semua Dibatalkan" button). */
+export async function purgeCancelledShipments(
+  env: Env,
+  awbs: string[],
+  reason: string,
+  actor: RecycleActor,
+): Promise<ShipmentPurgeSummary> {
+  const results: ItemResult[] = [];
+  for (const awb of awbs) {
+    const r = await purgeCancelledShipment(env, awb, reason, actor);
+    results.push({ id: r.id, ok: r.ok, message: r.message });
+  }
+  return { purged: results.filter((r) => r.ok).length, failed: results.filter((r) => !r.ok).length, results };
 }
 
 /** Nightly job: permanently delete bin rows older than the retention window. */

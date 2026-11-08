@@ -35,6 +35,8 @@ export interface PersonInfo {
 
 /** Snapshot of a truck/driver as it was at a point in time (embedded in a
  * timeline event). See `Truck` for the master-data record it's sourced from. */
+export type ArmadaType = "internal" | "sewa";
+
 export interface TruckInfo {
   nomorUnit: string;
   jenis: string;
@@ -91,6 +93,13 @@ export interface Shipment {
   fotoSuratJalan?: string;
   truck: TruckInfo;
   truckId?: string; // links to Truck master data
+  /** "internal" (Master Armada) or "sewa" (vendor, free-text plate; never in Pesanan Terbuka). */
+  armadaType: ArmadaType;
+  vehiclePlate?: string;
+  /** Sewa only: optional free-text driver note. */
+  driverName?: string;
+  /** Internal only: registered driver of the assigned unit. */
+  driverId?: string;
   /** Client ID this shipment is tagged to - mandatory on every
    * shipment, scopes visibility for Client accounts server-side. */
   customerId?: string | null;
@@ -196,6 +205,10 @@ export interface ShipmentFormData {
   /** Optional - leave empty to create an unassigned ("Pesanan Terbuka")
    * shipment any driver can request to claim. */
   truckId?: string;
+  /** Default "internal". "sewa" needs vehiclePlate; driverName optional. */
+  armadaType?: ArmadaType;
+  vehiclePlate?: string;
+  driverName?: string;
   /** SLA in business days; ETA is calculated server-side from this. */
   slaValue?: number;
   /** Client ID - mandatory. A Client's value is ignored by the
@@ -247,6 +260,11 @@ export interface UpdateShipmentInfoData {
   asuransi?: boolean;
   koliAsuransi?: string;
   nilaiAsuransi?: number;
+  /** Armada (admin only) - omit to leave untouched. */
+  armadaType?: ArmadaType;
+  truckId?: string;
+  vehiclePlate?: string;
+  driverName?: string;
   /** Omit to leave SLA/ETA untouched; pass a number to set/change it, or
    * null to clear it - either recalculates estimasiTiba server-side. */
   slaValue?: number | null;

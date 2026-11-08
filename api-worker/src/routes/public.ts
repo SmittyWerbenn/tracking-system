@@ -33,7 +33,7 @@ function shipmentSummary(row: Record<string, unknown>) {
     beratKg: row.berat_kg,
     jumlahKoli: row.jumlah_koli,
     deskripsiBarang: row.deskripsi_barang,
-    truckNomorUnit: row.truck_nomor_unit ?? null,
+    truckNomorUnit: row.truck_nomor_unit ?? (row.armada_type === "sewa" ? (row.vehicle_plate ?? null) : null),
     truckJenis: row.truck_jenis ?? null,
     truckDriverNama: row.truck_driver_nama ?? null,
     estimasiTiba: row.estimasi_tiba,

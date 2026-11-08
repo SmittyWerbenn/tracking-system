@@ -449,6 +449,16 @@ export default function ShipmentDetail() {
                     </div>
                   )}
                 </div>
+              ) : shipment.armadaType === "sewa" ? (
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-slate-700">
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">[Sewa]</span>
+                  <p>
+                    <span className="text-slate-400">Plat Nomor:</span> {shipment.vehiclePlate || "-"}
+                  </p>
+                  <p>
+                    <span className="text-slate-400">Driver:</span> {shipment.driverName || "-"}
+                  </p>
+                </div>
               ) : !shipment.truckId ? (
                 <p className="text-sm text-slate-500">
                   Belum ditugaskan ke driver manapun - pengiriman ini masuk daftar "Pesanan Terbuka"

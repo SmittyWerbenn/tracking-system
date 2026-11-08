@@ -103,7 +103,7 @@ export function registerDriverRoutes(router: Router) {
     return ok({ items: (rows.results ?? []).map(shipmentSummary), ...(paged ? { meta: pageMeta(page, limit, total?.c ?? 0) } : {}) });
   });
 
-  // Unassigned shipments (truck_id IS NULL) any driver may browse and
+  // Unassigned INTERNAL shipments (truck_id IS NULL, armada_type = 'internal') any driver may browse and
   // request to claim - excludes ones another driver already has a pending
   // claim on, but still shows the requesting driver's own pending claim.
   router.get("/api/driver/open-shipments", async (ctx: Ctx) => {
@@ -111,7 +111,7 @@ export function registerDriverRoutes(router: Router) {
     const rows = await ctx.env.DB.prepare(
       `SELECT s.*, ${CUSTOMER_NAME_SQL}
        FROM shipments s
-       WHERE s.truck_id IS NULL AND s.deleted_at IS NULL
+       WHERE s.truck_id IS NULL AND s.armada_type = 'internal' AND s.deleted_at IS NULL
          AND s.status != 'Dibatalkan' AND s.status != 'Hold'
          AND (s.claim_status IS NULL OR s.claim_driver_id = ?)
        ORDER BY s.created_at ASC`,
@@ -133,12 +133,14 @@ export function registerDriverRoutes(router: Router) {
     const actor = requireAuth(ctx);
     const driverId = await requireDriverId(ctx);
     const shipment = await ctx.env.DB.prepare(
-      `SELECT truck_id, claim_status, claim_driver_id, status FROM shipments WHERE awb = ? AND deleted_at IS NULL`,
+      `SELECT truck_id, armada_type, claim_status, claim_driver_id, status FROM shipments WHERE awb = ? AND deleted_at IS NULL`,
     )
       .bind(params.awb)
-      .first<{ truck_id: string | null; claim_status: string | null; claim_driver_id: string | null; status: string }>();
+      .first<{ truck_id: string | null; armada_type: string; claim_status: string | null; claim_driver_id: string | null; status: string }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
     if (shipment.status === "Dibatalkan" || shipment.status === "Hold") throw Errors.notFound("AWB tidak ditemukan.");
+    // Sewa (vendor) orders are never in the open pool - answer exactly like an unknown AWB.
+    if (shipment.armada_type === "sewa") throw Errors.notFound("AWB tidak ditemukan.");
     if (shipment.truck_id) throw Errors.conflict("Pengiriman ini sudah punya driver yang ditugaskan.");
     if (shipment.claim_status === "pending") {
       if (shipment.claim_driver_id === driverId) return ok({ claimed: true });
@@ -148,7 +150,7 @@ export function registerDriverRoutes(router: Router) {
     const now = new Date().toISOString();
     const result = await ctx.env.DB.prepare(
       `UPDATE shipments SET claim_status = 'pending', claim_driver_id = ?, claim_requested_at = ?
-       WHERE awb = ? AND truck_id IS NULL AND claim_status IS NULL`,
+       WHERE awb = ? AND truck_id IS NULL AND armada_type = 'internal' AND claim_status IS NULL`,
     )
       .bind(driverId, now, params.awb)
       .run();

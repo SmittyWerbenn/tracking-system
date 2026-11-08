@@ -15,6 +15,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { LocationTextInput } from "../../components/LocationTextInput";
 import { PhotoPickerBox } from "../../components/PhotoPickerBox";
+import { ArmadaFields, type ArmadaValue } from "../../components/ArmadaFields";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -83,6 +84,7 @@ export default function UpdateTracking() {
   const [editAlamatTujuan, setEditAlamatTujuan] = useState("");
   const [editSlaValue, setEditSlaValue] = useState<number | undefined>(undefined);
   const [editLayanan, setEditLayanan] = useState("");
+  const [editArmada, setEditArmada] = useState<ArmadaValue>({ armadaType: "internal", truckId: "", vehiclePlate: "", driverName: "" });
   const [editSaved, setEditSaved] = useState(false);
   const [editFormError, setEditFormError] = useState<string | null>(null);
 
@@ -119,6 +121,7 @@ export default function UpdateTracking() {
         setEditAlamatTujuan(s.alamatTujuan);
         setEditSlaValue(s.slaValue);
         setEditLayanan(s.layanan);
+        setEditArmada({ armadaType: s.armadaType, truckId: s.truckId ?? "", vehiclePlate: s.armadaType === "sewa" ? s.vehiclePlate ?? "" : "", driverName: s.driverName ?? "" });
       }
     });
     return () => {
@@ -200,6 +203,10 @@ export default function UpdateTracking() {
       setEditFormError("Pilih kota asal dan kota tujuan terlebih dahulu.");
       return;
     }
+    if (editArmada.armadaType === "sewa" && !editArmada.vehiclePlate.trim()) {
+      setEditFormError("Plat nomor armada sewa wajib diisi.");
+      return;
+    }
     setEditFormError(null);
     const data: UpdateShipmentInfoData = {
       pengirim: editPengirim,
@@ -210,6 +217,7 @@ export default function UpdateTracking() {
       kotaTujuan: editKotaTujuan,
       layanan: editLayanan,
       slaValue: editSlaValue ?? null,
+      ...editArmada,
     };
     const result = await updateShipmentInfo(shipment!.awb, data);
     if (result.ok) {
@@ -547,6 +555,19 @@ export default function UpdateTracking() {
                   </label>
                 </div>
               </div>
+
+              {!isMitra && shipment && (shipment.status === "Dalam Persiapan" || shipment.status === "Hold" || shipment.armadaType === "sewa") && (
+                <div className="mt-4 grid gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
+                  <p className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Armada</p>
+                  <ArmadaFields
+                    value={editArmada}
+                    onChange={setEditArmada}
+                    trucks={trucksWithDriver.filter((t) => t.status !== "Inactive" || t.id === shipment.truckId)}
+                    allowSewa={shipment.status === "Dalam Persiapan" || shipment.status === "Hold" || shipment.armadaType === "sewa"}
+                    internalHint='Kosongkan agar masuk "Pesanan Terbuka" driver internal.'
+                  />
+                </div>
+              )}
 
               {editFormError && (
                 <p className="mt-4 text-sm font-medium text-red-600">{editFormError}</p>

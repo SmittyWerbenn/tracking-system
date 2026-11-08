@@ -17,8 +17,8 @@ import { AdminLayout } from "../../components/layout/AdminLayout";
 import { BulkShipmentImport } from "../../components/BulkShipmentImport";
 import { PhotoPickerBox } from "../../components/PhotoPickerBox";
 import { QRCode } from "../../components/QRCode";
-import { SearchableSelect } from "../../components/SearchableSelect";
 import { useAuth } from "../../store/AuthContext";
+import { ArmadaFields } from "../../components/ArmadaFields";
 import { useFleet } from "../../store/FleetContext";
 import { useLayanan } from "../../store/LayananContext";
 import { useLocationSuggest } from "../../utils/useLocationSuggest";
@@ -47,6 +47,9 @@ const emptyForm: ShipmentFormData = {
   fotoBarang: undefined,
   fotoSuratJalan: undefined,
   truckId: "",
+  armadaType: "internal",
+  vehiclePlate: "",
+  driverName: "",
   customerId: "",
   reference: "",
   asuransi: false,
@@ -193,6 +196,10 @@ export default function CreateShipment() {
       setFormError("Client ID wajib diisi.");
       return;
     }
+    if (form.armadaType === "sewa" && !form.vehiclePlate?.trim()) {
+      setFormError("Plat nomor armada sewa wajib diisi.");
+      return;
+    }
     if (form.hold && !form.holdReason?.trim()) {
       setFormError("Alasan Hold wajib diisi.");
       return;
@@ -256,16 +263,8 @@ export default function CreateShipment() {
 
   const trackingUrl = created ? publicTrackingUrl(created.awb) : "";
 
-  const truckOptions = trucksWithDriver
-    .filter((t) => t.status !== "Inactive")
-    .map((t) => ({
-      value: t.id,
-      label: `${t.nomorUnit} - ${t.jenis}`,
-      description: t.driver ? `Driver: ${t.driver.nama}` : undefined,
-    }));
   const kotaAsalSuggestions = useLocationSuggest("kota", form.kotaAsal);
   const kotaTujuanSuggestions = useLocationSuggest("kota", form.kotaTujuan);
-  const selectedTruck = trucksWithDriver.find((t) => t.id === form.truckId);
 
   return (
     <AdminLayout>
@@ -655,37 +654,20 @@ export default function CreateShipment() {
         </Section>
 
         <Section title="Informasi Truck" icon={Truck}>
-          <Field label="Pilih Unit Truck" full>
-            <SearchableSelect
-              options={truckOptions}
-              value={form.truckId ?? ""}
-              onChange={(v) => update("truckId", v)}
-              placeholder="Pilih Unit Truck (opsional)"
-              emptyLabel={isCustAdmin ? "Belum ada armada dedicated untuk Anda." : "Tidak ada unit truck yang tersedia."}
-            />
-            <p className="mt-1.5 text-[11px] text-slate-400">
-              {isCustAdmin
+          <ArmadaFields
+            value={{ armadaType: form.armadaType ?? "internal", truckId: form.truckId ?? "", vehiclePlate: form.vehiclePlate ?? "", driverName: form.driverName ?? "" }}
+            onChange={(v) => setForm((f) => ({ ...f, ...v }))}
+            trucks={trucksWithDriver.filter((t) => t.status !== "Inactive")}
+            allowSewa={!isCustAdmin}
+            internalHint={
+              isCustAdmin
                 ? "Opsional. Hanya armada dedicated yang ditugaskan GMS untuk Anda yang bisa dipilih."
-                : `Opsional. Kosongkan supaya pengiriman ini masuk ke daftar "Pesanan Terbuka" - semua driver
-              bisa melihat dan mengajukan klaim, lalu Anda tinggal konfirmasi siapa yang mengambilnya.`}
-            </p>
-          </Field>
-          {selectedTruck ? (
-            <div className="sm:col-span-2 flex flex-wrap items-center gap-4 rounded-lg bg-slate-50 px-3.5 py-3 text-sm">
-              <span className="flex items-center gap-1.5 text-slate-700">
-                <Truck size={15} className="text-slate-400" />
-                <span className="font-medium">{selectedTruck.nomorUnit}</span>
-                <span className="text-slate-400">- {selectedTruck.jenis}</span>
-              </span>
-              <span className="flex items-center gap-1.5 text-slate-700">
-                <User size={15} className="text-slate-400" />
-                Driver: <span className="font-medium">{selectedTruck.driver?.nama ?? "-"}</span>
-              </span>
-              <span className="text-xs text-slate-400">{selectedTruck.driver?.telepon}</span>
-            </div>
-          ) : (
+                : 'Opsional. Kosongkan supaya pengiriman ini masuk ke daftar "Pesanan Terbuka" - semua driver internal bisa melihat dan mengajukan klaim, lalu Anda tinggal konfirmasi siapa yang mengambilnya.'
+            }
+          />
+          {(form.armadaType ?? "internal") === "internal" && !form.truckId && (
             <p className="sm:col-span-2 text-xs text-slate-400">
-              Belum ada unit dipilih. Kelola daftar armada di{" "}
+              Kelola daftar armada di{" "}
               <Link to={adminPath("/armada")} className="text-blue-700 hover:underline">
                 Master Armada
               </Link>

@@ -13,6 +13,7 @@ import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, t
 import { addBusinessDays } from "../sla";
 import { cancelPolicy, creatorRoleOf, pickupEvidenceSql } from "../cancellation";
 import { holdPolicy } from "../hold";
+import { resolveArmada } from "../armada";
 
 const POD_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -43,6 +44,10 @@ function shipmentSummary(row: Record<string, unknown>) {
     koliAsuransi: row.koli_asuransi ?? null,
     nilaiAsuransi: row.nilai_asuransi ?? null,
     truckId: row.truck_id,
+    armadaType: row.armada_type === "sewa" ? "sewa" : "internal",
+    vehiclePlate: row.vehicle_plate ?? row.truck_nomor_unit ?? null,
+    driverName: row.driver_name ?? null,
+    driverId: row.driver_id ?? null,
     truckNomorUnit: row.truck_nomor_unit ?? null,
     truckJenis: row.truck_jenis ?? null,
     truckDriverNama: row.truck_driver_nama ?? null,
@@ -283,7 +288,10 @@ export function registerShipmentRoutes(router: Router) {
     );
     const beratKg = reqNumber(body, "beratKg", { min: 0.01, max: 100000 });
     const jumlahKoli = reqNumber(body, "jumlahKoli", { min: 1, max: 100000 });
-    const truckId = optString(body, "truckId");
+    // Armada: internal (Master Armada, or empty = Pesanan Terbuka) or sewa (vendor, free-text plate). Sewa is ops-only.
+    const armada = await resolveArmada(ctx.env, body);
+    if (actor.role === "Client" && armada.armadaType === "sewa") throw Errors.forbidden("Armada sewa hanya dapat diatur oleh tim operasional.");
+    const truckId = armada.truckId ?? undefined;
     const slaValue = optNumber(body, "slaValue", { min: 1, max: 365 });
     // "Referensi": the customer's own order identifier (optional). Unique per Client ID, case-insensitive.
     const referenceRaw = optString(body, "reference");
@@ -342,14 +350,12 @@ export function registerShipmentRoutes(router: Router) {
     await dupReference();
 
     if (truckId) {
-      const truck = await ctx.env.DB.prepare(`SELECT id, status FROM trucks WHERE id = ? AND deleted_at IS NULL`).bind(truckId).first<{ id: string; status: string }>();
-      if (!truck) throw Errors.badRequest("Truck yang dipilih tidak ditemukan.");
       // A Client may only use units dedicated to ITS OWN Client ID (from the session), with an ACTIVE assignment and an active unit.
       if (actor.role === "Client") {
         const own = await ctx.env.DB.prepare(
           `SELECT 1 FROM fleet_client_assignments WHERE truck_id = ? AND customer_id = ? AND status = 'ACTIVE'`,
         ).bind(truckId, customerId).first();
-        if (!own || truck.status === "Inactive") throw Errors.badRequest("Armada yang dipilih tidak tersedia untuk Client Anda.");
+        if (!own || armada.truckStatus === "Inactive") throw Errors.badRequest("Armada yang dipilih tidak tersedia untuk Client Anda.");
       }
     }
     if (mitraId) {
@@ -387,8 +393,9 @@ export function registerShipmentRoutes(router: Router) {
               deskripsi_barang, layanan, berat_kg, jumlah_koli, truck_id,
               sla_value, sla_unit, estimasi_tiba, customer_id, mitra_id,
               email_terkirim, created_at, updated_at, created_by, updated_by, created_by_role, created_by_name, reference,
-              asuransi, koli_asuransi, nilai_asuransi
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              asuransi, koli_asuransi, nilai_asuransi,
+              armada_type, vehicle_plate, driver_name, driver_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           ).bind(
             awb, tanggalDibuat, jamDibuat, holdAtCreate ? "Hold" : "Dalam Persiapan",
             pengirimNama, pengirimTelepon, pengirimEmail,
@@ -398,6 +405,7 @@ export function registerShipmentRoutes(router: Router) {
             slaValue ?? null, slaUnit, estimasiTiba, customerId, mitraId ?? null,
             nowIso, nowIso, actor.id, actor.id, actor.role, actor.nama, reference,
             asuransi ? 1 : 0, koliAsuransi, nilaiAsuransi,
+            armada.armadaType, armada.vehiclePlate, armada.driverName, armada.driverId,
           ),
           ctx.env.DB.prepare(
             `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, truck_id, input_by_user_id, input_by_name, input_at, created_at)
@@ -432,6 +440,7 @@ export function registerShipmentRoutes(router: Router) {
       awb,
       description:
         `Resi diterbitkan untuk pengiriman ${kotaAsal} -> ${kotaTujuan}.` +
+        (armada.armadaType === "sewa" ? ` Armada sewa: ${armada.vehiclePlate}${armada.driverName ? ` (driver: ${armada.driverName})` : ""}.` : "") +
         (holdAtCreate ? ` Langsung di-Hold. Alasan: ${holdReason}.` : "") +
         (layananFellBack
           ? typeof body.layanan === "string" && body.layanan.trim()
@@ -563,10 +572,10 @@ export function registerShipmentRoutes(router: Router) {
     const isClient = actor.role === "Client";
     if (!isClient) requirePermission(ctx, "shipments.update_info");
     const shipment = await ctx.env.DB.prepare(
-      `SELECT status, tanggal_dibuat, sla_value, estimasi_tiba, layanan, customer_id, jumlah_koli FROM shipments WHERE awb = ? AND deleted_at IS NULL`,
+      `SELECT status, tanggal_dibuat, sla_value, estimasi_tiba, layanan, customer_id, jumlah_koli, armada_type, truck_id, vehicle_plate, driver_name FROM shipments WHERE awb = ? AND deleted_at IS NULL`,
     )
       .bind(params.awb)
-      .first<{ status: string; tanggal_dibuat: string; sla_value: number | null; estimasi_tiba: string | null; layanan: string; customer_id: string | null; jumlah_koli: number }>();
+      .first<{ status: string; tanggal_dibuat: string; sla_value: number | null; estimasi_tiba: string | null; layanan: string; customer_id: string | null; jumlah_koli: number; armada_type: string; truck_id: string | null; vehicle_plate: string | null; driver_name: string | null }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
     if (isClient) {
       if (!actor.customerId || shipment.customer_id !== actor.customerId) throw Errors.forbidden("Anda tidak memiliki akses ke pengiriman ini.");
@@ -640,6 +649,28 @@ export function registerShipmentRoutes(router: Router) {
         values.push(0, null, null);
       }
     }
+    // Armada (admin only; a Client never touches it). Switching internal <-> sewa or picking another
+    // Master Armada unit is only possible before departure - afterwards use "Transfer Unit".
+    // A sewa shipment may still have its plate / driver note corrected at any open status.
+    let armadaNote: string | null = null;
+    if (!isClient && (has("armadaType") || has("vehiclePlate") || has("truckId"))) {
+      const a = await resolveArmada(ctx.env, body);
+      const preDeparture = shipment.status === "Dalam Persiapan" || shipment.status === "Hold";
+      const sameKind = a.armadaType === shipment.armada_type && (a.armadaType === "sewa" || (a.truckId ?? null) === shipment.truck_id);
+      if (!sameKind && !preDeparture) {
+        throw Errors.unprocessable("Armada hanya bisa diganti selama status Dalam Persiapan. Setelah berangkat, gunakan Transfer Unit.");
+      }
+      const changed = !sameKind || a.vehiclePlate !== shipment.vehicle_plate || a.driverName !== shipment.driver_name;
+      if (changed) {
+        sets.push("armada_type=?", "truck_id=?", "vehicle_plate=?", "driver_name=?", "driver_id=?");
+        values.push(a.armadaType, a.truckId, a.vehiclePlate, a.driverName, a.driverId);
+        // Any pending driver claim is moot once ops sets the armada directly.
+        if (a.truckId || a.armadaType === "sewa") sets.push("claim_status=NULL", "claim_driver_id=NULL", "claim_requested_at=NULL");
+        armadaNote = a.armadaType === "sewa"
+          ? `Armada diubah ke sewa: ${a.vehiclePlate}${a.driverName ? ` (driver: ${a.driverName})` : ""}.`
+          : a.truckId ? `Armada diubah ke internal: ${a.vehiclePlate}.` : "Armada internal dikosongkan - masuk Pesanan Terbuka.";
+      }
+    }
     let newEta: string | null = shipment.estimasi_tiba;
     if (slaProvided) {
       newEta = slaValue !== undefined ? addBusinessDays(shipment.tanggal_dibuat, slaValue) : null;
@@ -676,6 +707,10 @@ export function registerShipmentRoutes(router: Router) {
       awb: params.awb,
       description: "Data pengiriman diperbarui.",
     });
+
+    if (armadaNote) {
+      await writeAuditLog(ctx.env, actor, { action: "UPDATE_ARMADA", actionLabel: "UPDATE ARMADA", module: "Shipment", awb: params.awb, description: armadaNote });
+    }
 
     if (layananChange) {
       await writeAuditLog(ctx.env, actor, {
@@ -801,9 +836,10 @@ export function registerShipmentRoutes(router: Router) {
         `Status "${type}" tidak bisa dipilih dari status saat ini ("${shipment.status}") - pipeline tidak bisa dibuat mundur.`,
       );
     }
+    let timelineTruck: { nomor_unit: string; driver_id: string | null } | null = null;
     if (truckId) {
-      const truck = await ctx.env.DB.prepare(`SELECT id FROM trucks WHERE id = ? AND deleted_at IS NULL`).bind(truckId).first();
-      if (!truck) throw Errors.badRequest("Truck yang dipilih tidak ditemukan.");
+      timelineTruck = await ctx.env.DB.prepare(`SELECT nomor_unit, driver_id FROM trucks WHERE id = ? AND deleted_at IS NULL`).bind(truckId).first();
+      if (!timelineTruck) throw Errors.badRequest("Truck yang dipilih tidak ditemukan.");
     }
 
     const newStatus = eventTypeToShipmentStatus(type);
@@ -823,8 +859,16 @@ export function registerShipmentRoutes(router: Router) {
       .bind(eventId, params.awb, seq, type, lokasi, titikId ?? null, tanggal, jam, keterangan, truckId ?? shipment.truck_id ?? null, previousTruckId, actor.id, actor.nama, nowIso, nowIso)
       .run();
 
-    await ctx.env.DB.prepare(`UPDATE shipments SET status = ?, truck_id = COALESCE(?, truck_id), updated_at = ?, updated_by = ? WHERE awb = ?`)
-      .bind(newStatus, truckId ?? null, nowIso, actor.id, params.awb)
+    // Picking a Master Armada unit (e.g. Transfer Unit from a sewa truck) makes the shipment internal again.
+    await ctx.env.DB.prepare(
+      `UPDATE shipments SET status = ?, truck_id = COALESCE(?, truck_id),
+         armada_type = CASE WHEN ? IS NOT NULL THEN 'internal' ELSE armada_type END,
+         vehicle_plate = CASE WHEN ? IS NOT NULL THEN ? ELSE vehicle_plate END,
+         driver_id = CASE WHEN ? IS NOT NULL THEN ? ELSE driver_id END,
+         driver_name = CASE WHEN ? IS NOT NULL THEN NULL ELSE driver_name END,
+         updated_at = ?, updated_by = ? WHERE awb = ?`,
+    )
+      .bind(newStatus, truckId ?? null, truckId ?? null, truckId ?? null, timelineTruck?.nomor_unit ?? null, truckId ?? null, timelineTruck?.driver_id ?? null, truckId ?? null, nowIso, actor.id, params.awb)
       .run();
 
     // --- ETA recalculation on Berangkat ---
@@ -1029,11 +1073,11 @@ export function registerShipmentRoutes(router: Router) {
     const now = new Date().toISOString();
     // Atomic: only the first reviewer's update still finds the claim pending for this driver.
     const res = await ctx.env.DB.prepare(
-      `UPDATE shipments SET truck_id = ?, claim_status = NULL, claim_driver_id = NULL, claim_requested_at = NULL,
+      `UPDATE shipments SET truck_id = ?, armada_type = 'internal', vehicle_plate = ?, driver_id = ?, driver_name = NULL, claim_status = NULL, claim_driver_id = NULL, claim_requested_at = NULL,
               updated_at = ?, updated_by = ?
-       WHERE awb = ? AND claim_status = 'pending' AND claim_driver_id = ? AND status != 'Hold'`,
+       WHERE awb = ? AND claim_status = 'pending' AND claim_driver_id = ? AND status != 'Hold' AND armada_type = 'internal'`,
     )
-      .bind(claim.truck_id, now, actor.id, params.awb, claim.driver_id)
+      .bind(claim.truck_id, claim.truck_nomor_unit, claim.driver_id, now, actor.id, params.awb, claim.driver_id)
       .run();
     if ((res.meta?.changes ?? 0) === 0) throw Errors.conflict(CLAIM_PROCESSED);
 
@@ -1079,10 +1123,11 @@ export function registerShipmentRoutes(router: Router) {
   // a driver mid-trip.
   router.post("/api/shipments/:awb/unassign", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "shipments.update_info");
-    const shipment = await ctx.env.DB.prepare(`SELECT status, truck_id FROM shipments WHERE awb = ? AND deleted_at IS NULL`)
+    const shipment = await ctx.env.DB.prepare(`SELECT status, truck_id, armada_type FROM shipments WHERE awb = ? AND deleted_at IS NULL`)
       .bind(params.awb)
-      .first<{ status: string; truck_id: string | null }>();
+      .first<{ status: string; truck_id: string | null; armada_type: string }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
+    if (shipment.armada_type === "sewa") throw Errors.badRequest("Pengiriman ini memakai armada sewa, bukan driver internal. Ubah armada lewat Edit Pengiriman.");
     if (!shipment.truck_id) throw Errors.badRequest("Pengiriman ini belum ditugaskan ke driver manapun.");
     if (shipment.status !== "Dalam Persiapan") {
       throw Errors.unprocessable(
@@ -1091,7 +1136,7 @@ export function registerShipmentRoutes(router: Router) {
     }
 
     await ctx.env.DB.prepare(
-      `UPDATE shipments SET truck_id = NULL, updated_at = ?, updated_by = ? WHERE awb = ?`,
+      `UPDATE shipments SET truck_id = NULL, vehicle_plate = NULL, driver_id = NULL, updated_at = ?, updated_by = ? WHERE awb = ?`,
     )
       .bind(new Date().toISOString(), actor.id, params.awb)
       .run();

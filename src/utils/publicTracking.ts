@@ -81,6 +81,7 @@ export async function fetchPublicShipment(awb: string): Promise<PublicShipmentRe
     }));
 
     const shipment: Shipment = {
+      armadaType: "internal",
       awb: res.shipment.awb,
       tanggalDibuat: res.shipment.tanggalDibuat,
       jamDibuat: "",

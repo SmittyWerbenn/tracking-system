@@ -45,6 +45,10 @@ interface RawShipmentSummary {
   koliAsuransi?: string | null;
   nilaiAsuransi?: number | null;
   truckId: string | null;
+  armadaType?: "internal" | "sewa";
+  vehiclePlate?: string | null;
+  driverName?: string | null;
+  driverId?: string | null;
   truckNomorUnit: string | null;
   truckJenis: string | null;
   truckDriverNama: string | null;
@@ -134,12 +138,19 @@ function toShipment(row: RawShipmentSummary): Shipment {
     asuransi: row.asuransi ?? false,
     koliAsuransi: row.koliAsuransi ?? null,
     nilaiAsuransi: row.nilaiAsuransi ?? null,
-    truck: {
-      nomorUnit: row.truckNomorUnit ?? "-",
-      jenis: row.truckJenis ?? "-",
-      driver: row.truckDriverNama ?? undefined,
-    },
+    truck:
+      row.armadaType === "sewa"
+        ? { nomorUnit: row.vehiclePlate ?? "-", jenis: "Sewa (Vendor)", driver: row.driverName ?? undefined }
+        : {
+            nomorUnit: row.truckNomorUnit ?? "-",
+            jenis: row.truckJenis ?? "-",
+            driver: row.truckDriverNama ?? undefined,
+          },
     truckId: row.truckId ?? undefined,
+    armadaType: row.armadaType === "sewa" ? "sewa" : "internal",
+    vehiclePlate: row.vehiclePlate ?? undefined,
+    driverName: row.driverName ?? undefined,
+    driverId: row.driverId ?? undefined,
     customerId: row.customerId ?? undefined,
     mitraId: row.mitraId ?? undefined,
     mitraNama: row.mitraNama ?? undefined,
@@ -366,7 +377,10 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       layanan: data.layanan,
       beratKg: data.beratKg,
       jumlahKoli: data.jumlahKoli,
-      truckId: data.truckId || undefined,
+      armadaType: data.armadaType ?? "internal",
+      truckId: data.armadaType === "sewa" ? undefined : data.truckId || undefined,
+      vehiclePlate: data.armadaType === "sewa" ? data.vehiclePlate?.trim() : undefined,
+      driverName: data.armadaType === "sewa" ? data.driverName?.trim() || undefined : undefined,
       slaValue: data.slaValue,
       customerId: data.customerId || undefined,
       hold: data.hold || undefined,
@@ -462,6 +476,14 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         ...(data.jumlahKoli !== undefined ? { jumlahKoli: data.jumlahKoli } : {}),
         ...(data.asuransi !== undefined ? { asuransi: data.asuransi, koliAsuransi: data.koliAsuransi, nilaiAsuransi: data.nilaiAsuransi } : {}),
         ...(data.slaValue !== undefined ? { slaValue: data.slaValue } : {}),
+        ...(data.armadaType
+          ? {
+              armadaType: data.armadaType,
+              truckId: data.armadaType === "sewa" ? undefined : data.truckId || undefined,
+              vehiclePlate: data.armadaType === "sewa" ? data.vehiclePlate?.trim() : undefined,
+              driverName: data.armadaType === "sewa" ? data.driverName?.trim() || undefined : undefined,
+            }
+          : {}),
       });
       await refresh();
       return { ok: true as const };

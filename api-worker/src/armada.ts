@@ -21,7 +21,7 @@ export interface ArmadaAssignment {
  * Reads the armada fields of a create/edit request and applies the rules:
  *  - internal: the unit must exist in Master Armada (by truckId, or by plate = nomor_unit).
  *              No unit = unassigned, i.e. it goes to the driver "Pesanan Terbuka" pool.
- *  - sewa:     plate is required free text; driver name optional; never a truck/driver id.
+ *  - sewa (label "Vendor", DB/API value kept as "sewa"): plate is optional free text (fill in later); driver name optional; never a truck/driver id.
  * Only call when the request carries armadaType / truckId / vehiclePlate.
  */
 export async function resolveArmada(env: Env, body: Record<string, unknown>): Promise<ArmadaAssignment> {
@@ -33,10 +33,10 @@ export async function resolveArmada(env: Env, body: Record<string, unknown>): Pr
   const plateIn = optString(body, "vehiclePlate");
 
   if (rawType === "sewa") {
-    if (truckIdIn) throw Errors.badRequest("Armada sewa tidak boleh memakai unit dari Master Armada.");
-    const plate = plateIn?.replace(/\s+/g, " ").toUpperCase();
-    if (!plate) throw Errors.badRequest("Plat nomor armada sewa wajib diisi.");
-    if (plate.length > 20) throw Errors.badRequest("Plat nomor maksimal 20 karakter.");
+    if (truckIdIn) throw Errors.badRequest("Armada Vendor tidak boleh memakai unit dari Master Armada.");
+    // Nopol may be filled in later (shipment is uploaded first), so it is optional.
+    const plate = plateIn?.replace(/\s+/g, " ").toUpperCase() ?? null;
+    if (plate && plate.length > 20) throw Errors.badRequest("Plat nomor maksimal 20 karakter.");
     const driverName = optString(body, "driverName")?.replace(/\s+/g, " ") ?? null;
     if (driverName && driverName.length > 100) throw Errors.badRequest("Nama driver maksimal 100 karakter.");
     return { armadaType: "sewa", truckId: null, truckStatus: null, vehiclePlate: plate, driverName, driverId: null };

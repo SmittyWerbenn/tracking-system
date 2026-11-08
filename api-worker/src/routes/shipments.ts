@@ -290,7 +290,7 @@ export function registerShipmentRoutes(router: Router) {
     const jumlahKoli = reqNumber(body, "jumlahKoli", { min: 1, max: 100000 });
     // Armada: internal (Master Armada, or empty = Pesanan Terbuka) or sewa (vendor, free-text plate). Sewa is ops-only.
     const armada = await resolveArmada(ctx.env, body);
-    if (actor.role === "Client" && armada.armadaType === "sewa") throw Errors.forbidden("Armada sewa hanya dapat diatur oleh tim operasional.");
+    if (actor.role === "Client" && armada.armadaType === "sewa") throw Errors.forbidden("Armada Vendor hanya dapat diatur oleh tim operasional.");
     const truckId = armada.truckId ?? undefined;
     const slaValue = optNumber(body, "slaValue", { min: 1, max: 365 });
     // "Referensi": the customer's own order identifier (optional). Unique per Client ID, case-insensitive.
@@ -440,7 +440,7 @@ export function registerShipmentRoutes(router: Router) {
       awb,
       description:
         `Resi diterbitkan untuk pengiriman ${kotaAsal} -> ${kotaTujuan}.` +
-        (armada.armadaType === "sewa" ? ` Armada sewa: ${armada.vehiclePlate}${armada.driverName ? ` (driver: ${armada.driverName})` : ""}.` : "") +
+        (armada.armadaType === "sewa" ? ` Armada Vendor: ${armada.vehiclePlate ?? "(Nopol belum diisi)"}${armada.driverName ? ` (driver: ${armada.driverName})` : ""}.` : "") +
         (holdAtCreate ? ` Langsung di-Hold. Alasan: ${holdReason}.` : "") +
         (layananFellBack
           ? typeof body.layanan === "string" && body.layanan.trim()
@@ -667,7 +667,7 @@ export function registerShipmentRoutes(router: Router) {
         // Any pending driver claim is moot once ops sets the armada directly.
         if (a.truckId || a.armadaType === "sewa") sets.push("claim_status=NULL", "claim_driver_id=NULL", "claim_requested_at=NULL");
         armadaNote = a.armadaType === "sewa"
-          ? `Armada diubah ke sewa: ${a.vehiclePlate}${a.driverName ? ` (driver: ${a.driverName})` : ""}.`
+          ? `Armada diubah ke Vendor: ${a.vehiclePlate ?? "(Nopol belum diisi)"}${a.driverName ? ` (driver: ${a.driverName})` : ""}.`
           : a.truckId ? `Armada diubah ke internal: ${a.vehiclePlate}.` : "Armada internal dikosongkan - masuk Pesanan Terbuka.";
       }
     }
@@ -1127,7 +1127,7 @@ export function registerShipmentRoutes(router: Router) {
       .bind(params.awb)
       .first<{ status: string; truck_id: string | null; armada_type: string }>();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
-    if (shipment.armada_type === "sewa") throw Errors.badRequest("Pengiriman ini memakai armada sewa, bukan driver internal. Ubah armada lewat Edit Pengiriman.");
+    if (shipment.armada_type === "sewa") throw Errors.badRequest("Pengiriman ini memakai armada Vendor, bukan driver internal. Ubah armada lewat Edit Pengiriman.");
     if (!shipment.truck_id) throw Errors.badRequest("Pengiriman ini belum ditugaskan ke driver manapun.");
     if (shipment.status !== "Dalam Persiapan") {
       throw Errors.unprocessable(

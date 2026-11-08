@@ -20,7 +20,8 @@ const inputClass =
 
 /** Armada picker shared by Buat Pengiriman and Edit Pengiriman.
  * Internal: Master Armada unit (plate from the list; its registered driver comes with it; empty = Pesanan Terbuka).
- * Sewa (Vendor): free-text plate + optional driver note; no registered driver, never in Pesanan Terbuka. */
+ * Vendor (stored as armada_type "sewa"): free-text plate + optional driver note; no registered driver, never in
+ * Pesanan Terbuka. The plate (Nopol) may be left empty and filled in later, for Internal and Vendor alike. */
 export function ArmadaFields({
   value,
   onChange,
@@ -49,7 +50,7 @@ export function ArmadaFields({
         <div className="sm:col-span-2" role="radiogroup" aria-label="Tipe Armada">
           <span className="mb-1.5 block text-xs font-medium text-slate-600">Tipe Armada</span>
           <div className="inline-flex rounded-lg border border-slate-300 bg-white p-0.5 text-sm font-semibold">
-            {([["internal", "Internal"], ["sewa", "Sewa (Vendor)"]] as const).map(([k, label]) => (
+            {([["internal", "Internal"], ["sewa", "Vendor"]] as const).map(([k, label]) => (
               <button
                 key={k}
                 type="button"
@@ -69,12 +70,11 @@ export function ArmadaFields({
       {isSewa ? (
         <>
           <label className="block">
-            <span className="mb-1.5 block text-xs font-medium text-slate-600">Plat Nomor (Sewa)</span>
+            <span className="mb-1.5 block text-xs font-medium text-slate-600">Plat Nomor (Vendor)</span>
             <input
-              required
               maxLength={20}
               className={`${inputClass} uppercase`}
-              placeholder="mis. B 9123 XYZ"
+              placeholder="mis. B 9123 XYZ (boleh diisi belakangan)"
               value={value.vehiclePlate}
               onChange={(e) => set({ vehiclePlate: e.target.value })}
             />
@@ -90,7 +90,7 @@ export function ArmadaFields({
             />
           </label>
           <p className="sm:col-span-2 text-[11px] text-slate-400">
-            Armada sewa tidak perlu didaftarkan di Master Armada/Driver, dan pengiriman ini tidak akan muncul di
+            Armada Vendor tidak perlu didaftarkan di Master Armada/Driver, dan pengiriman ini tidak akan muncul di
             "Pesanan Terbuka" portal driver internal.
           </p>
         </>
@@ -102,7 +102,7 @@ export function ArmadaFields({
               options={options}
               value={value.truckId}
               onChange={(v) => set({ truckId: v })}
-              placeholder="Pilih Unit Truck (opsional)"
+              placeholder="Pilih Unit Truck (boleh diisi belakangan)"
               emptyLabel="Tidak ada unit truck yang tersedia."
             />
             {internalHint && <p className="mt-1.5 text-[11px] text-slate-400">{internalHint}</p>}

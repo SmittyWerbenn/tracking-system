@@ -56,6 +56,17 @@ export default function UpdateTracking() {
   const [jam, setJam] = useState(nowHHMM());
   const [keterangan, setKeterangan] = useState("");
   const [namaPenerima, setNamaPenerima] = useState("");
+
+  // Switching status pre-fills Keterangan with the status name, and - for the first departure
+  // (Dalam Persiapan -> Berangkat) - Lokasi with the shipment's Kota Asal (the unit is still there).
+  // Both stay normal editable inputs; a value the user typed is only replaced when it is still
+  // empty or still the previous auto-filled text.
+  function changeType(next: TimelineEventType, s: Shipment, prev?: TimelineEventType) {
+    setType(next);
+    setKeterangan((k) => (k.trim() === "" || k === prev ? next : k));
+    const autoCity = (t?: TimelineEventType) => (t === "Berangkat" && s.status === "Dalam Persiapan" ? s.kotaAsal : undefined);
+    setLokasi((l) => (l.trim() === "" || l === autoCity(prev) ? autoCity(next) ?? "" : l));
+  }
   const [foto, setFoto] = useState<string[]>([]);
   const [fotoBarangDiterima, setFotoBarangDiterima] = useState<string | null>(null);
   const [fotoSuratJalan, setFotoSuratJalan] = useState<string | null>(null);
@@ -110,7 +121,7 @@ export default function UpdateTracking() {
       if (s && initializedFor.current !== s.awb) {
         initializedFor.current = s.awb;
         const allowedOptions = getAllowedNextEvents(s.status).filter((o) => !isMitra || o !== "Transfer Unit");
-        setType(allowedOptions[0] ?? "Transit");
+        changeType(allowedOptions[0] ?? "Transit", s);
         setNamaPenerima(s.penerima.nama);
         setTruckId(s.truckId ?? "");
         setEditPengirim(s.pengirim);
@@ -201,10 +212,6 @@ export default function UpdateTracking() {
     e.preventDefault();
     if (!editKotaAsal || !editKotaTujuan) {
       setEditFormError("Pilih kota asal dan kota tujuan terlebih dahulu.");
-      return;
-    }
-    if (editArmada.armadaType === "sewa" && !editArmada.vehiclePlate.trim()) {
-      setEditFormError("Plat nomor armada sewa wajib diisi.");
       return;
     }
     setEditFormError(null);
@@ -708,7 +715,7 @@ export default function UpdateTracking() {
               <select
                 className={inputClass}
                 value={type}
-                onChange={(e) => setType(e.target.value as TimelineEventType)}
+                onChange={(e) => changeType(e.target.value as TimelineEventType, shipment, type)}
               >
                 {allowedOptions.map((opt) => (
                   <option key={opt} value={opt}>

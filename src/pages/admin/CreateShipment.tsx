@@ -196,10 +196,6 @@ export default function CreateShipment() {
       setFormError("Client ID wajib diisi.");
       return;
     }
-    if (form.armadaType === "sewa" && !form.vehiclePlate?.trim()) {
-      setFormError("Plat nomor armada sewa wajib diisi.");
-      return;
-    }
     if (form.hold && !form.holdReason?.trim()) {
       setFormError("Alasan Hold wajib diisi.");
       return;

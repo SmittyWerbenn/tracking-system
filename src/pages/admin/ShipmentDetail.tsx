@@ -451,9 +451,9 @@ export default function ShipmentDetail() {
                 </div>
               ) : shipment.armadaType === "sewa" ? (
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-slate-700">
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">[Sewa]</span>
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">[Vendor]</span>
                   <p>
-                    <span className="text-slate-400">Plat Nomor:</span> {shipment.vehiclePlate || "-"}
+                    <span className="text-slate-400">Plat Nomor:</span> {shipment.vehiclePlate || "Belum diisi"}
                   </p>
                   <p>
                     <span className="text-slate-400">Driver:</span> {shipment.driverName || "-"}

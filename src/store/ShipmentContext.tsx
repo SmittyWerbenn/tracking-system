@@ -140,7 +140,7 @@ function toShipment(row: RawShipmentSummary): Shipment {
     nilaiAsuransi: row.nilaiAsuransi ?? null,
     truck:
       row.armadaType === "sewa"
-        ? { nomorUnit: row.vehiclePlate ?? "-", jenis: "Sewa (Vendor)", driver: row.driverName ?? undefined }
+        ? { nomorUnit: row.vehiclePlate ?? "-", jenis: "Vendor", driver: row.driverName ?? undefined }
         : {
             nomorUnit: row.truckNomorUnit ?? "-",
             jenis: row.truckJenis ?? "-",

@@ -15,6 +15,18 @@ import { cancelPolicy, creatorRoleOf, pickupEvidenceSql } from "../cancellation"
 import { holdPolicy } from "../hold";
 import { resolveArmada } from "../armada";
 
+/** Default timeline description per status, used when a tracking update is submitted without keterangan. */
+const DEFAULT_KETERANGAN: Partial<Record<TimelineEventType, string>> = {
+  Berangkat: "Paket telah diberangkatkan.",
+  Transit: "Paket telah tiba di gudang GMS Logistics",
+  "Dalam Perjalanan": "Paket sedang dalam perjalanan ke penerima.",
+  "Tiba di Tujuan": "Paket telah tiba di kota tujuan.",
+  "Selesai / Terkirim": "Paket telah diterima.",
+  "Transfer Unit": "Paket dipindahkan ke unit armada lain.",
+  "Re-route": "Paket dialihkan ke rute lain.",
+  Penarikan: "Paket ditarik kembali ke gudang asal.",
+};
+
 const POD_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** Client accounts never learn which Mitra (partner agent) handles an order. */
@@ -410,7 +422,7 @@ export function registerShipmentRoutes(router: Router) {
           ctx.env.DB.prepare(
             `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, truck_id, input_by_user_id, input_by_name, input_at, created_at)
              VALUES (?, ?, 1, 'Barang Diterima', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          ).bind(newId(), awb, `Gudang ${kotaAsal}`, tanggalDibuat, jamDibuat, "Paket diterima dan siap dikirim.", truckId ?? null, actor.id, actor.nama, nowIso, nowIso),
+          ).bind(newId(), awb, `Gudang ${kotaAsal}`, tanggalDibuat, jamDibuat, "Paket telah di-pickup.", truckId ?? null, actor.id, actor.nama, nowIso, nowIso),
           ...(holdAtCreate
             ? [
                 ctx.env.DB.prepare(
@@ -814,7 +826,8 @@ export function registerShipmentRoutes(router: Router) {
     const tanggal = reqString(body, "tanggal");
     const jam = reqString(body, "jam");
     // Optional: ops can submit a tracking update with no note (stored as an empty string).
-    const keterangan = optString(body, "keterangan") ?? "";
+    // When left empty the API fills in the default description of the chosen status.
+    const keterangan = optString(body, "keterangan") ?? DEFAULT_KETERANGAN[type] ?? "";
     if (keterangan.length > 500) throw Errors.badRequest('Field "keterangan" maksimal 500 karakter.');
     const truckId = optString(body, "truckId");
     const titikId = optString(body, "titikId");

@@ -410,7 +410,7 @@ export function registerShipmentRoutes(router: Router) {
           ctx.env.DB.prepare(
             `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, truck_id, input_by_user_id, input_by_name, input_at, created_at)
              VALUES (?, ?, 1, 'Barang Diterima', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          ).bind(newId(), awb, `Gudang ${kotaAsal}`, tanggalDibuat, jamDibuat, "Barang diterima dan siap dikirim.", truckId ?? null, actor.id, actor.nama, nowIso, nowIso),
+          ).bind(newId(), awb, `Gudang ${kotaAsal}`, tanggalDibuat, jamDibuat, "Paket diterima dan siap dikirim.", truckId ?? null, actor.id, actor.nama, nowIso, nowIso),
           ...(holdAtCreate
             ? [
                 ctx.env.DB.prepare(
@@ -813,7 +813,9 @@ export function registerShipmentRoutes(router: Router) {
     }
     const tanggal = reqString(body, "tanggal");
     const jam = reqString(body, "jam");
-    const keterangan = reqString(body, "keterangan", { max: 500 });
+    // Optional: ops can submit a tracking update with no note (stored as an empty string).
+    const keterangan = optString(body, "keterangan") ?? "";
+    if (keterangan.length > 500) throw Errors.badRequest('Field "keterangan" maksimal 500 karakter.');
     const truckId = optString(body, "truckId");
     const titikId = optString(body, "titikId");
     // A driver/mitra reports their own operational progress only -
@@ -902,7 +904,7 @@ export function registerShipmentRoutes(router: Router) {
       `UPDATE cancellation_requests SET status = 'EXPIRED', decided_at = ?, decided_by_name = 'System', decided_by_role = 'System', decision_reason = ?
        WHERE awb = ? AND status = 'PENDING'`,
     )
-      .bind(nowIso, `Status order berubah menjadi ${newStatus} sebelum Client memberi keputusan.`, params.awb)
+      .bind(nowIso, `Status paket berubah menjadi ${newStatus} sebelum Client memberi keputusan.`, params.awb)
       .run();
 
     if (isSelesai) {
@@ -916,9 +918,9 @@ export function registerShipmentRoutes(router: Router) {
 
     const actionMap: Record<string, { action: string; label: string; description: string }> = {
       "Transfer Unit": { action: "TRANSFER_TRUCK", label: "TRANSFER TRUCK", description: `Truck dipindahkan di ${lokasi}.` },
-      Kendala: { action: "ADD_ISSUE", label: "ADD ISSUE", description: `Kendala dicatat: ${keterangan}` },
-      "Re-route": { action: "REROUTE_SHIPMENT", label: "REROUTE SHIPMENT", description: `Pengiriman dialihkan (re-route) di ${lokasi}: ${keterangan}` },
-      Penarikan: { action: "PULLBACK_SHIPMENT", label: "PULLBACK SHIPMENT", description: `Penarikan barang ke gudang asal dicatat di ${lokasi}: ${keterangan}` },
+      Kendala: { action: "ADD_ISSUE", label: "ADD ISSUE", description: keterangan ? `Kendala dicatat: ${keterangan}` : "Kendala dicatat." },
+      "Re-route": { action: "REROUTE_SHIPMENT", label: "REROUTE SHIPMENT", description: `Pengiriman dialihkan (re-route) di ${lokasi}${keterangan ? `: ${keterangan}` : "."}` },
+      Penarikan: { action: "PULLBACK_SHIPMENT", label: "PULLBACK SHIPMENT", description: `Penarikan barang ke gudang asal dicatat di ${lokasi}${keterangan ? `: ${keterangan}` : "."}` },
     };
     if (isSelesai) {
       await writeAuditLog(ctx.env, actor, { action: "UPLOAD_POD", actionLabel: "UPLOAD POD", module: "Shipment", awb: params.awb, description: "Bukti serah terima dicatat." });

@@ -29,6 +29,7 @@ import { formatTanggalJam, formatTanggalPanjang, nowHHMM, todayISO } from "../..
 import { addBusinessDays } from "../../utils/sla";
 import { getAllowedNextEvents } from "../../utils/status";
 import { useLocationSuggest } from "../../utils/useLocationSuggest";
+import { defaultLokasiFor, presetsFor } from "../../utils/trackingPresets";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
@@ -110,7 +111,10 @@ export default function UpdateTracking() {
       if (s && initializedFor.current !== s.awb) {
         initializedFor.current = s.awb;
         const allowedOptions = getAllowedNextEvents(s.status).filter((o) => !isMitra || o !== "Transfer Unit");
-        setType(allowedOptions[0] ?? "Transit");
+        const firstType = allowedOptions[0] ?? "Transit";
+        setType(firstType);
+        setLokasi(defaultLokasiFor(firstType, s));
+        setKeterangan(presetsFor(firstType, s.penerima.nama)[0] ?? "");
         setNamaPenerima(s.penerima.nama);
         setTruckId(s.truckId ?? "");
         setEditPengirim(s.pengirim);
@@ -708,7 +712,13 @@ export default function UpdateTracking() {
               <select
                 className={inputClass}
                 value={type}
-                onChange={(e) => setType(e.target.value as TimelineEventType)}
+                onChange={(e) => {
+                  const next = e.target.value as TimelineEventType;
+                  setType(next);
+                  // Auto-fill Lokasi and Keterangan for the chosen status; both stay editable.
+                  setLokasi(defaultLokasiFor(next, shipment));
+                  setKeterangan(presetsFor(next, namaPenerima || shipment.penerima.nama)[0] ?? "");
+                }}
               >
                 {allowedOptions.map((opt) => (
                   <option key={opt} value={opt}>
@@ -764,12 +774,25 @@ export default function UpdateTracking() {
               />
             </label>
             <label className="block sm:col-span-2">
-              <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan</span>
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan (opsional)</span>
+              {presetsFor(type, namaPenerima || shipment.penerima.nama).length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {presetsFor(type, namaPenerima || shipment.penerima.nama).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setKeterangan(p)}
+                      className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:border-blue-400 hover:text-blue-700"
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              )}
               <textarea
-                required
                 rows={3}
                 className={inputClass}
-                placeholder="Keterangan status perjalanan"
+                placeholder="Kosongkan jika tidak ada catatan khusus"
                 value={keterangan}
                 onChange={(e) => setKeterangan(e.target.value)}
               />

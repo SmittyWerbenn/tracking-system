@@ -477,7 +477,7 @@ const id: Translations = {
     noPhoto: "Belum ada foto",
   },
   stepper: {
-    orderCreated: "Pesanan Dibuat",
+    orderCreated: "Paket Dibuat",
     pickedUp: "Berangkat",
     inTransit: "Dalam Pengiriman",
     outForDelivery: "Sedang Diantar",
@@ -769,7 +769,7 @@ const en: Translations = {
     noPhoto: "No photo yet",
   },
   stepper: {
-    orderCreated: "Order Placed",
+    orderCreated: "Package Placed",
     pickedUp: "Picked Up",
     inTransit: "In Transit",
     outForDelivery: "Out for Delivery",

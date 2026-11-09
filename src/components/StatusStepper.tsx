@@ -1,40 +1,45 @@
-import { AlertTriangle, Check, ClipboardCheck, Navigation, PackageCheck, Truck } from "lucide-react";
+import { AlertTriangle, Check, ClipboardCheck, Navigation, PackageCheck, PackageOpen, Truck } from "lucide-react";
 import { useLanguage } from "../store/LanguageContext";
 import type { ShipmentStatus } from "../types";
 
-const STEP_ICONS = [ClipboardCheck, PackageCheck, Truck, Navigation, Check];
+const STEP_ICONS = [ClipboardCheck, PackageOpen, PackageCheck, Truck, Navigation, Check];
 
-function getProgress(status: ShipmentStatus): { index: number; hasKendala: boolean } {
+/** `index` is the step currently in progress (all earlier steps are done). Steps:
+ * 0 Paket Dibuat, 1 Di Pickup, 2 Berangkat, 3 Dalam Pengiriman, 4 Sedang Diantar, 5 Terkirim.
+ * Shipments that never logged a "Di pickup" event keep working: anything from Berangkat onward
+ * jumps straight to its step, and only a still-"Dalam Persiapan" shipment depends on `hasPickup`. */
+function getProgress(status: ShipmentStatus, hasPickup: boolean): { index: number; hasKendala: boolean } {
   switch (status) {
     case "Dalam Persiapan":
     case "Hold":
-      return { index: 1, hasKendala: false };
+      return { index: hasPickup ? 2 : 1, hasKendala: false };
     case "Berangkat":
     case "Transit":
     case "Dalam Perjalanan":
     case "Re-route":
     case "Penarikan":
-      return { index: 2, hasKendala: false };
-    case "Kendala":
-      return { index: 2, hasKendala: true };
-    case "Tiba di Tujuan":
       return { index: 3, hasKendala: false };
-    case "Selesai / Terkirim":
+    case "Kendala":
+      return { index: 3, hasKendala: true };
+    case "Tiba di Tujuan":
       return { index: 4, hasKendala: false };
+    case "Selesai / Terkirim":
+      return { index: 5, hasKendala: false };
     default:
       return { index: 0, hasKendala: false };
   }
 }
 
-export function StatusStepper({ status }: { status: ShipmentStatus }) {
+export function StatusStepper({ status, hasPickup = false }: { status: ShipmentStatus; hasPickup?: boolean }) {
   const { t } = useLanguage();
-  const { index: current, hasKendala } = getProgress(status);
+  const { index: current, hasKendala } = getProgress(status, hasPickup);
   const STEPS = [
     { label: t.stepper.orderCreated, icon: STEP_ICONS[0] },
     { label: t.stepper.pickedUp, icon: STEP_ICONS[1] },
-    { label: t.stepper.inTransit, icon: STEP_ICONS[2] },
-    { label: t.stepper.outForDelivery, icon: STEP_ICONS[3] },
-    { label: t.stepper.delivered, icon: STEP_ICONS[4] },
+    { label: t.stepper.departed, icon: STEP_ICONS[2] },
+    { label: t.stepper.inTransit, icon: STEP_ICONS[3] },
+    { label: t.stepper.outForDelivery, icon: STEP_ICONS[4] },
+    { label: t.stepper.delivered, icon: STEP_ICONS[5] },
   ];
 
   return (
@@ -98,7 +103,7 @@ export function StatusStepper({ status }: { status: ShipmentStatus }) {
                 </span>
               </div>
               <p
-                className={`mt-2 max-w-[70px] text-center text-[10px] font-medium leading-tight sm:max-w-none sm:text-xs ${
+                className={`mt-2 max-w-[56px] text-center text-[10px] font-medium leading-tight sm:max-w-none sm:text-xs ${
                   done || isCurrent ? "text-slate-800" : "text-slate-400"
                 }`}
               >

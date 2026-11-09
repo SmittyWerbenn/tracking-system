@@ -17,6 +17,7 @@ export type LayananPengiriman = string;
 
 export type TimelineEventType =
   | "Barang Diterima"
+  | "Di pickup"
   | "Berangkat"
   | "Transit"
   | "Dalam Perjalanan"

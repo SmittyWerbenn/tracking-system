@@ -271,7 +271,7 @@ export default function TrackingResult() {
 
       {/* Progress stepper */}
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <StatusStepper status={shipment.status} />
+        <StatusStepper status={shipment.status} hasPickup={shipment.timeline.some((e) => e.type === "Di pickup")} />
       </div>
 
       {/* POD if delivered - shown prominently near top */}

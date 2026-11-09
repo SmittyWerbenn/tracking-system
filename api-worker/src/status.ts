@@ -17,6 +17,7 @@ export type ShipmentStatus =
 
 export type TimelineEventType =
   | "Barang Diterima"
+  | "Di pickup"
   | "Berangkat"
   | "Transit"
   | "Dalam Perjalanan"
@@ -29,6 +30,7 @@ export type TimelineEventType =
 
 export const TIMELINE_EVENT_TYPES: TimelineEventType[] = [
   "Barang Diterima",
+  "Di pickup",
   "Berangkat",
   "Transit",
   "Dalam Perjalanan",
@@ -43,6 +45,7 @@ export const TIMELINE_EVENT_TYPES: TimelineEventType[] = [
 const PIPELINE_RANK: Record<string, number> = {
   "Dalam Persiapan": 0,
   "Barang Diterima": 0,
+  "Di pickup": 0,
   Berangkat: 1,
   Transit: 2,
   "Dalam Perjalanan": 2,
@@ -59,7 +62,7 @@ export function pipelineRank(status: string): number {
 }
 
 export function eventTypeToShipmentStatus(type: TimelineEventType): ShipmentStatus {
-  if (type === "Barang Diterima") return "Dalam Persiapan";
+  if (type === "Barang Diterima" || type === "Di pickup") return "Dalam Persiapan";
   if (type === "Transfer Unit") return "Dalam Perjalanan";
   return type as ShipmentStatus;
 }

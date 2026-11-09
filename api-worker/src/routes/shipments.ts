@@ -17,6 +17,7 @@ import { resolveArmada } from "../armada";
 
 /** Default timeline description per status, used when a tracking update is submitted without keterangan. */
 const DEFAULT_KETERANGAN: Partial<Record<TimelineEventType, string>> = {
+  "Di pickup": "Paket telah di-pickup.",
   Berangkat: "Paket telah diberangkatkan.",
   Transit: "Paket telah tiba di gudang GMS Logistics",
   "Dalam Perjalanan": "Paket sedang dalam perjalanan ke penerima.",

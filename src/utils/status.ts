@@ -68,6 +68,12 @@ const STYLES: Record<string, StatusStyle> = {
     dot: "bg-emerald-500",
     ring: "ring-emerald-200",
   },
+  "Di pickup": {
+    bg: "bg-indigo-100",
+    text: "text-indigo-700",
+    dot: "bg-indigo-500",
+    ring: "ring-indigo-200",
+  },
   "Barang Diterima": {
     bg: "bg-slate-100",
     text: "text-slate-700",
@@ -108,6 +114,7 @@ export const SHIPMENT_STATUS_OPTIONS: ShipmentStatus[] = [
 
 export const TIMELINE_EVENT_OPTIONS: TimelineEventType[] = [
   "Barang Diterima",
+  "Di pickup",
   "Berangkat",
   "Transit",
   "Dalam Perjalanan",
@@ -121,7 +128,7 @@ export const TIMELINE_EVENT_OPTIONS: TimelineEventType[] = [
 
 /** Maps a timeline event type to the resulting shipment-level status. */
 export function eventTypeToShipmentStatus(type: TimelineEventType): ShipmentStatus {
-  if (type === "Barang Diterima") return "Dalam Persiapan";
+  if (type === "Barang Diterima" || type === "Di pickup") return "Dalam Persiapan";
   if (type === "Transfer Unit") return "Dalam Perjalanan";
   return type as ShipmentStatus;
 }
@@ -136,6 +143,7 @@ export function eventTypeToShipmentStatus(type: TimelineEventType): ShipmentStat
 const PIPELINE_RANK: Record<string, number> = {
   "Dalam Persiapan": 0,
   "Barang Diterima": 0,
+  "Di pickup": 0,
   "Berangkat": 1,
   "Transit": 2,
   "Dalam Perjalanan": 2,

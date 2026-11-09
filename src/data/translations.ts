@@ -186,6 +186,7 @@ interface Translations {
   stepper: {
     orderCreated: string;
     pickedUp: string;
+    departed: string;
     inTransit: string;
     outForDelivery: string;
     delivered: string;
@@ -478,7 +479,8 @@ const id: Translations = {
   },
   stepper: {
     orderCreated: "Paket Dibuat",
-    pickedUp: "Berangkat",
+    pickedUp: "Di Pickup",
+    departed: "Berangkat",
     inTransit: "Dalam Pengiriman",
     outForDelivery: "Sedang Diantar",
     delivered: "Terkirim",
@@ -771,6 +773,7 @@ const en: Translations = {
   stepper: {
     orderCreated: "Package Placed",
     pickedUp: "Picked Up",
+    departed: "Departed",
     inTransit: "In Transit",
     outForDelivery: "Out for Delivery",
     delivered: "Delivered",

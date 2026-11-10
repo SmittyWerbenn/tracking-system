@@ -5,7 +5,7 @@ import type { ShipmentStatus } from "../types";
 const STEP_ICONS = [ClipboardCheck, PackageOpen, PackageCheck, Truck, Navigation, Check];
 
 /** `index` is the step currently in progress (all earlier steps are done). Steps:
- * 0 Paket Dibuat, 1 Di Pickup, 2 Berangkat, 3 Dalam Pengiriman, 4 Sedang Diantar, 5 Terkirim.
+ * 0 Order Dibuat, 1 Di Pickup, 2 Berangkat, 3 Dalam Pengiriman, 4 Sedang Diantar, 5 Terkirim.
  * Shipments that never logged a "Di pickup" event keep working: anything from Berangkat onward
  * jumps straight to its step, and only a still-"Dalam Persiapan" shipment depends on `hasPickup`. */
 function getProgress(status: ShipmentStatus, hasPickup: boolean): { index: number; hasKendala: boolean } {

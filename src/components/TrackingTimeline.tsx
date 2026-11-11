@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle2, MapPin, Truck } from "lucide-react";
+import { ArrowRight, CheckCircle2, MapPin, Pencil, Trash2, Truck } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "../store/LanguageContext";
 import type { TimelineEvent } from "../types";
@@ -7,9 +7,15 @@ import { ImageLightbox, PhotoThumb } from "./ImageLightbox";
 
 interface TrackingTimelineProps {
   events: TimelineEvent[];
+  /** Admin portal only: shows an edit / delete button on logs that may be corrected. */
+  onEdit?: (event: TimelineEvent) => void;
+  onDelete?: (event: TimelineEvent) => void;
 }
 
-export function TrackingTimeline({ events }: TrackingTimelineProps) {
+/** System milestones (initial "Order Dibuat", delivery, cancellation) are never editable or deletable. */
+const PROTECTED_EVENT_TYPES = new Set(["Barang Diterima", "Selesai / Terkirim", "Dibatalkan"]);
+
+export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineProps) {
   const { t } = useLanguage();
   const [lightbox, setLightbox] = useState<{ src: string; caption: string } | null>(null);
   // Show most recent first for the reading order, but keep chronological numbering.
@@ -26,6 +32,9 @@ export function TrackingTimeline({ events }: TrackingTimelineProps) {
         {ordered.map((event, idx) => {
           const isLatest = idx === 0;
           const isDelivered = event.type === "Selesai / Terkirim";
+          const manageable = !PROTECTED_EVENT_TYPES.has(event.type);
+          // A Transfer Unit log already moved the shipment to another truck, so it can be corrected but not removed.
+          const canDelete = manageable && event.type !== "Transfer Unit";
           return (
             <li key={event.id} className="relative flex gap-3.5 pb-6 last:pb-0">
               {/* connector line */}
@@ -48,6 +57,32 @@ export function TrackingTimeline({ events }: TrackingTimelineProps) {
                   {isLatest && (
                     <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
                       {t.timeline.latest}
+                    </span>
+                  )}
+                  {manageable && (onEdit || onDelete) && (
+                    <span className="ml-auto flex items-center gap-1">
+                      {onEdit && (
+                        <button
+                          type="button"
+                          onClick={() => onEdit(event)}
+                          title="Edit log tracking"
+                          aria-label="Edit log tracking"
+                          className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-blue-700"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      )}
+                      {onDelete && canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => onDelete(event)}
+                          title="Hapus log tracking"
+                          aria-label="Hapus log tracking"
+                          className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </span>
                   )}
                 </div>

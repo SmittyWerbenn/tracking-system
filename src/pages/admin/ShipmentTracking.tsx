@@ -7,8 +7,10 @@ import { ProofOfDeliveryCard } from "../../components/ProofOfDeliveryCard";
 import { StatusBadge } from "../../components/StatusBadge";
 import { StatusStepper } from "../../components/StatusStepper";
 import { TrackingTimeline } from "../../components/TrackingTimeline";
+import { DeleteTimelineEventModal, EditTimelineEventModal } from "../../components/TimelineEventModals";
+import { useAuth } from "../../store/AuthContext";
 import { useShipments } from "../../store/ShipmentContext";
-import type { Shipment } from "../../types";
+import type { Shipment, TimelineEvent } from "../../types";
 import { formatTanggalPanjang, todayISO } from "../../utils/format";
 
 /** Admin-portal tracking view - same status stepper/timeline as the public
@@ -17,11 +19,14 @@ import { formatTanggalPanjang, todayISO } from "../../utils/format";
  * so an admin action never leaves the portal. */
 export default function ShipmentTracking() {
   const { awb } = useParams<{ awb: string }>();
-  const { getByAwb } = useShipments();
+  const { getByAwb, updateTimelineEvent, deleteTimelineEvent } = useShipments();
+  const { profile } = useAuth();
   const navigate = useNavigate();
 
   const [shipment, setShipment] = useState<Shipment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [editing, setEditing] = useState<TimelineEvent | null>(null);
+  const [deleting, setDeleting] = useState<TimelineEvent | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +42,11 @@ export default function ShipmentTracking() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [awb]);
+
+  // Re-read the shipment after an edit/delete so the badge, stepper and "TERBARU" marker re-render in place.
+  async function reload(): Promise<void> {
+    setShipment(await getByAwb(awb ?? ""));
+  }
 
   if (isLoading) {
     return (
@@ -66,6 +76,10 @@ export default function ShipmentTracking() {
   }
 
   const isDelivered = shipment.status === "Selesai / Terkirim";
+  // Tracking logs can be corrected by Admin/Superadmin until the shipment is final or on hold (the API enforces the same).
+  const canManageLog =
+    (profile?.role === "Superadmin" || profile?.role === "Admin") &&
+    !["Selesai / Terkirim", "Dibatalkan", "Hold"].includes(shipment.status);
   const isOverdue = !isDelivered && !!shipment.estimasiTiba && shipment.estimasiTiba < todayISO();
 
   return (
@@ -130,8 +144,38 @@ export default function ShipmentTracking() {
 
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">Perjalanan Pengiriman</h2>
-        <TrackingTimeline events={shipment.timeline} />
+        <TrackingTimeline
+          events={shipment.timeline}
+          onEdit={canManageLog ? setEditing : undefined}
+          onDelete={canManageLog ? setDeleting : undefined}
+        />
       </div>
+      {editing && (
+        <EditTimelineEventModal
+          event={editing}
+          onClose={() => setEditing(null)}
+          onSave={async (data) => {
+            const res = await updateTimelineEvent(shipment.awb, editing.id, data);
+            if (!res.ok) return res.error;
+            setEditing(null);
+            await reload();
+            return null;
+          }}
+        />
+      )}
+      {deleting && (
+        <DeleteTimelineEventModal
+          event={deleting}
+          onClose={() => setDeleting(null)}
+          onConfirm={async () => {
+            const res = await deleteTimelineEvent(shipment.awb, deleting.id);
+            if (!res.ok) return res.error;
+            setDeleting(null);
+            await reload();
+            return null;
+          }}
+        />
+      )}
     </AdminLayout>
   );
 }

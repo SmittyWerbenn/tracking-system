@@ -7,6 +7,7 @@ export type Permission =
   | "shipments.update_info"
   | "shipments.hold"
   | "tracking.update"
+  | "tracking.manage"
   | "fleet.view"
   | "fleet.manage"
   | "fleet.assign"
@@ -29,6 +30,8 @@ const ALL: Permission[] = [
   "shipments.update_info",
   "shipments.hold",
   "tracking.update",
+  // Edit / delete an existing tracking log: Superadmin and Admin only.
+  "tracking.manage",
   "fleet.view",
   "fleet.manage",
   "fleet.assign",
@@ -55,6 +58,7 @@ const ROLE_PERMISSIONS: Record<Role, Set<Permission>> = {
     "shipments.update_info",
     "shipments.hold",
     "tracking.update",
+    "tracking.manage",
     "fleet.view",
     "fleet.manage",
     "fleet.assign",

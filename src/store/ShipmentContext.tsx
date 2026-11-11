@@ -267,6 +267,14 @@ interface ShipmentContextValue {
   createShipment: (data: ShipmentFormData) => Promise<CreatedShipment>;
   markEmailSent: (awb: string) => void;
   addTrackingUpdate: (data: TrackingUpdateFormData) => Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Admin/Superadmin: correct an existing tracking log. The API re-syncs the shipment status. */
+  updateTimelineEvent: (
+    awb: string,
+    eventId: string,
+    data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string },
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Admin/Superadmin: delete a tracking log. The API re-syncs the shipment status. */
+  deleteTimelineEvent: (awb: string, eventId: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   updateShipmentInfo: (awb: string, data: UpdateShipmentInfoData) => Promise<{ ok: true } | { ok: false; error: string }>;
   updateShipmentAlamat: (
     awb: string,
@@ -457,6 +465,30 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function updateTimelineEvent(
+    awb: string,
+    eventId: string,
+    data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string },
+  ) {
+    try {
+      await api.patch(`/api/shipments/${encodeURIComponent(awb)}/timeline/${encodeURIComponent(eventId)}`, data);
+      await refresh();
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal menyimpan perubahan log tracking." };
+    }
+  }
+
+  async function deleteTimelineEvent(awb: string, eventId: string) {
+    try {
+      await api.del(`/api/shipments/${encodeURIComponent(awb)}/timeline/${encodeURIComponent(eventId)}`);
+      await refresh();
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal menghapus log tracking." };
+    }
+  }
+
   async function updateShipmentInfo(awb: string, data: UpdateShipmentInfoData) {
     try {
       await api.patch(`/api/shipments/${encodeURIComponent(awb)}`, {
@@ -583,6 +615,8 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         createShipment,
         markEmailSent,
         addTrackingUpdate,
+        updateTimelineEvent,
+        deleteTimelineEvent,
         updateShipmentInfo,
         updateShipmentAlamat,
         requestRecovery,

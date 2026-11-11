@@ -52,6 +52,7 @@ const emptyForm: ShipmentFormData = {
   driverName: "",
   customerId: "",
   reference: "",
+  internalNotes: "",
   asuransi: false,
   koliAsuransi: "",
   nilaiAsuransi: undefined,
@@ -518,6 +519,19 @@ export default function CreateShipment() {
               Pengenal order dari sisi Anda. Referensi yang sama tidak bisa dipakai dua kali, sehingga satu order tidak pernah mendapat dua AWB.
             </p>
           </Field>
+          {!isCustAdmin && (
+            <Field label="Keterangan Internal (Khusus Internal GMS)" full>
+              <input
+                className={inputClass}
+                maxLength={500}
+                placeholder="Contoh: Resi Vendor JNE-09123812 / Subkon PT Maju"
+                value={form.internalNotes ?? ""}
+                onChange={(e) => update("internalNotes", e.target.value)}
+                autoComplete="off"
+              />
+              <p className="mt-1.5 text-[11px] text-slate-400">Catatan internal admin (contoh: No. Resi Vendor / Nama Vendor). Tidak ditampilkan ke customer.</p>
+            </Field>
+          )}
           <Field label="Deskripsi Barang" full>
             <textarea
               required

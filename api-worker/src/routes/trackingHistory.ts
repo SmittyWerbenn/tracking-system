@@ -22,6 +22,7 @@ interface EventRow {
   tanggal: string;
   jam: string;
   keterangan: string;
+  internal_notes: string | null;
 }
 
 async function loadShipment(ctx: Ctx, awb: string) {
@@ -40,7 +41,7 @@ async function loadShipment(ctx: Ctx, awb: string) {
 
 async function loadEvents(ctx: Ctx, awb: string): Promise<EventRow[]> {
   const r = await ctx.env.DB.prepare(
-    `SELECT id, seq, type, lokasi, titik_id, tanggal, jam, keterangan FROM shipment_timeline_events WHERE awb = ? ORDER BY seq`,
+    `SELECT id, seq, type, lokasi, titik_id, tanggal, jam, keterangan, internal_notes FROM shipment_timeline_events WHERE awb = ? ORDER BY seq`,
   )
     .bind(awb)
     .all<EventRow>();
@@ -108,10 +109,17 @@ export function registerTrackingHistoryRoutes(router: Router) {
     const keterangan = optString(body, "keterangan") ?? "";
     if (keterangan.length > 500) throw Errors.badRequest('Field "keterangan" maksimal 500 karakter.');
 
+    // Keterangan Internal is only touched when the key is sent (tracking.manage is Superadmin/Admin only).
+    let internalNotes = ev.internal_notes;
+    if (Object.prototype.hasOwnProperty.call(body, "internalNotes")) {
+      internalNotes = optString(body, "internalNotes") ?? null;
+      if (internalNotes && internalNotes.length > 500) throw Errors.badRequest("Keterangan Internal maksimal 500 karakter.");
+    }
+
     await ctx.env.DB.prepare(
-      `UPDATE shipment_timeline_events SET type = ?, lokasi = ?, titik_id = CASE WHEN lokasi = ? THEN titik_id ELSE NULL END, tanggal = ?, jam = ?, keterangan = ? WHERE id = ? AND awb = ?`,
+      `UPDATE shipment_timeline_events SET type = ?, lokasi = ?, titik_id = CASE WHEN lokasi = ? THEN titik_id ELSE NULL END, tanggal = ?, jam = ?, keterangan = ?, internal_notes = ? WHERE id = ? AND awb = ?`,
     )
-      .bind(requestedType, lokasi, lokasi, tanggal, jam, keterangan, ev.id, params.awb)
+      .bind(requestedType, lokasi, lokasi, tanggal, jam, keterangan, internalNotes, ev.id, params.awb)
       .run();
 
     const synced = await syncShipment(ctx, shipment, actor.id);
@@ -119,6 +127,7 @@ export function registerTrackingHistoryRoutes(router: Router) {
     if (requestedType !== ev.type) changes.push(`status ${ev.type} -> ${requestedType}`);
     if (lokasi !== ev.lokasi) changes.push(`lokasi "${ev.lokasi}" -> "${lokasi}"`);
     if (tanggal !== ev.tanggal || jam !== ev.jam) changes.push(`waktu ${ev.tanggal} ${ev.jam} -> ${tanggal} ${jam}`);
+    if (internalNotes !== ev.internal_notes) changes.push("keterangan internal diperbarui");
     if (keterangan !== ev.keterangan) changes.push(`keterangan "${ev.keterangan}" -> "${keterangan}"`);
     await writeAuditLog(ctx.env, actor, {
       action: "EDIT_TRACKING_EVENT",

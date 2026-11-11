@@ -484,6 +484,11 @@ export default function ShipmentList() {
                   <td className="whitespace-nowrap px-4 py-3 font-mono font-medium text-slate-900">
                     {s.awb}
                     {s.reference && <span className="block font-sans text-[11px] font-normal text-slate-400" title="Referensi">Ref: {s.reference}</span>}
+                    {s.internalNotes && (
+                      <span className="mt-0.5 block max-w-[220px] truncate font-sans text-[11px] font-normal text-amber-700" title={`Keterangan Internal: ${s.internalNotes}`}>
+                        [Internal] {s.internalNotes}
+                      </span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-slate-600">
                     {formatTanggalPendek(s.tanggalDibuat)}

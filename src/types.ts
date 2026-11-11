@@ -57,6 +57,8 @@ export interface TimelineEvent {
   truckId?: string; // links to Truck master data, when chosen from it
   truckSebelumnya?: TruckInfo;
   inputBy?: string;
+  /** "Keterangan Internal": admin-only note on this log; never sent by the public API. */
+  internalNotes?: string;
   inputAt?: string; // system timestamp ISO
 }
 
@@ -74,6 +76,8 @@ export interface Shipment {
   awb: string;
   /** "Referensi": the customer's own order identifier from the order template (unique per Client ID). */
   reference?: string;
+  /** "Keterangan Internal (Khusus Internal GMS)": vendor waybill / vendor name / ops note. Superadmin & Admin only. */
+  internalNotes?: string;
   tanggalDibuat: string; // ISO date
   jamDibuat: string;
   status: ShipmentStatus;
@@ -191,6 +195,8 @@ export type RecoveryStatus = "PENDING" | "APPROVED" | "REJECTED";
 export interface ShipmentFormData {
   /** Optional "Referensi" (customer order id). The API refuses a second AWB for the same one. */
   reference?: string;
+  /** Optional internal note (Superadmin/Admin only; ignored by the API for other roles). */
+  internalNotes?: string;
   pengirim: PersonInfo;
   penerima: PersonInfo;
   alamatAsal: string;
@@ -240,9 +246,13 @@ export interface TrackingUpdateFormData {
    * required) when type is "Selesai / Terkirim"; can differ from the
    * shipment's named penerima (e.g. a colleague receiving on their behalf). */
   namaPenerima?: string;
+  /** Optional internal note for this log (Superadmin/Admin only). */
+  internalNotes?: string;
 }
 
 export interface UpdateShipmentInfoData {
+  /** Sent only by Superadmin/Admin; an empty string clears the note. */
+  internalNotes?: string;
   pengirim: PersonInfo;
   penerima: PersonInfo;
   alamatAsal: string;

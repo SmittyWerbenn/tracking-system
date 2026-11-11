@@ -313,6 +313,15 @@ export default function ShipmentDetail() {
                   <p className="font-mono text-sm font-medium text-slate-800">{shipment.reference}</p>
                 </div>
               )}
+              {shipment.internalNotes && (
+                <div className="max-w-full">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Keterangan Internal
+                    <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-amber-700">Internal</span>
+                  </p>
+                  <p className="break-words text-sm font-medium text-slate-800">{shipment.internalNotes}</p>
+                </div>
+              )}
               {shipment.customerId && (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Client ID</p>

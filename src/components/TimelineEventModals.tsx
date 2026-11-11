@@ -14,7 +14,7 @@ const EDITABLE_TYPES = TIMELINE_EVENT_OPTIONS.filter(
 
 interface EditProps {
   event: TimelineEvent;
-  onSave: (data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string }) => Promise<string | null>;
+  onSave: (data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string; internalNotes: string }) => Promise<string | null>;
   onClose: () => void;
 }
 
@@ -24,6 +24,7 @@ export function EditTimelineEventModal({ event, onSave, onClose }: EditProps) {
   const [tanggal, setTanggal] = useState(event.tanggal);
   const [jam, setJam] = useState(event.jam);
   const [keterangan, setKeterangan] = useState(event.keterangan);
+  const [internalNotes, setInternalNotes] = useState(event.internalNotes ?? "");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const typeLocked = event.type === "Transfer Unit";
@@ -37,7 +38,7 @@ export function EditTimelineEventModal({ event, onSave, onClose }: EditProps) {
     }
     setPending(true);
     setError(null);
-    const err = await onSave({ type, lokasi: lokasi.trim(), tanggal, jam, keterangan: keterangan.trim() });
+    const err = await onSave({ type, lokasi: lokasi.trim(), tanggal, jam, keterangan: keterangan.trim(), internalNotes: internalNotes.trim() });
     if (err) {
       setError(err);
       setPending(false);
@@ -75,6 +76,11 @@ export function EditTimelineEventModal({ event, onSave, onClose }: EditProps) {
           <label className="block sm:col-span-2">
             <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan (opsional)</span>
             <textarea rows={3} maxLength={500} className={inputClass} value={keterangan} onChange={(e) => setKeterangan(e.target.value)} />
+          </label>
+          <label className="block sm:col-span-2">
+            <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan Internal (Khusus Internal GMS)</span>
+            <input maxLength={500} className={inputClass} value={internalNotes} onChange={(e) => setInternalNotes(e.target.value)} placeholder="Contoh: Resi Vendor JNE-09123812 / Subkon PT Maju" autoComplete="off" />
+            <span className="mt-1.5 block text-[11px] text-slate-400">Catatan internal admin (contoh: No. Resi Vendor / Nama Vendor). Tidak ditampilkan ke customer.</span>
           </label>
         </div>
         {error && (

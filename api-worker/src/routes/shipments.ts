@@ -30,8 +30,20 @@ const DEFAULT_KETERANGAN: Partial<Record<TimelineEventType, string>> = {
 
 const POD_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
+/** "Keterangan Internal": private to GMS operations. Everyone else (Client, Mitra, Driver, customer-linked Viewer) never receives it. */
+const INTERNAL_NOTE_ROLES = new Set(["Superadmin", "Admin"]);
+const INTERNAL_NOTES_MAX = 500;
+const canSeeInternalNotes = (role: string) => INTERNAL_NOTE_ROLES.has(role);
+
+function readInternalNotes(body: Record<string, unknown>): string | null {
+  const v = optString(body, "internalNotes") ?? null;
+  if (v && v.length > INTERNAL_NOTES_MAX) throw Errors.badRequest(`Keterangan Internal maksimal ${INTERNAL_NOTES_MAX} karakter.`);
+  return v;
+}
+
 /** Client accounts never learn which Mitra (partner agent) handles an order. */
-function forActor(summary: ReturnType<typeof shipmentSummary>, role: string) {
+function forActor(rawSummary: ReturnType<typeof shipmentSummary>, role: string) {
+  const summary = canSeeInternalNotes(role) ? rawSummary : { ...rawSummary, internalNotes: null as unknown };
   if (role === "Mitra") return { ...summary, createdByName: null, createdByRole: null as unknown as typeof summary.createdByRole, hold: null, holdPolicy: undefined };
   return role === "Client" ? { ...summary, mitraId: null, mitraNama: null } : summary;
 }
@@ -40,6 +52,7 @@ function shipmentSummary(row: Record<string, unknown>) {
   return {
     awb: row.awb,
     reference: row.reference ?? null,
+    internalNotes: row.internal_notes ?? null,
     tanggalDibuat: row.tanggal_dibuat,
     jamDibuat: row.jam_dibuat,
     status: row.status,
@@ -187,9 +200,11 @@ export function registerShipmentRoutes(router: Router) {
       where.push("1 = 0");
     }
     if (search) {
-      where.push("(s.awb LIKE ? ESCAPE '\\' OR s.reference LIKE ? ESCAPE '\\' OR s.pengirim_nama LIKE ? ESCAPE '\\' OR s.penerima_nama LIKE ? ESCAPE '\\')");
+      const withInternal = canSeeInternalNotes(actor.role);
+      where.push(`(s.awb LIKE ? ESCAPE '\\' OR s.reference LIKE ? ESCAPE '\\' OR s.pengirim_nama LIKE ? ESCAPE '\\' OR s.penerima_nama LIKE ? ESCAPE '\\'${withInternal ? " OR s.internal_notes LIKE ? ESCAPE '\\'" : ""})`);
       const like = likeTerm(search);
       params.push(like, like, like, like);
+      if (withInternal) params.push(like);
     }
     // Client ID filter ("__none__" = orders without one), created-date range
     // and stagnant ("macet" = no tracking update for N days, not yet delivered).
@@ -307,6 +322,8 @@ export function registerShipmentRoutes(router: Router) {
     const truckId = armada.truckId ?? undefined;
     const slaValue = optNumber(body, "slaValue", { min: 1, max: 365 });
     // "Referensi": the customer's own order identifier (optional). Unique per Client ID, case-insensitive.
+    // Keterangan Internal is ops-only: a Client account's value is ignored, not rejected.
+    const internalNotes = canSeeInternalNotes(actor.role) ? readInternalNotes(body) : null;
     const referenceRaw = optString(body, "reference");
     const reference = referenceRaw ? referenceRaw.trim().replace(/\s+/g, " ") : null;
     if (reference && reference.length > 100) throw Errors.badRequest("Referensi maksimal 100 karakter.");
@@ -407,8 +424,8 @@ export function registerShipmentRoutes(router: Router) {
               sla_value, sla_unit, estimasi_tiba, customer_id, mitra_id,
               email_terkirim, created_at, updated_at, created_by, updated_by, created_by_role, created_by_name, reference,
               asuransi, koli_asuransi, nilai_asuransi,
-              armada_type, vehicle_plate, driver_name, driver_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              armada_type, vehicle_plate, driver_name, driver_id, internal_notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           ).bind(
             awb, tanggalDibuat, jamDibuat, holdAtCreate ? "Hold" : "Dalam Persiapan",
             pengirimNama, pengirimTelepon, pengirimEmail,
@@ -418,7 +435,7 @@ export function registerShipmentRoutes(router: Router) {
             slaValue ?? null, slaUnit, estimasiTiba, customerId, mitraId ?? null,
             nowIso, nowIso, actor.id, actor.id, actor.role, actor.nama, reference,
             asuransi ? 1 : 0, koliAsuransi, nilaiAsuransi,
-            armada.armadaType, armada.vehiclePlate, armada.driverName, armada.driverId,
+            armada.armadaType, armada.vehiclePlate, armada.driverName, armada.driverId, internalNotes,
           ),
           ctx.env.DB.prepare(
             `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, truck_id, input_by_user_id, input_by_name, input_at, created_at)
@@ -538,7 +555,7 @@ export function registerShipmentRoutes(router: Router) {
       .bind(params.awb, params.awb)
       .all();
 
-    return ok({ shipment: forActor(withHoldPolicy(withCancelPolicy(shipmentSummary(row), row, actor), row, actor), actor.role), timeline: timeline.results, pod: pod ?? null, files: files.results ?? [], holds: actor.role === "Mitra" || actor.role === "Driver" ? [] : holds.results ?? [] });
+    return ok({ shipment: forActor(withHoldPolicy(withCancelPolicy(shipmentSummary(row), row, actor), row, actor), actor.role), timeline: canSeeInternalNotes(actor.role) ? timeline.results : (timeline.results ?? []).map((e) => ({ ...e, internal_notes: null })), pod: pod ?? null, files: files.results ?? [], holds: actor.role === "Mitra" || actor.role === "Driver" ? [] : holds.results ?? [] });
     });
 
     // Last position reported by the driver ("Perbarui Posisi" button on the
@@ -625,6 +642,10 @@ export function registerShipmentRoutes(router: Router) {
     ];
     // Barang details: optional, only touched when sent (older callers omit them).
     const has = (k: string) => Object.prototype.hasOwnProperty.call(body, k);
+    if (has("internalNotes") && canSeeInternalNotes(actor.role)) {
+      sets.push("internal_notes=?");
+      values.push(readInternalNotes(body));
+    }
     if (has("deskripsiBarang")) {
       sets.push("deskripsi_barang=?");
       values.push(optString(body, "deskripsiBarang") ?? "");
@@ -830,6 +851,7 @@ export function registerShipmentRoutes(router: Router) {
     // When left empty the API fills in the default description of the chosen status.
     const keterangan = optString(body, "keterangan") ?? DEFAULT_KETERANGAN[type] ?? "";
     if (keterangan.length > 500) throw Errors.badRequest('Field "keterangan" maksimal 500 karakter.');
+    const internalNotes = canSeeInternalNotes(actor.role) ? readInternalNotes(body) : null;
     const truckId = optString(body, "truckId");
     const titikId = optString(body, "titikId");
     // A driver/mitra reports their own operational progress only -
@@ -869,10 +891,10 @@ export function registerShipmentRoutes(router: Router) {
     const eventId = newId();
 
     await ctx.env.DB.prepare(
-      `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, titik_id, tanggal, jam, keterangan, truck_id, truck_sebelumnya_id, input_by_user_id, input_by_name, input_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, titik_id, tanggal, jam, keterangan, truck_id, truck_sebelumnya_id, input_by_user_id, input_by_name, input_at, created_at, internal_notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-      .bind(eventId, params.awb, seq, type, lokasi, titikId ?? null, tanggal, jam, keterangan, truckId ?? shipment.truck_id ?? null, previousTruckId, actor.id, actor.nama, nowIso, nowIso)
+      .bind(eventId, params.awb, seq, type, lokasi, titikId ?? null, tanggal, jam, keterangan, truckId ?? shipment.truck_id ?? null, previousTruckId, actor.id, actor.nama, nowIso, nowIso, internalNotes)
       .run();
 
     // Picking a Master Armada unit (e.g. Transfer Unit from a sewa truck) makes the shipment internal again.

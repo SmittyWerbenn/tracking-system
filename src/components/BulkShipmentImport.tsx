@@ -71,6 +71,7 @@ function emptyRow(): BulkRow {
     asuransi: "",
     koliAsuransi: "",
     nilaiAsuransi: "",
+    keteranganInternal: "",
   };
 }
 
@@ -100,6 +101,7 @@ const normRef = (r: string) => r.trim().replace(/\s+/g, " ").toLowerCase();
 function rowErrors(row: BulkRow, duplicateRows?: number[]): string[] {
   const errs: string[] = [];
   if (row.referensi.trim().length > 100) errs.push("Referensi maksimal 100 karakter");
+  if (row.keteranganInternal.trim().length > 500) errs.push("Keterangan Internal maksimal 500 karakter");
   if (duplicateRows && duplicateRows.length > 1) {
     errs.push(`Referensi ${row.referensi.trim()} ditemukan lebih dari satu kali (baris ${duplicateRows.join(", ")})`);
   }
@@ -280,6 +282,8 @@ export function BulkShipmentImport() {
       try {
         const { awb } = await createShipment({
           reference: row.referensi.trim() || undefined,
+          // Internal note is ops-only; a Client account never sends one.
+          internalNotes: !isCustAdmin ? row.keteranganInternal.trim() || undefined : undefined,
           pengirim: { nama: row.pengirimNama, telepon: row.pengirimTelepon, email: row.pengirimEmail },
           penerima: { nama: row.penerimaNama, telepon: row.penerimaTelepon, email: row.penerimaEmail },
           alamatAsal: row.alamatAsal,
@@ -445,6 +449,7 @@ export function BulkShipmentImport() {
               <th className="border-l border-slate-200 px-2.5 py-2.5">Asuransi (Ya/Tidak)</th>
               <th className="px-2.5 py-2.5">Koli Diasuransi</th>
               <th className="px-2.5 py-2.5">Nilai Asuransi (Rp)</th>
+              {!isCustAdmin && <th className="border-l border-slate-200 px-2.5 py-2.5">Keterangan Internal (Opsional)</th>}
               <th className="px-2.5 py-2.5"></th>
             </tr>
           </thead>
@@ -681,6 +686,18 @@ export function BulkShipmentImport() {
                     disabled={row.asuransi.trim().toLowerCase() !== "ya" && row.asuransi.trim().toLowerCase() !== "y"}
                   />
                 </td>
+                {!isCustAdmin && (
+                  <td className="px-2.5 py-2">
+                    <input
+                      type="text"
+                      maxLength={500}
+                      className={`${cellInputClass} min-w-[180px]`}
+                      value={row.keteranganInternal}
+                      onChange={(e) => updateRow(row.id, "keteranganInternal", e.target.value)}
+                      placeholder="Resi Vendor / Subkon"
+                    />
+                  </td>
+                )}
                 <td className="px-2.5 py-2">
                   <button
                     type="button"

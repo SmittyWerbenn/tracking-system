@@ -24,6 +24,7 @@ export const BULK_TEMPLATE_HEADERS = [
   "Asuransi (Ya/Tidak)",
   "Koli Diasuransi",
   "Nilai Asuransi (Rp)",
+  "Keterangan Internal (Opsional)",
 ] as const;
 
 export interface BulkRowInput {
@@ -48,6 +49,8 @@ export interface BulkRowInput {
   asuransi: string;
   koliAsuransi: string;
   nilaiAsuransi: string;
+  /** Internal GMS note (e.g. vendor waybill). Only sent for Superadmin/Admin imports. */
+  keteranganInternal: string;
 }
 
 const FIELD_ORDER: (keyof BulkRowInput)[] = [
@@ -71,6 +74,7 @@ const FIELD_ORDER: (keyof BulkRowInput)[] = [
   "asuransi",
   "koliAsuransi",
   "nilaiAsuransi",
+  "keteranganInternal",
 ];
 
 const HEADER_LOOKUP = new Map(BULK_TEMPLATE_HEADERS.map((h, i) => [normalizeHeader(h), FIELD_ORDER[i]]));
@@ -141,6 +145,7 @@ export function tableToBulkRows(table: unknown[][]): {
       asuransi: record.asuransi ?? "",
       koliAsuransi: record.koliAsuransi ?? "",
       nilaiAsuransi: record.nilaiAsuransi ?? "",
+      keteranganInternal: record.keteranganInternal ?? "",
     });
   }
 
@@ -179,6 +184,7 @@ export function downloadBulkShipmentTemplate() {
       "Tidak",
       "",
       "",
+      "Resi Vendor JNE-09123812 / Subkon PT Maju",
     ],
   ]);
 }

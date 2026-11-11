@@ -56,6 +56,9 @@ export default function UpdateTracking() {
   const [tanggal, setTanggal] = useState(todayISO());
   const [jam, setJam] = useState(nowHHMM());
   const [keterangan, setKeterangan] = useState("");
+  const [internalNotes, setInternalNotes] = useState("");
+  // "Keterangan Internal" is private to GMS ops (Superadmin/Admin); other roles never see the field.
+  const canWriteInternal = profile?.role === "Superadmin" || profile?.role === "Admin";
   const [namaPenerima, setNamaPenerima] = useState("");
   const [foto, setFoto] = useState<string[]>([]);
   const [fotoBarangDiterima, setFotoBarangDiterima] = useState<string | null>(null);
@@ -294,6 +297,7 @@ export default function UpdateTracking() {
       tanggal,
       jam,
       keterangan,
+      internalNotes: canWriteInternal ? internalNotes : undefined,
       // Order matters here: addTrackingUpdate takes foto[0] as bukti barang
       // diterima and foto[1] (falling back to foto[0]) as bukti surat
       // jalan - keep these two labeled uploads in that exact order.
@@ -797,6 +801,21 @@ export default function UpdateTracking() {
                 onChange={(e) => setKeterangan(e.target.value)}
               />
             </label>
+
+            {canWriteInternal && (
+              <label className="block sm:col-span-2">
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan Internal (Khusus Internal GMS)</span>
+                <input
+                  maxLength={500}
+                  className={inputClass}
+                  placeholder="Contoh: Resi Vendor JNE-09123812 / Subkon PT Maju"
+                  value={internalNotes}
+                  onChange={(e) => setInternalNotes(e.target.value)}
+                  autoComplete="off"
+                />
+                <span className="mt-1.5 block text-[11px] text-slate-400">Catatan internal admin (contoh: No. Resi Vendor / Nama Vendor). Tidak ditampilkan ke customer.</span>
+              </label>
+            )}
 
             {isSelesai && (
               <label className="block sm:col-span-2">

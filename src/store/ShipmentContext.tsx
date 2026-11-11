@@ -28,6 +28,7 @@ export interface CreatedShipment {
 interface RawShipmentSummary {
   awb: string;
   reference?: string | null;
+  internalNotes?: string | null;
   tanggalDibuat: string;
   jamDibuat: string;
   status: ShipmentStatus;
@@ -108,6 +109,7 @@ interface RawTimelineRow {
   truck_sebelumnya_nomor_unit: string | null;
   input_by_name: string | null;
   input_at: string;
+  internal_notes?: string | null;
 }
 
 interface RawPodRow {
@@ -122,6 +124,7 @@ function toShipment(row: RawShipmentSummary): Shipment {
   return {
     awb: row.awb,
     reference: row.reference ?? undefined,
+    internalNotes: row.internalNotes ?? undefined,
     tanggalDibuat: row.tanggalDibuat,
     jamDibuat: row.jamDibuat,
     status: row.status,
@@ -197,6 +200,7 @@ function toTimelineEvent(row: RawTimelineRow, fotoUrls: string[]): TimelineEvent
     truckId: row.truck_id ?? undefined,
     truckSebelumnya: row.truck_sebelumnya_nomor_unit ? { nomorUnit: row.truck_sebelumnya_nomor_unit, jenis: "-" } : undefined,
     inputBy: row.input_by_name ?? undefined,
+    internalNotes: row.internal_notes ?? undefined,
     inputAt: row.input_at,
   };
 }
@@ -271,7 +275,7 @@ interface ShipmentContextValue {
   updateTimelineEvent: (
     awb: string,
     eventId: string,
-    data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string },
+    data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string; internalNotes?: string },
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
   /** Admin/Superadmin: delete a tracking log. The API re-syncs the shipment status. */
   deleteTimelineEvent: (awb: string, eventId: string) => Promise<{ ok: true } | { ok: false; error: string }>;
@@ -382,6 +386,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       kotaTujuan: data.kotaTujuan,
       deskripsiBarang: data.deskripsiBarang,
       reference: data.reference?.trim() || undefined,
+      internalNotes: data.internalNotes?.trim() || undefined,
       layanan: data.layanan,
       beratKg: data.beratKg,
       jumlahKoli: data.jumlahKoli,
@@ -442,6 +447,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         tanggal: data.tanggal,
         jam: data.jam,
         keterangan: data.keterangan,
+        internalNotes: data.internalNotes?.trim() || undefined,
         truckId: data.truckId,
         namaPenerima: data.namaPenerima,
       });
@@ -468,7 +474,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
   async function updateTimelineEvent(
     awb: string,
     eventId: string,
-    data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string },
+    data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string; internalNotes?: string },
   ) {
     try {
       await api.patch(`/api/shipments/${encodeURIComponent(awb)}/timeline/${encodeURIComponent(eventId)}`, data);
@@ -502,6 +508,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         kotaAsal: data.kotaAsal,
         alamatTujuan: data.alamatTujuan,
         kotaTujuan: data.kotaTujuan,
+        ...(data.internalNotes !== undefined ? { internalNotes: data.internalNotes.trim() } : {}),
         ...(data.layanan ? { layanan: data.layanan } : {}),
         ...(data.deskripsiBarang !== undefined ? { deskripsiBarang: data.deskripsiBarang } : {}),
         ...(data.beratKg !== undefined ? { beratKg: data.beratKg } : {}),

@@ -3,6 +3,8 @@ import { ArrowLeft, ArrowRight, CalendarClock, PackageSearch } from "lucide-reac
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { QuickSearchAwb } from "../../components/QuickSearchAwb";
+import { QuickUpdatePanel } from "../../components/QuickUpdatePanel";
+import { useToast } from "../../components/Toast";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { ProofOfDeliveryCard } from "../../components/ProofOfDeliveryCard";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -30,6 +32,8 @@ export default function ShipmentTracking() {
 
   const [shipment, setShipment] = useState<Shipment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const toast = useToast();
+  const [searchFocus, setSearchFocus] = useState(0);
   const [editing, setEditing] = useState<TimelineEvent | null>(null);
   const [deleting, setDeleting] = useState<TimelineEvent | null>(null);
 
@@ -99,10 +103,24 @@ export default function ShipmentTracking() {
         {/* Continuous-update flow: after "Simpan Update" the field is focused; the next AWB opens its update form. */}
         <QuickSearchAwb
           autoFocus={focusSearch}
+          focusSignal={searchFocus}
           to={(a) => (canUpdateTracking ? adminPath(`/update-tracking/${a}`) : adminPath(`/tracking/${a}`))}
           className="w-full sm:w-80"
         />
       </div>
+
+      {/* Quick Update: same audience/locks as the Update Tracking page; remounts (new key) after each save so it is clean. */}
+      {canUpdateTracking && !["Selesai / Terkirim", "Dibatalkan", "Hold"].includes(shipment.status) && (
+        <QuickUpdatePanel
+          key={`${shipment.awb}-${shipment.status}-${shipment.timeline.length}`}
+          shipment={shipment}
+          onSaved={async () => {
+            await reload();
+            toast("Update tracking berhasil disimpan.");
+            setSearchFocus((n) => n + 1);
+          }}
+        />
+      )}
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-5 sm:px-6">

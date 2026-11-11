@@ -1,0 +1,198 @@
+import { AlertTriangle, Clock, Loader2, Send, Zap } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import { useAuth } from "../store/AuthContext";
+import { useShipments } from "../store/ShipmentContext";
+import type { Shipment, TimelineEventType } from "../types";
+import { nowHHMM, todayISO } from "../utils/format";
+import { getAllowedNextEvents } from "../utils/status";
+import { defaultLokasiFor, presetsFor } from "../utils/trackingPresets";
+import { LocationTextInput } from "./LocationTextInput";
+
+const inputClass =
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
+
+/** Statuses the quick form can log: no Transfer Unit (it needs a truck), and Re-route / Penarikan stay admin-only like in the API. */
+function quickOptions(shipment: Shipment, role: string | undefined): TimelineEventType[] {
+  return getAllowedNextEvents(shipment.status).filter(
+    (t) => t !== "Transfer Unit" && !(role === "Mitra" && (t === "Re-route" || t === "Penarikan")),
+  );
+}
+
+interface Props {
+  shipment: Shipment;
+  /** Called after the update is saved: reload the shipment, toast, and move focus to "Cari resi lain". */
+  onSaved: () => Promise<void>;
+}
+
+/** "Quick Update Pengiriman": a compact status / location / note form for the Tracking page (no photos or documents).
+ * The parent keys it by the shipment's progress, so after a save it comes back clean with the next valid status. */
+export function QuickUpdatePanel({ shipment, onSaved }: Props) {
+  const { profile } = useAuth();
+  const { addTrackingUpdate } = useShipments();
+  const options = quickOptions(shipment, profile?.role);
+  const first = options[0] ?? "Transit";
+
+  const [type, setType] = useState<TimelineEventType>(first);
+  const [lokasi, setLokasi] = useState(() => defaultLokasiFor(first, shipment));
+  const [keterangan, setKeterangan] = useState(() => presetsFor(first, shipment.penerima.nama)[0] ?? "");
+  const [namaPenerima, setNamaPenerima] = useState(shipment.penerima.nama);
+  // The time is taken when "Simpan Update" is pressed, unless the admin opens it to adjust.
+  const [customTime, setCustomTime] = useState(false);
+  const [tanggal, setTanggal] = useState(todayISO());
+  const [jam, setJam] = useState(nowHHMM());
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isSelesai = type === "Selesai / Terkirim";
+
+  function changeType(next: TimelineEventType) {
+    setType(next);
+    // Same auto-fill as the full form; both stay editable.
+    setLokasi(defaultLokasiFor(next, shipment));
+    setKeterangan(presetsFor(next, namaPenerima || shipment.penerima.nama)[0] ?? "");
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (pending) return;
+    if (!isSelesai && !lokasi.trim()) {
+      setError("Isi lokasi saat ini terlebih dahulu.");
+      return;
+    }
+    if (isSelesai && !namaPenerima.trim()) {
+      setError("Isi nama penerima barang terlebih dahulu.");
+      return;
+    }
+    setPending(true);
+    setError(null);
+    const result = await addTrackingUpdate({
+      awb: shipment.awb,
+      type,
+      lokasi: isSelesai ? shipment.kotaTujuan : lokasi.trim(),
+      tanggal: customTime ? tanggal : todayISO(),
+      jam: customTime ? jam : nowHHMM(),
+      keterangan: keterangan.trim(),
+      namaPenerima: isSelesai ? namaPenerima.trim() : undefined,
+    });
+    if (!result.ok) {
+      setError(result.error);
+      setPending(false);
+      return;
+    }
+    await onSaved();
+    // The parent remounts this panel (new key) with a clean form; nothing more to reset here.
+  }
+
+  return (
+    <form onSubmit={submit} className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="mb-4 flex items-center gap-2">
+        <Zap size={16} className="text-blue-900" />
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Quick Update Pengiriman</h2>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium text-slate-600">Status / Tahapan</span>
+          <select className={inputClass} value={type} onChange={(e) => changeType(e.target.value as TimelineEventType)}>
+            {options.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {isSelesai ? (
+          <div className="block">
+            <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi Saat Ini</span>
+            <div className={`${inputClass} bg-slate-50 text-slate-600`}>{shipment.kotaTujuan}</div>
+          </div>
+        ) : (
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-medium text-slate-600">Lokasi Saat Ini</span>
+            <LocationTextInput
+              id="quick-update-lokasi"
+              required
+              className={inputClass}
+              value={lokasi}
+              onChange={setLokasi}
+              kind="area"
+              placeholder="Contoh: Jakarta / Gudang Duren Sawit"
+            />
+          </label>
+        )}
+
+        <label className="block sm:col-span-2">
+          <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan / Catatan (opsional)</span>
+          <textarea
+            rows={2}
+            maxLength={500}
+            className={inputClass}
+            placeholder="Deskripsi update perjalanan"
+            value={keterangan}
+            onChange={(e) => setKeterangan(e.target.value)}
+          />
+        </label>
+
+        {isSelesai && (
+          <label className="block sm:col-span-2">
+            <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Penerima (Diterima oleh)</span>
+            <input
+              required
+              className={inputClass}
+              value={namaPenerima}
+              onChange={(e) => setNamaPenerima(e.target.value)}
+              placeholder="Nama orang yang menerima barang"
+            />
+          </label>
+        )}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-600">
+            <Clock size={13} className="text-slate-400" /> Waktu Update
+          </p>
+          {customTime ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <input required type="date" className={`${inputClass} w-auto`} value={tanggal} onChange={(e) => setTanggal(e.target.value)} />
+              <input required type="time" className={`${inputClass} w-auto`} value={jam} onChange={(e) => setJam(e.target.value)} />
+              <button type="button" onClick={() => setCustomTime(false)} className="text-xs font-medium text-blue-700 hover:underline">
+                Pakai waktu sekarang
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-600">
+              Waktu saat disimpan{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setTanggal(todayISO());
+                  setJam(nowHHMM());
+                  setCustomTime(true);
+                }}
+                className="ml-1 text-xs font-medium text-blue-700 hover:underline"
+              >
+                Ubah
+              </button>
+            </p>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          disabled={pending}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
+        >
+          {pending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />} Simpan Update
+        </button>
+      </div>
+
+      {error && (
+        <p role="alert" className="mt-3 flex items-start gap-1.5 text-sm font-medium text-red-600">
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {error}
+        </p>
+      )}
+    </form>
+  );
+}

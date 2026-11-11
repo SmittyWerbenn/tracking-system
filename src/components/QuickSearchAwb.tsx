@@ -8,12 +8,14 @@ interface Props {
   to: (awb: string) => string;
   /** Focus the field on mount, so the admin can type the next AWB straight away. */
   autoFocus?: boolean;
+  /** Increment to move focus into the field again (e.g. after a save on the same page). */
+  focusSignal?: number;
   className?: string;
 }
 
 /** "Cari resi lain": jump to another AWB without going back to the list. Enter or the Cari button submits.
  * A pasted tracking/detail URL is reduced to its AWB, and an unknown AWB is reported here instead of opening an empty page. */
-export function QuickSearchAwb({ to, autoFocus, className = "" }: Props) {
+export function QuickSearchAwb({ to, autoFocus, focusSignal, className = "" }: Props) {
   const navigate = useNavigate();
   const { getByAwb } = useShipments();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -24,6 +26,10 @@ export function QuickSearchAwb({ to, autoFocus, className = "" }: Props) {
   useEffect(() => {
     if (autoFocus) inputRef.current?.focus();
   }, [autoFocus]);
+
+  useEffect(() => {
+    if (focusSignal) inputRef.current?.focus();
+  }, [focusSignal]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();

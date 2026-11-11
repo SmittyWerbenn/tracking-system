@@ -100,11 +100,11 @@ export default function ShipmentTracking() {
         >
           <ArrowLeft size={15} /> Kembali
         </button>
-        {/* Continuous-update flow: after "Simpan Update" the field is focused; the next AWB opens its update form. Full row width. */}
+        {/* Continuous-update flow: the next AWB opens its own Tracking page (timeline + Quick Update) and the field stays focused. Full row width. */}
         <QuickSearchAwb
           autoFocus={focusSearch}
           focusSignal={searchFocus}
-          to={(a) => (canUpdateTracking ? adminPath(`/update-tracking/${a}`) : adminPath(`/tracking/${a}`))}
+          to={(a) => adminPath(`/tracking/${a}`)}
           className="w-full"
         />
       </div>

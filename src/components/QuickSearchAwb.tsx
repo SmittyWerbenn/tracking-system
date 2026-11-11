@@ -50,7 +50,8 @@ export function QuickSearchAwb({ to, autoFocus, focusSignal, className = "" }: P
       return;
     }
     setValue("");
-    navigate(to(found.awb));
+    // focusSearch: the destination Tracking page keeps this field focused, ready for the next AWB.
+    navigate(to(found.awb), { state: { focusSearch: true } });
   }
 
   return (

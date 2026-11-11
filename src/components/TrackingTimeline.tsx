@@ -36,15 +36,28 @@ export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineP
           const manageable = !PROTECTED_EVENT_TYPES.has(event.type);
           // A Transfer Unit log already moved the shipment to another truck, so it can be corrected but not removed.
           const canDelete = manageable && event.type !== "Transfer Unit";
+          // Admin view (edit/delete available): each row highlights on hover so it's clear which log an action targets.
+          const interactive = !!(onEdit || onDelete);
           return (
-            <li key={event.id} className="relative flex gap-3.5 pb-6 last:pb-0">
+            <li
+              key={event.id}
+              className={
+                interactive
+                  ? "group relative -mx-3 flex gap-3.5 rounded-xl border border-transparent px-3 py-3 transition-colors hover:border-sky-200 hover:bg-sky-50/70"
+                  : "relative flex gap-3.5 pb-6 last:pb-0"
+              }
+            >
               {/* connector line */}
               {idx !== ordered.length - 1 && (
-                <span className="absolute left-[7px] top-5 h-[calc(100%-0.75rem)] w-px bg-blue-100" />
+                <span
+                  className={`absolute w-px bg-blue-100 ${
+                    interactive ? "left-[19px] top-8 h-[calc(100%-1.5rem)]" : "left-[7px] top-5 h-[calc(100%-0.75rem)]"
+                  }`}
+                />
               )}
               <div className="relative flex flex-col items-center pt-1.5">
                 <span
-                  className={`z-10 h-3.5 w-3.5 shrink-0 rounded-full ring-4 ring-slate-50 ${
+                  className={`z-10 h-3.5 w-3.5 shrink-0 rounded-full ring-4 ring-slate-50 group-hover:ring-sky-50 ${
                     isLatest ? "bg-blue-900" : "border-2 border-blue-300 bg-white"
                   }`}
                 />

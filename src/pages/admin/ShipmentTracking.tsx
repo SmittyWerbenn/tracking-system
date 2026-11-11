@@ -93,19 +93,19 @@ export default function ShipmentTracking() {
 
   return (
     <AdminLayout>
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div className="mb-4 space-y-3">
         <button
           onClick={() => navigate(-1)}
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900"
         >
           <ArrowLeft size={15} /> Kembali
         </button>
-        {/* Continuous-update flow: after "Simpan Update" the field is focused; the next AWB opens its update form. */}
+        {/* Continuous-update flow: after "Simpan Update" the field is focused; the next AWB opens its update form. Full row width. */}
         <QuickSearchAwb
           autoFocus={focusSearch}
           focusSignal={searchFocus}
           to={(a) => (canUpdateTracking ? adminPath(`/update-tracking/${a}`) : adminPath(`/tracking/${a}`))}
-          className="w-full sm:w-80"
+          className="w-full"
         />
       </div>
 

@@ -20,6 +20,8 @@ import { SearchableSelect } from "../../components/SearchableSelect";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../store/AuthContext";
+import { QuickSearchAwb } from "../../components/QuickSearchAwb";
+import { useToast } from "../../components/Toast";
 import { useLayanan } from "../../store/LayananContext";
 import { useFleet } from "../../store/FleetContext";
 import { useShipments } from "../../store/ShipmentContext";
@@ -34,12 +36,19 @@ import { defaultLokasiFor, presetsFor } from "../../utils/trackingPresets";
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
 
+/** Keyed by AWB so "Cari resi lain" always opens a clean form (no leftover status, location, photos or notes from the previous AWB). */
 export default function UpdateTracking() {
+  const { awb } = useParams<{ awb: string }>();
+  return <UpdateTrackingForm key={awb} />;
+}
+
+function UpdateTrackingForm() {
   const { awb } = useParams<{ awb: string }>();
   const { getByAwb, addTrackingUpdate, updateShipmentInfo, updatePodPhoto } = useShipments();
   const { activeNames: activeLayanan, refresh: refreshLayanan } = useLayanan();
   const { trucksWithDriver } = useFleet();
   const { profile } = useAuth();
+  const toast = useToast();
   const isMitra = profile?.role === "Mitra";
   // Editing shipment data (incl. the addresses) needs shipments.update_info on
   // the API, which only Superadmin/Admin have. Everyone else (e.g. Mitra) gets
@@ -65,7 +74,6 @@ export default function UpdateTracking() {
   const [fotoSuratJalan, setFotoSuratJalan] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [truckId, setTruckId] = useState("");
-  const [submitted, setSubmitted] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -315,8 +323,9 @@ export default function UpdateTracking() {
     const result = await addTrackingUpdate(data);
     setSubmitting(false);
     if (result.ok) {
-      setSubmitted(true);
-      setTimeout(() => navigate(`/tracking/${shipment!.awb}`), 1100);
+      toast("Update tracking berhasil disimpan.");
+      // Straight to this AWB's Tracking view; its "Cari resi lain" bar is focused, ready for the next AWB.
+      navigate(adminPath(`/tracking/${shipment!.awb}`), { state: { focusSearch: true } });
     } else {
       setFormError(result.error);
     }
@@ -324,12 +333,15 @@ export default function UpdateTracking() {
 
   return (
     <AdminLayout>
-      <button
-        onClick={() => navigate(-1)}
-        className="mb-4 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900"
-      >
-        <ArrowLeft size={15} /> Kembali
-      </button>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900"
+        >
+          <ArrowLeft size={15} /> Kembali
+        </button>
+        <QuickSearchAwb to={(a) => adminPath(`/update-tracking/${a}`)} className="w-full sm:w-80" />
+      </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -702,12 +714,6 @@ export default function UpdateTracking() {
             </div>
           )}
         </>
-      ) : submitted ? (
-        <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center">
-          <CheckCircle2 className="mx-auto mb-2 text-emerald-600" size={28} />
-          <p className="font-semibold text-emerald-800">Update tracking berhasil disimpan</p>
-          <p className="mt-1 text-sm text-emerald-700">Mengarahkan ke halaman tracking publik...</p>
-        </div>
       ) : (
         <form onSubmit={handleSubmit} className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

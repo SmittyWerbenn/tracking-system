@@ -1,7 +1,8 @@
 import { adminPath } from "../../utils/urls";
 import { ArrowLeft, ArrowRight, CalendarClock, PackageSearch } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { QuickSearchAwb } from "../../components/QuickSearchAwb";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { ProofOfDeliveryCard } from "../../components/ProofOfDeliveryCard";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -21,6 +22,10 @@ export default function ShipmentTracking() {
   const { awb } = useParams<{ awb: string }>();
   const { getByAwb, updateTimelineEvent, deleteTimelineEvent } = useShipments();
   const { profile } = useAuth();
+  const location = useLocation();
+  const focusSearch = (location.state as { focusSearch?: boolean } | null)?.focusSearch === true;
+  // Same audience as the Update Tracking page (it is closed to Viewer/Client).
+  const canUpdateTracking = profile?.role === "Superadmin" || profile?.role === "Admin" || profile?.role === "Mitra";
   const navigate = useNavigate();
 
   const [shipment, setShipment] = useState<Shipment | null>(null);
@@ -84,12 +89,20 @@ export default function ShipmentTracking() {
 
   return (
     <AdminLayout>
-      <button
-        onClick={() => navigate(-1)}
-        className="mb-4 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900"
-      >
-        <ArrowLeft size={15} /> Kembali
-      </button>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900"
+        >
+          <ArrowLeft size={15} /> Kembali
+        </button>
+        {/* Continuous-update flow: after "Simpan Update" the field is focused; the next AWB opens its update form. */}
+        <QuickSearchAwb
+          autoFocus={focusSearch}
+          to={(a) => (canUpdateTracking ? adminPath(`/update-tracking/${a}`) : adminPath(`/tracking/${a}`))}
+          className="w-full sm:w-80"
+        />
+      </div>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-5 sm:px-6">

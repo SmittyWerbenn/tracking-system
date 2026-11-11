@@ -1,5 +1,6 @@
 import { ArrowRight, CheckCircle2, MapPin, Pencil, Trash2, Truck } from "lucide-react";
 import { useState } from "react";
+import { actionClass } from "./ActionButton";
 import { useLanguage } from "../store/LanguageContext";
 import type { TimelineEvent } from "../types";
 import { formatJam, formatTanggalPanjang } from "../utils/format";
@@ -60,16 +61,16 @@ export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineP
                     </span>
                   )}
                   {manageable && (onEdit || onDelete) && (
-                    <span className="ml-auto flex items-center gap-1">
+                    <span className="ml-auto flex items-center gap-2">
                       {onEdit && (
                         <button
                           type="button"
                           onClick={() => onEdit(event)}
                           title="Edit log tracking"
                           aria-label="Edit log tracking"
-                          className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-blue-700"
+                          className={actionClass("edit")}
                         >
-                          <Pencil size={14} />
+                          <Pencil size={16} />
                         </button>
                       )}
                       {onDelete && canDelete && (
@@ -78,9 +79,9 @@ export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineP
                           onClick={() => onDelete(event)}
                           title="Hapus log tracking"
                           aria-label="Hapus log tracking"
-                          className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                          className={actionClass("danger")}
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={16} />
                         </button>
                       )}
                     </span>

@@ -37,13 +37,15 @@ export default function ShipmentList() {
   const canCreateShipment =
     profile?.role === "Superadmin" || profile?.role === "Admin" || profile?.role === "Client";
   const canManageClaims = profile?.role === "Superadmin" || profile?.role === "Admin";
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [clientFilter, setClientFilter] = useState("");
-  const [viewMode, setViewMode] = useState<"ringkas" | "detail">("ringkas");
+  // Search + filters live in the URL (q, client, from, to, view; status / macet already did), so opening a resi and pressing
+  // "Kembali" (history back) restores the same search box, filters and list instead of an empty page.
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
+  const [debouncedQuery, setDebouncedQuery] = useState(() => (searchParams.get("q") ?? "").trim());
+  const [dateFrom, setDateFrom] = useState(() => searchParams.get("from") ?? "");
+  const [dateTo, setDateTo] = useState(() => searchParams.get("to") ?? "");
+  const [clientFilter, setClientFilter] = useState(() => searchParams.get("client") ?? "");
+  const [viewMode, setViewMode] = useState<"ringkas" | "detail">(() => (searchParams.get("view") === "detail" ? "detail" : "ringkas"));
   const [pendingClaims, setPendingClaims] = useState<PendingClaim[]>([]);
   const [claimActionAwb, setClaimActionAwb] = useState<string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
@@ -116,6 +118,24 @@ export default function ShipmentList() {
     const timer = setTimeout(() => setDebouncedQuery(query.trim()), 300);
     return () => clearTimeout(timer);
   }, [query]);
+
+  // Mirror the search box / filters into the URL (replace, so typing does not pile up history entries).
+  useEffect(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        const put = (key: string, value: string) => (value ? next.set(key, value) : next.delete(key));
+        put("q", query);
+        put("client", clientFilter);
+        put("from", dateFrom);
+        put("to", dateTo);
+        put("view", viewMode === "detail" ? "detail" : "");
+        return next.toString() === prev.toString() ? prev : next;
+      },
+      { replace: true },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, clientFilter, dateFrom, dateTo, viewMode]);
 
   const [pageSize, setPageSize] = usePageSize();
   const macetDays = macetOnly ? settings.stagnantThresholdDays : undefined;

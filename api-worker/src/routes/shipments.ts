@@ -70,6 +70,9 @@ function shipmentSummary(row: Record<string, unknown>) {
     asuransi: !!row.asuransi,
     koliAsuransi: row.koli_asuransi ?? null,
     nilaiAsuransi: row.nilai_asuransi ?? null,
+    requiresDoBalik: !!row.requires_do_balik,
+    doBalikStatus: row.requires_do_balik ? (row.do_balik_status === "returned" ? "returned" : "pending") : null,
+    doBalikReturnedAt: row.do_balik_returned_at ?? null,
     packingKayu: !!row.packing_kayu,
     hasTransit: !!row.has_transit,
     truckId: row.truck_id,
@@ -218,6 +221,10 @@ export function registerShipmentRoutes(router: Router) {
     const dateTo = url.searchParams.get("to");
     if (dateFrom) { where.push("s.tanggal_dibuat >= ?"); params.push(dateFrom); }
     if (dateTo) { where.push("s.tanggal_dibuat <= ?"); params.push(dateTo); }
+    // DO Balik monitoring: "1" = only AWB that need DO Balik, "pending" = DO Balik not yet returned.
+    const doBalik = url.searchParams.get("doBalik");
+    if (doBalik === "1") where.push("s.requires_do_balik = 1");
+    else if (doBalik === "pending") where.push("s.requires_do_balik = 1 AND COALESCE(s.do_balik_status, 'pending') = 'pending'");
     const macet = Number(url.searchParams.get("macet"));
     if (Number.isFinite(macet) && macet > 0) {
       const cutoff = new Date(Date.now() + 7 * 3600_000 - macet * 86_400_000).toISOString().slice(0, 16);
@@ -370,6 +377,9 @@ export function registerShipmentRoutes(router: Router) {
       }
     }
 
+    // DO Balik: the original Surat Jalan / DO must come back after delivery. Starts as 'pending'.
+    const requiresDoBalik = body.requiresDoBalik === true;
+
     // LTL only: wooden packing and a transit hub on the route switch the optional LTL tracking stages on.
     const ltl = isLtlLayanan(layanan);
     const packingKayu = ltl && body.packingKayu === true;
@@ -432,8 +442,8 @@ export function registerShipmentRoutes(router: Router) {
               sla_value, sla_unit, estimasi_tiba, customer_id, mitra_id,
               email_terkirim, created_at, updated_at, created_by, updated_by, created_by_role, created_by_name, reference,
               asuransi, koli_asuransi, nilai_asuransi,
-              armada_type, vehicle_plate, driver_name, driver_id, internal_notes, packing_kayu, has_transit
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              armada_type, vehicle_plate, driver_name, driver_id, internal_notes, packing_kayu, has_transit, requires_do_balik, do_balik_status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           ).bind(
             awb, tanggalDibuat, jamDibuat, holdAtCreate ? "Hold" : "Dalam Persiapan",
             pengirimNama, pengirimTelepon, pengirimEmail,
@@ -444,7 +454,7 @@ export function registerShipmentRoutes(router: Router) {
             nowIso, nowIso, actor.id, actor.id, actor.role, actor.nama, reference,
             asuransi ? 1 : 0, koliAsuransi, nilaiAsuransi,
             armada.armadaType, armada.vehiclePlate, armada.driverName, armada.driverId, internalNotes,
-            packingKayu ? 1 : 0, hasTransit ? 1 : 0,
+            packingKayu ? 1 : 0, hasTransit ? 1 : 0, requiresDoBalik ? 1 : 0, requiresDoBalik ? "pending" : null,
           ),
           ctx.env.DB.prepare(
             `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, truck_id, input_by_user_id, input_by_name, input_at, created_at, ltl_stage)
@@ -739,6 +749,16 @@ export function registerShipmentRoutes(router: Router) {
         layananChange = { from: shipment.layanan, to: valid };
       }
     }
+    // DO Balik flag: only touched when sent. Turning it off clears the tracking; turning it on (re)starts it as pending.
+    if (has("requiresDoBalik")) {
+      if (body.requiresDoBalik === true) {
+        sets.push("requires_do_balik=?", "do_balik_status=COALESCE(do_balik_status, 'pending')");
+        values.push(1);
+      } else {
+        sets.push("requires_do_balik=?", "do_balik_status=NULL", "do_balik_returned_at=NULL");
+        values.push(0);
+      }
+    }
     // LTL handling flags (wooden packing / transit hub) decide which optional LTL stages apply.
     // Editable while the shipment is open; forced off for non-LTL layanan.
     if (has("packingKayu") || has("hasTransit") || (layananChange && !isLtlLayanan(layananChange.to))) {
@@ -835,6 +855,24 @@ export function registerShipmentRoutes(router: Router) {
     });
 
     return ok({ updated: true });
+  });
+
+  // Admin confirms the original DO / Surat Jalan is back: DO Balik flag turns to "selesai".
+  router.post("/api/shipments/:awb/do-balik/return", async (ctx: Ctx, params) => {
+    const actor = requirePermission(ctx, "shipments.update_info");
+    const row = await ctx.env.DB.prepare(`SELECT status, requires_do_balik, do_balik_status FROM shipments WHERE awb = ? AND deleted_at IS NULL`)
+      .bind(params.awb)
+      .first<{ status: string; requires_do_balik: number; do_balik_status: string | null }>();
+    if (!row) throw Errors.notFound("AWB tidak ditemukan.");
+    if (!row.requires_do_balik) throw Errors.unprocessable("Pengiriman ini tidak memiliki requirement DO Balik.");
+    if (row.do_balik_status === "returned") throw Errors.unprocessable("DO Balik untuk pengiriman ini sudah dikonfirmasi diterima.");
+    if (row.status !== "Selesai / Terkirim") throw Errors.unprocessable("DO Balik baru bisa dikonfirmasi setelah pengiriman Selesai / Terkirim.");
+    const nowIso = new Date().toISOString();
+    await ctx.env.DB.prepare(`UPDATE shipments SET do_balik_status = 'returned', do_balik_returned_at = ?, updated_at = ?, updated_by = ? WHERE awb = ?`)
+      .bind(nowIso, nowIso, actor.id, params.awb)
+      .run();
+    await writeAuditLog(ctx.env, actor, { action: "CONFIRM_DO_BALIK", actionLabel: "CONFIRM DO BALIK", module: "Shipment", awb: params.awb, description: "Dokumen DO Balik dikonfirmasi sudah diterima kembali." });
+    return ok({ doBalikStatus: "returned", doBalikReturnedAt: nowIso });
   });
 
   router.post("/api/shipments/:awb/timeline", async (ctx: Ctx, params) => {
@@ -1051,7 +1089,8 @@ export function registerShipmentRoutes(router: Router) {
       });
     }
 
-    return ok({ updated: true, status: newStatus, eventId }, {}, 201);
+    // The caller (admin portal or driver app) shows the DO Balik pop-up when this is true on a hand-over.
+    return ok({ updated: true, status: newStatus, eventId, doBalikAlert: isSelesai && !!shipment.requires_do_balik && shipment.do_balik_status !== "returned" }, {}, 201);
   });
 
   router.patch("/api/shipments/:awb/pod-photo", async (ctx: Ctx, params) => {

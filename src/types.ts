@@ -96,6 +96,11 @@ export interface Shipment {
   asuransi: boolean;
   koliAsuransi: string | null;
   nilaiAsuransi: number | null;
+  /** DO Balik: the original Surat Jalan / DO must be returned after delivery. */
+  requiresDoBalik?: boolean;
+  /** null when not required; "pending" until ops confirm the document is back. */
+  doBalikStatus?: "pending" | "returned" | null;
+  doBalikReturnedAt?: string | null;
   /** LTL only: cargo needs wooden packing (enables the PACKING_* stages). */
   packingKayu?: boolean;
   /** LTL only: route passes a transit hub (enables the TRANSIT_HUB stage). */
@@ -236,6 +241,8 @@ export interface ShipmentFormData {
   asuransi?: boolean;
   koliAsuransi?: string;
   nilaiAsuransi?: number;
+  /** DO Balik (Delivery Order Kembali). */
+  requiresDoBalik?: boolean;
   /** LTL only: wooden packing / transit hub on the route. */
   packingKayu?: boolean;
   hasTransit?: boolean;
@@ -282,6 +289,8 @@ export interface UpdateShipmentInfoData {
   asuransi?: boolean;
   koliAsuransi?: string;
   nilaiAsuransi?: number;
+  /** DO Balik: omit to leave untouched. */
+  requiresDoBalik?: boolean;
   /** LTL only: omit to leave untouched. */
   packingKayu?: boolean;
   hasTransit?: boolean;

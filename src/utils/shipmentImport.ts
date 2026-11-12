@@ -24,6 +24,7 @@ export const BULK_TEMPLATE_HEADERS = [
   "Asuransi (Ya/Tidak)",
   "Koli Diasuransi",
   "Nilai Asuransi (Rp)",
+  "DO Balik (Ya/Tidak)",
   "Keterangan Internal (Opsional)",
 ] as const;
 
@@ -49,6 +50,8 @@ export interface BulkRowInput {
   asuransi: string;
   koliAsuransi: string;
   nilaiAsuransi: string;
+  /** "Ya" / "Tidak"; empty = Tidak. */
+  doBalik: string;
   /** Internal GMS note (e.g. vendor waybill). Only sent for Superadmin/Admin imports. */
   keteranganInternal: string;
 }
@@ -74,6 +77,7 @@ const FIELD_ORDER: (keyof BulkRowInput)[] = [
   "asuransi",
   "koliAsuransi",
   "nilaiAsuransi",
+  "doBalik",
   "keteranganInternal",
 ];
 
@@ -145,6 +149,7 @@ export function tableToBulkRows(table: unknown[][]): {
       asuransi: record.asuransi ?? "",
       koliAsuransi: record.koliAsuransi ?? "",
       nilaiAsuransi: record.nilaiAsuransi ?? "",
+      doBalik: record.doBalik ?? "",
       keteranganInternal: record.keteranganInternal ?? "",
     });
   }

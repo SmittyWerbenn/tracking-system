@@ -14,6 +14,7 @@ import { resolveFileUrls, type FileRef } from "../utils/resolveFiles";
 import { sendAdminDeliveryEmail } from "../utils/sendEmail";
 import { adminResiUrl } from "../utils/urls";
 import { useAuth } from "./AuthContext";
+import { DoBalikAlertModal } from "../components/DoBalikBadge";
 
 /** `layanan` is the service actually stored; `layananFallback` is true when
  * the requested one wasn't an active Master Layanan entry and the API
@@ -45,6 +46,9 @@ interface RawShipmentSummary {
   asuransi?: boolean;
   koliAsuransi?: string | null;
   nilaiAsuransi?: number | null;
+  requiresDoBalik?: boolean;
+  doBalikStatus?: "pending" | "returned" | null;
+  doBalikReturnedAt?: string | null;
   packingKayu?: boolean;
   hasTransit?: boolean;
   truckId: string | null;
@@ -144,6 +148,9 @@ function toShipment(row: RawShipmentSummary): Shipment {
     asuransi: row.asuransi ?? false,
     koliAsuransi: row.koliAsuransi ?? null,
     nilaiAsuransi: row.nilaiAsuransi ?? null,
+    requiresDoBalik: row.requiresDoBalik ?? false,
+    doBalikStatus: row.doBalikStatus ?? null,
+    doBalikReturnedAt: row.doBalikReturnedAt ?? null,
     packingKayu: row.packingKayu ?? false,
     hasTransit: row.hasTransit ?? false,
     truck:
@@ -236,6 +243,8 @@ export interface ShipmentListParams {
   to?: string;
   /** Only stagnant orders: no tracking update for this many days. */
   macet?: number;
+  /** "1" = only DO Balik AWB, "pending" = DO Balik not returned yet. */
+  doBalik?: "1" | "pending";
 }
 
 function listQuery(params: ShipmentListParams, defaultLimit: number): URLSearchParams {
@@ -248,6 +257,7 @@ function listQuery(params: ShipmentListParams, defaultLimit: number): URLSearchP
   if (params.from) search.set("from", params.from);
   if (params.to) search.set("to", params.to);
   if (params.macet) search.set("macet", String(params.macet));
+  if (params.doBalik) search.set("doBalik", params.doBalik);
   return search;
 }
 
@@ -285,6 +295,8 @@ interface ShipmentContextValue {
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
   /** Admin/Superadmin: delete a tracking log. The API re-syncs the shipment status. */
   deleteTimelineEvent: (awb: string, eventId: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Admin: confirm the original DO / Surat Jalan came back (DO Balik -> selesai). */
+  confirmDoBalik: (awb: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   updateShipmentInfo: (awb: string, data: UpdateShipmentInfoData) => Promise<{ ok: true } | { ok: false; error: string }>;
   updateShipmentAlamat: (
     awb: string,
@@ -308,6 +320,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [doBalikAlertAwb, setDoBalikAlertAwb] = useState<string | null>(null);
   const [listMeta, setListMeta] = useState({ total: 0, totalPages: 1, page: 1, limit: 100 });
 
   // Several callers refresh with different filters (the provider on login, a
@@ -409,6 +422,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       nilaiAsuransi: data.asuransi ? data.nilaiAsuransi : undefined,
       packingKayu: data.packingKayu || undefined,
       hasTransit: data.hasTransit || undefined,
+      requiresDoBalik: data.requiresDoBalik || undefined,
     });
 
     if (data.fotoBarang) {
@@ -449,7 +463,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     try {
       // LTL: only the DELIVERED stage is the hand-over (POD photos + admin email); e-POD / hardcopy / closed are follow-ups.
       const isSelesai = data.type === "Selesai / Terkirim" && (!data.ltlStage || data.ltlStage === "DELIVERED");
-      const res = await api.post<{ eventId: string }>(`/api/shipments/${encodeURIComponent(data.awb)}/timeline`, {
+      const res = await api.post<{ eventId: string; doBalikAlert?: boolean }>(`/api/shipments/${encodeURIComponent(data.awb)}/timeline`, {
         type: data.type,
         ltlStage: data.ltlStage,
         lokasi: data.lokasi,
@@ -472,6 +486,8 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       }
 
       await refresh();
+      // DO Balik: the delivery is saved, so remind ops right away (modal lives in the provider, so it survives page navigation).
+      if (res.doBalikAlert) setDoBalikAlertAwb(data.awb);
       // Fire-and-forget - never let a slow/failed internal email delay or
       // fail the status update itself, which is already saved by this point.
       if (isSelesai) notifyAdminsDelivered(data.awb).catch(() => {});
@@ -505,6 +521,16 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function confirmDoBalik(awb: string) {
+    try {
+      await api.post(`/api/shipments/${encodeURIComponent(awb)}/do-balik/return`, {});
+      await refresh();
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal mengonfirmasi DO Balik." };
+    }
+  }
+
   async function updateShipmentInfo(awb: string, data: UpdateShipmentInfoData) {
     try {
       await api.patch(`/api/shipments/${encodeURIComponent(awb)}`, {
@@ -525,6 +551,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         ...(data.jumlahKoli !== undefined ? { jumlahKoli: data.jumlahKoli } : {}),
         ...(data.asuransi !== undefined ? { asuransi: data.asuransi, koliAsuransi: data.koliAsuransi, nilaiAsuransi: data.nilaiAsuransi } : {}),
         ...(data.slaValue !== undefined ? { slaValue: data.slaValue } : {}),
+        ...(data.requiresDoBalik !== undefined ? { requiresDoBalik: data.requiresDoBalik } : {}),
         ...(data.packingKayu !== undefined ? { packingKayu: data.packingKayu } : {}),
         ...(data.hasTransit !== undefined ? { hasTransit: data.hasTransit } : {}),
         ...(data.armadaType
@@ -636,6 +663,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         addTrackingUpdate,
         updateTimelineEvent,
         deleteTimelineEvent,
+        confirmDoBalik,
         updateShipmentInfo,
         updateShipmentAlamat,
         requestRecovery,
@@ -648,6 +676,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      {doBalikAlertAwb && <DoBalikAlertModal awb={doBalikAlertAwb} onClose={() => setDoBalikAlertAwb(null)} />}
     </ShipmentContext.Provider>
   );
 }

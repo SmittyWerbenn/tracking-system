@@ -71,6 +71,7 @@ function emptyRow(): BulkRow {
     asuransi: "",
     koliAsuransi: "",
     nilaiAsuransi: "",
+    doBalik: "",
     keteranganInternal: "",
   };
 }
@@ -135,8 +136,13 @@ function rowErrors(row: BulkRow, duplicateRows?: number[]): string[] {
     const nilai = Number(row.nilaiAsuransi);
     if (!row.nilaiAsuransi.trim() || !Number.isFinite(nilai) || nilai <= 0) errs.push("Nilai asuransi wajib diisi > 0 jika Asuransi = Ya");
   }
+  // DO Balik: optional, empty = Tidak.
+  const dob = row.doBalik.trim().toLowerCase();
+  if (dob && !isYes(dob) && !["tidak", "t", "0", "n", "no"].includes(dob)) errs.push("DO Balik harus diisi 'Ya' atau 'Tidak'");
   return errs;
 }
+
+const isYes = (v: string) => ["ya", "y", "1", "yes"].includes(v.trim().toLowerCase());
 
 const cellInputClass =
   "w-full min-w-[140px] rounded-md border border-slate-300 px-2 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-100";
@@ -297,6 +303,7 @@ export function BulkShipmentImport() {
           truckId: truck?.id ?? "",
           slaValue: row.slaValue.trim() ? Number(row.slaValue) : undefined,
           customerId: customerId.trim(),
+          requiresDoBalik: isYes(row.doBalik) || undefined,
           asuransi: row.asuransi.trim().toLowerCase() === "ya" || row.asuransi.trim().toLowerCase() === "y" || undefined,
           koliAsuransi: (row.asuransi.trim().toLowerCase() === "ya" || row.asuransi.trim().toLowerCase() === "y") ? row.koliAsuransi.trim() || undefined : undefined,
           nilaiAsuransi: (row.asuransi.trim().toLowerCase() === "ya" || row.asuransi.trim().toLowerCase() === "y") ? (row.nilaiAsuransi.trim() ? Number(row.nilaiAsuransi) : undefined) : undefined,
@@ -449,6 +456,7 @@ export function BulkShipmentImport() {
               <th className="border-l border-slate-200 px-2.5 py-2.5">Asuransi (Ya/Tidak)</th>
               <th className="px-2.5 py-2.5">Koli Diasuransi</th>
               <th className="px-2.5 py-2.5">Nilai Asuransi (Rp)</th>
+              <th className="border-l border-slate-200 px-2.5 py-2.5">DO Balik (Ya/Tidak)</th>
               {!isCustAdmin && <th className="border-l border-slate-200 px-2.5 py-2.5">Keterangan Internal (Opsional)</th>}
               <th className="px-2.5 py-2.5"></th>
             </tr>
@@ -684,6 +692,15 @@ export function BulkShipmentImport() {
                     onChange={(e) => updateRow(row.id, "nilaiAsuransi", e.target.value.replace(/\D/g, ""))}
                     placeholder="1,000,000"
                     disabled={row.asuransi.trim().toLowerCase() !== "ya" && row.asuransi.trim().toLowerCase() !== "y"}
+                  />
+                </td>
+                <td className="border-l border-slate-100 px-2.5 py-2">
+                  <input
+                    className={`${cellInputClass} min-w-[70px]`}
+                    value={row.doBalik}
+                    onChange={(e) => updateRow(row.id, "doBalik", e.target.value)}
+                    placeholder="Tidak"
+                    list="asuransi-options"
                   />
                 </td>
                 {!isCustAdmin && (

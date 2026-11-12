@@ -60,6 +60,7 @@ const emptyForm: ShipmentFormData = {
   nilaiAsuransi: undefined,
   packingKayu: false,
   hasTransit: false,
+  requiresDoBalik: false,
 };
 
 function Section({
@@ -633,6 +634,24 @@ export default function CreateShipment() {
                   </Field>
                 </div>
               )}
+            </div>
+          </Field>
+          <Field label="DO Balik (Delivery Order Kembali)" full>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <label className="flex cursor-pointer items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600"
+                  checked={!!form.requiresDoBalik}
+                  onChange={(e) => update("requiresDoBalik", e.target.checked)}
+                />
+                <span className="text-sm text-slate-700">
+                  <span className="font-medium">{form.requiresDoBalik ? "Ya" : "Tidak"}</span>
+                  <span className="block text-xs text-slate-500">
+                    Aktifkan jika dokumen Surat Jalan / DO asli wajib dikembalikan setelah barang diterima.
+                  </span>
+                </span>
+              </label>
             </div>
           </Field>
           <Field label="Foto Barang" full>

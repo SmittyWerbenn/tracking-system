@@ -1,4 +1,5 @@
 import { ACTION_ROW, actionClass } from "../../components/ActionButton";
+import { DoBalikBadge } from "../../components/DoBalikBadge";
 import { adminPath } from "../../utils/urls";
 import { AlertTriangle, CheckCircle2, Download, Eye, FileEdit, LayoutList, ListTree, Loader2, MapPin, PackageSearch, Pencil, Printer, RefreshCw, RotateCcw, Search, X, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -113,6 +114,9 @@ export default function ShipmentList() {
   const statusParam = searchParams.get("status") ?? "";
   const statusFilter: ShipmentStatus | "Semua" = isShipmentStatus(statusParam) ? statusParam : "Semua";
   const macetOnly = searchParams.get("macet") === "1";
+  // DO Balik filter: "1" = only DO Balik AWB, "pending" = DO Balik not returned yet.
+  const doBalikParam = searchParams.get("dobalik");
+  const doBalikFilter: "1" | "pending" | "" = doBalikParam === "1" || doBalikParam === "pending" ? doBalikParam : "";
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -146,6 +150,7 @@ export default function ShipmentList() {
     from: dateFrom || undefined,
     to: dateTo || undefined,
     macet: macetDays,
+    doBalik: doBalikFilter || undefined,
   };
   // Page resets to 1 whenever a filter / search / page size changes.
   const filterSig = JSON.stringify([filterParams, pageSize]);
@@ -379,6 +384,23 @@ export default function ShipmentList() {
             </option>
           ))}
         </select>
+        <select
+          value={doBalikFilter}
+          onChange={(e) =>
+            setSearchParams((prev) => {
+              const next = new URLSearchParams(prev);
+              if (e.target.value) next.set("dobalik", e.target.value);
+              else next.delete("dobalik");
+              return next;
+            })
+          }
+          aria-label="Filter DO Balik"
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+        >
+          <option value="">Semua (DO Balik)</option>
+          <option value="1">Hanya DO Balik</option>
+          <option value="pending">DO Balik Belum Kembali</option>
+        </select>
         {showClientPicker && (
           <select
             value={clientFilter}
@@ -409,7 +431,7 @@ export default function ShipmentList() {
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
           />
         </div>
-        {(query || statusFilter !== "Semua" || dateFrom || dateTo || macetOnly || clientFilter) && (
+        {(query || statusFilter !== "Semua" || dateFrom || dateTo || macetOnly || clientFilter || doBalikFilter) && (
           <button
             onClick={() => {
               setQuery("");
@@ -420,6 +442,7 @@ export default function ShipmentList() {
                 const next = new URLSearchParams(prev);
                 next.delete("status");
                 next.delete("macet");
+                next.delete("dobalik");
                 return next;
               });
             }}
@@ -503,6 +526,7 @@ export default function ShipmentList() {
                 <tr key={s.awb} className="hover:bg-slate-50">
                   <td className="whitespace-nowrap px-4 py-3 font-mono font-medium text-slate-900">
                     {s.awb}
+                    <DoBalikBadge shipment={s} className="ml-2 align-middle" />
                     {s.reference && <span className="block font-sans text-[11px] font-normal text-slate-400" title="Referensi">Ref: {s.reference}</span>}
                     {s.internalNotes && (
                       <span className="mt-0.5 block max-w-[220px] truncate font-sans text-[11px] font-normal text-amber-700" title={`Keterangan Internal: ${s.internalNotes}`}>

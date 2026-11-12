@@ -3,6 +3,7 @@ import { useState } from "react";
 import { actionClass } from "./ActionButton";
 import { useLanguage } from "../store/LanguageContext";
 import type { TimelineEvent } from "../types";
+import { getLtlStage } from "../utils/ltlPipeline";
 import { formatJam, formatTanggalPanjang } from "../utils/format";
 import { ImageLightbox, PhotoThumb } from "./ImageLightbox";
 
@@ -32,6 +33,8 @@ export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineP
       <ol className="relative">
         {ordered.map((event, idx) => {
           const isLatest = idx === 0;
+          // LTL logs show their granular stage name (e.g. "PICKED UP") instead of the coarse status.
+          const label = getLtlStage(event.ltlStage)?.label ?? event.type;
           const isDelivered = event.type === "Selesai / Terkirim";
           const manageable = !PROTECTED_EVENT_TYPES.has(event.type);
           // A Transfer Unit log already moved the shipment to another truck, so it can be corrected but not removed.
@@ -106,7 +109,7 @@ export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineP
                     isDelivered ? "text-emerald-600" : "text-slate-900"
                   }`}
                 >
-                  {event.type}
+                  {label}
                   {isDelivered && <CheckCircle2 size={15} className="shrink-0" />}
                 </p>
                 <p className="mt-0.5 flex items-center gap-1 text-sm text-slate-500">
@@ -131,10 +134,10 @@ export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineP
                       <PhotoThumb
                         key={i}
                         src={src}
-                        alt={`Dokumentasi ${event.type} ${i + 1}`}
+                        alt={`Dokumentasi ${label} ${i + 1}`}
                         className="h-16 w-16 shrink-0 sm:h-20 sm:w-20"
                         onClick={() =>
-                          setLightbox({ src, caption: `${event.type} · ${event.lokasi}` })
+                          setLightbox({ src, caption: `${label} · ${event.lokasi}` })
                         }
                       />
                     ))}

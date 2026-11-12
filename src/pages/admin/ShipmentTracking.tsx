@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { QuickSearchAwb } from "../../components/QuickSearchAwb";
 import { QuickUpdatePanel } from "../../components/QuickUpdatePanel";
+import { LtlSummary } from "../../components/LtlSummary";
+import { isLtlShipment, isTrackingLocked, ltlIndexOf } from "../../utils/trackingChoices";
 import { useToast } from "../../components/Toast";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { ProofOfDeliveryCard } from "../../components/ProofOfDeliveryCard";
@@ -110,7 +112,7 @@ export default function ShipmentTracking() {
       </div>
 
       {/* Quick Update: same audience/locks as the Update Tracking page; remounts (new key) after each save so it is clean. */}
-      {canUpdateTracking && !["Selesai / Terkirim", "Dibatalkan", "Hold"].includes(shipment.status) && (
+      {canUpdateTracking && !isTrackingLocked(shipment) && (
         <QuickUpdatePanel
           key={`${shipment.awb}-${shipment.status}-${shipment.timeline.length}`}
           shipment={shipment}
@@ -163,8 +165,14 @@ export default function ShipmentTracking() {
         </div>
       </div>
 
+      {isLtlShipment(shipment) && <LtlSummary shipment={shipment} className="mt-5" />}
+
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <StatusStepper status={shipment.status} hasPickup={shipment.timeline.some((e) => e.type === "Di pickup")} />
+        <StatusStepper
+          status={shipment.status}
+          hasPickup={shipment.timeline.some((e) => e.type === "Di pickup")}
+          ltlIndex={isLtlShipment(shipment) ? ltlIndexOf(shipment) : undefined}
+        />
       </div>
 
       {isDelivered && shipment.pod && (

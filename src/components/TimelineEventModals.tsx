@@ -1,6 +1,7 @@
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import type { TimelineEvent, TimelineEventType } from "../types";
+import { getLtlStage } from "../utils/ltlPipeline";
 import { TIMELINE_EVENT_OPTIONS } from "../utils/status";
 import { LocationTextInput } from "./LocationTextInput";
 
@@ -27,7 +28,9 @@ export function EditTimelineEventModal({ event, onSave, onClose }: EditProps) {
   const [internalNotes, setInternalNotes] = useState(event.internalNotes ?? "");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const typeLocked = event.type === "Transfer Unit";
+  // Transfer Unit moved the truck; an LTL stage log keeps its stage (delete + re-log to change it).
+  const typeLocked = event.type === "Transfer Unit" || !!event.ltlStage;
+  const ltlLabel = getLtlStage(event.ltlStage)?.label;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -55,7 +58,7 @@ export function EditTimelineEventModal({ event, onSave, onClose }: EditProps) {
             <select className={inputClass} value={type} disabled={typeLocked} onChange={(e) => setType(e.target.value as TimelineEventType)}>
               {(typeLocked ? [event.type] : EDITABLE_TYPES).map((t) => (
                 <option key={t} value={t}>
-                  {t}
+                  {typeLocked && ltlLabel ? ltlLabel : t}
                 </option>
               ))}
             </select>

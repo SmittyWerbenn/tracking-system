@@ -60,6 +60,8 @@ export interface TimelineEvent {
   /** "Keterangan Internal": admin-only note on this log; never sent by the public API. */
   internalNotes?: string;
   inputAt?: string; // system timestamp ISO
+  /** LTL only: fine-grained pipeline stage code (e.g. "PICKED_UP"); `type` is the coarse status it maps to. */
+  ltlStage?: string;
 }
 
 export interface ProofOfDelivery {
@@ -94,6 +96,10 @@ export interface Shipment {
   asuransi: boolean;
   koliAsuransi: string | null;
   nilaiAsuransi: number | null;
+  /** LTL only: cargo needs wooden packing (enables the PACKING_* stages). */
+  packingKayu?: boolean;
+  /** LTL only: route passes a transit hub (enables the TRANSIT_HUB stage). */
+  hasTransit?: boolean;
   fotoBarang?: string;
   fotoSuratJalan?: string;
   truck: TruckInfo;
@@ -230,11 +236,16 @@ export interface ShipmentFormData {
   asuransi?: boolean;
   koliAsuransi?: string;
   nilaiAsuransi?: number;
+  /** LTL only: wooden packing / transit hub on the route. */
+  packingKayu?: boolean;
+  hasTransit?: boolean;
 }
 
 export interface TrackingUpdateFormData {
   awb: string;
   type: TimelineEventType;
+  /** LTL only: the pipeline stage picked; `type` is then its coarse legacy status. */
+  ltlStage?: string;
   lokasi: string;
   titikId?: string;
   tanggal: string;
@@ -271,6 +282,9 @@ export interface UpdateShipmentInfoData {
   asuransi?: boolean;
   koliAsuransi?: string;
   nilaiAsuransi?: number;
+  /** LTL only: omit to leave untouched. */
+  packingKayu?: boolean;
+  hasTransit?: boolean;
   /** Armada (admin only) - omit to leave untouched. */
   armadaType?: ArmadaType;
   truckId?: string;

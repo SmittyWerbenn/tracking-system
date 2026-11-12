@@ -1,6 +1,7 @@
 import { AlertTriangle, Check, ClipboardCheck, Navigation, PackageCheck, PackageOpen, Truck } from "lucide-react";
 import { useLanguage } from "../store/LanguageContext";
 import type { ShipmentStatus } from "../types";
+import { LTL_PHASES, ltlPhaseOf, ltlStageIndex } from "../utils/ltlPipeline";
 
 const STEP_ICONS = [ClipboardCheck, PackageOpen, PackageCheck, Truck, Navigation, Check];
 
@@ -30,10 +31,23 @@ function getProgress(status: ShipmentStatus, hasPickup: boolean): { index: numbe
   }
 }
 
-export function StatusStepper({ status, hasPickup = false }: { status: ShipmentStatus; hasPickup?: boolean }) {
+/** LTL: 25 granular stages roll up into 6 macro phases. `ltlIndex` is the furthest stage reached (-1 = none yet). */
+function getLtlProgress(status: ShipmentStatus, ltlIndex: number): { index: number; hasKendala: boolean } {
+  const phase = ltlPhaseOf(ltlIndex);
+  // DELIVERED reached = the final phase is complete, so it renders as done rather than "in progress".
+  const index = ltlIndex >= ltlStageIndex("DELIVERED") ? LTL_PHASES.length - 1 : phase;
+  return { index, hasKendala: status === "Kendala" };
+}
+
+const LTL_ICONS = [ClipboardCheck, PackageOpen, Truck, PackageCheck, Navigation, Check];
+
+export function StatusStepper({ status, hasPickup = false, ltlIndex }: { status: ShipmentStatus; hasPickup?: boolean; ltlIndex?: number }) {
   const { t } = useLanguage();
-  const { index: current, hasKendala } = getProgress(status, hasPickup);
-  const STEPS = [
+  const isLtl = ltlIndex !== undefined;
+  const { index: current, hasKendala } = isLtl ? getLtlProgress(status, ltlIndex) : getProgress(status, hasPickup);
+  const STEPS = isLtl
+    ? LTL_PHASES.map((label, i) => ({ label, icon: LTL_ICONS[i] }))
+    : [
     { label: t.stepper.orderCreated, icon: STEP_ICONS[0] },
     { label: t.stepper.pickedUp, icon: STEP_ICONS[1] },
     { label: t.stepper.departed, icon: STEP_ICONS[2] },

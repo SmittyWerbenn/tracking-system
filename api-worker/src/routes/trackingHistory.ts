@@ -23,6 +23,7 @@ interface EventRow {
   jam: string;
   keterangan: string;
   internal_notes: string | null;
+  ltl_stage: string | null;
 }
 
 async function loadShipment(ctx: Ctx, awb: string) {
@@ -41,7 +42,7 @@ async function loadShipment(ctx: Ctx, awb: string) {
 
 async function loadEvents(ctx: Ctx, awb: string): Promise<EventRow[]> {
   const r = await ctx.env.DB.prepare(
-    `SELECT id, seq, type, lokasi, titik_id, tanggal, jam, keterangan, internal_notes FROM shipment_timeline_events WHERE awb = ? ORDER BY seq`,
+    `SELECT id, seq, type, lokasi, titik_id, tanggal, jam, keterangan, internal_notes, ltl_stage FROM shipment_timeline_events WHERE awb = ? ORDER BY seq`,
   )
     .bind(awb)
     .all<EventRow>();
@@ -89,6 +90,7 @@ export function registerTrackingHistoryRoutes(router: Router) {
     const body = await parseJsonBody(ctx.request);
     const requestedType = optString(body, "type") ?? ev.type;
     if (requestedType !== ev.type) {
+      if (ev.ltl_stage) throw Errors.unprocessable("Status tahap LTL tidak dapat diganti; hapus log ini lalu catat tahap yang benar.");
       if (ev.type === "Transfer Unit") throw Errors.unprocessable("Status Transfer Unit tidak dapat diganti ke status lain.");
       if (!(SELECTABLE_TYPES as string[]).includes(requestedType)) {
         throw Errors.unprocessable(`Status "${requestedType}" tidak dapat dipilih.`);

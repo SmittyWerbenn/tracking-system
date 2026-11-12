@@ -212,7 +212,7 @@ export function registerDriverRoutes(router: Router) {
     if (row.truck_driver_id !== driverId) throw Errors.forbidden("Pengiriman ini bukan tugas Anda.");
 
     const timeline = await ctx.env.DB.prepare(
-      `SELECT id, type, lokasi, tanggal, jam, keterangan, input_at
+      `SELECT id, type, ltl_stage, lokasi, tanggal, jam, keterangan, input_at
        FROM shipment_timeline_events WHERE awb = ? ORDER BY seq ASC`,
     )
       .bind(params.awb)

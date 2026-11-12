@@ -11,6 +11,8 @@ import {
   User,
   X,
 } from "lucide-react";
+import { LtlHandlingFields } from "../../components/LtlHandlingFields";
+import { isLtlLayanan } from "../../utils/ltlPipeline";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -56,6 +58,8 @@ const emptyForm: ShipmentFormData = {
   asuransi: false,
   koliAsuransi: "",
   nilaiAsuransi: undefined,
+  packingKayu: false,
+  hasTransit: false,
 };
 
 function Section({
@@ -569,6 +573,15 @@ export default function CreateShipment() {
               />
             )}
           </Field>
+          {isLtlLayanan(form.layanan) && (
+            <Field label="Penanganan LTL" full>
+              <LtlHandlingFields
+                packingKayu={!!form.packingKayu}
+                hasTransit={!!form.hasTransit}
+                onChange={(k, v) => update(k, v)}
+              />
+            </Field>
+          )}
           <Field label="Asuransi Barang" full>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
               <div className="flex items-start gap-2.5">

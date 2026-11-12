@@ -29,9 +29,8 @@ import type { Shipment, TimelineEventType, TrackingUpdateFormData, UpdateShipmen
 import { checkPhotoSize, compressImage } from "../../utils/compressImage";
 import { formatTanggalJam, formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
 import { addBusinessDays } from "../../utils/sla";
-import { getAllowedNextEvents } from "../../utils/status";
+import { choiceDefaults, getTrackingChoices, isHandoverChoice, isLtlShipment, isTrackingLocked, type TrackingChoice } from "../../utils/trackingChoices";
 import { useLocationSuggest } from "../../utils/useLocationSuggest";
-import { defaultLokasiFor, presetsFor } from "../../utils/trackingPresets";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
@@ -56,11 +55,19 @@ function UpdateTrackingForm() {
   const canEditInfo = profile?.role === "Superadmin" || profile?.role === "Admin";
   const navigate = useNavigate();
 
+  // Statuses selectable for a shipment (LTL: pipeline stages that apply to its packing / insurance / transit).
+  const trackingOptionsFor = (s: Shipment) =>
+    getTrackingChoices(s, (c) => {
+      if (isMitra && c.type === "Transfer Unit") return false;
+      if (isMitra && c.ltlStage && c.type === "Selesai / Terkirim" && c.ltlStage !== "DELIVERED") return false;
+      return true;
+    });
+
   const [shipment, setShipment] = useState<Shipment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const initializedFor = useRef<string | null>(null);
 
-  const [type, setType] = useState<TimelineEventType>("Transit");
+  const [choiceValue, setChoiceValue] = useState<string>("Transit");
   const [lokasi, setLokasi] = useState("");
   const [tanggal, setTanggal] = useState(todayISO());
   const [jam, setJam] = useState(nowHHMM());
@@ -121,11 +128,11 @@ function UpdateTrackingForm() {
       setIsLoading(false);
       if (s && initializedFor.current !== s.awb) {
         initializedFor.current = s.awb;
-        const allowedOptions = getAllowedNextEvents(s.status).filter((o) => !isMitra || o !== "Transfer Unit");
-        const firstType = allowedOptions[0] ?? "Transit";
-        setType(firstType);
-        setLokasi(defaultLokasiFor(firstType, s));
-        setKeterangan(presetsFor(firstType, s.penerima.nama)[0] ?? "");
+        const first = trackingOptionsFor(s)[0] ?? { value: "Transit", label: "Transit", type: "Transit" as TimelineEventType };
+        const d = choiceDefaults(first, s, s.penerima.nama);
+        setChoiceValue(first.value);
+        setLokasi(d.lokasi);
+        setKeterangan(d.keterangan);
         setNamaPenerima(s.penerima.nama);
         setTruckId(s.truckId ?? "");
         setEditPengirim(s.pengirim);
@@ -168,8 +175,10 @@ function UpdateTrackingForm() {
     );
   }
 
-  const allowedOptions = getAllowedNextEvents(shipment.status).filter((o) => !isMitra || o !== "Transfer Unit");
-  const locked = shipment.status === "Selesai / Terkirim";
+  const allowedOptions = trackingOptionsFor(shipment);
+  const choice: TrackingChoice = allowedOptions.find((o) => o.value === choiceValue) ?? allowedOptions[0] ?? { value: "Transit", label: "Transit", type: "Transit" };
+  const type = choice.type;
+  const locked = isTrackingLocked(shipment) && shipment.status === "Selesai / Terkirim";
   const POD_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   const deliveredEvent = [...shipment.timeline].reverse().find((e) => e.type === "Selesai / Terkirim");
   const deliveredAtMs = deliveredEvent?.inputAt ? new Date(deliveredEvent.inputAt).getTime() : null;
@@ -210,7 +219,7 @@ function UpdateTrackingForm() {
     description: t.driver ? `Driver: ${t.driver.nama}` : undefined,
   }));
   const selectedTruck = trucksWithDriver.find((t) => t.id === truckId);
-  const isSelesai = type === "Selesai / Terkirim";
+  const isSelesai = isHandoverChoice(choice);
   const resolvedLokasi = isSelesai ? shipment.kotaTujuan : lokasi;
   async function handleSaveInfo(e: FormEvent) {
     e.preventDefault();
@@ -301,6 +310,7 @@ function UpdateTrackingForm() {
     const data: TrackingUpdateFormData = {
       awb: shipment!.awb,
       type,
+      ltlStage: choice.ltlStage,
       lokasi: resolvedLokasi,
       tanggal,
       jam,
@@ -721,24 +731,27 @@ function UpdateTrackingForm() {
               <span className="mb-1.5 block text-xs font-medium text-slate-600">Status</span>
               <select
                 className={inputClass}
-                value={type}
+                value={choice.value}
                 onChange={(e) => {
-                  const next = e.target.value as TimelineEventType;
-                  setType(next);
-                  // Auto-fill Lokasi and Keterangan for the chosen status; both stay editable.
-                  setLokasi(defaultLokasiFor(next, shipment));
-                  setKeterangan(presetsFor(next, namaPenerima || shipment.penerima.nama)[0] ?? "");
+                  const next = allowedOptions.find((o) => o.value === e.target.value);
+                  if (!next) return;
+                  setChoiceValue(next.value);
+                  // Auto-fill Lokasi and Keterangan for the chosen status (LTL: stage template with {origin}/{destination}); both stay editable.
+                  const d = choiceDefaults(next, shipment, namaPenerima || shipment.penerima.nama);
+                  setLokasi(d.lokasi);
+                  setKeterangan(d.keterangan);
                 }}
               >
                 {allowedOptions.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
                   </option>
                 ))}
               </select>
               <span className="mt-1.5 block text-[11px] text-slate-400">
-                Hanya status lanjutan dari status saat ini ({shipment.status}) yang bisa dipilih -
-                pipeline tidak bisa dibuat mundur.
+                {choice.ltlStage || isLtlShipment(shipment)
+                  ? "Tahap LTL yang tampil sudah menyesuaikan kondisi Packing Kayu, Asuransi, dan Transit Hub. Tahap boleh dilewati, tetapi tidak bisa dibuat mundur."
+                  : `Hanya status lanjutan dari status saat ini (${shipment.status}) yang bisa dipilih - pipeline tidak bisa dibuat mundur.`}
               </span>
             </label>
             {isSelesai ? (
@@ -785,9 +798,9 @@ function UpdateTrackingForm() {
             </label>
             <label className="block sm:col-span-2">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan (opsional)</span>
-              {presetsFor(type, namaPenerima || shipment.penerima.nama).length > 0 && (
+              {choiceDefaults(choice, shipment, namaPenerima || shipment.penerima.nama).presets.length > 0 && (
                 <div className="mb-2 flex flex-wrap gap-1.5">
-                  {presetsFor(type, namaPenerima || shipment.penerima.nama).map((p) => (
+                  {choiceDefaults(choice, shipment, namaPenerima || shipment.penerima.nama).presets.map((p) => (
                     <button
                       key={p}
                       type="button"

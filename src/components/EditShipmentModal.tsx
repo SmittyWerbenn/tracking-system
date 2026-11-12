@@ -1,4 +1,6 @@
 import { AlertTriangle, Loader2, Pencil, X } from "lucide-react";
+import { LtlHandlingFields } from "./LtlHandlingFields";
+import { isLtlLayanan } from "../utils/ltlPipeline";
 import { useEffect, useState } from "react";
 import { useAuth } from "../store/AuthContext";
 import { useLayanan } from "../store/LayananContext";
@@ -46,6 +48,10 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
   // Insurance fields are locked when the order has moved past preparation.
   const insuranceLocked = shipment.status !== "Dalam Persiapan" && shipment.status !== "Hold";
 
+  // LTL handling flags: decide which optional LTL tracking stages apply.
+  const [packingKayu, setPackingKayu] = useState(!!shipment.packingKayu);
+  const [hasTransit, setHasTransit] = useState(!!shipment.hasTransit);
+
   // Insurance fields (separate state: not simple strings like the rest of f).
   const [asuransi, setAsuransi] = useState(shipment.asuransi);
   const [koliAsuransi, setKoliAsuransi] = useState(shipment.koliAsuransi ?? "");
@@ -86,6 +92,7 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
       beratKg: berat,
       jumlahKoli: Math.floor(koli),
       layanan: f.layanan,
+      ...(isLtlLayanan(f.layanan) ? { packingKayu, hasTransit } : {}),
       asuransi,
       koliAsuransi: asuransi ? koliAsuransi : "",
       nilaiAsuransi: asuransi ? Number(nilaiAsuransi) : undefined,
@@ -189,6 +196,16 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
               ))}
             </select>
           </label>
+
+          {isLtlLayanan(f.layanan) && (
+            <div className="sm:col-span-2">
+              <LtlHandlingFields
+                packingKayu={packingKayu}
+                hasTransit={hasTransit}
+                onChange={(k, v) => (k === "packingKayu" ? setPackingKayu(v) : setHasTransit(v))}
+              />
+            </div>
+          )}
 
           <div className="sm:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
             <div className="flex items-start gap-2.5">

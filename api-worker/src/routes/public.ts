@@ -58,7 +58,7 @@ export function registerPublicRoutes(router: Router) {
     if (!row) throw Errors.notFound("AWB tidak ditemukan.");
 
     const timeline = await ctx.env.DB.prepare(
-      `SELECT e.id, e.type, e.lokasi, e.tanggal, e.jam, e.keterangan, t.nomor_unit as truck_nomor_unit, d.nama as truck_driver_nama
+      `SELECT e.id, e.type, e.ltl_stage, e.lokasi, e.tanggal, e.jam, e.keterangan, t.nomor_unit as truck_nomor_unit, d.nama as truck_driver_nama
        FROM shipment_timeline_events e
        LEFT JOIN trucks t ON t.id = e.truck_id
        LEFT JOIN drivers d ON d.id = t.driver_id

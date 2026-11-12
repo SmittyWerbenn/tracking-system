@@ -2,20 +2,24 @@ import { AlertTriangle, Clock, Loader2, Send, Zap } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useAuth } from "../store/AuthContext";
 import { useShipments } from "../store/ShipmentContext";
-import type { Shipment, TimelineEventType } from "../types";
+import type { Shipment } from "../types";
 import { nowHHMM, todayISO } from "../utils/format";
-import { getAllowedNextEvents } from "../utils/status";
-import { defaultLokasiFor, presetsFor } from "../utils/trackingPresets";
+import { choiceDefaults, getTrackingChoices, isHandoverChoice, type TrackingChoice } from "../utils/trackingChoices";
 import { LocationTextInput } from "./LocationTextInput";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
 
 /** Statuses the quick form can log: no Transfer Unit (it needs a truck), and Re-route / Penarikan stay admin-only like in the API. */
-function quickOptions(shipment: Shipment, role: string | undefined): TimelineEventType[] {
-  return getAllowedNextEvents(shipment.status).filter(
-    (t) => t !== "Transfer Unit" && !(role === "Mitra" && (t === "Re-route" || t === "Penarikan")),
-  );
+function quickOptions(shipment: Shipment, role: string | undefined): TrackingChoice[] {
+  // LTL: the pipeline stages valid for this shipment's packing / insurance / transit conditions.
+  // Post-delivery stages (e-POD, hardcopy POD, closed) are admin-only, like Re-route / Penarikan.
+  return getTrackingChoices(shipment, (c) => {
+    if (c.type === "Transfer Unit") return false;
+    if (role === "Mitra" && (c.type === "Re-route" || c.type === "Penarikan")) return false;
+    if (role === "Mitra" && c.ltlStage && c.type === "Selesai / Terkirim" && c.ltlStage !== "DELIVERED") return false;
+    return true;
+  });
 }
 
 interface Props {
@@ -30,11 +34,13 @@ export function QuickUpdatePanel({ shipment, onSaved }: Props) {
   const { profile } = useAuth();
   const { addTrackingUpdate } = useShipments();
   const options = quickOptions(shipment, profile?.role);
-  const first = options[0] ?? "Transit";
+  const first: TrackingChoice = options[0] ?? { value: "Transit", label: "Transit", type: "Transit" };
 
-  const [type, setType] = useState<TimelineEventType>(first);
-  const [lokasi, setLokasi] = useState(() => defaultLokasiFor(first, shipment));
-  const [keterangan, setKeterangan] = useState(() => presetsFor(first, shipment.penerima.nama)[0] ?? "");
+  const [choiceValue, setChoiceValue] = useState(first.value);
+  const choice = options.find((o) => o.value === choiceValue) ?? first;
+  const type = choice.type;
+  const [lokasi, setLokasi] = useState(() => choiceDefaults(first, shipment, shipment.penerima.nama).lokasi);
+  const [keterangan, setKeterangan] = useState(() => choiceDefaults(first, shipment, shipment.penerima.nama).keterangan);
   const [namaPenerima, setNamaPenerima] = useState(shipment.penerima.nama);
   // The time is taken when "Simpan Update" is pressed, unless the admin opens it to adjust.
   const [customTime, setCustomTime] = useState(false);
@@ -43,13 +49,14 @@ export function QuickUpdatePanel({ shipment, onSaved }: Props) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isSelesai = type === "Selesai / Terkirim";
+  const isSelesai = isHandoverChoice(choice);
 
-  function changeType(next: TimelineEventType) {
-    setType(next);
-    // Same auto-fill as the full form; both stay editable.
-    setLokasi(defaultLokasiFor(next, shipment));
-    setKeterangan(presetsFor(next, namaPenerima || shipment.penerima.nama)[0] ?? "");
+  function changeType(next: TrackingChoice) {
+    setChoiceValue(next.value);
+    // Same auto-fill as the full form (LTL: stage description with {origin}/{destination}); both stay editable.
+    const d = choiceDefaults(next, shipment, namaPenerima || shipment.penerima.nama);
+    setLokasi(d.lokasi);
+    setKeterangan(d.keterangan);
   }
 
   async function submit(e: FormEvent) {
@@ -68,6 +75,7 @@ export function QuickUpdatePanel({ shipment, onSaved }: Props) {
     const result = await addTrackingUpdate({
       awb: shipment.awb,
       type,
+      ltlStage: choice.ltlStage,
       lokasi: isSelesai ? shipment.kotaTujuan : lokasi.trim(),
       tanggal: customTime ? tanggal : todayISO(),
       jam: customTime ? jam : nowHHMM(),
@@ -93,10 +101,17 @@ export function QuickUpdatePanel({ shipment, onSaved }: Props) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1.5 block text-xs font-medium text-slate-600">Status / Tahapan</span>
-          <select className={inputClass} value={type} onChange={(e) => changeType(e.target.value as TimelineEventType)}>
+          <select
+            className={inputClass}
+            value={choice.value}
+            onChange={(e) => {
+              const next = options.find((o) => o.value === e.target.value);
+              if (next) changeType(next);
+            }}
+          >
             {options.map((o) => (
-              <option key={o} value={o}>
-                {o}
+              <option key={o.value} value={o.value}>
+                {o.label}
               </option>
             ))}
           </select>

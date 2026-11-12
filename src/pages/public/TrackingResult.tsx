@@ -6,6 +6,8 @@ import { PublicLayout } from "../../components/layout/PublicLayout";
 import { ProofOfDeliveryCard } from "../../components/ProofOfDeliveryCard";
 import { StatusBadge } from "../../components/StatusBadge";
 import { StatusStepper } from "../../components/StatusStepper";
+import { LtlSummary } from "../../components/LtlSummary";
+import { isLtlShipment, ltlIndexOf } from "../../utils/trackingChoices";
 import { TrackingTimeline } from "../../components/TrackingTimeline";
 import { useLanguage } from "../../store/LanguageContext";
 import type { Shipment } from "../../types";
@@ -271,8 +273,13 @@ export default function TrackingResult() {
 
       {/* Progress stepper */}
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <StatusStepper status={shipment.status} hasPickup={shipment.timeline.some((e) => e.type === "Di pickup")} />
+        <StatusStepper
+          status={shipment.status}
+          hasPickup={shipment.timeline.some((e) => e.type === "Di pickup")}
+          ltlIndex={isLtlShipment(shipment) ? ltlIndexOf(shipment) : undefined}
+        />
       </div>
+      {isLtlShipment(shipment) && <LtlSummary shipment={shipment} className="mt-5" />}
 
       {/* POD if delivered - shown prominently near top */}
       {isDelivered && shipment.pod && (

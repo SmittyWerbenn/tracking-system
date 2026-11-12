@@ -45,6 +45,8 @@ interface RawShipmentSummary {
   asuransi?: boolean;
   koliAsuransi?: string | null;
   nilaiAsuransi?: number | null;
+  packingKayu?: boolean;
+  hasTransit?: boolean;
   truckId: string | null;
   armadaType?: "internal" | "sewa";
   vehiclePlate?: string | null;
@@ -110,6 +112,7 @@ interface RawTimelineRow {
   input_by_name: string | null;
   input_at: string;
   internal_notes?: string | null;
+  ltl_stage?: string | null;
 }
 
 interface RawPodRow {
@@ -141,6 +144,8 @@ function toShipment(row: RawShipmentSummary): Shipment {
     asuransi: row.asuransi ?? false,
     koliAsuransi: row.koliAsuransi ?? null,
     nilaiAsuransi: row.nilaiAsuransi ?? null,
+    packingKayu: row.packingKayu ?? false,
+    hasTransit: row.hasTransit ?? false,
     truck:
       row.armadaType === "sewa"
         ? { nomorUnit: row.vehiclePlate ?? "-", jenis: "Sewa (Vendor)", driver: row.driverName ?? undefined }
@@ -202,6 +207,7 @@ function toTimelineEvent(row: RawTimelineRow, fotoUrls: string[]): TimelineEvent
     inputBy: row.input_by_name ?? undefined,
     internalNotes: row.internal_notes ?? undefined,
     inputAt: row.input_at,
+    ltlStage: row.ltl_stage ?? undefined,
   };
 }
 
@@ -401,6 +407,8 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       asuransi: data.asuransi || undefined,
       koliAsuransi: data.asuransi ? data.koliAsuransi : undefined,
       nilaiAsuransi: data.asuransi ? data.nilaiAsuransi : undefined,
+      packingKayu: data.packingKayu || undefined,
+      hasTransit: data.hasTransit || undefined,
     });
 
     if (data.fotoBarang) {
@@ -439,9 +447,11 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
 
   async function addTrackingUpdate(data: TrackingUpdateFormData) {
     try {
-      const isSelesai = data.type === "Selesai / Terkirim";
+      // LTL: only the DELIVERED stage is the hand-over (POD photos + admin email); e-POD / hardcopy / closed are follow-ups.
+      const isSelesai = data.type === "Selesai / Terkirim" && (!data.ltlStage || data.ltlStage === "DELIVERED");
       const res = await api.post<{ eventId: string }>(`/api/shipments/${encodeURIComponent(data.awb)}/timeline`, {
         type: data.type,
+        ltlStage: data.ltlStage,
         lokasi: data.lokasi,
         titikId: data.titikId,
         tanggal: data.tanggal,
@@ -515,6 +525,8 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         ...(data.jumlahKoli !== undefined ? { jumlahKoli: data.jumlahKoli } : {}),
         ...(data.asuransi !== undefined ? { asuransi: data.asuransi, koliAsuransi: data.koliAsuransi, nilaiAsuransi: data.nilaiAsuransi } : {}),
         ...(data.slaValue !== undefined ? { slaValue: data.slaValue } : {}),
+        ...(data.packingKayu !== undefined ? { packingKayu: data.packingKayu } : {}),
+        ...(data.hasTransit !== undefined ? { hasTransit: data.hasTransit } : {}),
         ...(data.armadaType
           ? {
               armadaType: data.armadaType,

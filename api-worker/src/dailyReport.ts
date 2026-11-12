@@ -45,6 +45,10 @@ interface ShipmentRow {
   truck_driver_nama: string | null;
   created_by_name: string | null;
   created_by_role: string | null;
+  deskripsi_barang: string | null;
+  internal_notes: string | null;
+  last_keterangan: string | null;
+  last_internal_notes: string | null;
 }
 
 const CSV_COLUMNS = [
@@ -68,6 +72,8 @@ const CSV_COLUMNS = [
   "Truck",
   "Driver",
   "Dibuat Oleh",
+  "Keterangan Tracking Terbaru",
+  "Keterangan Internal",
 ] as const;
 
 /** WIB date for "today" (or a specific date if provided as YYYY-MM-DD). */
@@ -98,13 +104,21 @@ function slotTimeLabel(slot: ReportSlot): string {
 function csvCell(value: unknown): string {
   const raw = value == null ? "" : String(value);
   // Formula injection defence: prefix dangerous leading characters.
-  let safe = raw;
+  // Keep each value on one line so Excel/Sheets rows stay tidy.
+  let safe = raw.replace(/\r?\n+/g, " ");
   if (/^[=+\-@\t\r]/.test(safe)) safe = `'${safe}`;
   // Escape: wrap in double quotes if contains comma, quote, newline, or CR.
   if (/[",\n\r]/.test(safe)) {
     safe = `"${safe.replace(/"/g, '""')}"`;
   }
   return safe;
+}
+
+/** Shipment-level internal note plus the latest tracking log's internal note (when different). */
+function joinInternal(shipmentNote: string | null, logNote: string | null): string {
+  const a = (shipmentNote ?? "").trim();
+  const b = (logNote ?? "").trim();
+  return [a, b && b !== a ? b : ""].filter(Boolean).join(" | ");
 }
 
 function buildCsv(rows: ShipmentRow[]): string {
@@ -132,6 +146,8 @@ function buildCsv(rows: ShipmentRow[]): string {
         r.truck_nomor_unit ?? "",
         r.truck_driver_nama ?? "",
         r.created_by_name ?? "",
+        r.last_keterangan ?? "",
+        joinInternal(r.internal_notes, r.last_internal_notes),
       ]
         .map(csvCell)
         .join(","),
@@ -359,7 +375,9 @@ export async function runDailyReport(
             s.layanan, s.berat_kg, s.jumlah_koli, s.estimasi_tiba, s.status,
             s.asuransi, s.koli_asuransi, s.nilai_asuransi,
             t.nomor_unit as truck_nomor_unit, d.nama as truck_driver_nama,
-            s.created_by_name, s.created_by_role
+            s.created_by_name, s.created_by_role, s.internal_notes,
+            (SELECT e.keterangan FROM shipment_timeline_events e WHERE e.awb = s.awb ORDER BY e.seq DESC LIMIT 1) AS last_keterangan,
+            (SELECT e.internal_notes FROM shipment_timeline_events e WHERE e.awb = s.awb ORDER BY e.seq DESC LIMIT 1) AS last_internal_notes
      FROM shipments s
      LEFT JOIN trucks t ON t.id = s.truck_id
      LEFT JOIN drivers d ON d.id = t.driver_id

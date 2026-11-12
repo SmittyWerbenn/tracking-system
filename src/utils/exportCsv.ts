@@ -3,11 +3,21 @@ import { downloadCsv } from "./csv";
 import type { DriverShipmentSummary } from "./driverApi";
 import { stripKeteranganMeta } from "./format";
 
+/** Quotes cells containing commas, quotes or line breaks (so lists like "62949,62951" stay in one cell).
+ * Line breaks are flattened to a space first so every shipment stays on a single spreadsheet row. */
 function csvEscape(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+  const flat = value.replace(/\r?\n+/g, " ");
+  if (/[",\r\n]/.test(flat)) {
+    return `"${flat.replace(/"/g, '""')}"`;
   }
-  return value;
+  return flat;
+}
+
+/** Shipment-level internal note plus the latest log's internal note (when it differs). Only admins receive these from the API. */
+function internalNotesText(s: Shipment): string {
+  const a = (s.internalNotes ?? "").trim();
+  const b = (s.lastInternalNotes ?? "").trim();
+  return [a, b && b !== a ? b : ""].filter(Boolean).join(" | ") || "-";
 }
 
 /** tanggal: "2026-09-20" -> "20-09-2026" */
@@ -48,6 +58,8 @@ const COLUMNS = [
   "Diterima Oleh",
   "Tanggal & Waktu Diterima",
   "Keterangan",
+  "Keterangan Tracking Terbaru",
+  "Keterangan Internal",
   "Status",
   "Truck",
   "Driver",
@@ -77,6 +89,8 @@ export function exportShipmentsCsv(shipments: Shipment[], filename = "data-pengi
     s.pod?.namaPenerima ?? "-",
     receivedAtText(s),
     stripKeteranganMeta(s.deskripsiBarang),
+    s.lastKeterangan?.trim() || "-",
+    internalNotesText(s),
     s.status,
     s.truck.nomorUnit,
     s.truck.driver ?? "-",

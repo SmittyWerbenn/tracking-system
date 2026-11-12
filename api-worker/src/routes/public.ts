@@ -62,7 +62,7 @@ export function registerPublicRoutes(router: Router) {
        FROM shipment_timeline_events e
        LEFT JOIN trucks t ON t.id = e.truck_id
        LEFT JOIN drivers d ON d.id = t.driver_id
-       WHERE e.awb = ? ORDER BY e.seq ASC`,
+       WHERE e.awb = ? ORDER BY e.tanggal ASC, e.jam ASC, e.seq ASC`,
     )
       .bind(params.awb)
       .all();

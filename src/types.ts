@@ -96,6 +96,9 @@ export interface Shipment {
   asuransi: boolean;
   koliAsuransi: string | null;
   nilaiAsuransi: number | null;
+  /** List only: keterangan / internal note of the latest tracking log (for the CSV export). */
+  lastKeterangan?: string;
+  lastInternalNotes?: string;
   /** DO Balik: the original Surat Jalan / DO must be returned after delivery. */
   requiresDoBalik?: boolean;
   /** null when not required; "pending" until ops confirm the document is back. */

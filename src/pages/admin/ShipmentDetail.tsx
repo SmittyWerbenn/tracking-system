@@ -317,7 +317,7 @@ export default function ShipmentDetail() {
                   <p className="font-mono text-sm font-medium text-slate-800">{shipment.reference}</p>
                 </div>
               )}
-              {shipment.internalNotes && (
+              {shipment.internalNotes?.trim() && (
                 <div className="max-w-full">
                   <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Keterangan Internal

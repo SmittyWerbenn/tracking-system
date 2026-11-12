@@ -42,8 +42,9 @@ export function QuickUpdatePanel({ shipment, onSaved }: Props) {
   const [lokasi, setLokasi] = useState(() => choiceDefaults(first, shipment, shipment.penerima.nama).lokasi);
   const [keterangan, setKeterangan] = useState(() => choiceDefaults(first, shipment, shipment.penerima.nama).keterangan);
   const [namaPenerima, setNamaPenerima] = useState(shipment.penerima.nama);
-  // The time is taken when "Simpan Update" is pressed, unless the admin opens it to adjust.
-  const [customTime, setCustomTime] = useState(false);
+  // "Keterangan Internal" is private to GMS ops (Superadmin/Admin); other roles never see the field.
+  const canWriteInternal = profile?.role === "Superadmin" || profile?.role === "Admin";
+  const [internalNotes, setInternalNotes] = useState("");
   const [tanggal, setTanggal] = useState(todayISO());
   const [jam, setJam] = useState(nowHHMM());
   const [pending, setPending] = useState(false);
@@ -77,9 +78,10 @@ export function QuickUpdatePanel({ shipment, onSaved }: Props) {
       type,
       ltlStage: choice.ltlStage,
       lokasi: isSelesai ? shipment.kotaTujuan : lokasi.trim(),
-      tanggal: customTime ? tanggal : todayISO(),
-      jam: customTime ? jam : nowHHMM(),
+      tanggal,
+      jam,
       keterangan: keterangan.trim(),
+      internalNotes: canWriteInternal ? internalNotes.trim() || undefined : undefined,
       namaPenerima: isSelesai ? namaPenerima.trim() : undefined,
     });
     if (!result.ok) {
@@ -149,6 +151,23 @@ export function QuickUpdatePanel({ shipment, onSaved }: Props) {
           />
         </label>
 
+        {canWriteInternal && (
+          <label className="block sm:col-span-2">
+            <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan Internal (Khusus Internal GMS)</span>
+            <input
+              maxLength={500}
+              className={inputClass}
+              placeholder="Contoh: Resi Vendor JNE-09123812 / Subkon PT Maju"
+              value={internalNotes}
+              onChange={(e) => setInternalNotes(e.target.value)}
+              autoComplete="off"
+            />
+            <span className="mt-1.5 block text-[11px] text-slate-400">
+              Catatan internal admin (tidak muncul di halaman tracking publik customer).
+            </span>
+          </label>
+        )}
+
         {isSelesai && (
           <label className="block sm:col-span-2">
             <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Penerima (Diterima oleh)</span>
@@ -164,34 +183,21 @@ export function QuickUpdatePanel({ shipment, onSaved }: Props) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1 basis-64">
           <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-600">
-            <Clock size={13} className="text-slate-400" /> Waktu Update
+            <Clock size={13} className="text-slate-400" /> Waktu Update (WIB)
           </p>
-          {customTime ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <input required type="date" className={`${inputClass} w-auto`} value={tanggal} onChange={(e) => setTanggal(e.target.value)} />
-              <input required type="time" className={`${inputClass} w-auto`} value={jam} onChange={(e) => setJam(e.target.value)} />
-              <button type="button" onClick={() => setCustomTime(false)} className="text-xs font-medium text-blue-700 hover:underline">
-                Pakai waktu sekarang
-              </button>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-600">
-              Waktu saat disimpan{" "}
-              <button
-                type="button"
-                onClick={() => {
-                  setTanggal(todayISO());
-                  setJam(nowHHMM());
-                  setCustomTime(true);
-                }}
-                className="ml-1 text-xs font-medium text-blue-700 hover:underline"
-              >
-                Ubah
-              </button>
-            </p>
-          )}
+          {/* Always visible: defaults to now, but can be backdated; the timeline orders by this date/time. */}
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className="sr-only">Tanggal Update</span>
+              <input required type="date" aria-label="Tanggal Update" className={inputClass} value={tanggal} onChange={(e) => setTanggal(e.target.value)} />
+            </label>
+            <label className="block">
+              <span className="sr-only">Jam Update</span>
+              <input required type="time" aria-label="Jam Update" className={inputClass} value={jam} onChange={(e) => setJam(e.target.value)} />
+            </label>
+          </div>
         </div>
 
         <button

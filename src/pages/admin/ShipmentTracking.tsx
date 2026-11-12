@@ -150,6 +150,15 @@ export default function ShipmentTracking() {
             )}
           </div>
         </div>
+        {shipment.internalNotes?.trim() && (
+          <div className="border-t border-slate-100 px-5 py-3 sm:px-6">
+            <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-400">
+              Keterangan Internal
+              <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-amber-700">Internal</span>
+            </p>
+            <p className="mt-0.5 break-words text-sm font-medium text-slate-800">{shipment.internalNotes}</p>
+          </div>
+        )}
         <div className="grid grid-cols-2 divide-x divide-slate-100 border-t border-slate-100 px-5 py-4 sm:px-6">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Asal</p>

@@ -44,7 +44,9 @@ function readInternalNotes(body: Record<string, unknown>): string | null {
 
 /** Client accounts never learn which Mitra (partner agent) handles an order. */
 function forActor(rawSummary: ReturnType<typeof shipmentSummary>, role: string) {
-  const summary = canSeeInternalNotes(role) ? rawSummary : { ...rawSummary, internalNotes: null as unknown };
+  const summary = canSeeInternalNotes(role)
+    ? rawSummary
+    : { ...rawSummary, internalNotes: null as unknown, lastUpdate: rawSummary.lastUpdate ? { ...rawSummary.lastUpdate, internalNotes: null } : null };
   if (role === "Mitra") return { ...summary, createdByName: null, createdByRole: null as unknown as typeof summary.createdByRole, hold: null, holdPolicy: undefined };
   return role === "Client" ? { ...summary, mitraId: null, mitraNama: null } : summary;
 }
@@ -102,7 +104,9 @@ function shipmentSummary(row: Record<string, unknown>) {
     pod: row.pod_tanggal
       ? { tanggal: row.pod_tanggal, jam: row.pod_jam, namaPenerima: row.pod_nama_penerima }
       : null,
-    lastUpdate: row.last_tanggal ? { tanggal: row.last_tanggal, jam: row.last_jam } : null,
+    lastUpdate: row.last_tanggal
+      ? { tanggal: row.last_tanggal, jam: row.last_jam, keterangan: row.last_keterangan ?? null, internalNotes: (row.last_internal_notes as string | null) ?? null }
+      : null,
     recovery: row.recovery_status
       ? { status: row.recovery_status, requestedAt: row.recovery_requested_at, rejectionReason: row.recovery_rejection_reason ?? null }
       : null,
@@ -250,7 +254,7 @@ export function registerShipmentRoutes(router: Router) {
               cd.nama as claim_driver_nama, cd.telepon as claim_driver_telepon,
               m.nama as mitra_nama,
               p.tanggal as pod_tanggal, p.jam as pod_jam, p.nama_penerima as pod_nama_penerima,
-              le.tanggal as last_tanggal, le.jam as last_jam,
+              le.tanggal as last_tanggal, le.jam as last_jam, le.keterangan as last_keterangan, le.internal_notes as last_internal_notes,
               rr.status as recovery_status, rr.requested_at as recovery_requested_at, rr.rejection_reason as recovery_rejection_reason,
               ${pickupEvidenceSql("s.awb")} AS has_pickup,
               cr.id as cr_id, cr.status as cr_status, cr.reason as cr_reason, cr.requested_by_name as cr_requested_by_name,
@@ -264,7 +268,7 @@ export function registerShipmentRoutes(router: Router) {
        LEFT JOIN mitras m ON m.kode_mitra = s.mitra_id
        LEFT JOIN shipment_pod p ON p.awb = s.awb
        LEFT JOIN (
-         SELECT e1.awb, e1.tanggal, e1.jam FROM shipment_timeline_events e1
+         SELECT e1.awb, e1.tanggal, e1.jam, e1.keterangan, e1.internal_notes FROM shipment_timeline_events e1
          WHERE e1.seq = (SELECT MAX(e2.seq) FROM shipment_timeline_events e2 WHERE e2.awb = e1.awb)
        ) le ON le.awb = s.awb
        LEFT JOIN order_recovery_requests rr ON rr.id = (
@@ -550,7 +554,7 @@ export function registerShipmentRoutes(router: Router) {
        LEFT JOIN trucks t ON t.id = e.truck_id
        LEFT JOIN drivers d ON d.id = t.driver_id
        LEFT JOIN trucks pt ON pt.id = e.truck_sebelumnya_id
-       WHERE e.awb = ? ORDER BY e.seq ASC`,
+       WHERE e.awb = ? ORDER BY e.tanggal ASC, e.jam ASC, e.seq ASC`,
     )
       .bind(params.awb)
       .all();
@@ -938,8 +942,11 @@ export function registerShipmentRoutes(router: Router) {
     if ((type === "Re-route" || type === "Penarikan") && (actor.role === "Driver" || actor.role === "Mitra")) {
       throw Errors.forbidden(`Status ${type} hanya dapat dicatat oleh admin.`);
     }
+    // The event's own date/time (may be backdated); the timeline is ordered by it.
     const tanggal = reqString(body, "tanggal");
     const jam = reqString(body, "jam");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggal) || Number.isNaN(Date.parse(tanggal))) throw Errors.badRequest('Field "tanggal" harus berformat YYYY-MM-DD.');
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(jam)) throw Errors.badRequest('Field "jam" harus berformat HH:mm.');
     // Optional: ops can submit a tracking update with no note (stored as an empty string).
     // When left empty the API fills in the default description of the chosen status.
     const keterangan =

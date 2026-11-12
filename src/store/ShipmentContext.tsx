@@ -81,7 +81,7 @@ interface RawShipmentSummary {
   holdPolicy?: Shipment["holdPolicy"];
   cancellation?: Shipment["cancellation"] | null;
   pod: { tanggal: string; jam: string; namaPenerima: string } | null;
-  lastUpdate: { tanggal: string; jam: string } | null;
+  lastUpdate: { tanggal: string; jam: string; keterangan?: string | null; internalNotes?: string | null } | null;
 }
 
 export interface ClaimSeen {
@@ -131,7 +131,7 @@ function toShipment(row: RawShipmentSummary): Shipment {
   return {
     awb: row.awb,
     reference: row.reference ?? undefined,
-    internalNotes: row.internalNotes ?? undefined,
+    internalNotes: row.internalNotes?.trim() || undefined,
     tanggalDibuat: row.tanggalDibuat,
     jamDibuat: row.jamDibuat,
     status: row.status,
@@ -166,6 +166,8 @@ function toShipment(row: RawShipmentSummary): Shipment {
     vehiclePlate: row.vehiclePlate ?? undefined,
     driverName: row.driverName ?? undefined,
     driverId: row.driverId ?? undefined,
+    lastKeterangan: row.lastUpdate?.keterangan ?? undefined,
+    lastInternalNotes: row.lastUpdate?.internalNotes?.trim() || undefined,
     customerId: row.customerId ?? undefined,
     mitraId: row.mitraId ?? undefined,
     mitraNama: row.mitraNama ?? undefined,
@@ -212,7 +214,7 @@ function toTimelineEvent(row: RawTimelineRow, fotoUrls: string[]): TimelineEvent
     truckId: row.truck_id ?? undefined,
     truckSebelumnya: row.truck_sebelumnya_nomor_unit ? { nomorUnit: row.truck_sebelumnya_nomor_unit, jenis: "-" } : undefined,
     inputBy: row.input_by_name ?? undefined,
-    internalNotes: row.internal_notes ?? undefined,
+    internalNotes: row.internal_notes?.trim() || undefined,
     inputAt: row.input_at,
     ltlStage: row.ltl_stage ?? undefined,
   };

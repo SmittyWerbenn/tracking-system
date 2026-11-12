@@ -121,7 +121,7 @@ export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineP
                   <p className="mt-1 text-sm leading-relaxed text-slate-500">{event.keterangan}</p>
                 )}
                 {/* Only the admin API ever sends internalNotes, so the public tracking page never renders this. */}
-                {event.internalNotes && (
+                {event.internalNotes?.trim() && (
                   <p className="mt-1 flex items-start gap-1.5 rounded-md bg-amber-50 px-2 py-1.5 text-sm leading-relaxed text-amber-800">
                     <span className="mt-0.5 shrink-0 rounded-full bg-amber-200 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">Internal</span>
                     <span className="min-w-0 break-words">{event.internalNotes}</span>

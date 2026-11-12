@@ -528,7 +528,7 @@ export default function ShipmentList() {
                     {s.awb}
                     <DoBalikBadge shipment={s} className="ml-2 align-middle" />
                     {s.reference && <span className="block font-sans text-[11px] font-normal text-slate-400" title="Referensi">Ref: {s.reference}</span>}
-                    {s.internalNotes && (
+                    {s.internalNotes?.trim() && (
                       <span className="mt-0.5 block max-w-[220px] truncate font-sans text-[11px] font-normal text-amber-700" title={`Keterangan Internal: ${s.internalNotes}`}>
                         [Internal] {s.internalNotes}
                       </span>

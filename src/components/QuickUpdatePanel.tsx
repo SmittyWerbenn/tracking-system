@@ -12,10 +12,10 @@ const inputClass =
 
 /** Statuses the quick form can log: no Transfer Unit (it needs a truck), and Re-route / Penarikan stay admin-only like in the API. */
 function quickOptions(shipment: Shipment, role: string | undefined): TrackingChoice[] {
-  // LTL: the 8 pipeline statuses, from the current one onward.
+  // LTL: the 9 pipeline statuses, from the current one onward. POD Kembali is an admin step, like Re-route / Penarikan.
   return getTrackingChoices(shipment, (c) => {
     if (c.type === "Transfer Unit") return false;
-    if (role === "Mitra" && (c.type === "Re-route" || c.type === "Penarikan")) return false;
+    if (role === "Mitra" && (c.type === "Re-route" || c.type === "Penarikan" || c.ltlStage === "POD_RETURNED")) return false;
     return true;
   });
 }

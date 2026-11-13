@@ -463,7 +463,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
   async function addTrackingUpdate(data: TrackingUpdateFormData) {
     try {
       // The hand-over (LTL: Terkirim / DELIVERED): POD photos + admin email.
-      const isSelesai = data.type === "Selesai / Terkirim";
+      const isSelesai = data.type === "Selesai / Terkirim" && data.ltlStage !== "POD_RETURNED";
       const res = await api.post<{ eventId: string; doBalikAlert?: boolean }>(`/api/shipments/${encodeURIComponent(data.awb)}/timeline`, {
         type: data.type,
         ltlStage: data.ltlStage,

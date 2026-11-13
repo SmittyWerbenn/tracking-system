@@ -1,9 +1,9 @@
 import type { Shipment, TimelineEventType } from "../types";
-import { LTL_STAGES, currentLtlIndex, isLtlLayanan, nextLtlStages, normalizeLtlStage, renderLtlDescription, type LtlStageDef } from "./ltlPipeline";
+import { LTL_FINAL_INDEX, LTL_STAGES, currentLtlIndex, isLtlLayanan, nextLtlStages, normalizeLtlStage, renderLtlDescription, type LtlStageDef } from "./ltlPipeline";
 import { getAllowedNextEvents } from "./status";
 import { defaultLokasiFor, presetsFor } from "./trackingPresets";
 
-/** One entry of the "Status" dropdown. Non-LTL: a plain event type. LTL: one of the 8 pipeline statuses (or an exception like Kendala). */
+/** One entry of the "Status" dropdown. Non-LTL: a plain event type. LTL: one of the 9 pipeline statuses (or an exception like Kendala). */
 export interface TrackingChoice {
   value: string;
   label: string;
@@ -18,7 +18,7 @@ export function isLtlShipment(s: Pick<Shipment, "layanan">): boolean {
   return isLtlLayanan(s.layanan);
 }
 
-/** Index (0-7) of the LTL status this shipment is at: the one of its newest log, i.e. the top row of the timeline. */
+/** Index (0-8) of the LTL status this shipment is at: the one of its newest log, i.e. the top row of the timeline. */
 export function ltlIndexOf(s: Pick<Shipment, "timeline" | "status">): number {
   return currentLtlIndex(s.timeline, s.status);
 }
@@ -67,12 +67,16 @@ export function choiceDefaults(
   return { lokasi: defaultLokasiFor(c.type, s), keterangan: presets[0] ?? "", presets };
 }
 
-/** True when this choice is the hand-over to the consignee (needs penerima name + POD photos). LTL: Terkirim. */
+/** True when this choice is the hand-over to the consignee (needs penerima name + POD photos). LTL: Terkirim -
+ * POD Kembali is the paperwork step after it and needs neither. */
 export function isHandoverChoice(c: TrackingChoice | undefined): boolean {
-  return !!c && c.type === "Selesai / Terkirim";
+  return !!c && c.type === "Selesai / Terkirim" && c.ltlStage !== "POD_RETURNED";
 }
 
-/** Whether the tracking form is closed for this shipment. */
-export function isTrackingLocked(s: Shipment): boolean {
-  return s.status === "Dibatalkan" || s.status === "Hold" || s.status === "Selesai / Terkirim";
+/** Whether the tracking form is closed for this shipment. A delivered LTL shipment stays open for its final step,
+ * POD Kembali - an admin step, so pass `canLogPodReturn = false` for roles that may not log it (Mitra). */
+export function isTrackingLocked(s: Shipment, canLogPodReturn = true): boolean {
+  if (s.status === "Dibatalkan" || s.status === "Hold") return true;
+  if (s.status !== "Selesai / Terkirim") return false;
+  return !canLogPodReturn || !isLtlShipment(s) || ltlIndexOf(s) >= LTL_FINAL_INDEX;
 }

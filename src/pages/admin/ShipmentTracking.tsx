@@ -112,7 +112,7 @@ export default function ShipmentTracking() {
       </div>
 
       {/* Quick Update: same audience/locks as the Update Tracking page; remounts (new key) after each save so it is clean. */}
-      {canUpdateTracking && !isTrackingLocked(shipment) && (
+      {canUpdateTracking && !isTrackingLocked(shipment, profile?.role !== "Mitra") && (
         <QuickUpdatePanel
           key={`${shipment.awb}-${shipment.status}-${shipment.timeline.length}`}
           shipment={shipment}

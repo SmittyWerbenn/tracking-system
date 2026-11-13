@@ -1,7 +1,7 @@
-import { AlertTriangle, Check, ClipboardCheck, MapPin, Navigation, PackageCheck, PackageOpen, Truck, Warehouse } from "lucide-react";
+import { AlertTriangle, Check, ClipboardCheck, MapPin, Navigation, PackageCheck, PackageOpen, Truck, Warehouse, FileCheck } from "lucide-react";
 import { useLanguage } from "../store/LanguageContext";
 import type { ShipmentStatus } from "../types";
-import { LTL_STAGES } from "../utils/ltlPipeline";
+import { LTL_DELIVERED_INDEX, LTL_STAGES } from "../utils/ltlPipeline";
 
 const STEP_ICONS = [ClipboardCheck, PackageOpen, PackageCheck, Truck, Navigation, Check];
 
@@ -31,14 +31,14 @@ function getProgress(status: ShipmentStatus, hasPickup: boolean): { index: numbe
   }
 }
 
-/** LTL: one step per pipeline status (8). `ltlIndex` is the status of the newest log - the top row of the timeline -
+/** LTL: one step per pipeline status (9, ending at POD Kembali). `ltlIndex` is the status of the newest log - the top row of the timeline -
  * so the stepper and the history always point at the same status (-1 = nothing yet). */
 function getLtlProgress(status: ShipmentStatus, ltlIndex: number): { index: number; hasKendala: boolean } {
   return { index: Math.max(0, ltlIndex), hasKendala: status === "Kendala" };
 }
 
-/** Order Diterima, Di-Pickup, Tiba di Gudang Asal, Berangkat, Dalam Perjalanan, Tiba di Gudang Tujuan, Sedang Diantar, Terkirim. */
-const LTL_ICONS = [ClipboardCheck, PackageOpen, Warehouse, Truck, Navigation, PackageCheck, MapPin, Check];
+/** Order Diterima, Di-Pickup, Tiba di Gudang Asal, Berangkat, Dalam Perjalanan, Tiba di Gudang Tujuan, Sedang Diantar, Terkirim, POD Kembali. */
+const LTL_ICONS = [ClipboardCheck, PackageOpen, Warehouse, Truck, Navigation, PackageCheck, MapPin, Check, FileCheck];
 
 export function StatusStepper({ status, hasPickup = false, ltlIndex }: { status: ShipmentStatus; hasPickup?: boolean; ltlIndex?: number }) {
   const { t } = useLanguage();
@@ -55,7 +55,7 @@ export function StatusStepper({ status, hasPickup = false, ltlIndex }: { status:
     { label: t.stepper.delivered, icon: STEP_ICONS[5] },
   ];
 
-  // 8 steps (LTL) need tighter circles and labels to fit a phone screen.
+  // 9 steps (LTL) need tighter circles and labels to fit a phone screen.
   const dense = STEPS.length > 6;
 
   return (
@@ -72,7 +72,8 @@ export function StatusStepper({ status, hasPickup = false, ltlIndex }: { status:
           // Reaching the final step IS completion, not "in progress toward
           // it" - treat it as done (emerald + check) rather than the
           // in-progress blue used for earlier current steps.
-          const isDelivered = i === current && isLast && !hasKendala;
+          // LTL: Terkirim is complete the moment it is reached too; only POD Kembali is still ahead.
+          const isDelivered = i === current && (isLast || (isLtl && i === LTL_DELIVERED_INDEX)) && !hasKendala;
           const done = i < current || isDelivered;
           const isCurrent = i === current && !isDelivered;
           const Icon = step.icon;
@@ -119,7 +120,7 @@ export function StatusStepper({ status, hasPickup = false, ltlIndex }: { status:
                 </span>
               </div>
               <p
-                className={`mt-2 text-center font-medium leading-tight sm:max-w-none sm:px-1 sm:text-xs ${dense ? "max-w-[42px] text-[9px]" : "max-w-[56px] text-[10px]"} ${
+                className={`mt-2 text-center font-medium leading-tight sm:max-w-none sm:px-1 sm:text-xs ${dense ? "max-w-[38px] text-[8px]" : "max-w-[56px] text-[10px]"} ${
                   done || isCurrent ? "text-slate-800" : "text-slate-400"
                 }`}
               >

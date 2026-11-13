@@ -55,10 +55,12 @@ function UpdateTrackingForm() {
   const canEditInfo = profile?.role === "Superadmin" || profile?.role === "Admin";
   const navigate = useNavigate();
 
-  // Statuses selectable for a shipment (LTL: the 8 pipeline statuses, from the current one onward).
+  // Statuses selectable for a shipment (LTL: the 9 pipeline statuses, from the current one onward).
   const trackingOptionsFor = (s: Shipment) =>
     getTrackingChoices(s, (c) => {
       if (isMitra && c.type === "Transfer Unit") return false;
+      // POD Kembali (dokumen asli kembali ke GMS) is an admin step.
+      if (isMitra && c.ltlStage === "POD_RETURNED") return false;
       return true;
     });
 
@@ -178,7 +180,10 @@ function UpdateTrackingForm() {
   const allowedOptions = trackingOptionsFor(shipment);
   const choice: TrackingChoice = allowedOptions.find((o) => o.value === choiceValue) ?? allowedOptions[0] ?? { value: "Transit", label: "Transit", type: "Transit" };
   const type = choice.type;
-  const locked = isTrackingLocked(shipment) && shipment.status === "Selesai / Terkirim";
+  // delivered = hand-over done (shipment data is final); locked = no tracking status left to log.
+  // A delivered LTL shipment is not locked until its final step, POD Kembali, is logged.
+  const delivered = shipment.status === "Selesai / Terkirim";
+  const locked = delivered && isTrackingLocked(shipment, !isMitra);
   const POD_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   const deliveredEvent = [...shipment.timeline].reverse().find((e) => e.type === "Selesai / Terkirim");
   const deliveredAtMs = deliveredEvent?.inputAt ? new Date(deliveredEvent.inputAt).getTime() : null;
@@ -367,7 +372,7 @@ function UpdateTrackingForm() {
           Pengiriman ini sedang di-Hold, jadi belum bisa diproses atau diberi update tracking. Pembuat order dapat memilih Lepas Hold dari halaman detail resi.
         </div>
       )}
-      {!locked && (
+      {!delivered && (
         <div className="mt-6 rounded-xl border border-slate-200 bg-white shadow-sm">
           {canEditInfo ? (
             <button
@@ -622,7 +627,7 @@ function UpdateTrackingForm() {
         </div>
       )}
 
-      {locked ? (
+      {delivered && (
         <>
           <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center">
             <CheckCircle2 className="mx-auto mb-2 text-emerald-600" size={28} />
@@ -725,7 +730,9 @@ function UpdateTrackingForm() {
             </div>
           )}
         </>
-      ) : (
+      )}
+      {/* LTL: a delivered shipment keeps the form open for its final step, POD Kembali. */}
+      {!locked && (
         <form onSubmit={handleSubmit} className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block">

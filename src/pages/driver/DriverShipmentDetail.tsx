@@ -199,7 +199,7 @@ export default function DriverShipmentDetail() {
     });
   }
 
-  // Statuses this driver may log next. LTL: the 8 pipeline statuses from the current one onward, plus Kendala.
+  // Statuses this driver may log next. LTL: the pipeline statuses from the current one onward (POD Kembali is an admin step), plus Kendala.
   // Other layanan: the plain event types. Transfer Unit / Re-route / Penarikan stay admin-only.
   const statusChoices: { value: string; label: string; type: TimelineEventType; ltlStage?: string; lokasi?: string; keterangan?: string }[] = (() => {
     if (!data || data.shipment.status === SELESAI_STATUS) return [];
@@ -211,7 +211,7 @@ export default function DriverShipmentDetail() {
     }
     const current = currentLtlIndex(data.timeline.map((e) => ({ type: e.type, ltlStage: e.ltl_stage })), s.status);
     return [
-      ...nextLtlStages(current).map((st) => ({
+      ...nextLtlStages(current).filter((st) => st.code !== "POD_RETURNED").map((st) => ({
         value: st.code as string,
         label: st.label,
         type: st.type as TimelineEventType,

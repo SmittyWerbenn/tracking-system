@@ -100,5 +100,5 @@ export function isTrackingLocked(s: Shipment): boolean {
 
 /** Props for the full LTL timeline checklist. */
 export function ltlOf(s: Shipment) {
-  return { flags: { packingKayu: s.packingKayu, asuransi: s.asuransi, hasTransit: s.hasTransit }, origin: s.kotaAsal, destination: s.kotaTujuan };
+  return { flags: { packingKayu: s.packingKayu, asuransi: s.asuransi, hasTransit: s.hasTransit }, origin: s.kotaAsal, destination: s.kotaTujuan, status: s.status };
 }

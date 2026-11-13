@@ -5,6 +5,7 @@ import type { TimelineEvent } from "../types";
 import { formatJam, formatTanggalPanjang } from "../utils/format";
 import {
   LTL_PHASES,
+  currentLtlIndex,
   applicableLtlStages,
   getLtlStage,
   ltlStageIndex,
@@ -17,7 +18,7 @@ import { ImageLightbox, PhotoThumb } from "./ImageLightbox";
 
 interface Props {
   events: TimelineEvent[];
-  ltl: { flags: LtlFlags; origin: string; destination: string };
+  ltl: { flags: LtlFlags; origin: string; destination: string; status: string };
   onEdit?: (event: TimelineEvent) => void;
   onDelete?: (event: TimelineEvent) => void;
 }
@@ -25,7 +26,8 @@ interface Props {
 /** System milestones are never editable or deletable (same rule as the classic timeline). */
 const PROTECTED = new Set(["Barang Diterima", "Selesai / Terkirim", "Dibatalkan"]);
 
-type State = "done" | "current" | "skipped" | "upcoming";
+/** reached = older shipment with no per-stage log: the stage is implied by its status, so there is no time/location to show. */
+type State = "done" | "current" | "reached" | "skipped" | "upcoming";
 
 /** Full LTL checklist: every stage that applies to this shipment, grouped by phase, top to bottom in pipeline order.
  * Logged stages show their time / location / note; the rest stay visible but muted so the whole journey is clear at a glance.
@@ -48,21 +50,28 @@ export function LtlTimeline({ events, ltl, onEdit, onDelete }: Props) {
   }
   let currentIdx = -1;
   for (const code of byStage.keys()) currentIdx = Math.max(currentIdx, ltlStageIndex(code));
+  const legacy = byStage.size === 0;
+  if (legacy) currentIdx = currentLtlIndex(events, ltl.status);
   const closed = byStage.has("SHIPMENT_CLOSED");
 
   const stateOf = (st: LtlStageDef): State => {
     const i = ltlStageIndex(st.code);
     if (byStage.has(st.code)) return i === currentIdx && !closed ? "current" : "done";
+    if (legacy && currentIdx >= 0) return i === currentIdx ? "current" : i < currentIdx ? "reached" : "upcoming";
     return i < currentIdx ? "skipped" : "upcoming";
   };
 
   const phases = LTL_PHASES.map((name, p) => {
     const items = stages.filter((s) => s.phase === p);
-    const done = items.filter((s) => byStage.has(s.code)).length;
+    const done = items.filter((s) => ["done", "current", "reached"].includes(stateOf(s))).length;
     return { name, items, done };
   }).filter((p) => p.items.length > 0);
 
   const interactive = !!(onEdit || onDelete);
+  const totalStages = stages.length;
+  const reachedStages = stages.filter((s) => ["done", "current", "reached"].includes(stateOf(s))).length;
+  const pct = totalStages ? Math.round((reachedStages / totalStages) * 100) : 0;
+  const nextStage = stages.find((s) => ltlStageIndex(s.code) > currentIdx);
 
   function Actions({ event }: { event: TimelineEvent }) {
     const manageable = !PROTECTED.has(event.type);
@@ -118,6 +127,42 @@ export function LtlTimeline({ events, ltl, onEdit, onDelete }: Props) {
   return (
     <div>
       <ImageLightbox src={lightbox?.src ?? null} caption={lightbox?.caption} onClose={() => setLightbox(null)} />
+      {/* Overall progress: how far along the full LTL pipeline this shipment is. */}
+      <div className="mb-6 rounded-xl bg-slate-50 px-4 py-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <p className="text-sm font-semibold text-slate-800">
+            {reachedStages} dari {totalStages} tahap <span className="font-normal text-slate-500">· {pct}%</span>
+          </p>
+          <p className="text-xs text-slate-500">
+            {closed ? "Pengiriman LTL selesai dan ditutup" : nextStage ? <>Berikutnya: <span className="font-semibold text-slate-700">{nextStage.label}</span></> : "Semua tahap tercapai"}
+          </p>
+        </div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+          <div className={`h-full rounded-full transition-all ${closed ? "bg-emerald-500" : "bg-blue-800"}`} style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+
+      {/* Older LTL shipments have plain (non-stage) logs: keep them visible as history above the checklist. */}
+      {legacy && events.length > 0 && (
+        <div className="mb-6">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Riwayat Tracking</h3>
+          <div className="space-y-2">
+            {[...events].reverse().map((x) => (
+              <div key={x.id} className="rounded-lg border border-slate-200 px-3 py-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-[11px] font-medium text-slate-500">
+                    {formatTanggalPanjang(x.tanggal)} · {formatJam(x.jam)}
+                  </p>
+                  <Actions event={x} />
+                </div>
+                <p className="text-sm font-semibold text-slate-900">{x.type}</p>
+                <Details event={x} label={x.type} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="space-y-6">
         {phases.map((phase, pi) => {
           const complete = phase.done === phase.items.length;
@@ -142,7 +187,7 @@ export function LtlTimeline({ events, ltl, onEdit, onDelete }: Props) {
                 {phase.items.map((st) => {
                   const state = stateOf(st);
                   const event = byStage.get(st.code);
-                  const extras = extrasAfter.get(st.code) ?? [];
+                  const extras = legacy ? [] : extrasAfter.get(st.code) ?? [];
                   const desc = renderLtlDescription(st, ltl.origin, ltl.destination);
                   return (
                     <li key={st.code} className={`relative ${interactive && event ? "group -ml-3 rounded-xl border border-transparent px-3 py-2.5 pl-3 hover:border-sky-200 hover:bg-sky-50/70" : "pb-4 last:pb-0"}`}>
@@ -151,7 +196,9 @@ export function LtlTimeline({ events, ltl, onEdit, onDelete }: Props) {
                         className={`absolute top-3 h-3.5 w-3.5 rounded-full ring-4 ring-white ${interactive && event ? "-left-[31px] group-hover:ring-sky-50" : "-left-[31px]"} ${
                           state === "done"
                             ? "bg-emerald-500"
-                            : state === "current"
+                            : state === "reached"
+                              ? "border-2 border-emerald-400 bg-white"
+                              : state === "current"
                               ? "bg-blue-800"
                               : state === "skipped"
                                 ? "border-2 border-dashed border-slate-300 bg-white"
@@ -177,8 +224,9 @@ export function LtlTimeline({ events, ltl, onEdit, onDelete }: Props) {
                         </div>
                       ) : (
                         <div className="min-w-0 opacity-90">
-                          <p className={`text-sm font-medium ${state === "skipped" ? "text-slate-300 line-through" : "text-slate-400"}`}>
+                          <p className={`text-sm font-medium ${state === "skipped" ? "text-slate-300 line-through" : state === "reached" ? "text-slate-600" : state === "current" ? "font-semibold text-blue-900" : "text-slate-400"}`}>
                             {st.label}
+                            {state === "current" && <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-800">{t.timeline.latest}</span>}
                             {state === "skipped" && <span className="ml-2 text-[11px] font-normal no-underline text-slate-400">Dilewati</span>}
                           </p>
                           {state === "upcoming" && <p className="text-xs text-slate-300">{desc}</p>}

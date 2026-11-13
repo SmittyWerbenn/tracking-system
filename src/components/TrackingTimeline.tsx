@@ -14,7 +14,7 @@ interface TrackingTimelineProps {
   onEdit?: (event: TimelineEvent) => void;
   onDelete?: (event: TimelineEvent) => void;
   /** LTL shipments: render the full stage checklist (done / current / upcoming) grouped by phase instead of only the logged events. */
-  ltl?: { flags: LtlFlags; origin: string; destination: string };
+  ltl?: { flags: LtlFlags; origin: string; destination: string; status: string };
 }
 
 /** System milestones (initial "Order Dibuat", delivery, cancellation) are never editable or deletable. */
@@ -26,8 +26,8 @@ export function TrackingTimeline({ events, onEdit, onDelete, ltl }: TrackingTime
   // Show most recent first for the reading order, but keep chronological numbering.
   const ordered = [...events].reverse();
 
-  // LTL with stage logs: the full checklist (every applicable stage, grouped by phase).
-  if (ltl && events.some((e) => e.ltlStage)) {
+  // LTL: always the full checklist (every applicable stage, grouped by phase), even before any stage log exists.
+  if (ltl) {
     return <LtlTimeline events={events} ltl={ltl} onEdit={onEdit} onDelete={onDelete} />;
   }
 

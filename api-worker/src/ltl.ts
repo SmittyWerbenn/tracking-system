@@ -33,7 +33,7 @@ export interface LtlStageDef {
 }
 
 export const LTL_STAGES: readonly LtlStageDef[] = [
-  { code: "ORDER_RECEIVED", label: "Order Diterima", description: "Pesanan {origin} → {destination} diproses", type: "Di pickup", city: "origin" },
+  { code: "ORDER_RECEIVED", label: "Order Dibuat", description: "Pesanan {origin} → {destination} diproses", type: "Di pickup", city: "origin" },
   { code: "PICKED_UP", label: "Di-Pickup", description: "Cargo diambil dari shipper", type: "Di pickup", city: "origin" },
   { code: "ARRIVED_ORIGIN_HUB", label: "Tiba di Gudang Asal", description: "Cek fisik, packing kayu, asuransi & konsolidasi selesai", type: "Di pickup", city: "origin" },
   { code: "DEPARTED", label: "Berangkat", description: "Armada linehaul berangkat dari {origin}", type: "Berangkat", city: "origin" },

@@ -37,7 +37,7 @@ function getLtlProgress(status: ShipmentStatus, ltlIndex: number): { index: numb
   return { index: Math.max(0, ltlIndex), hasKendala: status === "Kendala" };
 }
 
-/** Order Diterima, Di-Pickup, Tiba di Gudang Asal, Berangkat, Dalam Perjalanan, Tiba di Gudang Tujuan, Sedang Diantar, Terkirim, POD Kembali. */
+/** Order Dibuat, Di-Pickup, Tiba di Gudang Asal, Berangkat, Dalam Perjalanan, Tiba di Gudang Tujuan, Sedang Diantar, Terkirim, POD Kembali. */
 const LTL_ICONS = [ClipboardCheck, PackageOpen, Warehouse, Truck, Navigation, PackageCheck, MapPin, Check, FileCheck];
 
 export function StatusStepper({ status, hasPickup = false, ltlIndex }: { status: ShipmentStatus; hasPickup?: boolean; ltlIndex?: number }) {

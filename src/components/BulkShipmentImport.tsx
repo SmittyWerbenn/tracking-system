@@ -382,14 +382,16 @@ export function BulkShipmentImport() {
             />
           </div>
         </div>
-        <div className="mt-4 grid max-w-3xl grid-cols-1 items-start gap-3 sm:grid-cols-2">
-          <label className="block">
+        {/* Both columns are label + 38px box, so the Client ID input and the client-name preview line up top and bottom. */}
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-12 md:gap-4">
+          <label className="block md:col-span-4">
             <span className="mb-1.5 block text-xs font-medium text-slate-600">Client ID (berlaku untuk semua baris)</span>
             <ClientIdInput id="bulk-customer-id-suggestions" value={customerId} onChange={setCustomerId} clients={clients} disabled={isCustAdmin} />
           </label>
           {/* Confirms which company the typed / chosen Client ID is, before any AWB is issued. */}
           {!isCustAdmin && (
-            <div className="sm:pt-[22px]">
+            <div className="md:col-span-8">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Client Terpilih</span>
               <ClientPreview value={customerId} clients={clients} />
             </div>
           )}

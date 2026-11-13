@@ -11,6 +11,7 @@ import {
   User,
   X,
 } from "lucide-react";
+import { ClientIdInput, ClientPreview, type ClientOption } from "../../components/ClientIdField";
 import { LtlHandlingFields } from "../../components/LtlHandlingFields";
 import { isLtlLayanan } from "../../utils/ltlPipeline";
 import { useEffect, useState, type FormEvent } from "react";
@@ -117,7 +118,7 @@ export default function CreateShipment() {
     ...emptyForm,
     customerId: isCustAdmin ? profile?.customerId ?? "" : "",
   }));
-  const [customerIds, setCustomerIds] = useState<string[]>([]);
+  const [clients, setClients] = useState<ClientOption[]>([]);
 
   // Always show the latest Master Layanan when the form opens, then make
   // sure the selected value is one of the active entries (Regular when it's
@@ -138,9 +139,9 @@ export default function CreateShipment() {
   useEffect(() => {
     if (isCustAdmin) return;
     api
-      .get<{ items: string[] }>("/api/customer-ids")
-      .then((res) => setCustomerIds(res.items))
-      .catch(() => setCustomerIds([]));
+      .get<{ items: string[]; clients?: ClientOption[] }>("/api/customer-ids")
+      .then((res) => setClients(res.clients ?? res.items.map((customerId) => ({ customerId, nama: null }))))
+      .catch(() => setClients([]));
   }, [isCustAdmin]);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [photoSuratJalanError, setPhotoSuratJalanError] = useState<string | null>(null);
@@ -450,21 +451,14 @@ export default function CreateShipment() {
             </select>
           </Field>
           <Field label="Client ID">
-            <input
-              required
-              disabled={isCustAdmin}
-              list="customer-id-suggestions"
-              className={`${inputClass} ${isCustAdmin ? "bg-slate-50 text-slate-500" : ""}`}
-              placeholder="Contoh: IDTMDI001"
+            <ClientIdInput
+              id="customer-id-suggestions"
               value={form.customerId ?? ""}
-              onChange={(e) => update("customerId", e.target.value)}
-              autoComplete="off"
+              onChange={(v) => update("customerId", v)}
+              clients={clients}
+              disabled={isCustAdmin}
             />
-            <datalist id="customer-id-suggestions">
-              {customerIds.map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
+            {!isCustAdmin && <ClientPreview value={form.customerId ?? ""} clients={clients} className="mt-2" />}
             {isCustAdmin && (
               <p className="mt-1.5 text-[11px] text-slate-400">
                 Terkunci ke Client ID akun Anda.

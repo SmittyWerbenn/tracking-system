@@ -1,4 +1,5 @@
 import { adminPath } from "../utils/urls";
+import { ClientIdInput, ClientPreview, type ClientOption } from "../components/ClientIdField";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -173,14 +174,14 @@ export function BulkShipmentImport() {
   // Bulk import applies one Client ID to the whole batch, rather than
   // a per-row column - keeps the import table/template unchanged.
   const [customerId, setCustomerId] = useState(isCustAdmin ? profile?.customerId ?? "" : "");
-  const [customerIds, setCustomerIds] = useState<string[]>([]);
+  const [clients, setClients] = useState<ClientOption[]>([]);
 
   useEffect(() => {
     if (isCustAdmin) return;
     api
-      .get<{ items: string[] }>("/api/customer-ids")
-      .then((res) => setCustomerIds(res.items))
-      .catch(() => setCustomerIds([]));
+      .get<{ items: string[]; clients?: ClientOption[] }>("/api/customer-ids")
+      .then((res) => setClients(res.clients ?? res.items.map((customerId) => ({ customerId, nama: null }))))
+      .catch(() => setClients([]));
   }, [isCustAdmin]);
 
   const truckOptions = trucksWithDriver.filter((t) => t.status !== "Inactive");
@@ -381,28 +382,18 @@ export function BulkShipmentImport() {
             />
           </div>
         </div>
-        <label className="mt-4 block max-w-xs">
-          <span className="mb-1.5 block text-xs font-medium text-slate-600">
-            Client ID (berlaku untuk semua baris)
-          </span>
-          <input
-            required
-            disabled={isCustAdmin}
-            list="bulk-customer-id-suggestions"
-            className={`w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 ${
-              isCustAdmin ? "bg-slate-50 text-slate-500" : ""
-            }`}
-            placeholder="Contoh: IDTMDI001"
-            value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
-            autoComplete="off"
-          />
-          <datalist id="bulk-customer-id-suggestions">
-            {customerIds.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
-        </label>
+        <div className="mt-4 grid max-w-3xl grid-cols-1 items-start gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-medium text-slate-600">Client ID (berlaku untuk semua baris)</span>
+            <ClientIdInput id="bulk-customer-id-suggestions" value={customerId} onChange={setCustomerId} clients={clients} disabled={isCustAdmin} />
+          </label>
+          {/* Confirms which company the typed / chosen Client ID is, before any AWB is issued. */}
+          {!isCustAdmin && (
+            <div className="sm:pt-[22px]">
+              <ClientPreview value={customerId} clients={clients} />
+            </div>
+          )}
+        </div>
         {importError && (
           <div className="mt-3 flex items-start gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-xs text-red-700">
             <AlertTriangle size={14} className="mt-0.5 shrink-0" />

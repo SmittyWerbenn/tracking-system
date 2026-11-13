@@ -3,7 +3,8 @@ import { useState } from "react";
 import { actionClass } from "./ActionButton";
 import { useLanguage } from "../store/LanguageContext";
 import type { TimelineEvent } from "../types";
-import { getLtlStage } from "../utils/ltlPipeline";
+import { getLtlStage, type LtlFlags } from "../utils/ltlPipeline";
+import { LtlTimeline } from "./LtlTimeline";
 import { formatJam, formatTanggalPanjang } from "../utils/format";
 import { ImageLightbox, PhotoThumb } from "./ImageLightbox";
 
@@ -12,16 +13,23 @@ interface TrackingTimelineProps {
   /** Admin portal only: shows an edit / delete button on logs that may be corrected. */
   onEdit?: (event: TimelineEvent) => void;
   onDelete?: (event: TimelineEvent) => void;
+  /** LTL shipments: render the full stage checklist (done / current / upcoming) grouped by phase instead of only the logged events. */
+  ltl?: { flags: LtlFlags; origin: string; destination: string };
 }
 
 /** System milestones (initial "Order Dibuat", delivery, cancellation) are never editable or deletable. */
 const PROTECTED_EVENT_TYPES = new Set(["Barang Diterima", "Selesai / Terkirim", "Dibatalkan"]);
 
-export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineProps) {
+export function TrackingTimeline({ events, onEdit, onDelete, ltl }: TrackingTimelineProps) {
   const { t } = useLanguage();
   const [lightbox, setLightbox] = useState<{ src: string; caption: string } | null>(null);
   // Show most recent first for the reading order, but keep chronological numbering.
   const ordered = [...events].reverse();
+
+  // LTL with stage logs: the full checklist (every applicable stage, grouped by phase).
+  if (ltl && events.some((e) => e.ltlStage)) {
+    return <LtlTimeline events={events} ltl={ltl} onEdit={onEdit} onDelete={onDelete} />;
+  }
 
   return (
     <div className="relative">

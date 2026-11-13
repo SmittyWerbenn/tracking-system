@@ -97,3 +97,8 @@ export function isTrackingLocked(s: Shipment): boolean {
   if (!isLtlShipment(s)) return true;
   return ltlIndexOf(s) >= ltlStageIndex("SHIPMENT_CLOSED");
 }
+
+/** Props for the full LTL timeline checklist. */
+export function ltlOf(s: Shipment) {
+  return { flags: { packingKayu: s.packingKayu, asuransi: s.asuransi, hasTransit: s.hasTransit }, origin: s.kotaAsal, destination: s.kotaTujuan };
+}

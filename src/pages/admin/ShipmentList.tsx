@@ -1,4 +1,4 @@
-import { ACTION_ROW, actionClass } from "../../components/ActionButton";
+import { actionClass } from "../../components/ActionButton";
 import { DoBalikBadge } from "../../components/DoBalikBadge";
 import { adminPath } from "../../utils/urls";
 import { AlertTriangle, CheckCircle2, Download, Eye, FileEdit, LayoutList, ListTree, Loader2, MapPin, PackageSearch, Pencil, Printer, RefreshCw, RotateCcw, Search, X, XCircle } from "lucide-react";
@@ -362,8 +362,8 @@ export default function ShipmentList() {
         </div>
       )}
 
-      <div className={`${macetOnly ? "mt-3" : "mt-5"} flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center`}>
-        <div className="relative flex-1">
+      <div className={`${macetOnly ? "mt-3" : "mt-5"} flex flex-wrap items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4`}>
+        <div className="relative w-full min-w-[220px] flex-1 basis-full sm:basis-64">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={query}
@@ -375,7 +375,7 @@ export default function ShipmentList() {
         <select
           value={statusFilter}
           onChange={(e) => handleStatusFilterChange(e.target.value as ShipmentStatus | "Semua")}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-auto"
         >
           <option value="Semua">Semua Status</option>
           {SHIPMENT_STATUS_OPTIONS.map((s) => (
@@ -395,7 +395,7 @@ export default function ShipmentList() {
             })
           }
           aria-label="Filter DO Balik"
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-auto"
         >
           <option value="">Semua (DO Balik)</option>
           <option value="1">Hanya DO Balik</option>
@@ -406,7 +406,7 @@ export default function ShipmentList() {
             value={clientFilter}
             onChange={(e) => setClientFilter(e.target.value)}
             aria-label="Filter Client ID"
-            className="max-w-[14rem] rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            className="w-full max-w-full rounded-lg border border-slate-300 sm:w-auto sm:max-w-[14rem] px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
           >
             <option value="">Semua Client ID</option>
             {clientOptions.map((o) => (
@@ -416,7 +416,7 @@ export default function ShipmentList() {
             ))}
           </select>
         )}
-        <div className="flex items-center gap-1.5">
+        <div className="flex w-full items-center gap-1.5 sm:w-auto">
           <input
             type="date"
             value={dateFrom}
@@ -446,7 +446,7 @@ export default function ShipmentList() {
                 return next;
               });
             }}
-            className="text-sm font-medium text-slate-500 hover:text-slate-800"
+            className="shrink-0 whitespace-nowrap text-sm font-medium text-slate-500 hover:text-slate-800"
           >
             Reset
           </button>
@@ -455,17 +455,17 @@ export default function ShipmentList() {
           type="button"
           onClick={handleExport}
           disabled={listMeta.total === 0 || exporting}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
         >
           {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />} Export CSV
         </button>
-        <div className="flex items-center gap-2">
-          <span className="hidden text-xs text-slate-400 sm:inline">{listMeta.total.toLocaleString("id-ID")} pengiriman</span>
-          <div className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+        <div className="flex shrink-0 items-center gap-2 sm:ml-auto">
+          <span className="hidden whitespace-nowrap text-xs text-slate-400 sm:inline">{listMeta.total.toLocaleString("id-ID")} pengiriman</span>
+          <div className="inline-flex shrink-0 items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5">
             <button
               type="button"
               onClick={() => setViewMode("ringkas")}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold ${
+              className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold ${
                 viewMode === "ringkas" ? "bg-blue-900 text-white" : "text-slate-500 hover:text-slate-800"
               }`}
             >
@@ -474,7 +474,7 @@ export default function ShipmentList() {
             <button
               type="button"
               onClick={() => setViewMode("detail")}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold ${
+              className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold ${
                 viewMode === "detail" ? "bg-blue-900 text-white" : "text-slate-500 hover:text-slate-800"
               }`}
             >
@@ -493,7 +493,7 @@ export default function ShipmentList() {
           <table className={`w-full text-left text-sm ${viewMode === "detail" ? "min-w-[2220px]" : "min-w-[920px]"}`}>
             <thead className="sticky top-0 z-10 border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3 font-medium">AWB</th>
+                <th className="px-4 py-3 font-medium max-md:sticky max-md:left-0 max-md:z-20 max-md:bg-slate-50">AWB</th>
                 <th className="px-4 py-3 font-medium">Tanggal</th>
                 {viewMode === "detail" && (
                   <>
@@ -518,18 +518,18 @@ export default function ShipmentList() {
                 <th className="px-4 py-3 font-medium">Truck</th>
                 <th className="px-4 py-3 font-medium">Driver</th>
                 <th className="px-4 py-3 font-medium">Last Update</th>
-                <th className="px-4 py-3 font-medium">Aksi</th>
+                <th className="sticky right-0 z-20 bg-slate-50 px-4 py-3 font-medium shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.map((s) => (
-                <tr key={s.awb} className="hover:bg-slate-50">
-                  <td className="whitespace-nowrap px-4 py-3 font-mono font-medium text-slate-900">
+                <tr key={s.awb} className="group hover:bg-slate-50">
+                  <td className="whitespace-nowrap bg-white px-4 py-3 font-mono font-medium text-slate-900 group-hover:bg-slate-50 max-md:sticky max-md:left-0 max-md:z-[5]">
                     {s.awb}
                     <DoBalikBadge shipment={s} className="ml-2 align-middle" />
                     {s.reference && <span className="block font-sans text-[11px] font-normal text-slate-400" title="Referensi">Ref: {s.reference}</span>}
                     {s.internalNotes?.trim() && (
-                      <span className="mt-0.5 block max-w-[220px] truncate font-sans text-[11px] font-normal text-amber-700" title={`Keterangan Internal: ${s.internalNotes}`}>
+                      <span className="mt-0.5 block max-w-[220px] truncate font-sans text-[11px] font-normal text-amber-700 sm:max-w-[260px]" title={`Keterangan Internal: ${s.internalNotes}`}>
                         [Internal] {s.internalNotes}
                       </span>
                     )}
@@ -595,8 +595,8 @@ export default function ShipmentList() {
                   <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
                     {lastUpdate(s.awb)}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className={ACTION_ROW}>
+                  <td className="sticky right-0 z-[5] whitespace-nowrap bg-white px-4 py-2.5 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] group-hover:bg-slate-50">
+                    <div className="flex flex-nowrap items-center gap-1.5">
                       <Link
                         to={adminPath(`/resi/${s.awb}`)}
                         title="Detail"

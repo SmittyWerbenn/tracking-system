@@ -37,6 +37,8 @@ export interface DriverTruckInfo {
 export interface DriverTimelineEvent {
   id: string;
   type: string;
+  /** LTL only: pipeline status code of this log (old 25-stage codes included). */
+  ltl_stage?: string | null;
   lokasi: string;
   tanggal: string;
   jam: string;

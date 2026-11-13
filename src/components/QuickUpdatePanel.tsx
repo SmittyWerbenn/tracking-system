@@ -12,12 +12,10 @@ const inputClass =
 
 /** Statuses the quick form can log: no Transfer Unit (it needs a truck), and Re-route / Penarikan stay admin-only like in the API. */
 function quickOptions(shipment: Shipment, role: string | undefined): TrackingChoice[] {
-  // LTL: the pipeline stages valid for this shipment's packing / insurance / transit conditions.
-  // Post-delivery stages (e-POD, hardcopy POD, closed) are admin-only, like Re-route / Penarikan.
+  // LTL: the 8 pipeline statuses, from the current one onward.
   return getTrackingChoices(shipment, (c) => {
     if (c.type === "Transfer Unit") return false;
     if (role === "Mitra" && (c.type === "Re-route" || c.type === "Penarikan")) return false;
-    if (role === "Mitra" && c.ltlStage && c.type === "Selesai / Terkirim" && c.ltlStage !== "DELIVERED") return false;
     return true;
   });
 }

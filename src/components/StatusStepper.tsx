@@ -1,7 +1,7 @@
-import { AlertTriangle, Check, ClipboardCheck, Navigation, PackageCheck, PackageOpen, Truck } from "lucide-react";
+import { AlertTriangle, Check, ClipboardCheck, MapPin, Navigation, PackageCheck, PackageOpen, Truck, Warehouse } from "lucide-react";
 import { useLanguage } from "../store/LanguageContext";
 import type { ShipmentStatus } from "../types";
-import { LTL_PHASES, ltlPhaseOf, ltlStageIndex } from "../utils/ltlPipeline";
+import { LTL_STAGES } from "../utils/ltlPipeline";
 
 const STEP_ICONS = [ClipboardCheck, PackageOpen, PackageCheck, Truck, Navigation, Check];
 
@@ -31,22 +31,21 @@ function getProgress(status: ShipmentStatus, hasPickup: boolean): { index: numbe
   }
 }
 
-/** LTL: 25 granular stages roll up into 6 macro phases. `ltlIndex` is the furthest stage reached (-1 = none yet). */
+/** LTL: one step per pipeline status (8). `ltlIndex` is the status of the newest log - the top row of the timeline -
+ * so the stepper and the history always point at the same status (-1 = nothing yet). */
 function getLtlProgress(status: ShipmentStatus, ltlIndex: number): { index: number; hasKendala: boolean } {
-  const phase = ltlPhaseOf(ltlIndex);
-  // DELIVERED reached = the final phase is complete, so it renders as done rather than "in progress".
-  const index = ltlIndex >= ltlStageIndex("DELIVERED") ? LTL_PHASES.length - 1 : phase;
-  return { index, hasKendala: status === "Kendala" };
+  return { index: Math.max(0, ltlIndex), hasKendala: status === "Kendala" };
 }
 
-const LTL_ICONS = [ClipboardCheck, PackageOpen, Truck, PackageCheck, Navigation, Check];
+/** Order Diterima, Di-Pickup, Tiba di Gudang Asal, Berangkat, Dalam Perjalanan, Tiba di Gudang Tujuan, Sedang Diantar, Terkirim. */
+const LTL_ICONS = [ClipboardCheck, PackageOpen, Warehouse, Truck, Navigation, PackageCheck, MapPin, Check];
 
 export function StatusStepper({ status, hasPickup = false, ltlIndex }: { status: ShipmentStatus; hasPickup?: boolean; ltlIndex?: number }) {
   const { t } = useLanguage();
   const isLtl = ltlIndex !== undefined;
   const { index: current, hasKendala } = isLtl ? getLtlProgress(status, ltlIndex) : getProgress(status, hasPickup);
   const STEPS = isLtl
-    ? LTL_PHASES.map((label, i) => ({ label, icon: LTL_ICONS[i] }))
+    ? LTL_STAGES.map((st, i) => ({ label: st.label, icon: LTL_ICONS[i] }))
     : [
     { label: t.stepper.orderCreated, icon: STEP_ICONS[0] },
     { label: t.stepper.pickedUp, icon: STEP_ICONS[1] },
@@ -55,6 +54,9 @@ export function StatusStepper({ status, hasPickup = false, ltlIndex }: { status:
     { label: t.stepper.outForDelivery, icon: STEP_ICONS[4] },
     { label: t.stepper.delivered, icon: STEP_ICONS[5] },
   ];
+
+  // 8 steps (LTL) need tighter circles and labels to fit a phone screen.
+  const dense = STEPS.length > 6;
 
   return (
     <div>
@@ -87,7 +89,7 @@ export function StatusStepper({ status, hasPickup = false, ltlIndex }: { status:
                     isLast ? "invisible" : done ? "bg-emerald-500" : "bg-slate-200"
                   }`}
                 />
-                <span className="relative z-10 mx-auto flex h-9 w-9 shrink-0 sm:h-10 sm:w-10">
+                <span className={`relative z-10 mx-auto flex shrink-0 sm:h-10 sm:w-10 ${dense ? "h-7 w-7" : "h-9 w-9"}`}>
                   {(isCurrent || isDelivered) && (
                     <span
                       className={`absolute inset-0 animate-ping rounded-full opacity-75 ${
@@ -96,7 +98,7 @@ export function StatusStepper({ status, hasPickup = false, ltlIndex }: { status:
                     />
                   )}
                   <span
-                    className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-4 ring-white sm:h-10 sm:w-10 ${
+                    className={`relative flex shrink-0 items-center justify-center rounded-full ring-4 ring-white sm:h-10 sm:w-10 ${dense ? "h-7 w-7" : "h-9 w-9"} ${
                       isCurrent && hasKendala
                         ? "bg-red-500 text-white"
                         : done
@@ -117,7 +119,7 @@ export function StatusStepper({ status, hasPickup = false, ltlIndex }: { status:
                 </span>
               </div>
               <p
-                className={`mt-2 max-w-[56px] text-center text-[10px] font-medium leading-tight sm:max-w-none sm:text-xs ${
+                className={`mt-2 text-center font-medium leading-tight sm:max-w-none sm:px-1 sm:text-xs ${dense ? "max-w-[42px] text-[9px]" : "max-w-[56px] text-[10px]"} ${
                   done || isCurrent ? "text-slate-800" : "text-slate-400"
                 }`}
               >

@@ -462,8 +462,8 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
 
   async function addTrackingUpdate(data: TrackingUpdateFormData) {
     try {
-      // LTL: only the DELIVERED stage is the hand-over (POD photos + admin email); e-POD / hardcopy / closed are follow-ups.
-      const isSelesai = data.type === "Selesai / Terkirim" && (!data.ltlStage || data.ltlStage === "DELIVERED");
+      // The hand-over (LTL: Terkirim / DELIVERED): POD photos + admin email.
+      const isSelesai = data.type === "Selesai / Terkirim";
       const res = await api.post<{ eventId: string; doBalikAlert?: boolean }>(`/api/shipments/${encodeURIComponent(data.awb)}/timeline`, {
         type: data.type,
         ltlStage: data.ltlStage,

@@ -5,7 +5,6 @@ import { useLanguage } from "../store/LanguageContext";
 import type { TimelineEvent } from "../types";
 import { getLtlStage } from "../utils/ltlPipeline";
 import { newestFirst } from "../utils/timelineOrder";
-import { LtlProgress, LtlRemainingStages, type LtlContext } from "./LtlTimeline";
 import { formatJam, formatTanggalPanjang } from "../utils/format";
 import { ImageLightbox, PhotoThumb } from "./ImageLightbox";
 
@@ -14,14 +13,12 @@ interface TrackingTimelineProps {
   /** Admin portal only: shows an edit / delete button on logs that may be corrected. */
   onEdit?: (event: TimelineEvent) => void;
   onDelete?: (event: TimelineEvent) => void;
-  /** LTL shipments: adds the pipeline progress above the history and the stages not logged yet below it. */
-  ltl?: LtlContext;
 }
 
 /** System milestones (initial "Order Dibuat", delivery, cancellation) are never editable or deletable. */
 const PROTECTED_EVENT_TYPES = new Set(["Barang Diterima", "Selesai / Terkirim", "Dibatalkan"]);
 
-export function TrackingTimeline({ events, onEdit, onDelete, ltl }: TrackingTimelineProps) {
+export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineProps) {
   const { t } = useLanguage();
   const [lightbox, setLightbox] = useState<{ src: string; caption: string } | null>(null);
   // Newest date/time on the top row, oldest at the bottom - for every layanan, LTL included.
@@ -35,11 +32,11 @@ export function TrackingTimeline({ events, onEdit, onDelete, ltl }: TrackingTime
         caption={lightbox?.caption}
         onClose={() => setLightbox(null)}
       />
-      {ltl && <LtlProgress events={events} ltl={ltl} />}
       <ol className="relative">
         {ordered.map((event, idx) => {
           const isLatest = idx === 0;
-          // LTL logs show their granular stage name (e.g. "PICKED UP") instead of the coarse status.
+          // LTL logs show their pipeline status (e.g. "Tiba di Gudang Asal") instead of the coarse status; logs from the
+          // old 25-stage pipeline resolve to the status that replaced them.
           const label = getLtlStage(event.ltlStage)?.label ?? event.type;
           const isDelivered = event.type === "Selesai / Terkirim";
           const manageable = !PROTECTED_EVENT_TYPES.has(event.type);
@@ -166,7 +163,6 @@ export function TrackingTimeline({ events, onEdit, onDelete, ltl }: TrackingTime
           );
         })}
       </ol>
-      {ltl && <LtlRemainingStages events={events} ltl={ltl} />}
     </div>
   );
 }

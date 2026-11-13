@@ -7,7 +7,7 @@ import { ProofOfDeliveryCard } from "../../components/ProofOfDeliveryCard";
 import { StatusBadge } from "../../components/StatusBadge";
 import { StatusStepper } from "../../components/StatusStepper";
 import { LtlSummary } from "../../components/LtlSummary";
-import { isLtlShipment, ltlOf, ltlIndexOf } from "../../utils/trackingChoices";
+import { isLtlShipment, ltlIndexOf } from "../../utils/trackingChoices";
 import { TrackingTimeline } from "../../components/TrackingTimeline";
 import { useLanguage } from "../../store/LanguageContext";
 import type { Shipment } from "../../types";
@@ -293,7 +293,7 @@ export default function TrackingResult() {
         <h2 className="mb-4 text-base sm:text-lg font-semibold uppercase tracking-wide text-slate-500">
           {t.trackingResult.journeyHeading}
         </h2>
-        <TrackingTimeline events={shipment.timeline} ltl={isLtlShipment(shipment) ? ltlOf(shipment) : undefined} />
+        <TrackingTimeline events={shipment.timeline} />
       </div>
 
       {isDelivered && (

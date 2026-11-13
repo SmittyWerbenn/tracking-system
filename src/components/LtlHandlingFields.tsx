@@ -1,4 +1,4 @@
-/** LTL-only switches that turn on the optional tracking stages (PACKING_*, TRANSIT_HUB). Insurance has its own section. */
+/** LTL-only shipment attributes, shown as badges on the tracking header (they are not tracking steps). Insurance has its own section. */
 export function LtlHandlingFields({
   packingKayu,
   hasTransit,
@@ -25,8 +25,8 @@ export function LtlHandlingFields({
   return (
     <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Penanganan LTL</p>
-      {row("packingKayu", packingKayu, "Packing Kayu", "Cargo butuh packing kayu: tahap Packing Required / Completed ikut muncul di tracking.")}
-      {row("hasTransit", hasTransit, "Rute melewati Transit Hub", "Aktifkan tahap Transit Hub. Tanpa ini rute dianggap direct (In Transit langsung ke Destination Hub).")}
+      {row("packingKayu", packingKayu, "Packing Kayu", "Cargo butuh packing kayu. Tampil sebagai atribut di header tracking.")}
+      {row("hasTransit", hasTransit, "Rute melewati Transit Hub", "Rute tidak direct. Tiap titik transit dicatat dengan status Dalam Perjalanan.")}
     </div>
   );
 }

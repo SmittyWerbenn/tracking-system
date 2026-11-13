@@ -1,6 +1,7 @@
 import type { Shipment } from "../types";
 
-/** LTL header summary: No. Resi, Origin, Destination, Service, Handling and Insurance at a glance. */
+/** LTL header summary: No. Resi, Origin, Destination, Service plus the handling attributes (Packing Kayu, Insurance, DO Balik)
+ * at a glance. These are attributes of the shipment, not steps of its tracking pipeline. */
 export function LtlSummary({ shipment, className = "" }: { shipment: Shipment; className?: string }) {
   const items: { label: string; value: string; mono?: boolean; tone?: "yes" | "no" }[] = [
     { label: "No. Resi", value: shipment.awb, mono: true },
@@ -10,8 +11,13 @@ export function LtlSummary({ shipment, className = "" }: { shipment: Shipment; c
     { label: "Handling", value: shipment.packingKayu ? "Packing Kayu" : "Standar" },
     { label: "Insurance", value: shipment.asuransi ? "YES" : "NO", tone: shipment.asuransi ? "yes" : "no" },
   ];
+  // DO Balik is internal: the public tracking API does not send it, so the badge only shows in the portal.
+  if (shipment.requiresDoBalik !== undefined) {
+    const value = !shipment.requiresDoBalik ? "Tidak" : shipment.doBalikStatus === "returned" ? "Ya · Sudah kembali" : "Ya · Belum kembali";
+    items.push({ label: "DO Balik", value, tone: shipment.requiresDoBalik ? "yes" : "no" });
+  }
   return (
-    <dl className={`grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-3 lg:grid-cols-6 ${className}`}>
+    <dl className={`grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-3 ${items.length > 6 ? "lg:grid-cols-7" : "lg:grid-cols-6"} ${className}`}>
       {items.map((it) => (
         <div key={it.label} className="min-w-0">
           <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{it.label}</dt>

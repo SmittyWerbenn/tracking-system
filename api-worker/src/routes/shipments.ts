@@ -14,7 +14,7 @@ import { addBusinessDays } from "../sla";
 import { cancelPolicy, creatorRoleOf, pickupEvidenceSql } from "../cancellation";
 import { holdPolicy } from "../hold";
 import { resolveArmada } from "../armada";
-import { isLtlLayanan, getLtlStage, ltlStageIndex, currentLtlIndex, isStageApplicable, LTL_STAGE_CODES, renderLtlDescription } from "../ltl";
+import { isLtlLayanan, getLtlStage, currentLtlIndex, canLogLtlStage, LTL_STAGES, LTL_STAGE_CODES, renderLtlDescription } from "../ltl";
 
 /** Default timeline description per status, used when a tracking update is submitted without keterangan. */
 const DEFAULT_KETERANGAN: Partial<Record<TimelineEventType, string>> = {
@@ -387,7 +387,7 @@ export function registerShipmentRoutes(router: Router) {
     }
     const requiresDoBalik = body.requiresDoBalik === true;
 
-    // LTL only: wooden packing and a transit hub on the route switch the optional LTL tracking stages on.
+    // LTL only: wooden packing / transit hub are shipment attributes (header badges, default wording), not tracking steps.
     const ltl = isLtlLayanan(layanan);
     const packingKayu = ltl && body.packingKayu === true;
     const hasTransit = ltl && body.hasTransit === true;
@@ -466,7 +466,7 @@ export function registerShipmentRoutes(router: Router) {
           ctx.env.DB.prepare(
             `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, truck_id, input_by_user_id, input_by_name, input_at, created_at, ltl_stage)
              VALUES (?, ?, 1, 'Barang Diterima', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          ).bind(newId(), awb, `Gudang ${kotaAsal}`, tanggalDibuat, jamDibuat, ltl ? renderLtlDescription(getLtlStage("BOOKING_CONFIRMED")!, kotaAsal, kotaTujuan) : "Paket telah di-pickup.", truckId ?? null, actor.id, actor.nama, nowIso, nowIso, ltl ? "BOOKING_CONFIRMED" : null),
+          ).bind(newId(), awb, `Gudang ${kotaAsal}`, tanggalDibuat, jamDibuat, ltl ? renderLtlDescription(getLtlStage("ORDER_RECEIVED")!, kotaAsal, kotaTujuan) : "Paket telah di-pickup.", truckId ?? null, actor.id, actor.nama, nowIso, nowIso, ltl ? "ORDER_RECEIVED" : null),
           ...(holdAtCreate
             ? [
                 ctx.env.DB.prepare(
@@ -766,7 +766,7 @@ export function registerShipmentRoutes(router: Router) {
         values.push(0);
       }
     }
-    // LTL handling flags (wooden packing / transit hub) decide which optional LTL stages apply.
+    // LTL handling flags (wooden packing / transit hub): shipment attributes shown as badges.
     // Editable while the shipment is open; forced off for non-LTL layanan.
     if (has("packingKayu") || has("hasTransit") || (layananChange && !isLtlLayanan(layananChange.to))) {
       const ltlNow = isLtlLayanan(layananChange?.to ?? shipment.layanan);
@@ -889,17 +889,8 @@ export function registerShipmentRoutes(router: Router) {
     >();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
     const isLtl = isLtlLayanan(String(shipment.layanan));
-    const ltlFlags = { packingKayu: !!shipment.packing_kayu, asuransi: !!shipment.asuransi, hasTransit: !!shipment.has_transit };
-    // LTL keeps logging after DELIVERED (e-POD, hardcopy POD, close), so "Selesai" only locks it once SHIPMENT_CLOSED is reached.
-    let ltlCurrent = -1;
-    if (isLtl) {
-      const logged = await ctx.env.DB.prepare(`SELECT ltl_stage FROM shipment_timeline_events WHERE awb = ? AND ltl_stage IS NOT NULL`)
-        .bind(params.awb)
-        .all<{ ltl_stage: string }>();
-      ltlCurrent = currentLtlIndex((logged.results ?? []).map((r) => ({ ltlStage: r.ltl_stage })), String(shipment.status));
-    }
-    const ltlOpenAfterDelivered = isLtl && shipment.status === "Selesai / Terkirim" && ltlCurrent >= 0 && ltlCurrent < ltlStageIndex("SHIPMENT_CLOSED");
-    if ((shipment.status === "Selesai / Terkirim" && !ltlOpenAfterDelivered) || shipment.status === "Dibatalkan") {
+    const ltlFlags = { packingKayu: !!shipment.packing_kayu, asuransi: !!shipment.asuransi };
+    if (shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan") {
       throw Errors.unprocessable("Pengiriman ini sudah Selesai/Terkirim atau Dibatalkan, dan terkunci.");
     }
     if (shipment.status === "Hold") {
@@ -918,29 +909,24 @@ export function registerShipmentRoutes(router: Router) {
     }
 
     const body = await parseJsonBody(ctx.request);
-    // LTL: the client picks a pipeline stage (ltlStage); the stored `type` is the coarse status it maps to.
-    // Without ltlStage (e.g. Kendala / Transfer Unit, or the driver portal) the ordinary type rules apply.
+    // LTL: the client picks one of the 8 pipeline statuses (ltlStage); the stored `type` is the coarse status it maps to.
+    // Without ltlStage (Kendala / Transfer Unit / Re-route / Penarikan) the ordinary type rules apply.
     const ltlStageCode = isLtl ? optString(body, "ltlStage") : undefined;
-    const ltlStageDef = ltlStageCode ? getLtlStage(ltlStageCode) : undefined;
+    const ltlStageDef = ltlStageCode ? LTL_STAGES.find((st) => st.code === ltlStageCode) : undefined;
     if (ltlStageCode) {
       if (!ltlStageDef) throw Errors.badRequest(`Status LTL "${ltlStageCode}" tidak dikenal. Pilihan: ${LTL_STAGE_CODES.join(", ")}.`);
-      if (!isStageApplicable(ltlStageDef, ltlFlags)) {
-        throw Errors.unprocessable(`Status ${ltlStageDef.label} tidak berlaku untuk pengiriman ini (kondisi packing/asuransi/transit tidak terpenuhi).`);
-      }
-      if (ltlStageIndex(ltlStageDef.code) <= ltlCurrent) {
+      // The shipment's position is its newest log by date/time (old 25-stage codes fold into the 8 statuses).
+      const logged = await ctx.env.DB.prepare(`SELECT type, ltl_stage FROM shipment_timeline_events WHERE awb = ? ORDER BY ${timelineOrderSql("ASC")}`)
+        .bind(params.awb)
+        .all<{ type: string; ltl_stage: string | null }>();
+      const ltlCurrent = currentLtlIndex((logged.results ?? []).map((r) => ({ type: r.type, ltlStage: r.ltl_stage })), String(shipment.status));
+      if (!canLogLtlStage(ltlStageDef, ltlCurrent)) {
         throw Errors.unprocessable(`Status ${ltlStageDef.label} tidak bisa dipilih: tahap ini sudah dilewati - pipeline tidak bisa dibuat mundur.`);
-      }
-      if (actor.role === "Driver" || actor.role === "Mitra") {
-        const lateStage = ltlStageIndex(ltlStageDef.code) > ltlStageIndex("DELIVERED");
-        if (lateStage) throw Errors.forbidden(`Status ${ltlStageDef.label} hanya dapat dicatat oleh admin.`);
       }
     }
     const type: TimelineEventType = ltlStageDef
       ? ltlStageDef.type
       : reqEnum(body, "type", TIMELINE_EVENT_TYPES.filter((t) => t !== "Barang Diterima") as readonly TimelineEventType[]);
-    if (ltlOpenAfterDelivered && !ltlStageDef) {
-      throw Errors.unprocessable("Pengiriman LTL ini sudah DELIVERED; hanya tahap e-POD, Hardcopy POD, dan Shipment Closed yang masih bisa dicatat.");
-    }
     // Diverting or pulling back a shipment is an operations/admin decision, like a truck transfer.
     if ((type === "Re-route" || type === "Penarikan") && (actor.role === "Driver" || actor.role === "Mitra")) {
       throw Errors.forbidden(`Status ${type} hanya dapat dicatat oleh admin.`);
@@ -954,7 +940,7 @@ export function registerShipmentRoutes(router: Router) {
     // When left empty the API fills in the default description of the chosen status.
     const keterangan =
       optString(body, "keterangan") ??
-      (ltlStageDef ? renderLtlDescription(ltlStageDef, String(shipment.kota_asal), String(shipment.kota_tujuan)) : DEFAULT_KETERANGAN[type] ?? "");
+      (ltlStageDef ? renderLtlDescription(ltlStageDef, String(shipment.kota_asal), String(shipment.kota_tujuan), ltlFlags) : DEFAULT_KETERANGAN[type] ?? "");
     if (keterangan.length > 500) throw Errors.badRequest('Field "keterangan" maksimal 500 karakter.');
     // "Keterangan Internal" is one note per AWB (shipments.internal_notes), not per tracking log: when the form sends it
     // (admin only) it replaces the shipment's note; an empty value clears it. The log itself never stores one.
@@ -974,17 +960,13 @@ export function registerShipmentRoutes(router: Router) {
         actor.role === "Driver" ? "Driver tidak dapat mengubah unit truck." : "Mitra tidak dapat mengubah unit truck.",
       );
     }
-    // For LTL only the DELIVERED stage hands the cargo over (POD + notification); e-POD / hardcopy / closed are follow-ups.
-    const isSelesai = type === "Selesai / Terkirim" && (!ltlStageDef || ltlStageDef.code === "DELIVERED");
-    const lokasi = isSelesai
-      ? String(shipment.kota_tujuan)
-      : ltlStageDef && type === "Selesai / Terkirim"
-        ? optString(body, "lokasi") ?? String(shipment.kota_tujuan)
-        : reqString(body, "lokasi", { max: 150 });
+    // The hand-over to the consignee (LTL: Terkirim / DELIVERED): POD + notification + DO Balik reminder.
+    const isSelesai = type === "Selesai / Terkirim";
+    const lokasi = isSelesai ? String(shipment.kota_tujuan) : reqString(body, "lokasi", { max: 150 });
     if (lokasi.length > 150) throw Errors.badRequest('Field "lokasi" maksimal 150 karakter.');
     const namaPenerima = isSelesai ? reqString(body, "namaPenerima", { max: 100 }) : undefined;
 
-    // LTL stage events are ordered by the stage pipeline (checked above), not by the coarse status rank.
+    // LTL status logs are ordered by the 8-status pipeline (checked above), not by the coarse status rank.
     if (!ltlStageDef && !isForwardTransition(String(shipment.status), type)) {
       throw Errors.unprocessable(
         `Status "${type}" tidak bisa dipilih dari status saat ini ("${shipment.status}") - pipeline tidak bisa dibuat mundur.`,

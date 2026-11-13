@@ -1,77 +1,77 @@
-// LTL (Less Than Truckload) tracking pipeline: 25 ordered milestones with three
-// conditional groups (packing kayu, insurance, transit hub). Pure module with no
+// LTL (Less Than Truckload) tracking pipeline: 8 ordered statuses. Pure module with no
 // imports - the file is mirrored byte-for-byte at src/utils/ltlPipeline.ts (same
 // pattern as status.ts) so the API (source of truth) and the UI never disagree.
 //
-// Design: every LTL milestone is stored as an ordinary timeline event whose `type`
+// Design: every LTL status is stored as an ordinary timeline event whose `type`
 // is the coarse legacy status it maps to (so dashboards, filters, SLA/ETA, cancel
-// rules and non-LTL code keep working) plus a `ltl_stage` code with the fine detail.
+// rules and non-LTL code keep working) plus a `ltl_stage` code.
+//
+// History: the pipeline used to have 25 granular stages in 6 phases. Logs written
+// back then keep their old `ltl_stage` code in the database; LEGACY_STAGE_MAP folds
+// each of them into one of the 8 statuses at read time, so nothing is migrated.
+// Packing kayu, insurance and DO Balik are shipment attributes (header badges), not steps.
 
 export type LtlStageCode =
-  | "BOOKING_CONFIRMED" | "PICK_UP_DISPATCHED" | "PICKED_UP" | "ARRIVED_ORIGIN_HUB" | "CARGO_VERIFIED"
-  | "PACKING_REQUIRED" | "PACKING_COMPLETED" | "INSURANCE_REQUIRED" | "INSURANCE_CONFIRMED"
-  | "READY_FOR_CONSOLIDATION" | "CONSOLIDATED" | "LOADED_LINEHAUL" | "LINEHAUL_DEPARTED" | "IN_TRANSIT"
-  | "TRANSIT_HUB" | "ARRIVED_DESTINATION_HUB" | "UNLOADING_TALLY" | "SORTING_COMPLETED" | "READY_FOR_DELIVERY"
-  | "OUT_FOR_DELIVERY" | "ARRIVED_CONSIGNEE" | "DELIVERED" | "EPOD_UPLOADED" | "HARDCOPY_POD_RETURNED" | "SHIPMENT_CLOSED";
+  | "ORDER_RECEIVED" | "PICKED_UP" | "ARRIVED_ORIGIN_HUB" | "DEPARTED"
+  | "IN_TRANSIT" | "ARRIVED_DESTINATION_HUB" | "OUT_FOR_DELIVERY" | "DELIVERED";
 
-/** Legacy event types an LTL stage can map to. */
-type LegacyType = "Di pickup" | "Berangkat" | "Transit" | "Dalam Perjalanan" | "Tiba di Tujuan" | "Selesai / Terkirim";
-export type LtlCondition = "packing" | "insurance" | "transit";
-/** Which city a stage defaults to: the shipment's origin, its destination, or the last known location. */
-export type LtlCity = "origin" | "destination" | "last" | "manual";
+/** Legacy event types an LTL status can map to. */
+type LegacyType = "Di pickup" | "Berangkat" | "Dalam Perjalanan" | "Tiba di Tujuan" | "Selesai / Terkirim";
+/** Which city a status defaults to: the shipment's origin, its destination, or the active transit point. */
+export type LtlCity = "origin" | "destination" | "transit";
 
 export interface LtlStageDef {
   code: LtlStageCode;
   label: string;
   /** Default Keterangan; supports {origin} and {destination}. */
   description: string;
-  /** Coarse legacy event type this stage is stored as. */
+  /** Coarse legacy event type this status is stored as. */
   type: LegacyType;
-  /** Index into LTL_PHASES (the 6 macro steps of the stepper). */
-  phase: number;
   city: LtlCity;
-  /** Only part of the pipeline when this shipment attribute is true. */
-  condition?: LtlCondition;
+  /** May be logged again while it is the current status (one log per transit point). */
+  repeatable?: boolean;
 }
 
 export const LTL_STAGES: readonly LtlStageDef[] = [
-  { code: "BOOKING_CONFIRMED", label: "BOOKING CONFIRMED", description: "Order {origin} → {destination} sudah diterima", type: "Di pickup", phase: 0, city: "origin" },
-  { code: "PICK_UP_DISPATCHED", label: "PICK UP DISPATCHED", description: "Armada pickup menuju lokasi shipper", type: "Di pickup", phase: 0, city: "origin" },
-  { code: "PICKED_UP", label: "PICKED UP", description: "Cargo berhasil diambil dari shipper", type: "Di pickup", phase: 0, city: "origin" },
-  { code: "ARRIVED_ORIGIN_HUB", label: "ARRIVED ORIGIN HUB", description: "Cargo sudah tiba di hub asal", type: "Di pickup", phase: 1, city: "origin" },
-  { code: "CARGO_VERIFIED", label: "CARGO VERIFIED", description: "Koli, berat, volume dan kondisi cargo sudah diperiksa", type: "Di pickup", phase: 1, city: "origin" },
-  { code: "PACKING_REQUIRED", label: "PACKING REQUIRED", description: "Cargo membutuhkan packing kayu", type: "Di pickup", phase: 1, city: "origin", condition: "packing" },
-  { code: "PACKING_COMPLETED", label: "PACKING COMPLETED", description: "Proses packing kayu selesai", type: "Di pickup", phase: 1, city: "origin", condition: "packing" },
-  { code: "INSURANCE_REQUIRED", label: "INSURANCE REQUIRED", description: "Cargo memerlukan perlindungan asuransi", type: "Di pickup", phase: 1, city: "origin", condition: "insurance" },
-  { code: "INSURANCE_CONFIRMED", label: "INSURANCE CONFIRMED", description: "Asuransi cargo sudah terkonfirmasi", type: "Di pickup", phase: 1, city: "origin", condition: "insurance" },
-  { code: "READY_FOR_CONSOLIDATION", label: "READY FOR CONSOLIDATION", description: "Cargo siap masuk konsolidasi", type: "Di pickup", phase: 2, city: "origin" },
-  { code: "CONSOLIDATED", label: "CONSOLIDATED", description: "Cargo sudah digabung dengan muatan LTL lainnya", type: "Di pickup", phase: 2, city: "origin" },
-  { code: "LOADED_LINEHAUL", label: "LOADED LINEHAUL", description: "Cargo sudah dimuat ke armada linehaul", type: "Di pickup", phase: 2, city: "origin" },
-  { code: "LINEHAUL_DEPARTED", label: "LINEHAUL DEPARTED", description: "Armada linehaul telah berangkat", type: "Berangkat", phase: 2, city: "origin" },
-  { code: "IN_TRANSIT", label: "IN TRANSIT", description: "Cargo dalam perjalanan menuju area tujuan", type: "Dalam Perjalanan", phase: 2, city: "last" },
-  { code: "TRANSIT_HUB", label: "TRANSIT HUB", description: "Cargo diproses di hub transit", type: "Transit", phase: 2, city: "manual", condition: "transit" },
-  { code: "ARRIVED_DESTINATION_HUB", label: "ARRIVED DESTINATION HUB", description: "Cargo sudah tiba di hub tujuan", type: "Tiba di Tujuan", phase: 3, city: "destination" },
-  { code: "UNLOADING_TALLY", label: "UNLOADING + TALLY", description: "Cargo dibongkar dan jumlah koli diverifikasi", type: "Tiba di Tujuan", phase: 3, city: "destination" },
-  { code: "SORTING_COMPLETED", label: "SORTING COMPLETED", description: "Cargo selesai sortir untuk rute {destination}", type: "Tiba di Tujuan", phase: 3, city: "destination" },
-  { code: "READY_FOR_DELIVERY", label: "READY FOR DELIVERY", description: "Cargo siap proses last mile", type: "Tiba di Tujuan", phase: 3, city: "destination" },
-  { code: "OUT_FOR_DELIVERY", label: "OUT FOR DELIVERY", description: "Cargo menuju alamat consignee", type: "Tiba di Tujuan", phase: 4, city: "destination" },
-  { code: "ARRIVED_CONSIGNEE", label: "ARRIVED CONSIGNEE", description: "Armada tiba di lokasi penerima", type: "Tiba di Tujuan", phase: 4, city: "destination" },
-  { code: "DELIVERED", label: "DELIVERED", description: "Cargo selesai diserahterimakan kepada consignee", type: "Selesai / Terkirim", phase: 5, city: "destination" },
-  { code: "EPOD_UPLOADED", label: "e-POD UPLOADED", description: "Bukti serah terima digital tersedia", type: "Selesai / Terkirim", phase: 5, city: "destination" },
-  { code: "HARDCOPY_POD_RETURNED", label: "HARDCOPY POD RETURNED", description: "SJ/POD asli telah kembali", type: "Selesai / Terkirim", phase: 5, city: "destination" },
-  { code: "SHIPMENT_CLOSED", label: "SHIPMENT CLOSED", description: "Pengiriman LTL selesai dan ditutup", type: "Selesai / Terkirim", phase: 5, city: "destination" },
+  { code: "ORDER_RECEIVED", label: "Order Diterima", description: "Pesanan {origin} → {destination} diproses", type: "Di pickup", city: "origin" },
+  { code: "PICKED_UP", label: "Di-Pickup", description: "Cargo diambil dari shipper", type: "Di pickup", city: "origin" },
+  { code: "ARRIVED_ORIGIN_HUB", label: "Tiba di Gudang Asal", description: "Cek fisik, packing kayu, asuransi & konsolidasi selesai", type: "Di pickup", city: "origin" },
+  { code: "DEPARTED", label: "Berangkat", description: "Armada linehaul berangkat dari {origin}", type: "Berangkat", city: "origin" },
+  { code: "IN_TRANSIT", label: "Dalam Perjalanan", description: "Cargo menuju area {destination}", type: "Dalam Perjalanan", city: "transit", repeatable: true },
+  { code: "ARRIVED_DESTINATION_HUB", label: "Tiba di Gudang Tujuan", description: "Menunggu proses bongkar & sortir", type: "Tiba di Tujuan", city: "destination" },
+  { code: "OUT_FOR_DELIVERY", label: "Sedang Diantar", description: "Menunggu pengiriman ke alamat penerima", type: "Tiba di Tujuan", city: "destination" },
+  { code: "DELIVERED", label: "Terkirim", description: "Serah terima selesai & POD diterima", type: "Selesai / Terkirim", city: "destination" },
 ];
-
-/** The 6 macro steps shown in the stepper; the 25 stages roll up into them. */
-export const LTL_PHASES = ["Pickup", "Origin Hub & Handling", "Consolidation & Linehaul", "Destination Hub", "Out for Delivery", "Delivered & POD"] as const;
 
 export const LTL_STAGE_CODES: readonly LtlStageCode[] = LTL_STAGES.map((s) => s.code);
 
-/** Attributes of a shipment that decide which conditional stages apply. */
+/** Codes of the retired 25-stage pipeline -> the status that replaces them. Codes that kept their name are not listed. */
+const LEGACY_STAGE_MAP: Record<string, LtlStageCode> = {
+  BOOKING_CONFIRMED: "ORDER_RECEIVED",
+  PICK_UP_DISPATCHED: "ORDER_RECEIVED",
+  CARGO_VERIFIED: "ARRIVED_ORIGIN_HUB",
+  PACKING_REQUIRED: "ARRIVED_ORIGIN_HUB",
+  PACKING_COMPLETED: "ARRIVED_ORIGIN_HUB",
+  INSURANCE_REQUIRED: "ARRIVED_ORIGIN_HUB",
+  INSURANCE_CONFIRMED: "ARRIVED_ORIGIN_HUB",
+  READY_FOR_CONSOLIDATION: "ARRIVED_ORIGIN_HUB",
+  CONSOLIDATED: "ARRIVED_ORIGIN_HUB",
+  LOADED_LINEHAUL: "ARRIVED_ORIGIN_HUB",
+  LINEHAUL_DEPARTED: "DEPARTED",
+  TRANSIT_HUB: "IN_TRANSIT",
+  UNLOADING_TALLY: "ARRIVED_DESTINATION_HUB",
+  SORTING_COMPLETED: "ARRIVED_DESTINATION_HUB",
+  READY_FOR_DELIVERY: "ARRIVED_DESTINATION_HUB",
+  ARRIVED_CONSIGNEE: "OUT_FOR_DELIVERY",
+  EPOD_UPLOADED: "DELIVERED",
+  HARDCOPY_POD_RETURNED: "DELIVERED",
+  SHIPMENT_CLOSED: "DELIVERED",
+};
+
+/** Shipment attributes that only adjust wording now (they no longer add or block steps). */
 export interface LtlFlags {
   packingKayu?: boolean | null;
   asuransi?: boolean | null;
-  hasTransit?: boolean | null;
 }
 
 /** LTL pipeline applies only to the "LTL" / "LTL Domestik" layanan; FTL, Express, Regular... keep their own flow. */
@@ -79,57 +79,84 @@ export function isLtlLayanan(layanan: string | null | undefined): boolean {
   return /^ltl(\s|$)/i.test((layanan ?? "").trim());
 }
 
+/** Current code for a stored `ltl_stage` (old 25-stage codes included); undefined when it is not an LTL status. */
+export function normalizeLtlStage(code: string | null | undefined): LtlStageCode | undefined {
+  if (!code) return undefined;
+  if ((LTL_STAGE_CODES as readonly string[]).includes(code)) return code as LtlStageCode;
+  return LEGACY_STAGE_MAP[code];
+}
+
+/** Status definition for a stored code - a legacy code resolves to the status that replaced it. */
 export function getLtlStage(code: string | null | undefined): LtlStageDef | undefined {
-  return LTL_STAGES.find((s) => s.code === code);
+  const current = normalizeLtlStage(code);
+  return current ? LTL_STAGES.find((s) => s.code === current) : undefined;
 }
 
+/** Position (0-7) of a stored code in the pipeline; -1 when it is not an LTL status. */
 export function ltlStageIndex(code: string | null | undefined): number {
-  return LTL_STAGES.findIndex((s) => s.code === code);
+  const current = normalizeLtlStage(code);
+  return current ? LTL_STAGE_CODES.indexOf(current) : -1;
 }
 
-export function isStageApplicable(stage: LtlStageDef, f: LtlFlags): boolean {
-  switch (stage.condition) {
-    case "packing": return !!f.packingKayu;
-    case "insurance": return !!f.asuransi;
-    case "transit": return !!f.hasTransit;
-    default: return true;
-  }
-}
-
-/** The stages that make up this shipment's pipeline (conditional ones dropped when they don't apply). */
-export function applicableLtlStages(f: LtlFlags): LtlStageDef[] {
-  return LTL_STAGES.filter((s) => isStageApplicable(s, f));
-}
-
-/** Where a shipment with no (or only legacy) tracking logs stands, derived from its coarse status. */
-const STATUS_FLOOR: Record<string, LtlStageCode> = {
-  "Dalam Persiapan": "BOOKING_CONFIRMED",
-  Hold: "BOOKING_CONFIRMED",
-  Berangkat: "LINEHAUL_DEPARTED",
+/** Where a log without an LTL code (driver / legacy input) puts the shipment, by its coarse type. */
+const TYPE_FLOOR: Record<string, LtlStageCode> = {
+  "Barang Diterima": "ORDER_RECEIVED",
+  "Di pickup": "PICKED_UP",
+  Berangkat: "DEPARTED",
   Transit: "IN_TRANSIT",
   "Dalam Perjalanan": "IN_TRANSIT",
   "Tiba di Tujuan": "ARRIVED_DESTINATION_HUB",
   "Selesai / Terkirim": "DELIVERED",
 };
 
-/** Index of the furthest stage reached: highest logged ltl stage, else a floor from the coarse status. -1 = nothing yet. */
-export function currentLtlIndex(events: ReadonlyArray<{ ltlStage?: string | null }>, status: string): number {
-  let max = -1;
-  for (const e of events) max = Math.max(max, ltlStageIndex(e.ltlStage));
-  if (max >= 0) return max;
+/** Where a shipment with no usable log stands, by its coarse status. */
+const STATUS_FLOOR: Record<string, LtlStageCode> = {
+  "Dalam Persiapan": "ORDER_RECEIVED",
+  Hold: "ORDER_RECEIVED",
+  Berangkat: "DEPARTED",
+  Transit: "IN_TRANSIT",
+  "Dalam Perjalanan": "IN_TRANSIT",
+  Kendala: "IN_TRANSIT",
+  "Re-route": "IN_TRANSIT",
+  Penarikan: "IN_TRANSIT",
+  "Tiba di Tujuan": "ARRIVED_DESTINATION_HUB",
+  "Selesai / Terkirim": "DELIVERED",
+};
+
+/** Pipeline position of one log: its LTL code, else what its coarse type implies; -1 for exceptions (Kendala, Transfer Unit, ...). */
+export function ltlIndexOfEvent(e: { ltlStage?: string | null; type?: string | null }): number {
+  const byStage = ltlStageIndex(e.ltlStage);
+  return byStage >= 0 ? byStage : ltlStageIndex(TYPE_FLOOR[e.type ?? ""]);
+}
+
+/** Index (0-7) of the shipment's current status. `events` must be chronological (oldest first, as the API sends them):
+ * the newest log that carries a pipeline position decides - the same log that sits on the top "TERBARU" row
+ * (exceptions such as Kendala are stepped over). With no such log it falls back to the coarse status. */
+export function currentLtlIndex(events: ReadonlyArray<{ ltlStage?: string | null; type?: string | null }>, status: string): number {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const idx = ltlIndexOfEvent(events[i]);
+    if (idx >= 0) return idx;
+  }
   return ltlStageIndex(STATUS_FLOOR[status]);
 }
 
-/** Stages still selectable: applicable ones after the current stage (skipping ahead is allowed, going back is not). */
-export function nextLtlStages(f: LtlFlags, currentIndex: number): LtlStageDef[] {
-  return LTL_STAGES.filter((s, i) => i > currentIndex && isStageApplicable(s, f));
+/** Whether a status may be logged when the shipment is at `currentIndex`: forward only, plus repeating a repeatable current status. */
+export function canLogLtlStage(stage: LtlStageDef, currentIndex: number): boolean {
+  const i = LTL_STAGE_CODES.indexOf(stage.code);
+  return i > currentIndex || (i === currentIndex && !!stage.repeatable);
 }
 
-export function renderLtlDescription(stage: LtlStageDef, origin: string, destination: string): string {
-  return stage.description.replace(/\{origin\}/g, origin || "asal").replace(/\{destination\}/g, destination || "tujuan");
+/** Statuses still selectable, in pipeline order (skipping ahead is allowed, going back is not). */
+export function nextLtlStages(currentIndex: number): LtlStageDef[] {
+  return LTL_STAGES.filter((s) => canLogLtlStage(s, currentIndex));
 }
 
-/** Phase (0-5) the shipment is in, for the macro stepper. */
-export function ltlPhaseOf(index: number): number {
-  return index < 0 ? 0 : LTL_STAGES[index].phase;
+/** Default Keterangan of a status. The origin-hub text only mentions packing kayu / asuransi when the shipment has them. */
+export function renderLtlDescription(stage: LtlStageDef, origin: string, destination: string, flags: LtlFlags = { packingKayu: true, asuransi: true }): string {
+  let text = stage.description;
+  if (stage.code === "ARRIVED_ORIGIN_HUB") {
+    const steps = ["Cek fisik", ...(flags.packingKayu ? ["packing kayu"] : []), ...(flags.asuransi ? ["asuransi"] : [])];
+    text = `${steps.join(", ")} & konsolidasi selesai`;
+  }
+  return text.replace(/\{origin\}/g, origin || "asal").replace(/\{destination\}/g, destination || "tujuan");
 }

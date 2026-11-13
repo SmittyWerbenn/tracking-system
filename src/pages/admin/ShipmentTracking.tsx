@@ -5,7 +5,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { QuickSearchAwb } from "../../components/QuickSearchAwb";
 import { QuickUpdatePanel } from "../../components/QuickUpdatePanel";
 import { LtlSummary } from "../../components/LtlSummary";
-import { isLtlShipment, ltlOf, isTrackingLocked, ltlIndexOf } from "../../utils/trackingChoices";
+import { isLtlShipment, isTrackingLocked, ltlIndexOf } from "../../utils/trackingChoices";
 import { useToast } from "../../components/Toast";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { ProofOfDeliveryCard } from "../../components/ProofOfDeliveryCard";
@@ -194,7 +194,6 @@ export default function ShipmentTracking() {
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">Perjalanan Pengiriman</h2>
         <TrackingTimeline
           events={shipment.timeline}
-          ltl={isLtlShipment(shipment) ? ltlOf(shipment) : undefined}
           onEdit={canManageLog ? setEditing : undefined}
           onDelete={canManageLog ? setDeleting : undefined}
         />

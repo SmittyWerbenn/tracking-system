@@ -55,11 +55,10 @@ function UpdateTrackingForm() {
   const canEditInfo = profile?.role === "Superadmin" || profile?.role === "Admin";
   const navigate = useNavigate();
 
-  // Statuses selectable for a shipment (LTL: pipeline stages that apply to its packing / insurance / transit).
+  // Statuses selectable for a shipment (LTL: the 8 pipeline statuses, from the current one onward).
   const trackingOptionsFor = (s: Shipment) =>
     getTrackingChoices(s, (c) => {
       if (isMitra && c.type === "Transfer Unit") return false;
-      if (isMitra && c.ltlStage && c.type === "Selesai / Terkirim" && c.ltlStage !== "DELIVERED") return false;
       return true;
     });
 
@@ -752,7 +751,7 @@ function UpdateTrackingForm() {
               </select>
               <span className="mt-1.5 block text-[11px] text-slate-400">
                 {choice.ltlStage || isLtlShipment(shipment)
-                  ? "Tahap LTL yang tampil sudah menyesuaikan kondisi Packing Kayu, Asuransi, dan Transit Hub. Tahap boleh dilewati, tetapi tidak bisa dibuat mundur."
+                  ? "Status LTL boleh dilewati tetapi tidak bisa dibuat mundur. Dalam Perjalanan bisa dicatat berulang untuk tiap titik transit."
                   : `Hanya status lanjutan dari status saat ini (${shipment.status}) yang bisa dipilih - pipeline tidak bisa dibuat mundur.`}
               </span>
             </label>

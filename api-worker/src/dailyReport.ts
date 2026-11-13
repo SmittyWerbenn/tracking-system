@@ -10,6 +10,7 @@
 //   17:00 slot → tanggal_dibuat = today AND jam_dibuat <= "17:00"
 // Both are cumulative from 00:00.
 
+import { timelineOrderSql } from "./status";
 import type { Env } from "./types";
 import { wibNow } from "./wib";
 import { writeAuditLog } from "./audit";
@@ -368,7 +369,7 @@ export async function runDailyReport(
             s.asuransi, s.koli_asuransi, s.nilai_asuransi,
             t.nomor_unit as truck_nomor_unit, d.nama as truck_driver_nama,
             s.created_by_name, s.created_by_role, s.internal_notes,
-            (SELECT e.keterangan FROM shipment_timeline_events e WHERE e.awb = s.awb ORDER BY e.seq DESC LIMIT 1) AS last_keterangan
+            (SELECT e.keterangan FROM shipment_timeline_events e WHERE e.awb = s.awb ORDER BY ${timelineOrderSql("DESC", "e")} LIMIT 1) AS last_keterangan
      FROM shipments s
      LEFT JOIN trucks t ON t.id = s.truck_id
      LEFT JOIN drivers d ON d.id = t.driver_id

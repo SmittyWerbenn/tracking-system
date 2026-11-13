@@ -9,7 +9,7 @@ import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta, likeTerm, orderBy } from "../pagination";
 import { generateClientAwb, isDuplicateAwbError } from "../awb";
 import { wibNow } from "../wib";
-import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, type TimelineEventType } from "../status";
+import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, timelineOrderSql, type TimelineEventType } from "../status";
 import { addBusinessDays } from "../sla";
 import { cancelPolicy, creatorRoleOf, pickupEvidenceSql } from "../cancellation";
 import { holdPolicy } from "../hold";
@@ -234,7 +234,7 @@ export function registerShipmentRoutes(router: Router) {
       const cutoff = new Date(Date.now() + 7 * 3600_000 - macet * 86_400_000).toISOString().slice(0, 16);
       where.push("s.status NOT IN ('Selesai / Terkirim', 'Hold')");
       where.push(
-        "(SELECT e.tanggal || 'T' || e.jam FROM shipment_timeline_events e WHERE e.awb = s.awb ORDER BY e.seq DESC LIMIT 1) <= ?",
+        `(SELECT e.tanggal || 'T' || e.jam FROM shipment_timeline_events e WHERE e.awb = s.awb ORDER BY ${timelineOrderSql("DESC", "e")} LIMIT 1) <= ?`,
       );
       params.push(cutoff);
     }
@@ -267,10 +267,9 @@ export function registerShipmentRoutes(router: Router) {
        LEFT JOIN drivers cd ON cd.id = s.claim_driver_id
        LEFT JOIN mitras m ON m.kode_mitra = s.mitra_id
        LEFT JOIN shipment_pod p ON p.awb = s.awb
-       LEFT JOIN (
-         SELECT e1.awb, e1.tanggal, e1.jam, e1.keterangan FROM shipment_timeline_events e1
-         WHERE e1.seq = (SELECT MAX(e2.seq) FROM shipment_timeline_events e2 WHERE e2.awb = e1.awb)
-       ) le ON le.awb = s.awb
+       LEFT JOIN shipment_timeline_events le ON le.id = (
+         SELECT e2.id FROM shipment_timeline_events e2 WHERE e2.awb = s.awb ORDER BY ${timelineOrderSql("DESC", "e2")} LIMIT 1
+       )
        LEFT JOIN order_recovery_requests rr ON rr.id = (
          SELECT x.id FROM order_recovery_requests x WHERE x.awb = s.awb ORDER BY x.requested_at DESC LIMIT 1
        )
@@ -382,6 +381,10 @@ export function registerShipmentRoutes(router: Router) {
     }
 
     // DO Balik: the original Surat Jalan / DO must come back after delivery. Starts as 'pending'.
+    // Only a real boolean is accepted, so free text (e.g. a note pasted into the wrong import column) can never be read as a flag.
+    if (body.requiresDoBalik != null && typeof body.requiresDoBalik !== "boolean") {
+      throw Errors.badRequest('Field "requiresDoBalik" (DO Balik) harus bernilai true atau false.');
+    }
     const requiresDoBalik = body.requiresDoBalik === true;
 
     // LTL only: wooden packing and a transit hub on the route switch the optional LTL tracking stages on.
@@ -554,7 +557,7 @@ export function registerShipmentRoutes(router: Router) {
        LEFT JOIN trucks t ON t.id = e.truck_id
        LEFT JOIN drivers d ON d.id = t.driver_id
        LEFT JOIN trucks pt ON pt.id = e.truck_sebelumnya_id
-       WHERE e.awb = ? ORDER BY e.tanggal ASC, e.jam ASC, e.seq ASC`,
+       WHERE e.awb = ? ORDER BY ${timelineOrderSql("ASC", "e")}`,
     )
       .bind(params.awb)
       .all();
@@ -993,7 +996,6 @@ export function registerShipmentRoutes(router: Router) {
       if (!timelineTruck) throw Errors.badRequest("Truck yang dipilih tidak ditemukan.");
     }
 
-    const newStatus = eventTypeToShipmentStatus(type);
     const nowIso = new Date().toISOString();
     const seqRow = await ctx.env.DB.prepare(`SELECT COALESCE(MAX(seq), 0) + 1 as next FROM shipment_timeline_events WHERE awb = ?`)
       .bind(params.awb)
@@ -1009,6 +1011,16 @@ export function registerShipmentRoutes(router: Router) {
     )
       .bind(eventId, params.awb, seq, type, lokasi, titikId ?? null, tanggal, jam, keterangan, truckId ?? shipment.truck_id ?? null, previousTruckId, actor.id, actor.nama, nowIso, nowIso, internalNotes, ltlStageDef?.code ?? null)
       .run();
+
+    // The shipment's status follows the log with the newest date/time (the top "TERBARU" row), not the log entered last:
+    // a backdated update slots into the history and leaves the status to whichever log is really the most recent.
+    // A hand-over always closes the shipment.
+    const latest = await ctx.env.DB.prepare(
+      `SELECT type FROM shipment_timeline_events WHERE awb = ? AND type != 'Dibatalkan' ORDER BY ${timelineOrderSql("DESC")} LIMIT 1`,
+    )
+      .bind(params.awb)
+      .first<{ type: TimelineEventType }>();
+    const newStatus = type === "Selesai / Terkirim" ? "Selesai / Terkirim" : eventTypeToShipmentStatus(latest?.type ?? type);
 
     if (internalNotesSent && newInternalNote !== ((shipment.internal_notes as string | null) ?? null)) {
       await ctx.env.DB.prepare(`UPDATE shipments SET internal_notes = ?, updated_at = ?, updated_by = ? WHERE awb = ?`).bind(newInternalNote, nowIso, actor.id, params.awb).run();
@@ -1034,10 +1046,16 @@ export function registerShipmentRoutes(router: Router) {
     // through Hold → UNHOLD → Berangkat. A second Berangkat event is
     // impossible (pipeline rank prevents backward transitions), so this runs
     // exactly once.
-    if (newStatus === "Berangkat") {
+    if (type === "Berangkat") {
       const slaValue = shipment.sla_value as number | null;
       if (slaValue != null) {
-        const newEta = addBusinessDays(tanggal, slaValue);
+        // ETA runs from the first departure by date/time (same rule as an edit/delete re-sync).
+        const departure = await ctx.env.DB.prepare(
+          `SELECT tanggal FROM shipment_timeline_events WHERE awb = ? AND type = 'Berangkat' ORDER BY ${timelineOrderSql("ASC")} LIMIT 1`,
+        )
+          .bind(params.awb)
+          .first<{ tanggal: string }>();
+        const newEta = addBusinessDays(departure?.tanggal ?? tanggal, slaValue);
         await ctx.env.DB.prepare(
           `UPDATE shipments SET estimasi_tiba = ?, updated_at = ?, updated_by = ? WHERE awb = ?`,
         )
@@ -1048,7 +1066,7 @@ export function registerShipmentRoutes(router: Router) {
           actionLabel: "UPDATE ETA",
           module: "Shipment",
           awb: params.awb,
-          description: `Status berubah menjadi Berangkat. ETA diperbarui: ${shipment.estimasi_tiba ?? "-"} -> ${newEta}.`,
+          description: `Log Berangkat dicatat. ETA diperbarui: ${shipment.estimasi_tiba ?? "-"} -> ${newEta}.`,
         });
       }
     }

@@ -71,3 +71,17 @@ export function isForwardTransition(currentStatus: string, nextType: TimelineEve
   if (nextType === "Barang Diterima") return false;
   return pipelineRank(nextType) >= pipelineRank(currentStatus);
 }
+
+/** Tracking history is ordered by the event's own date/time (it may be backdated); `seq` (input order) only breaks ties
+ * within the same minute. The newest row by this order is the shipment's "TERBARU" log and decides its status. */
+export function timelineOrderSql(dir: "ASC" | "DESC", alias = ""): string {
+  const p = alias ? `${alias}.` : "";
+  return `${p}tanggal ${dir}, ${p}jam ${dir}, ${p}seq ${dir}`;
+}
+
+/** Same order as timelineOrderSql("ASC") for rows already in memory. */
+export function compareTimeline(a: { tanggal: string; jam: string; seq: number }, b: { tanggal: string; jam: string; seq: number }): number {
+  const ka = `${a.tanggal}T${a.jam}`;
+  const kb = `${b.tanggal}T${b.jam}`;
+  return ka < kb ? -1 : ka > kb ? 1 : a.seq - b.seq;
+}

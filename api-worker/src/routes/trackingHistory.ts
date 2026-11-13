@@ -6,7 +6,7 @@ import { requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
 import { addBusinessDays } from "../sla";
 import { deleteObjectsQuietly } from "../recycle";
-import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, pipelineRank, type TimelineEventType } from "../status";
+import { TIMELINE_EVENT_TYPES, compareTimeline, eventTypeToShipmentStatus, pipelineRank, timelineOrderSql, type TimelineEventType } from "../status";
 
 /** Events that record a system milestone and may never be edited or removed here. */
 const PROTECTED_TYPES = new Set<string>(["Barang Diterima", "Selesai / Terkirim", "Dibatalkan"]);
@@ -40,24 +40,28 @@ async function loadShipment(ctx: Ctx, awb: string) {
   return s;
 }
 
+/** Chronological (oldest first) by the event's own date/time, so the last row is the newest log. */
 async function loadEvents(ctx: Ctx, awb: string): Promise<EventRow[]> {
   const r = await ctx.env.DB.prepare(
-    `SELECT id, seq, type, lokasi, titik_id, tanggal, jam, keterangan, internal_notes, ltl_stage FROM shipment_timeline_events WHERE awb = ? ORDER BY seq`,
+    `SELECT id, seq, type, lokasi, titik_id, tanggal, jam, keterangan, internal_notes, ltl_stage FROM shipment_timeline_events WHERE awb = ? ORDER BY ${timelineOrderSql("ASC")}`,
   )
     .bind(awb)
     .all<EventRow>();
   return r.results ?? [];
 }
 
-/** Re-derives the shipment's current status (and ETA) from what is left in its timeline, so the
- * header badge, stepper and "TERBARU" marker always agree with the history. */
+/** Re-derives the shipment's current status (and ETA) from what is left in its timeline: the log with the
+ * newest date/time (the top "TERBARU" row) decides it, so an edit, backdate or delete can never leave the
+ * header badge / stepper disagreeing with the history. */
 async function syncShipment(
   ctx: Ctx,
   s: { awb: string; status: string; tanggal_dibuat: string; sla_value: number | null; estimasi_tiba: string | null },
   actorId: string,
 ): Promise<{ status: string; estimasiTiba: string | null }> {
   const events = await loadEvents(ctx, s.awb);
-  const last = events[events.length - 1];
+  // A restored order still carries its old "Dibatalkan" log; it never decides the status of a live shipment.
+  const live = events.filter((e) => e.type !== "Dibatalkan");
+  const last = live[live.length - 1];
   const status = last ? eventTypeToShipmentStatus(last.type as TimelineEventType) : "Dalam Persiapan";
 
   // ETA runs from the first departure; with no departure left it falls back to the creation date.
@@ -88,6 +92,10 @@ export function registerTrackingHistoryRoutes(router: Router) {
     }
 
     const body = await parseJsonBody(ctx.request);
+    const tanggal = reqString(body, "tanggal");
+    const jam = reqString(body, "jam");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggal)) throw Errors.badRequest('Field "tanggal" harus berformat YYYY-MM-DD.');
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(jam)) throw Errors.badRequest('Field "jam" harus berformat HH:mm.');
     const requestedType = optString(body, "type") ?? ev.type;
     if (requestedType !== ev.type) {
       if (ev.ltl_stage) throw Errors.unprocessable("Status tahap LTL tidak dapat diganti; hapus log ini lalu catat tahap yang benar.");
@@ -95,19 +103,17 @@ export function registerTrackingHistoryRoutes(router: Router) {
       if (!(SELECTABLE_TYPES as string[]).includes(requestedType)) {
         throw Errors.unprocessable(`Status "${requestedType}" tidak dapat dipilih.`);
       }
-      // The edited log must stay between its neighbours so the pipeline still never goes backward.
-      const prev = events[idx - 1];
-      const next = events[idx + 1];
+      // The edited log must stay between its neighbours (by date/time, after this edit) so the pipeline still never goes backward.
+      const moved = events.map((e) => (e.id === ev.id ? { ...e, tanggal, jam } : e)).sort(compareTimeline);
+      const at = moved.findIndex((e) => e.id === ev.id);
+      const prev = moved[at - 1];
+      const next = moved[at + 1];
       const rank = pipelineRank(requestedType);
       if ((prev && rank < pipelineRank(prev.type)) || (next && rank > pipelineRank(next.type))) {
         throw Errors.unprocessable(`Status "${requestedType}" tidak sesuai urutan log sebelum/sesudahnya.`);
       }
     }
     const lokasi = reqString(body, "lokasi", { max: 150 });
-    const tanggal = reqString(body, "tanggal");
-    const jam = reqString(body, "jam");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggal)) throw Errors.badRequest('Field "tanggal" harus berformat YYYY-MM-DD.');
-    if (!/^\d{2}:\d{2}$/.test(jam)) throw Errors.badRequest('Field "jam" harus berformat HH:mm.');
     const keterangan = optString(body, "keterangan") ?? "";
     if (keterangan.length > 500) throw Errors.badRequest('Field "keterangan" maksimal 500 karakter.');
 

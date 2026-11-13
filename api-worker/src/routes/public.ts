@@ -7,6 +7,7 @@ import { newId } from "../crypto";
 import { presignGet } from "../storage";
 import { likeTerm } from "../pagination";
 import { maskSenderName } from "../mask";
+import { timelineOrderSql } from "../status";
 import { TRACKING_CAPTCHA_ENABLED, clientIp, rateLimit, requirePass } from "../captcha";
 
 const PUBLIC_ENTITY_TYPES = new Set([
@@ -62,7 +63,7 @@ export function registerPublicRoutes(router: Router) {
        FROM shipment_timeline_events e
        LEFT JOIN trucks t ON t.id = e.truck_id
        LEFT JOIN drivers d ON d.id = t.driver_id
-       WHERE e.awb = ? ORDER BY e.tanggal ASC, e.jam ASC, e.seq ASC`,
+       WHERE e.awb = ? ORDER BY ${timelineOrderSql("ASC", "e")}`,
     )
       .bind(params.awb)
       .all();

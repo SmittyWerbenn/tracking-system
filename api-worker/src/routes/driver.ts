@@ -6,6 +6,7 @@ import { parseJsonBody, reqNumber } from "../validate";
 import { newId } from "../crypto";
 import { requireAuth } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
+import { timelineOrderSql } from "../status";
 
 /** Resolves the drivers.id linked to the logged-in user, or throws 403 if
  * this account isn't a Driver or isn't linked to a driver record yet. */
@@ -213,7 +214,7 @@ export function registerDriverRoutes(router: Router) {
 
     const timeline = await ctx.env.DB.prepare(
       `SELECT id, type, ltl_stage, lokasi, tanggal, jam, keterangan, input_at
-       FROM shipment_timeline_events WHERE awb = ? ORDER BY seq ASC`,
+       FROM shipment_timeline_events WHERE awb = ? ORDER BY ${timelineOrderSql("ASC")}`,
     )
       .bind(params.awb)
       .all();

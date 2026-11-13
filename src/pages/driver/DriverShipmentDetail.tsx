@@ -34,6 +34,7 @@ import {
   type DriverShipmentDetail as DriverShipmentDetailData,
 } from "../../utils/driverApi";
 import { formatJam, formatTanggalPanjang, nowHHMM, todayISO, isoToWib } from "../../utils/format";
+import { newestFirst } from "../../utils/timelineOrder";
 import { getAllowedNextEvents } from "../../utils/status";
 
 function formatCoord(n: number): string {
@@ -393,7 +394,7 @@ export default function DriverShipmentDetail() {
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Riwayat Perjalanan</h2>
             <ol className="flex flex-col gap-3">
-              {[...timeline].reverse().map((e) => (
+              {newestFirst(timeline).map((e) => (
                 <li key={e.id} className="border-l-2 border-slate-200 pl-3">
                   <p className="text-xs text-slate-400">
                     {formatTanggalPanjang(e.tanggal)} &middot; {formatJam(e.jam)}

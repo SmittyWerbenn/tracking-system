@@ -3,8 +3,9 @@ import { useState } from "react";
 import { actionClass } from "./ActionButton";
 import { useLanguage } from "../store/LanguageContext";
 import type { TimelineEvent } from "../types";
-import { getLtlStage, type LtlFlags } from "../utils/ltlPipeline";
-import { LtlTimeline } from "./LtlTimeline";
+import { getLtlStage } from "../utils/ltlPipeline";
+import { newestFirst } from "../utils/timelineOrder";
+import { LtlProgress, LtlRemainingStages, type LtlContext } from "./LtlTimeline";
 import { formatJam, formatTanggalPanjang } from "../utils/format";
 import { ImageLightbox, PhotoThumb } from "./ImageLightbox";
 
@@ -13,8 +14,8 @@ interface TrackingTimelineProps {
   /** Admin portal only: shows an edit / delete button on logs that may be corrected. */
   onEdit?: (event: TimelineEvent) => void;
   onDelete?: (event: TimelineEvent) => void;
-  /** LTL shipments: render the full stage checklist (done / current / upcoming) grouped by phase instead of only the logged events. */
-  ltl?: { flags: LtlFlags; origin: string; destination: string; status: string };
+  /** LTL shipments: adds the pipeline progress above the history and the stages not logged yet below it. */
+  ltl?: LtlContext;
 }
 
 /** System milestones (initial "Order Dibuat", delivery, cancellation) are never editable or deletable. */
@@ -23,13 +24,9 @@ const PROTECTED_EVENT_TYPES = new Set(["Barang Diterima", "Selesai / Terkirim", 
 export function TrackingTimeline({ events, onEdit, onDelete, ltl }: TrackingTimelineProps) {
   const { t } = useLanguage();
   const [lightbox, setLightbox] = useState<{ src: string; caption: string } | null>(null);
-  // Show most recent first for the reading order, but keep chronological numbering.
-  const ordered = [...events].reverse();
-
-  // LTL: always the full checklist (every applicable stage, grouped by phase), even before any stage log exists.
-  if (ltl) {
-    return <LtlTimeline events={events} ltl={ltl} onEdit={onEdit} onDelete={onDelete} />;
-  }
+  // Newest date/time on the top row, oldest at the bottom - for every layanan, LTL included.
+  // Row 0 is the one and only "TERBARU" log (the same log the shipment's status follows).
+  const ordered = newestFirst(events);
 
   return (
     <div className="relative">
@@ -38,6 +35,7 @@ export function TrackingTimeline({ events, onEdit, onDelete, ltl }: TrackingTime
         caption={lightbox?.caption}
         onClose={() => setLightbox(null)}
       />
+      {ltl && <LtlProgress events={events} ltl={ltl} />}
       <ol className="relative">
         {ordered.map((event, idx) => {
           const isLatest = idx === 0;
@@ -114,7 +112,7 @@ export function TrackingTimeline({ events, onEdit, onDelete, ltl }: TrackingTime
 
                 <p
                   className={`mt-1 flex items-center gap-1.5 text-sm font-semibold ${
-                    isDelivered ? "text-emerald-600" : "text-slate-900"
+                    isDelivered ? "text-emerald-600" : isLatest ? "text-blue-900" : "text-slate-900"
                   }`}
                 >
                   {label}
@@ -168,6 +166,7 @@ export function TrackingTimeline({ events, onEdit, onDelete, ltl }: TrackingTime
           );
         })}
       </ol>
+      {ltl && <LtlRemainingStages events={events} ltl={ltl} />}
     </div>
   );
 }

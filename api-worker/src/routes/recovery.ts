@@ -6,7 +6,7 @@ import { newId } from "../crypto";
 import { requireAuth, requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta } from "../pagination";
-import { eventTypeToShipmentStatus, type TimelineEventType } from "../status";
+import { eventTypeToShipmentStatus, timelineOrderSql, type TimelineEventType } from "../status";
 import { wibNow } from "../wib";
 
 const ALREADY_PROCESSED = "Request sudah diproses oleh user lain.";
@@ -56,7 +56,7 @@ const LIST_SELECT = `SELECT r.*, s.status AS order_status, s.tanggal_dibuat, s.k
  * (read from its timeline), or the normal initial status when unknown. */
 async function statusBeforeCancel(db: D1Database, awb: string): Promise<{ status: string; type: TimelineEventType }> {
   const prev = await db
-    .prepare(`SELECT type FROM shipment_timeline_events WHERE awb = ? AND type != 'Dibatalkan' ORDER BY seq DESC LIMIT 1`)
+    .prepare(`SELECT type FROM shipment_timeline_events WHERE awb = ? AND type != 'Dibatalkan' ORDER BY ${timelineOrderSql("DESC")} LIMIT 1`)
     .bind(awb)
     .first<{ type: TimelineEventType }>();
   const type: TimelineEventType = prev?.type ?? "Barang Diterima";
@@ -157,7 +157,7 @@ export function registerRecoveryRoutes(router: Router) {
       .bind(r.awb)
       .first();
     const timeline = await ctx.env.DB.prepare(
-      `SELECT seq, type, lokasi, tanggal, jam, keterangan, input_by_name FROM shipment_timeline_events WHERE awb = ? ORDER BY seq ASC`,
+      `SELECT seq, type, lokasi, tanggal, jam, keterangan, input_by_name FROM shipment_timeline_events WHERE awb = ? ORDER BY ${timelineOrderSql("ASC")}`,
     )
       .bind(r.awb)
       .all();

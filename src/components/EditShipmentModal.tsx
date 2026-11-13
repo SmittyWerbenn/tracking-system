@@ -2,7 +2,6 @@ import { AlertTriangle, Loader2, Pencil, X } from "lucide-react";
 import { LtlHandlingFields } from "./LtlHandlingFields";
 import { isLtlLayanan } from "../utils/ltlPipeline";
 import { useEffect, useState } from "react";
-import { useAuth } from "../store/AuthContext";
 import { useLayanan } from "../store/LayananContext";
 import { useShipments } from "../store/ShipmentContext";
 import type { Shipment } from "../types";
@@ -16,10 +15,6 @@ const inputClass =
  * fields (SLA/ETA, truck, mitra) are not part of this form. */
 export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Shipment; onClose: () => void; onSaved?: () => void }) {
   const { updateShipmentInfo } = useShipments();
-  const { profile } = useAuth();
-  // "Keterangan Internal" is private to GMS ops: only Superadmin/Admin see or edit it.
-  const canEditInternal = profile?.role === "Superadmin" || profile?.role === "Admin";
-  const [internalNotes, setInternalNotes] = useState(shipment.internalNotes ?? "");
   const { activeNames: layananOptions, refresh: refreshLayanan } = useLayanan();
 
   const [f, setF] = useState({
@@ -98,7 +93,6 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
       asuransi,
       koliAsuransi: asuransi ? koliAsuransi : "",
       nilaiAsuransi: asuransi ? Number(nilaiAsuransi) : undefined,
-      ...(canEditInternal ? { internalNotes: internalNotes.trim() } : {}),
     });
     setPending(false);
     if (result.ok) {
@@ -172,20 +166,6 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
 
           <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400 sm:col-span-2">Barang</p>
           <div className="sm:col-span-2">{field("Deskripsi Barang", "deskripsiBarang", { rows: 2 })}</div>
-          {canEditInternal && (
-            <label className="block sm:col-span-2">
-              <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan Internal (Khusus Internal GMS)</span>
-              <input
-                className={inputClass}
-                maxLength={500}
-                placeholder="Contoh: Resi Vendor JNE-09123812 / Subkon PT Maju"
-                value={internalNotes}
-                onChange={(e) => setInternalNotes(e.target.value)}
-                autoComplete="off"
-              />
-              <span className="mt-1.5 block text-[11px] text-slate-400">Catatan internal admin (contoh: No. Resi Vendor / Nama Vendor). Tidak ditampilkan ke customer.</span>
-            </label>
-          )}
           {field("Berat Final (Kg)", "beratKg", { type: "number" })}
           {field("Jumlah Koli", "jumlahKoli", { type: "number" })}
           <label className="block sm:col-span-2">

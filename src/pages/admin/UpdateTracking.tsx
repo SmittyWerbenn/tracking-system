@@ -134,6 +134,7 @@ function UpdateTrackingForm() {
         setLokasi(d.lokasi);
         setKeterangan(d.keterangan);
         setNamaPenerima(s.penerima.nama);
+        setInternalNotes(s.internalNotes ?? "");
         setTruckId(s.truckId ?? "");
         setEditPengirim(s.pengirim);
         setEditPenerima(s.penerima);
@@ -315,7 +316,8 @@ function UpdateTrackingForm() {
       tanggal,
       jam,
       keterangan,
-      internalNotes: canWriteInternal ? internalNotes : undefined,
+      // One internal note per AWB: sent only when changed ("" clears it).
+      internalNotes: canWriteInternal && internalNotes.trim() !== (shipment!.internalNotes ?? "").trim() ? internalNotes.trim() : undefined,
       // Order matters here: addTrackingUpdate takes foto[0] as bukti barang
       // diterima and foto[1] (falling back to foto[0]) as bukti surat
       // jalan - keep these two labeled uploads in that exact order.
@@ -832,7 +834,7 @@ function UpdateTrackingForm() {
                   onChange={(e) => setInternalNotes(e.target.value)}
                   autoComplete="off"
                 />
-                <span className="mt-1.5 block text-[11px] text-slate-400">Catatan internal admin (contoh: No. Resi Vendor / Nama Vendor). Tidak ditampilkan ke customer.</span>
+                <span className="mt-1.5 block text-[11px] text-slate-400">Satu catatan per AWB (contoh: No. Resi Vendor / Nama Vendor); mengubahnya memperbarui catatan AWB ini. Tidak ditampilkan ke customer.</span>
               </label>
             )}
 

@@ -46,7 +46,7 @@ function readInternalNotes(body: Record<string, unknown>): string | null {
 function forActor(rawSummary: ReturnType<typeof shipmentSummary>, role: string) {
   const summary = canSeeInternalNotes(role)
     ? rawSummary
-    : { ...rawSummary, internalNotes: null as unknown, lastUpdate: rawSummary.lastUpdate ? { ...rawSummary.lastUpdate, internalNotes: null } : null };
+    : { ...rawSummary, internalNotes: null as unknown };
   if (role === "Mitra") return { ...summary, createdByName: null, createdByRole: null as unknown as typeof summary.createdByRole, hold: null, holdPolicy: undefined };
   return role === "Client" ? { ...summary, mitraId: null, mitraNama: null } : summary;
 }
@@ -105,7 +105,7 @@ function shipmentSummary(row: Record<string, unknown>) {
       ? { tanggal: row.pod_tanggal, jam: row.pod_jam, namaPenerima: row.pod_nama_penerima }
       : null,
     lastUpdate: row.last_tanggal
-      ? { tanggal: row.last_tanggal, jam: row.last_jam, keterangan: row.last_keterangan ?? null, internalNotes: (row.last_internal_notes as string | null) ?? null }
+      ? { tanggal: row.last_tanggal, jam: row.last_jam, keterangan: row.last_keterangan ?? null }
       : null,
     recovery: row.recovery_status
       ? { status: row.recovery_status, requestedAt: row.recovery_requested_at, rejectionReason: row.recovery_rejection_reason ?? null }
@@ -254,7 +254,7 @@ export function registerShipmentRoutes(router: Router) {
               cd.nama as claim_driver_nama, cd.telepon as claim_driver_telepon,
               m.nama as mitra_nama,
               p.tanggal as pod_tanggal, p.jam as pod_jam, p.nama_penerima as pod_nama_penerima,
-              le.tanggal as last_tanggal, le.jam as last_jam, le.keterangan as last_keterangan, le.internal_notes as last_internal_notes,
+              le.tanggal as last_tanggal, le.jam as last_jam, le.keterangan as last_keterangan,
               rr.status as recovery_status, rr.requested_at as recovery_requested_at, rr.rejection_reason as recovery_rejection_reason,
               ${pickupEvidenceSql("s.awb")} AS has_pickup,
               cr.id as cr_id, cr.status as cr_status, cr.reason as cr_reason, cr.requested_by_name as cr_requested_by_name,
@@ -268,7 +268,7 @@ export function registerShipmentRoutes(router: Router) {
        LEFT JOIN mitras m ON m.kode_mitra = s.mitra_id
        LEFT JOIN shipment_pod p ON p.awb = s.awb
        LEFT JOIN (
-         SELECT e1.awb, e1.tanggal, e1.jam, e1.keterangan, e1.internal_notes FROM shipment_timeline_events e1
+         SELECT e1.awb, e1.tanggal, e1.jam, e1.keterangan FROM shipment_timeline_events e1
          WHERE e1.seq = (SELECT MAX(e2.seq) FROM shipment_timeline_events e2 WHERE e2.awb = e1.awb)
        ) le ON le.awb = s.awb
        LEFT JOIN order_recovery_requests rr ON rr.id = (
@@ -578,7 +578,7 @@ export function registerShipmentRoutes(router: Router) {
       .bind(params.awb, params.awb)
       .all();
 
-    return ok({ shipment: forActor(withHoldPolicy(withCancelPolicy(shipmentSummary(row), row, actor), row, actor), actor.role), timeline: canSeeInternalNotes(actor.role) ? timeline.results : (timeline.results ?? []).map((e) => ({ ...e, internal_notes: null })), pod: pod ?? null, files: files.results ?? [], holds: actor.role === "Mitra" || actor.role === "Driver" ? [] : holds.results ?? [] });
+    return ok({ shipment: forActor(withHoldPolicy(withCancelPolicy(shipmentSummary(row), row, actor), row, actor), actor.role), timeline: (timeline.results ?? []).map((e) => ({ ...e, internal_notes: null })), pod: pod ?? null, files: files.results ?? [], holds: actor.role === "Mitra" || actor.role === "Driver" ? [] : holds.results ?? [] });
     });
 
     // Last position reported by the driver ("Perbarui Posisi" button on the
@@ -953,7 +953,11 @@ export function registerShipmentRoutes(router: Router) {
       optString(body, "keterangan") ??
       (ltlStageDef ? renderLtlDescription(ltlStageDef, String(shipment.kota_asal), String(shipment.kota_tujuan)) : DEFAULT_KETERANGAN[type] ?? "");
     if (keterangan.length > 500) throw Errors.badRequest('Field "keterangan" maksimal 500 karakter.');
-    const internalNotes = canSeeInternalNotes(actor.role) ? readInternalNotes(body) : null;
+    // "Keterangan Internal" is one note per AWB (shipments.internal_notes), not per tracking log: when the form sends it
+    // (admin only) it replaces the shipment's note; an empty value clears it. The log itself never stores one.
+    const internalNotesSent = canSeeInternalNotes(actor.role) && Object.prototype.hasOwnProperty.call(body, "internalNotes");
+    const newInternalNote = internalNotesSent ? readInternalNotes(body) : null;
+    const internalNotes: string | null = null;
     const truckId = optString(body, "truckId");
     const titikId = optString(body, "titikId");
     // A driver/mitra reports their own operational progress only -
@@ -1005,6 +1009,11 @@ export function registerShipmentRoutes(router: Router) {
     )
       .bind(eventId, params.awb, seq, type, lokasi, titikId ?? null, tanggal, jam, keterangan, truckId ?? shipment.truck_id ?? null, previousTruckId, actor.id, actor.nama, nowIso, nowIso, internalNotes, ltlStageDef?.code ?? null)
       .run();
+
+    if (internalNotesSent && newInternalNote !== ((shipment.internal_notes as string | null) ?? null)) {
+      await ctx.env.DB.prepare(`UPDATE shipments SET internal_notes = ?, updated_at = ?, updated_by = ? WHERE awb = ?`).bind(newInternalNote, nowIso, actor.id, params.awb).run();
+      await writeAuditLog(ctx.env, actor, { action: "UPDATE_INTERNAL_NOTE", actionLabel: "UPDATE INTERNAL NOTE", module: "Shipment", awb: params.awb, description: "Keterangan Internal pengiriman diperbarui." });
+    }
 
     // Picking a Master Armada unit (e.g. Transfer Unit from a sewa truck) makes the shipment internal again.
     await ctx.env.DB.prepare(

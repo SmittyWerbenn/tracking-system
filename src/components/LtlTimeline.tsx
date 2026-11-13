@@ -101,12 +101,6 @@ export function LtlTimeline({ events, ltl, onEdit, onDelete }: Props) {
           {event.lokasi}
         </p>
         {event.keterangan && <p className="mt-1 text-sm leading-relaxed text-slate-500">{event.keterangan}</p>}
-        {event.internalNotes?.trim() && (
-          <p className="mt-1 flex items-start gap-1.5 rounded-md bg-amber-50 px-2 py-1.5 text-sm leading-relaxed text-amber-800">
-            <span className="mt-0.5 shrink-0 rounded-full bg-amber-200 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">Internal</span>
-            <span className="min-w-0 break-words">{event.internalNotes}</span>
-          </p>
-        )}
         {event.foto && event.foto.length > 0 && (
           <div className="mt-2.5 flex gap-2 overflow-x-auto">
             {event.foto.map((src, i) => (

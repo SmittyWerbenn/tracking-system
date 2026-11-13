@@ -48,7 +48,6 @@ interface ShipmentRow {
   deskripsi_barang: string | null;
   internal_notes: string | null;
   last_keterangan: string | null;
-  last_internal_notes: string | null;
 }
 
 const CSV_COLUMNS = [
@@ -114,13 +113,6 @@ function csvCell(value: unknown): string {
   return safe;
 }
 
-/** Shipment-level internal note plus the latest tracking log's internal note (when different). */
-function joinInternal(shipmentNote: string | null, logNote: string | null): string {
-  const a = (shipmentNote ?? "").trim();
-  const b = (logNote ?? "").trim();
-  return [a, b && b !== a ? b : ""].filter(Boolean).join(" | ");
-}
-
 function buildCsv(rows: ShipmentRow[]): string {
   const lines = [CSV_COLUMNS.join(",")];
   for (const r of rows) {
@@ -147,7 +139,7 @@ function buildCsv(rows: ShipmentRow[]): string {
         r.truck_driver_nama ?? "",
         r.created_by_name ?? "",
         r.last_keterangan ?? "",
-        joinInternal(r.internal_notes, r.last_internal_notes),
+        (r.internal_notes ?? "").trim(),
       ]
         .map(csvCell)
         .join(","),
@@ -376,8 +368,7 @@ export async function runDailyReport(
             s.asuransi, s.koli_asuransi, s.nilai_asuransi,
             t.nomor_unit as truck_nomor_unit, d.nama as truck_driver_nama,
             s.created_by_name, s.created_by_role, s.internal_notes,
-            (SELECT e.keterangan FROM shipment_timeline_events e WHERE e.awb = s.awb ORDER BY e.seq DESC LIMIT 1) AS last_keterangan,
-            (SELECT e.internal_notes FROM shipment_timeline_events e WHERE e.awb = s.awb ORDER BY e.seq DESC LIMIT 1) AS last_internal_notes
+            (SELECT e.keterangan FROM shipment_timeline_events e WHERE e.awb = s.awb ORDER BY e.seq DESC LIMIT 1) AS last_keterangan
      FROM shipments s
      LEFT JOIN trucks t ON t.id = s.truck_id
      LEFT JOIN drivers d ON d.id = t.driver_id

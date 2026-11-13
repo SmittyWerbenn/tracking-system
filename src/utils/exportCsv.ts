@@ -13,11 +13,9 @@ function csvEscape(value: string): string {
   return flat;
 }
 
-/** Shipment-level internal note plus the latest log's internal note (when it differs). Only admins receive these from the API. */
+/** One internal note per AWB. Only admins receive it from the API. */
 function internalNotesText(s: Shipment): string {
-  const a = (s.internalNotes ?? "").trim();
-  const b = (s.lastInternalNotes ?? "").trim();
-  return [a, b && b !== a ? b : ""].filter(Boolean).join(" | ") || "-";
+  return (s.internalNotes ?? "").trim() || "-";
 }
 
 /** tanggal: "2026-09-20" -> "20-09-2026" */

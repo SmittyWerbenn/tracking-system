@@ -111,12 +111,8 @@ export function registerTrackingHistoryRoutes(router: Router) {
     const keterangan = optString(body, "keterangan") ?? "";
     if (keterangan.length > 500) throw Errors.badRequest('Field "keterangan" maksimal 500 karakter.');
 
-    // Keterangan Internal is only touched when the key is sent (tracking.manage is Superadmin/Admin only).
-    let internalNotes = ev.internal_notes;
-    if (Object.prototype.hasOwnProperty.call(body, "internalNotes")) {
-      internalNotes = optString(body, "internalNotes") ?? null;
-      if (internalNotes && internalNotes.length > 500) throw Errors.badRequest("Keterangan Internal maksimal 500 karakter.");
-    }
+    // Keterangan Internal belongs to the AWB (shipments.internal_notes), so a tracking log's edit never touches it.
+    const internalNotes = ev.internal_notes;
 
     await ctx.env.DB.prepare(
       `UPDATE shipment_timeline_events SET type = ?, lokasi = ?, titik_id = CASE WHEN lokasi = ? THEN titik_id ELSE NULL END, tanggal = ?, jam = ?, keterangan = ?, internal_notes = ? WHERE id = ? AND awb = ?`,
@@ -129,7 +125,6 @@ export function registerTrackingHistoryRoutes(router: Router) {
     if (requestedType !== ev.type) changes.push(`status ${ev.type} -> ${requestedType}`);
     if (lokasi !== ev.lokasi) changes.push(`lokasi "${ev.lokasi}" -> "${lokasi}"`);
     if (tanggal !== ev.tanggal || jam !== ev.jam) changes.push(`waktu ${ev.tanggal} ${ev.jam} -> ${tanggal} ${jam}`);
-    if (internalNotes !== ev.internal_notes) changes.push("keterangan internal diperbarui");
     if (keterangan !== ev.keterangan) changes.push(`keterangan "${ev.keterangan}" -> "${keterangan}"`);
     await writeAuditLog(ctx.env, actor, {
       action: "EDIT_TRACKING_EVENT",

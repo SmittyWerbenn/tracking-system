@@ -44,7 +44,8 @@ export function QuickUpdatePanel({ shipment, onSaved }: Props) {
   const [namaPenerima, setNamaPenerima] = useState(shipment.penerima.nama);
   // "Keterangan Internal" is private to GMS ops (Superadmin/Admin); other roles never see the field.
   const canWriteInternal = profile?.role === "Superadmin" || profile?.role === "Admin";
-  const [internalNotes, setInternalNotes] = useState("");
+  // One internal note per AWB: prefilled with the current one, saved back to the shipment only when changed.
+  const [internalNotes, setInternalNotes] = useState(shipment.internalNotes ?? "");
   const [tanggal, setTanggal] = useState(todayISO());
   const [jam, setJam] = useState(nowHHMM());
   const [pending, setPending] = useState(false);
@@ -81,7 +82,7 @@ export function QuickUpdatePanel({ shipment, onSaved }: Props) {
       tanggal,
       jam,
       keterangan: keterangan.trim(),
-      internalNotes: canWriteInternal ? internalNotes.trim() || undefined : undefined,
+      internalNotes: canWriteInternal && internalNotes.trim() !== (shipment.internalNotes ?? "").trim() ? internalNotes.trim() : undefined,
       namaPenerima: isSelesai ? namaPenerima.trim() : undefined,
     });
     if (!result.ok) {
@@ -163,7 +164,7 @@ export function QuickUpdatePanel({ shipment, onSaved }: Props) {
               autoComplete="off"
             />
             <span className="mt-1.5 block text-[11px] text-slate-400">
-              Catatan internal admin (tidak muncul di halaman tracking publik customer).
+              Catatan internal untuk AWB ini (satu catatan per AWB, tidak muncul di halaman tracking publik customer).
             </span>
           </label>
         )}

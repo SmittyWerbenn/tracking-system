@@ -81,7 +81,7 @@ interface RawShipmentSummary {
   holdPolicy?: Shipment["holdPolicy"];
   cancellation?: Shipment["cancellation"] | null;
   pod: { tanggal: string; jam: string; namaPenerima: string } | null;
-  lastUpdate: { tanggal: string; jam: string; keterangan?: string | null; internalNotes?: string | null } | null;
+  lastUpdate: { tanggal: string; jam: string; keterangan?: string | null } | null;
 }
 
 export interface ClaimSeen {
@@ -167,7 +167,6 @@ function toShipment(row: RawShipmentSummary): Shipment {
     driverName: row.driverName ?? undefined,
     driverId: row.driverId ?? undefined,
     lastKeterangan: row.lastUpdate?.keterangan ?? undefined,
-    lastInternalNotes: row.lastUpdate?.internalNotes?.trim() || undefined,
     customerId: row.customerId ?? undefined,
     mitraId: row.mitraId ?? undefined,
     mitraNama: row.mitraNama ?? undefined,
@@ -473,7 +472,8 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         tanggal: data.tanggal,
         jam: data.jam,
         keterangan: data.keterangan,
-        internalNotes: data.internalNotes?.trim() || undefined,
+        // Per-AWB note: "" clears it, undefined leaves it alone.
+        internalNotes: data.internalNotes?.trim(),
         truckId: data.truckId,
         namaPenerima: data.namaPenerima,
       });

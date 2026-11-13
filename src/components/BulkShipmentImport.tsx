@@ -31,6 +31,7 @@ interface ImportResultRow {
 import { downloadCsv, readTableFromFile } from "../utils/csv";
 import {
   downloadBulkShipmentTemplate,
+  parseYaTidak,
   normalizeLayanan,
   tableToBulkRows,
   type BulkRowInput,
@@ -138,12 +139,11 @@ function rowErrors(row: BulkRow, duplicateRows?: number[]): string[] {
     if (!row.nilaiAsuransi.trim() || !Number.isFinite(nilai) || nilai <= 0) errs.push("Nilai asuransi wajib diisi > 0 jika Asuransi = Ya");
   }
   // DO Balik: optional, empty = Tidak.
-  const dob = row.doBalik.trim().toLowerCase();
-  if (dob && !isYes(dob) && !["tidak", "t", "0", "n", "no"].includes(dob)) errs.push("DO Balik harus diisi 'Ya' atau 'Tidak'");
+  if (parseYaTidak(row.doBalik) === null) errs.push("DO Balik harus diisi 'Ya' atau 'Tidak'");
   return errs;
 }
 
-const isYes = (v: string) => ["ya", "y", "1", "yes"].includes(v.trim().toLowerCase());
+const isYes = (v: string) => parseYaTidak(v) === true;
 
 const cellInputClass =
   "w-full min-w-[140px] rounded-md border border-slate-300 px-2 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-100";

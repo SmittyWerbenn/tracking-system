@@ -3,11 +3,19 @@ import { downloadCsv } from "./csv";
 import type { DriverShipmentSummary } from "./driverApi";
 import { stripKeteranganMeta } from "./format";
 
+/** Quotes cells containing commas, quotes or line breaks (so lists like "62949,62951" stay in one cell).
+ * Line breaks are flattened to a space first so every shipment stays on a single spreadsheet row. */
 function csvEscape(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+  const flat = value.replace(/\r?\n+/g, " ");
+  if (/[",\r\n]/.test(flat)) {
+    return `"${flat.replace(/"/g, '""')}"`;
   }
-  return value;
+  return flat;
+}
+
+/** One internal note per AWB. Only admins receive it from the API. */
+function internalNotesText(s: Shipment): string {
+  return (s.internalNotes ?? "").trim() || "-";
 }
 
 /** tanggal: "2026-09-20" -> "20-09-2026" */
@@ -43,10 +51,13 @@ const COLUMNS = [
   "Asuransi",
   "Koli Diasuransi",
   "Nilai Asuransi (Rp)",
+  "DO Balik",
   "Estimasi Tiba",
   "Diterima Oleh",
   "Tanggal & Waktu Diterima",
   "Keterangan",
+  "Keterangan Tracking Terbaru",
+  "Keterangan Internal",
   "Status",
   "Truck",
   "Driver",
@@ -71,10 +82,13 @@ export function exportShipmentsCsv(shipments: Shipment[], filename = "data-pengi
     s.asuransi ? "Ya" : "Tidak",
     s.asuransi ? (s.koliAsuransi ?? "-") : "-",
     s.asuransi ? (s.nilaiAsuransi ?? "-") : "-",
+    !s.requiresDoBalik ? "Tidak" : s.doBalikStatus === "returned" ? "Ya (Sudah Kembali)" : "Ya (Belum Kembali)",
     s.estimasiTiba ? formatTanggalDDMMYYYY(s.estimasiTiba) : "-",
     s.pod?.namaPenerima ?? "-",
     receivedAtText(s),
     stripKeteranganMeta(s.deskripsiBarang),
+    s.lastKeterangan?.trim() || "-",
+    internalNotesText(s),
     s.status,
     s.truck.nomorUnit,
     s.truck.driver ?? "-",

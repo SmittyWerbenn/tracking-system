@@ -13,6 +13,8 @@ import {
   SHIPMENT_DELETE_BLOCKED,
   softDelete,
   restoreItem,
+  purgeCancelledShipment,
+  purgeCancelledShipments,
   type RecycleEntity,
   type BinRow,
   type ItemResult,
@@ -125,6 +127,19 @@ export function registerRecycleRoutes(router: Router) {
       const msg = results[0].message ?? "Gagal menghapus data.";
       throw msg.startsWith("Data sudah") ? Errors.conflict(msg) : Errors.unprocessable(msg);
     }
+    return ok(summary);
+  });
+
+  // Hapus permanen DATA PENGIRIMAN yang sudah Dibatalkan - straight from the table,
+  // no Recycle Bin. Same permission as the rest of shipment maintenance (recycle.manage
+  // = Superadmin) and only for that one status, re-checked against the live row.
+  router.post("/api/recycle/shipments/purge-cancelled", async (ctx: Ctx) => {
+    const actor = requirePermission(ctx, "recycle.manage");
+    const body = await parseJsonBody(ctx.request);
+    const reason = readReason(body);
+    const ids = readIds(body);
+    if (ids.length > MAX_BULK) throw Errors.badRequest(`Maksimal ${MAX_BULK} pengiriman per proses.`);
+    const summary = await purgeCancelledShipments(ctx.env, ids, reason, { id: actor.id, nama: actor.nama });
     return ok(summary);
   });
 

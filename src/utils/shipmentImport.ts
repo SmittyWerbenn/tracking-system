@@ -24,6 +24,8 @@ export const BULK_TEMPLATE_HEADERS = [
   "Asuransi (Ya/Tidak)",
   "Koli Diasuransi",
   "Nilai Asuransi (Rp)",
+  "DO Balik (Ya/Tidak)",
+  "Keterangan Internal (Opsional)",
 ] as const;
 
 export interface BulkRowInput {
@@ -48,6 +50,10 @@ export interface BulkRowInput {
   asuransi: string;
   koliAsuransi: string;
   nilaiAsuransi: string;
+  /** "Ya" / "Tidak"; empty = Tidak. */
+  doBalik: string;
+  /** Internal GMS note (e.g. vendor waybill). Only sent for Superadmin/Admin imports. */
+  keteranganInternal: string;
 }
 
 const FIELD_ORDER: (keyof BulkRowInput)[] = [
@@ -71,6 +77,8 @@ const FIELD_ORDER: (keyof BulkRowInput)[] = [
   "asuransi",
   "koliAsuransi",
   "nilaiAsuransi",
+  "doBalik",
+  "keteranganInternal",
 ];
 
 const HEADER_LOOKUP = new Map(BULK_TEMPLATE_HEADERS.map((h, i) => [normalizeHeader(h), FIELD_ORDER[i]]));
@@ -141,6 +149,8 @@ export function tableToBulkRows(table: unknown[][]): {
       asuransi: record.asuransi ?? "",
       koliAsuransi: record.koliAsuransi ?? "",
       nilaiAsuransi: record.nilaiAsuransi ?? "",
+      doBalik: record.doBalik ?? "",
+      keteranganInternal: record.keteranganInternal ?? "",
     });
   }
 
@@ -156,29 +166,46 @@ export function normalizeLayanan(value: string, activeOptions: string[], fallbac
   return activeOptions.find((o) => o.toLowerCase() === v) ?? fallback;
 }
 
+/** Sample row of the template, keyed by field (not by position) so every value always lands under its own header:
+ * adding a column can no longer shift the values after it. */
+const TEMPLATE_SAMPLE: BulkRowInput = {
+  referensi: "ORD-001",
+  pengirimNama: "Contoh Pengirim",
+  pengirimTelepon: "0812-3456-7890",
+  pengirimEmail: "pengirim@email.com",
+  penerimaNama: "Contoh Penerima",
+  penerimaTelepon: "0813-9988-2211",
+  penerimaEmail: "penerima@email.com",
+  kotaAsal: "Jakarta",
+  alamatAsal: "Jl. Raya Cakung No. 88",
+  kotaTujuan: "Bandung",
+  alamatTujuan: "Jl. Soekarno Hatta No. 210",
+  layanan: "Regular",
+  beratKg: "10",
+  jumlahKoli: "1",
+  deskripsiBarang: "Contoh isi paket, 1 dus (10kg)",
+  nomorPolisiTruck: "",
+  slaValue: "3",
+  asuransi: "Tidak",
+  koliAsuransi: "",
+  nilaiAsuransi: "",
+  doBalik: "Tidak",
+  keteranganInternal: "Resi Vendor JNE-09123812 / Subkon PT Maju",
+};
+
+/** The template's sample row, one value per header in BULK_TEMPLATE_HEADERS order. */
+export function bulkTemplateSampleRow(): string[] {
+  return FIELD_ORDER.map((field) => TEMPLATE_SAMPLE[field]);
+}
+
+/** "Ya"/"Tidak" columns (DO Balik, Asuransi): true / false, or null when the cell holds anything else (free text is rejected). Empty = Tidak. */
+export function parseYaTidak(value: string): boolean | null {
+  const v = value.trim().toLowerCase();
+  if (["ya", "y", "yes", "1", "true"].includes(v)) return true;
+  if (["", "tidak", "t", "n", "no", "0", "false"].includes(v)) return false;
+  return null;
+}
+
 export function downloadBulkShipmentTemplate() {
-  downloadCsv("template-bulk-pengiriman.csv", BULK_TEMPLATE_HEADERS, [
-    [
-      "ORD-001",
-      "Contoh Pengirim",
-      "0812-3456-7890",
-      "pengirim@email.com",
-      "Contoh Penerima",
-      "0813-9988-2211",
-      "penerima@email.com",
-      "Jakarta",
-      "Jl. Raya Cakung No. 88",
-      "Bandung",
-      "Jl. Soekarno Hatta No. 210",
-      "Regular",
-      "10",
-      "1",
-      "Contoh isi paket, 1 dus (10kg)",
-      "",
-      "3",
-      "Tidak",
-      "",
-      "",
-    ],
-  ]);
+  downloadCsv("template-bulk-pengiriman.csv", BULK_TEMPLATE_HEADERS, [bulkTemplateSampleRow()]);
 }

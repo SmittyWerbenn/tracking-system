@@ -1,4 +1,6 @@
 import { AlertTriangle, Loader2, Pencil, X } from "lucide-react";
+import { LtlHandlingFields } from "./LtlHandlingFields";
+import { isLtlLayanan } from "../utils/ltlPipeline";
 import { useEffect, useState } from "react";
 import { useLayanan } from "../store/LayananContext";
 import { useShipments } from "../store/ShipmentContext";
@@ -41,6 +43,11 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
   // Insurance fields are locked when the order has moved past preparation.
   const insuranceLocked = shipment.status !== "Dalam Persiapan" && shipment.status !== "Hold";
 
+  const [requiresDoBalik, setRequiresDoBalik] = useState(!!shipment.requiresDoBalik);
+  // LTL handling flags: decide which optional LTL tracking stages apply.
+  const [packingKayu, setPackingKayu] = useState(!!shipment.packingKayu);
+  const [hasTransit, setHasTransit] = useState(!!shipment.hasTransit);
+
   // Insurance fields (separate state: not simple strings like the rest of f).
   const [asuransi, setAsuransi] = useState(shipment.asuransi);
   const [koliAsuransi, setKoliAsuransi] = useState(shipment.koliAsuransi ?? "");
@@ -81,6 +88,8 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
       beratKg: berat,
       jumlahKoli: Math.floor(koli),
       layanan: f.layanan,
+      requiresDoBalik,
+      ...(isLtlLayanan(f.layanan) ? { packingKayu, hasTransit } : {}),
       asuransi,
       koliAsuransi: asuransi ? koliAsuransi : "",
       nilaiAsuransi: asuransi ? Number(nilaiAsuransi) : undefined,
@@ -169,6 +178,31 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
               ))}
             </select>
           </label>
+
+          <label className="sm:col-span-2 flex cursor-pointer items-start gap-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600"
+              checked={requiresDoBalik}
+              onChange={(e) => setRequiresDoBalik(e.target.checked)}
+            />
+            <span className="text-sm text-slate-700">
+              <span className="font-medium">DO Balik (Delivery Order Kembali)</span>
+              <span className="block text-xs text-slate-500">
+                Aktifkan jika dokumen Surat Jalan / DO asli wajib dikembalikan setelah barang diterima.
+              </span>
+            </span>
+          </label>
+
+          {isLtlLayanan(f.layanan) && (
+            <div className="sm:col-span-2">
+              <LtlHandlingFields
+                packingKayu={packingKayu}
+                hasTransit={hasTransit}
+                onChange={(k, v) => (k === "packingKayu" ? setPackingKayu(v) : setHasTransit(v))}
+              />
+            </div>
+          )}
 
           <div className="sm:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
             <div className="flex items-start gap-2.5">

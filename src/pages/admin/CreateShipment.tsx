@@ -11,6 +11,9 @@ import {
   User,
   X,
 } from "lucide-react";
+import { ClientIdInput, ClientPreview, type ClientOption } from "../../components/ClientIdField";
+import { LtlHandlingFields } from "../../components/LtlHandlingFields";
+import { isLtlLayanan } from "../../utils/ltlPipeline";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -52,9 +55,13 @@ const emptyForm: ShipmentFormData = {
   driverName: "",
   customerId: "",
   reference: "",
+  internalNotes: "",
   asuransi: false,
   koliAsuransi: "",
   nilaiAsuransi: undefined,
+  packingKayu: false,
+  hasTransit: false,
+  requiresDoBalik: false,
 };
 
 function Section({
@@ -111,7 +118,7 @@ export default function CreateShipment() {
     ...emptyForm,
     customerId: isCustAdmin ? profile?.customerId ?? "" : "",
   }));
-  const [customerIds, setCustomerIds] = useState<string[]>([]);
+  const [clients, setClients] = useState<ClientOption[]>([]);
 
   // Always show the latest Master Layanan when the form opens, then make
   // sure the selected value is one of the active entries (Regular when it's
@@ -132,9 +139,9 @@ export default function CreateShipment() {
   useEffect(() => {
     if (isCustAdmin) return;
     api
-      .get<{ items: string[] }>("/api/customer-ids")
-      .then((res) => setCustomerIds(res.items))
-      .catch(() => setCustomerIds([]));
+      .get<{ items: string[]; clients?: ClientOption[] }>("/api/customer-ids")
+      .then((res) => setClients(res.clients ?? res.items.map((customerId) => ({ customerId, nama: null }))))
+      .catch(() => setClients([]));
   }, [isCustAdmin]);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [photoSuratJalanError, setPhotoSuratJalanError] = useState<string | null>(null);
@@ -440,21 +447,14 @@ export default function CreateShipment() {
             </select>
           </Field>
           <Field label="Client ID">
-            <input
-              required
-              disabled={isCustAdmin}
-              list="customer-id-suggestions"
-              className={`${inputClass} ${isCustAdmin ? "bg-slate-50 text-slate-500" : ""}`}
-              placeholder="Contoh: IDTMDI001"
+            <ClientIdInput
+              id="customer-id-suggestions"
               value={form.customerId ?? ""}
-              onChange={(e) => update("customerId", e.target.value)}
-              autoComplete="off"
+              onChange={(v) => update("customerId", v)}
+              clients={clients}
+              disabled={isCustAdmin}
             />
-            <datalist id="customer-id-suggestions">
-              {customerIds.map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
+            {!isCustAdmin && <ClientPreview value={form.customerId ?? ""} clients={clients} className="mt-2" />}
             {isCustAdmin && (
               <p className="mt-1.5 text-[11px] text-slate-400">
                 Terkunci ke Client ID akun Anda.
@@ -514,6 +514,19 @@ export default function CreateShipment() {
               Pengenal order dari sisi Anda. Referensi yang sama tidak bisa dipakai dua kali, sehingga satu order tidak pernah mendapat dua AWB.
             </p>
           </Field>
+          {!isCustAdmin && (
+            <Field label="Keterangan Internal (Khusus Internal GMS)" full>
+              <input
+                className={inputClass}
+                maxLength={500}
+                placeholder="Contoh: Resi Vendor JNE-09123812 / Subkon PT Maju"
+                value={form.internalNotes ?? ""}
+                onChange={(e) => update("internalNotes", e.target.value)}
+                autoComplete="off"
+              />
+              <p className="mt-1.5 text-[11px] text-slate-400">Catatan internal admin (contoh: No. Resi Vendor / Nama Vendor). Tidak ditampilkan ke customer.</p>
+            </Field>
+          )}
           <Field label="Deskripsi Barang" full>
             <textarea
               required
@@ -551,6 +564,15 @@ export default function CreateShipment() {
               />
             )}
           </Field>
+          {isLtlLayanan(form.layanan) && (
+            <Field label="Penanganan LTL" full>
+              <LtlHandlingFields
+                packingKayu={!!form.packingKayu}
+                hasTransit={!!form.hasTransit}
+                onChange={(k, v) => update(k, v)}
+              />
+            </Field>
+          )}
           <Field label="Asuransi Barang" full>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
               <div className="flex items-start gap-2.5">
@@ -602,6 +624,24 @@ export default function CreateShipment() {
                   </Field>
                 </div>
               )}
+            </div>
+          </Field>
+          <Field label="DO Balik (Delivery Order Kembali)" full>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <label className="flex cursor-pointer items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600"
+                  checked={!!form.requiresDoBalik}
+                  onChange={(e) => update("requiresDoBalik", e.target.checked)}
+                />
+                <span className="text-sm text-slate-700">
+                  <span className="font-medium">{form.requiresDoBalik ? "Ya" : "Tidak"}</span>
+                  <span className="block text-xs text-slate-500">
+                    Aktifkan jika dokumen Surat Jalan / DO asli wajib dikembalikan setelah barang diterima.
+                  </span>
+                </span>
+              </label>
             </div>
           </Field>
           <Field label="Foto Barang" full>

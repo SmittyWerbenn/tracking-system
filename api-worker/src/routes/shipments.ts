@@ -9,16 +9,44 @@ import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta, likeTerm, orderBy } from "../pagination";
 import { generateClientAwb, isDuplicateAwbError } from "../awb";
 import { wibNow } from "../wib";
-import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, type TimelineEventType } from "../status";
+import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, timelineOrderSql, type TimelineEventType } from "../status";
 import { addBusinessDays } from "../sla";
 import { cancelPolicy, creatorRoleOf, pickupEvidenceSql } from "../cancellation";
 import { holdPolicy } from "../hold";
 import { resolveArmada } from "../armada";
+import { isLtlLayanan, getLtlStage, currentLtlIndex, canLogLtlStage, LTL_STAGES, LTL_STAGE_CODES, LTL_FINAL_INDEX, renderLtlDescription } from "../ltl";
+
+/** Default timeline description per status, used when a tracking update is submitted without keterangan. */
+const DEFAULT_KETERANGAN: Partial<Record<TimelineEventType, string>> = {
+  "Di pickup": "Paket telah di-pickup.",
+  Berangkat: "Paket telah diberangkatkan.",
+  Transit: "Paket telah tiba di gudang GMS Logistics",
+  "Dalam Perjalanan": "Paket sedang dalam perjalanan ke penerima.",
+  "Tiba di Tujuan": "Paket telah tiba di kota tujuan.",
+  "Selesai / Terkirim": "Paket telah diterima.",
+  "Transfer Unit": "Paket dipindahkan ke unit armada lain.",
+  "Re-route": "Paket dialihkan ke rute lain.",
+  Penarikan: "Paket ditarik kembali ke gudang asal.",
+};
 
 const POD_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
+/** "Keterangan Internal": private to GMS operations. Everyone else (Client, Mitra, Driver, customer-linked Viewer) never receives it. */
+const INTERNAL_NOTE_ROLES = new Set(["Superadmin", "Admin"]);
+const INTERNAL_NOTES_MAX = 500;
+const canSeeInternalNotes = (role: string) => INTERNAL_NOTE_ROLES.has(role);
+
+function readInternalNotes(body: Record<string, unknown>): string | null {
+  const v = optString(body, "internalNotes") ?? null;
+  if (v && v.length > INTERNAL_NOTES_MAX) throw Errors.badRequest(`Keterangan Internal maksimal ${INTERNAL_NOTES_MAX} karakter.`);
+  return v;
+}
+
 /** Client accounts never learn which Mitra (partner agent) handles an order. */
-function forActor(summary: ReturnType<typeof shipmentSummary>, role: string) {
+function forActor(rawSummary: ReturnType<typeof shipmentSummary>, role: string) {
+  const summary = canSeeInternalNotes(role)
+    ? rawSummary
+    : { ...rawSummary, internalNotes: null as unknown };
   if (role === "Mitra") return { ...summary, createdByName: null, createdByRole: null as unknown as typeof summary.createdByRole, hold: null, holdPolicy: undefined };
   return role === "Client" ? { ...summary, mitraId: null, mitraNama: null } : summary;
 }
@@ -27,6 +55,7 @@ function shipmentSummary(row: Record<string, unknown>) {
   return {
     awb: row.awb,
     reference: row.reference ?? null,
+    internalNotes: row.internal_notes ?? null,
     tanggalDibuat: row.tanggal_dibuat,
     jamDibuat: row.jam_dibuat,
     status: row.status,
@@ -43,6 +72,11 @@ function shipmentSummary(row: Record<string, unknown>) {
     asuransi: !!row.asuransi,
     koliAsuransi: row.koli_asuransi ?? null,
     nilaiAsuransi: row.nilai_asuransi ?? null,
+    requiresDoBalik: !!row.requires_do_balik,
+    doBalikStatus: row.requires_do_balik ? (row.do_balik_status === "returned" ? "returned" : "pending") : null,
+    doBalikReturnedAt: row.do_balik_returned_at ?? null,
+    packingKayu: !!row.packing_kayu,
+    hasTransit: !!row.has_transit,
     truckId: row.truck_id,
     armadaType: row.armada_type === "sewa" ? "sewa" : "internal",
     vehiclePlate: row.vehicle_plate ?? row.truck_nomor_unit ?? null,
@@ -70,7 +104,9 @@ function shipmentSummary(row: Record<string, unknown>) {
     pod: row.pod_tanggal
       ? { tanggal: row.pod_tanggal, jam: row.pod_jam, namaPenerima: row.pod_nama_penerima }
       : null,
-    lastUpdate: row.last_tanggal ? { tanggal: row.last_tanggal, jam: row.last_jam } : null,
+    lastUpdate: row.last_tanggal
+      ? { tanggal: row.last_tanggal, jam: row.last_jam, keterangan: row.last_keterangan ?? null }
+      : null,
     recovery: row.recovery_status
       ? { status: row.recovery_status, requestedAt: row.recovery_requested_at, rejectionReason: row.recovery_rejection_reason ?? null }
       : null,
@@ -174,9 +210,11 @@ export function registerShipmentRoutes(router: Router) {
       where.push("1 = 0");
     }
     if (search) {
-      where.push("(s.awb LIKE ? ESCAPE '\\' OR s.reference LIKE ? ESCAPE '\\' OR s.pengirim_nama LIKE ? ESCAPE '\\' OR s.penerima_nama LIKE ? ESCAPE '\\')");
+      const withInternal = canSeeInternalNotes(actor.role);
+      where.push(`(s.awb LIKE ? ESCAPE '\\' OR s.reference LIKE ? ESCAPE '\\' OR s.pengirim_nama LIKE ? ESCAPE '\\' OR s.penerima_nama LIKE ? ESCAPE '\\'${withInternal ? " OR s.internal_notes LIKE ? ESCAPE '\\'" : ""})`);
       const like = likeTerm(search);
       params.push(like, like, like, like);
+      if (withInternal) params.push(like);
     }
     // Client ID filter ("__none__" = orders without one), created-date range
     // and stagnant ("macet" = no tracking update for N days, not yet delivered).
@@ -187,12 +225,16 @@ export function registerShipmentRoutes(router: Router) {
     const dateTo = url.searchParams.get("to");
     if (dateFrom) { where.push("s.tanggal_dibuat >= ?"); params.push(dateFrom); }
     if (dateTo) { where.push("s.tanggal_dibuat <= ?"); params.push(dateTo); }
+    // DO Balik monitoring: "1" = only AWB that need DO Balik, "pending" = DO Balik not yet returned.
+    const doBalik = url.searchParams.get("doBalik");
+    if (doBalik === "1") where.push("s.requires_do_balik = 1");
+    else if (doBalik === "pending") where.push("s.requires_do_balik = 1 AND COALESCE(s.do_balik_status, 'pending') = 'pending'");
     const macet = Number(url.searchParams.get("macet"));
     if (Number.isFinite(macet) && macet > 0) {
       const cutoff = new Date(Date.now() + 7 * 3600_000 - macet * 86_400_000).toISOString().slice(0, 16);
       where.push("s.status NOT IN ('Selesai / Terkirim', 'Hold')");
       where.push(
-        "(SELECT e.tanggal || 'T' || e.jam FROM shipment_timeline_events e WHERE e.awb = s.awb ORDER BY e.seq DESC LIMIT 1) <= ?",
+        `(SELECT e.tanggal || 'T' || e.jam FROM shipment_timeline_events e WHERE e.awb = s.awb ORDER BY ${timelineOrderSql("DESC", "e")} LIMIT 1) <= ?`,
       );
       params.push(cutoff);
     }
@@ -212,7 +254,7 @@ export function registerShipmentRoutes(router: Router) {
               cd.nama as claim_driver_nama, cd.telepon as claim_driver_telepon,
               m.nama as mitra_nama,
               p.tanggal as pod_tanggal, p.jam as pod_jam, p.nama_penerima as pod_nama_penerima,
-              le.tanggal as last_tanggal, le.jam as last_jam,
+              le.tanggal as last_tanggal, le.jam as last_jam, le.keterangan as last_keterangan,
               rr.status as recovery_status, rr.requested_at as recovery_requested_at, rr.rejection_reason as recovery_rejection_reason,
               ${pickupEvidenceSql("s.awb")} AS has_pickup,
               cr.id as cr_id, cr.status as cr_status, cr.reason as cr_reason, cr.requested_by_name as cr_requested_by_name,
@@ -225,10 +267,9 @@ export function registerShipmentRoutes(router: Router) {
        LEFT JOIN drivers cd ON cd.id = s.claim_driver_id
        LEFT JOIN mitras m ON m.kode_mitra = s.mitra_id
        LEFT JOIN shipment_pod p ON p.awb = s.awb
-       LEFT JOIN (
-         SELECT e1.awb, e1.tanggal, e1.jam FROM shipment_timeline_events e1
-         WHERE e1.seq = (SELECT MAX(e2.seq) FROM shipment_timeline_events e2 WHERE e2.awb = e1.awb)
-       ) le ON le.awb = s.awb
+       LEFT JOIN shipment_timeline_events le ON le.id = (
+         SELECT e2.id FROM shipment_timeline_events e2 WHERE e2.awb = s.awb ORDER BY ${timelineOrderSql("DESC", "e2")} LIMIT 1
+       )
        LEFT JOIN order_recovery_requests rr ON rr.id = (
          SELECT x.id FROM order_recovery_requests x WHERE x.awb = s.awb ORDER BY x.requested_at DESC LIMIT 1
        )
@@ -294,6 +335,8 @@ export function registerShipmentRoutes(router: Router) {
     const truckId = armada.truckId ?? undefined;
     const slaValue = optNumber(body, "slaValue", { min: 1, max: 365 });
     // "Referensi": the customer's own order identifier (optional). Unique per Client ID, case-insensitive.
+    // Keterangan Internal is ops-only: a Client account's value is ignored, not rejected.
+    const internalNotes = canSeeInternalNotes(actor.role) ? readInternalNotes(body) : null;
     const referenceRaw = optString(body, "reference");
     const reference = referenceRaw ? referenceRaw.trim().replace(/\s+/g, " ") : null;
     if (reference && reference.length > 100) throw Errors.badRequest("Referensi maksimal 100 karakter.");
@@ -336,6 +379,18 @@ export function registerShipmentRoutes(router: Router) {
         throw Errors.badRequest("Nilai barang yang diasuransikan wajib diisi dan lebih dari 0 ketika Asuransi = Ya.");
       }
     }
+
+    // DO Balik: the original Surat Jalan / DO must come back after delivery. Starts as 'pending'.
+    // Only a real boolean is accepted, so free text (e.g. a note pasted into the wrong import column) can never be read as a flag.
+    if (body.requiresDoBalik != null && typeof body.requiresDoBalik !== "boolean") {
+      throw Errors.badRequest('Field "requiresDoBalik" (DO Balik) harus bernilai true atau false.');
+    }
+    const requiresDoBalik = body.requiresDoBalik === true;
+
+    // LTL only: wooden packing / transit hub are shipment attributes (header badges, default wording), not tracking steps.
+    const ltl = isLtlLayanan(layanan);
+    const packingKayu = ltl && body.packingKayu === true;
+    const hasTransit = ltl && body.hasTransit === true;
 
     // Same Referensi again (re-import, retry, double click): never a second AWB - answer with the one that exists.
     const dupReference = async () => {
@@ -394,8 +449,8 @@ export function registerShipmentRoutes(router: Router) {
               sla_value, sla_unit, estimasi_tiba, customer_id, mitra_id,
               email_terkirim, created_at, updated_at, created_by, updated_by, created_by_role, created_by_name, reference,
               asuransi, koli_asuransi, nilai_asuransi,
-              armada_type, vehicle_plate, driver_name, driver_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              armada_type, vehicle_plate, driver_name, driver_id, internal_notes, packing_kayu, has_transit, requires_do_balik, do_balik_status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           ).bind(
             awb, tanggalDibuat, jamDibuat, holdAtCreate ? "Hold" : "Dalam Persiapan",
             pengirimNama, pengirimTelepon, pengirimEmail,
@@ -405,12 +460,13 @@ export function registerShipmentRoutes(router: Router) {
             slaValue ?? null, slaUnit, estimasiTiba, customerId, mitraId ?? null,
             nowIso, nowIso, actor.id, actor.id, actor.role, actor.nama, reference,
             asuransi ? 1 : 0, koliAsuransi, nilaiAsuransi,
-            armada.armadaType, armada.vehiclePlate, armada.driverName, armada.driverId,
+            armada.armadaType, armada.vehiclePlate, armada.driverName, armada.driverId, internalNotes,
+            packingKayu ? 1 : 0, hasTransit ? 1 : 0, requiresDoBalik ? 1 : 0, requiresDoBalik ? "pending" : null,
           ),
           ctx.env.DB.prepare(
-            `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, truck_id, input_by_user_id, input_by_name, input_at, created_at)
-             VALUES (?, ?, 1, 'Barang Diterima', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          ).bind(newId(), awb, `Gudang ${kotaAsal}`, tanggalDibuat, jamDibuat, "Barang diterima dan siap dikirim.", truckId ?? null, actor.id, actor.nama, nowIso, nowIso),
+            `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, truck_id, input_by_user_id, input_by_name, input_at, created_at, ltl_stage)
+             VALUES (?, ?, 1, 'Barang Diterima', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ).bind(newId(), awb, `Gudang ${kotaAsal}`, tanggalDibuat, jamDibuat, ltl ? renderLtlDescription(getLtlStage("ORDER_RECEIVED")!, kotaAsal, kotaTujuan) : "Paket telah di-pickup.", truckId ?? null, actor.id, actor.nama, nowIso, nowIso, ltl ? "ORDER_RECEIVED" : null),
           ...(holdAtCreate
             ? [
                 ctx.env.DB.prepare(
@@ -501,7 +557,7 @@ export function registerShipmentRoutes(router: Router) {
        LEFT JOIN trucks t ON t.id = e.truck_id
        LEFT JOIN drivers d ON d.id = t.driver_id
        LEFT JOIN trucks pt ON pt.id = e.truck_sebelumnya_id
-       WHERE e.awb = ? ORDER BY e.seq ASC`,
+       WHERE e.awb = ? ORDER BY ${timelineOrderSql("ASC", "e")}`,
     )
       .bind(params.awb)
       .all();
@@ -525,7 +581,7 @@ export function registerShipmentRoutes(router: Router) {
       .bind(params.awb, params.awb)
       .all();
 
-    return ok({ shipment: forActor(withHoldPolicy(withCancelPolicy(shipmentSummary(row), row, actor), row, actor), actor.role), timeline: timeline.results, pod: pod ?? null, files: files.results ?? [], holds: actor.role === "Mitra" || actor.role === "Driver" ? [] : holds.results ?? [] });
+    return ok({ shipment: forActor(withHoldPolicy(withCancelPolicy(shipmentSummary(row), row, actor), row, actor), actor.role), timeline: (timeline.results ?? []).map((e) => ({ ...e, internal_notes: null })), pod: pod ?? null, files: files.results ?? [], holds: actor.role === "Mitra" || actor.role === "Driver" ? [] : holds.results ?? [] });
     });
 
     // Last position reported by the driver ("Perbarui Posisi" button on the
@@ -612,6 +668,10 @@ export function registerShipmentRoutes(router: Router) {
     ];
     // Barang details: optional, only touched when sent (older callers omit them).
     const has = (k: string) => Object.prototype.hasOwnProperty.call(body, k);
+    if (has("internalNotes") && canSeeInternalNotes(actor.role)) {
+      sets.push("internal_notes=?");
+      values.push(readInternalNotes(body));
+    }
     if (has("deskripsiBarang")) {
       sets.push("deskripsi_barang=?");
       values.push(optString(body, "deskripsiBarang") ?? "");
@@ -694,6 +754,29 @@ export function registerShipmentRoutes(router: Router) {
         sets.push("layanan=?");
         values.push(valid);
         layananChange = { from: shipment.layanan, to: valid };
+      }
+    }
+    // DO Balik flag: only touched when sent. Turning it off clears the tracking; turning it on (re)starts it as pending.
+    if (has("requiresDoBalik")) {
+      if (body.requiresDoBalik === true) {
+        sets.push("requires_do_balik=?", "do_balik_status=COALESCE(do_balik_status, 'pending')");
+        values.push(1);
+      } else {
+        sets.push("requires_do_balik=?", "do_balik_status=NULL", "do_balik_returned_at=NULL");
+        values.push(0);
+      }
+    }
+    // LTL handling flags (wooden packing / transit hub): shipment attributes shown as badges.
+    // Editable while the shipment is open; forced off for non-LTL layanan.
+    if (has("packingKayu") || has("hasTransit") || (layananChange && !isLtlLayanan(layananChange.to))) {
+      const ltlNow = isLtlLayanan(layananChange?.to ?? shipment.layanan);
+      if (has("packingKayu") || !ltlNow) {
+        sets.push("packing_kayu=?");
+        values.push(ltlNow && body.packingKayu === true ? 1 : 0);
+      }
+      if (has("hasTransit") || !ltlNow) {
+        sets.push("has_transit=?");
+        values.push(ltlNow && body.hasTransit === true ? 1 : 0);
       }
     }
     values.push(params.awb);
@@ -781,13 +864,49 @@ export function registerShipmentRoutes(router: Router) {
     return ok({ updated: true });
   });
 
+  // Admin confirms the original DO / Surat Jalan is back: DO Balik flag turns to "selesai".
+  router.post("/api/shipments/:awb/do-balik/return", async (ctx: Ctx, params) => {
+    const actor = requirePermission(ctx, "shipments.update_info");
+    const row = await ctx.env.DB.prepare(`SELECT status, requires_do_balik, do_balik_status, layanan, kota_asal, kota_tujuan FROM shipments WHERE awb = ? AND deleted_at IS NULL`)
+      .bind(params.awb)
+      .first<{ status: string; requires_do_balik: number; do_balik_status: string | null; layanan: string; kota_asal: string; kota_tujuan: string }>();
+    if (!row) throw Errors.notFound("AWB tidak ditemukan.");
+    if (!row.requires_do_balik) throw Errors.unprocessable("Pengiriman ini tidak memiliki requirement DO Balik.");
+    if (row.do_balik_status === "returned") throw Errors.unprocessable("DO Balik untuk pengiriman ini sudah dikonfirmasi diterima.");
+    if (row.status !== "Selesai / Terkirim") throw Errors.unprocessable("DO Balik baru bisa dikonfirmasi setelah pengiriman Selesai / Terkirim.");
+    const nowIso = new Date().toISOString();
+    await ctx.env.DB.prepare(`UPDATE shipments SET do_balik_status = 'returned', do_balik_returned_at = ?, updated_at = ?, updated_by = ? WHERE awb = ?`)
+      .bind(nowIso, nowIso, actor.id, params.awb)
+      .run();
+    await writeAuditLog(ctx.env, actor, { action: "CONFIRM_DO_BALIK", actionLabel: "CONFIRM DO BALIK", module: "Shipment", awb: params.awb, description: "Dokumen DO Balik dikonfirmasi sudah diterima kembali." });
+    // LTL: the confirmation IS the final tracking step, so the timeline gets its "POD Kembali" log (unless it is already there).
+    if (isLtlLayanan(row.layanan)) {
+      const logged = await ctx.env.DB.prepare(`SELECT type, ltl_stage FROM shipment_timeline_events WHERE awb = ? ORDER BY ${timelineOrderSql("ASC")}`)
+        .bind(params.awb)
+        .all<{ type: string; ltl_stage: string | null }>();
+      const stage = getLtlStage("POD_RETURNED")!;
+      if (canLogLtlStage(stage, currentLtlIndex((logged.results ?? []).map((r) => ({ type: r.type, ltlStage: r.ltl_stage })), row.status))) {
+        const { tanggal, jam } = wibNow();
+        await ctx.env.DB.prepare(
+          `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, input_by_user_id, input_by_name, input_at, created_at, ltl_stage)
+           SELECT ?, ?, COALESCE(MAX(seq), 0) + 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM shipment_timeline_events WHERE awb = ?`,
+        )
+          .bind(newId(), params.awb, stage.type, row.kota_asal, tanggal, jam, renderLtlDescription(stage, row.kota_asal, row.kota_tujuan), actor.id, actor.nama, nowIso, nowIso, stage.code, params.awb)
+          .run();
+      }
+    }
+    return ok({ doBalikStatus: "returned", doBalikReturnedAt: nowIso });
+  });
+
   router.post("/api/shipments/:awb/timeline", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "tracking.update");
     const shipment = await ctx.env.DB.prepare(`SELECT * FROM shipments WHERE awb = ? AND deleted_at IS NULL`).bind(params.awb).first<
       Record<string, unknown>
     >();
     if (!shipment) throw Errors.notFound("AWB tidak ditemukan.");
-    if (shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan") {
+    const isLtl = isLtlLayanan(String(shipment.layanan));
+    const ltlFlags = { packingKayu: !!shipment.packing_kayu, asuransi: !!shipment.asuransi };
+    if (shipment.status === "Dibatalkan") {
       throw Errors.unprocessable("Pengiriman ini sudah Selesai/Terkirim atau Dibatalkan, dan terkunci.");
     }
     if (shipment.status === "Hold") {
@@ -806,14 +925,58 @@ export function registerShipmentRoutes(router: Router) {
     }
 
     const body = await parseJsonBody(ctx.request);
-    const type = reqEnum(body, "type", TIMELINE_EVENT_TYPES.filter((t) => t !== "Barang Diterima") as readonly TimelineEventType[]);
+    // LTL: the client picks one of the 9 pipeline statuses (ltlStage); the stored `type` is the coarse status it maps to.
+    // Without ltlStage (Kendala / Transfer Unit / Re-route / Penarikan) the ordinary type rules apply.
+    const ltlStageCode = isLtl ? optString(body, "ltlStage") : undefined;
+    const ltlStageDef = ltlStageCode ? LTL_STAGES.find((st) => st.code === ltlStageCode) : undefined;
+    if (ltlStageCode) {
+      if (!ltlStageDef) throw Errors.badRequest(`Status LTL "${ltlStageCode}" tidak dikenal. Pilihan: ${LTL_STAGE_CODES.join(", ")}.`);
+      // The shipment's position is its newest log by date/time (old 25-stage codes fold into the 9 statuses).
+      const logged = await ctx.env.DB.prepare(`SELECT type, ltl_stage FROM shipment_timeline_events WHERE awb = ? ORDER BY ${timelineOrderSql("ASC")}`)
+        .bind(params.awb)
+        .all<{ type: string; ltl_stage: string | null }>();
+      const ltlCurrent = currentLtlIndex((logged.results ?? []).map((r) => ({ type: r.type, ltlStage: r.ltl_stage })), String(shipment.status));
+      if (!canLogLtlStage(ltlStageDef, ltlCurrent)) {
+        throw Errors.unprocessable(
+          ltlStageDef.code === "POD_RETURNED"
+            ? ltlCurrent >= LTL_FINAL_INDEX
+              ? "POD Kembali sudah tercatat untuk pengiriman ini."
+              : "POD Kembali baru bisa dicatat setelah pengiriman berstatus Terkirim."
+            : `Status ${ltlStageDef.label} tidak bisa dipilih: tahap ini sudah dilewati - pipeline tidak bisa dibuat mundur.`,
+        );
+      }
+    }
+    // After the hand-over only the LTL final step (POD Kembali) can still be logged, by an admin.
+    const isPodReturn = ltlStageDef?.code === "POD_RETURNED";
+    if (shipment.status === "Selesai / Terkirim" && !isPodReturn) {
+      throw Errors.unprocessable("Pengiriman ini sudah Selesai/Terkirim atau Dibatalkan, dan terkunci.");
+    }
+    if (isPodReturn && (actor.role === "Driver" || actor.role === "Mitra")) {
+      throw Errors.forbidden("Status POD Kembali hanya dapat dicatat oleh admin.");
+    }
+    const type: TimelineEventType = ltlStageDef
+      ? ltlStageDef.type
+      : reqEnum(body, "type", TIMELINE_EVENT_TYPES.filter((t) => t !== "Barang Diterima") as readonly TimelineEventType[]);
     // Diverting or pulling back a shipment is an operations/admin decision, like a truck transfer.
     if ((type === "Re-route" || type === "Penarikan") && (actor.role === "Driver" || actor.role === "Mitra")) {
       throw Errors.forbidden(`Status ${type} hanya dapat dicatat oleh admin.`);
     }
+    // The event's own date/time (may be backdated); the timeline is ordered by it.
     const tanggal = reqString(body, "tanggal");
     const jam = reqString(body, "jam");
-    const keterangan = reqString(body, "keterangan", { max: 500 });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggal) || Number.isNaN(Date.parse(tanggal))) throw Errors.badRequest('Field "tanggal" harus berformat YYYY-MM-DD.');
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(jam)) throw Errors.badRequest('Field "jam" harus berformat HH:mm.');
+    // Optional: ops can submit a tracking update with no note (stored as an empty string).
+    // When left empty the API fills in the default description of the chosen status.
+    const keterangan =
+      optString(body, "keterangan") ??
+      (ltlStageDef ? renderLtlDescription(ltlStageDef, String(shipment.kota_asal), String(shipment.kota_tujuan), ltlFlags) : DEFAULT_KETERANGAN[type] ?? "");
+    if (keterangan.length > 500) throw Errors.badRequest('Field "keterangan" maksimal 500 karakter.');
+    // "Keterangan Internal" is one note per AWB (shipments.internal_notes), not per tracking log: when the form sends it
+    // (admin only) it replaces the shipment's note; an empty value clears it. The log itself never stores one.
+    const internalNotesSent = canSeeInternalNotes(actor.role) && Object.prototype.hasOwnProperty.call(body, "internalNotes");
+    const newInternalNote = internalNotesSent ? readInternalNotes(body) : null;
+    const internalNotes: string | null = null;
     const truckId = optString(body, "truckId");
     const titikId = optString(body, "titikId");
     // A driver/mitra reports their own operational progress only -
@@ -827,11 +990,19 @@ export function registerShipmentRoutes(router: Router) {
         actor.role === "Driver" ? "Driver tidak dapat mengubah unit truck." : "Mitra tidak dapat mengubah unit truck.",
       );
     }
-    const isSelesai = type === "Selesai / Terkirim";
-    const lokasi = isSelesai ? String(shipment.kota_tujuan) : reqString(body, "lokasi", { max: 150 });
+    // The hand-over to the consignee (LTL: Terkirim / DELIVERED): POD + notification + DO Balik reminder.
+    // POD Kembali is the paperwork step after it: no POD, no consignee, Kota optional (defaults to the origin).
+    const isSelesai = type === "Selesai / Terkirim" && !isPodReturn;
+    const lokasi = isSelesai
+      ? String(shipment.kota_tujuan)
+      : isPodReturn
+        ? optString(body, "lokasi") ?? String(shipment.kota_asal)
+        : reqString(body, "lokasi", { max: 150 });
+    if (lokasi.length > 150) throw Errors.badRequest('Field "lokasi" maksimal 150 karakter.');
     const namaPenerima = isSelesai ? reqString(body, "namaPenerima", { max: 100 }) : undefined;
 
-    if (!isForwardTransition(String(shipment.status), type)) {
+    // LTL status logs are ordered by the 8-status pipeline (checked above), not by the coarse status rank.
+    if (!ltlStageDef && !isForwardTransition(String(shipment.status), type)) {
       throw Errors.unprocessable(
         `Status "${type}" tidak bisa dipilih dari status saat ini ("${shipment.status}") - pipeline tidak bisa dibuat mundur.`,
       );
@@ -842,7 +1013,6 @@ export function registerShipmentRoutes(router: Router) {
       if (!timelineTruck) throw Errors.badRequest("Truck yang dipilih tidak ditemukan.");
     }
 
-    const newStatus = eventTypeToShipmentStatus(type);
     const nowIso = new Date().toISOString();
     const seqRow = await ctx.env.DB.prepare(`SELECT COALESCE(MAX(seq), 0) + 1 as next FROM shipment_timeline_events WHERE awb = ?`)
       .bind(params.awb)
@@ -853,11 +1023,26 @@ export function registerShipmentRoutes(router: Router) {
     const eventId = newId();
 
     await ctx.env.DB.prepare(
-      `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, titik_id, tanggal, jam, keterangan, truck_id, truck_sebelumnya_id, input_by_user_id, input_by_name, input_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, titik_id, tanggal, jam, keterangan, truck_id, truck_sebelumnya_id, input_by_user_id, input_by_name, input_at, created_at, internal_notes, ltl_stage)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-      .bind(eventId, params.awb, seq, type, lokasi, titikId ?? null, tanggal, jam, keterangan, truckId ?? shipment.truck_id ?? null, previousTruckId, actor.id, actor.nama, nowIso, nowIso)
+      .bind(eventId, params.awb, seq, type, lokasi, titikId ?? null, tanggal, jam, keterangan, truckId ?? shipment.truck_id ?? null, previousTruckId, actor.id, actor.nama, nowIso, nowIso, internalNotes, ltlStageDef?.code ?? null)
       .run();
+
+    // The shipment's status follows the log with the newest date/time (the top "TERBARU" row), not the log entered last:
+    // a backdated update slots into the history and leaves the status to whichever log is really the most recent.
+    // A hand-over always closes the shipment.
+    const latest = await ctx.env.DB.prepare(
+      `SELECT type FROM shipment_timeline_events WHERE awb = ? AND type != 'Dibatalkan' ORDER BY ${timelineOrderSql("DESC")} LIMIT 1`,
+    )
+      .bind(params.awb)
+      .first<{ type: TimelineEventType }>();
+    const newStatus = type === "Selesai / Terkirim" ? "Selesai / Terkirim" : eventTypeToShipmentStatus(latest?.type ?? type);
+
+    if (internalNotesSent && newInternalNote !== ((shipment.internal_notes as string | null) ?? null)) {
+      await ctx.env.DB.prepare(`UPDATE shipments SET internal_notes = ?, updated_at = ?, updated_by = ? WHERE awb = ?`).bind(newInternalNote, nowIso, actor.id, params.awb).run();
+      await writeAuditLog(ctx.env, actor, { action: "UPDATE_INTERNAL_NOTE", actionLabel: "UPDATE INTERNAL NOTE", module: "Shipment", awb: params.awb, description: "Keterangan Internal pengiriman diperbarui." });
+    }
 
     // Picking a Master Armada unit (e.g. Transfer Unit from a sewa truck) makes the shipment internal again.
     await ctx.env.DB.prepare(
@@ -878,10 +1063,16 @@ export function registerShipmentRoutes(router: Router) {
     // through Hold → UNHOLD → Berangkat. A second Berangkat event is
     // impossible (pipeline rank prevents backward transitions), so this runs
     // exactly once.
-    if (newStatus === "Berangkat") {
+    if (type === "Berangkat") {
       const slaValue = shipment.sla_value as number | null;
       if (slaValue != null) {
-        const newEta = addBusinessDays(tanggal, slaValue);
+        // ETA runs from the first departure by date/time (same rule as an edit/delete re-sync).
+        const departure = await ctx.env.DB.prepare(
+          `SELECT tanggal FROM shipment_timeline_events WHERE awb = ? AND type = 'Berangkat' ORDER BY ${timelineOrderSql("ASC")} LIMIT 1`,
+        )
+          .bind(params.awb)
+          .first<{ tanggal: string }>();
+        const newEta = addBusinessDays(departure?.tanggal ?? tanggal, slaValue);
         await ctx.env.DB.prepare(
           `UPDATE shipments SET estimasi_tiba = ?, updated_at = ?, updated_by = ? WHERE awb = ?`,
         )
@@ -892,7 +1083,7 @@ export function registerShipmentRoutes(router: Router) {
           actionLabel: "UPDATE ETA",
           module: "Shipment",
           awb: params.awb,
-          description: `Status berubah menjadi Berangkat. ETA diperbarui: ${shipment.estimasi_tiba ?? "-"} -> ${newEta}.`,
+          description: `Log Berangkat dicatat. ETA diperbarui: ${shipment.estimasi_tiba ?? "-"} -> ${newEta}.`,
         });
       }
     }
@@ -902,7 +1093,7 @@ export function registerShipmentRoutes(router: Router) {
       `UPDATE cancellation_requests SET status = 'EXPIRED', decided_at = ?, decided_by_name = 'System', decided_by_role = 'System', decision_reason = ?
        WHERE awb = ? AND status = 'PENDING'`,
     )
-      .bind(nowIso, `Status order berubah menjadi ${newStatus} sebelum Client memberi keputusan.`, params.awb)
+      .bind(nowIso, `Status paket berubah menjadi ${newStatus} sebelum Client memberi keputusan.`, params.awb)
       .run();
 
     if (isSelesai) {
@@ -914,11 +1105,19 @@ export function registerShipmentRoutes(router: Router) {
         .run();
     }
 
+    // POD Kembali closes DO Balik: the original document is back, so the admin flag follows the tracking step.
+    if (isPodReturn && shipment.requires_do_balik && shipment.do_balik_status !== "returned") {
+      await ctx.env.DB.prepare(`UPDATE shipments SET do_balik_status = 'returned', do_balik_returned_at = ?, updated_at = ?, updated_by = ? WHERE awb = ?`)
+        .bind(nowIso, nowIso, actor.id, params.awb)
+        .run();
+      await writeAuditLog(ctx.env, actor, { action: "CONFIRM_DO_BALIK", actionLabel: "CONFIRM DO BALIK", module: "Shipment", awb: params.awb, description: "Status POD Kembali dicatat: DO Balik otomatis dikonfirmasi sudah diterima kembali." });
+    }
+
     const actionMap: Record<string, { action: string; label: string; description: string }> = {
       "Transfer Unit": { action: "TRANSFER_TRUCK", label: "TRANSFER TRUCK", description: `Truck dipindahkan di ${lokasi}.` },
-      Kendala: { action: "ADD_ISSUE", label: "ADD ISSUE", description: `Kendala dicatat: ${keterangan}` },
-      "Re-route": { action: "REROUTE_SHIPMENT", label: "REROUTE SHIPMENT", description: `Pengiriman dialihkan (re-route) di ${lokasi}: ${keterangan}` },
-      Penarikan: { action: "PULLBACK_SHIPMENT", label: "PULLBACK SHIPMENT", description: `Penarikan barang ke gudang asal dicatat di ${lokasi}: ${keterangan}` },
+      Kendala: { action: "ADD_ISSUE", label: "ADD ISSUE", description: keterangan ? `Kendala dicatat: ${keterangan}` : "Kendala dicatat." },
+      "Re-route": { action: "REROUTE_SHIPMENT", label: "REROUTE SHIPMENT", description: `Pengiriman dialihkan (re-route) di ${lokasi}${keterangan ? `: ${keterangan}` : "."}` },
+      Penarikan: { action: "PULLBACK_SHIPMENT", label: "PULLBACK SHIPMENT", description: `Penarikan barang ke gudang asal dicatat di ${lokasi}${keterangan ? `: ${keterangan}` : "."}` },
     };
     if (isSelesai) {
       await writeAuditLog(ctx.env, actor, { action: "UPLOAD_POD", actionLabel: "UPLOAD POD", module: "Shipment", awb: params.awb, description: "Bukti serah terima dicatat." });
@@ -927,7 +1126,7 @@ export function registerShipmentRoutes(router: Router) {
       const a = actionMap[type];
       await writeAuditLog(ctx.env, actor, { action: a.action, actionLabel: a.label, module: "Shipment", awb: params.awb, description: a.description });
     } else {
-      await writeAuditLog(ctx.env, actor, { action: "UPDATE_STATUS", actionLabel: "UPDATE STATUS", module: "Shipment", awb: params.awb, description: `Status berubah: ${shipment.status} -> ${newStatus} (${lokasi}).` });
+      await writeAuditLog(ctx.env, actor, { action: "UPDATE_STATUS", actionLabel: "UPDATE STATUS", module: "Shipment", awb: params.awb, description: `Status berubah: ${shipment.status} -> ${newStatus}${ltlStageDef ? ` [LTL: ${ltlStageDef.label}]` : ""} (${lokasi}).` });
     }
 
     if (type === "Kendala" || isSelesai) {
@@ -949,7 +1148,8 @@ export function registerShipmentRoutes(router: Router) {
       });
     }
 
-    return ok({ updated: true, status: newStatus, eventId }, {}, 201);
+    // The caller (admin portal or driver app) shows the DO Balik pop-up when this is true on a hand-over.
+    return ok({ updated: true, status: newStatus, eventId, doBalikAlert: isSelesai && !!shipment.requires_do_balik && shipment.do_balik_status !== "returned" }, {}, 201);
   });
 
   router.patch("/api/shipments/:awb/pod-photo", async (ctx: Ctx, params) => {

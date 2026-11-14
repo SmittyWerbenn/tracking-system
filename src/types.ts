@@ -17,6 +17,7 @@ export type LayananPengiriman = string;
 
 export type TimelineEventType =
   | "Barang Diterima"
+  | "Di pickup"
   | "Berangkat"
   | "Transit"
   | "Dalam Perjalanan"
@@ -56,7 +57,11 @@ export interface TimelineEvent {
   truckId?: string; // links to Truck master data, when chosen from it
   truckSebelumnya?: TruckInfo;
   inputBy?: string;
+  /** "Keterangan Internal": admin-only note on this log; never sent by the public API. */
+  internalNotes?: string;
   inputAt?: string; // system timestamp ISO
+  /** LTL only: fine-grained pipeline stage code (e.g. "PICKED_UP"); `type` is the coarse status it maps to. */
+  ltlStage?: string;
 }
 
 export interface ProofOfDelivery {
@@ -73,6 +78,8 @@ export interface Shipment {
   awb: string;
   /** "Referensi": the customer's own order identifier from the order template (unique per Client ID). */
   reference?: string;
+  /** "Keterangan Internal (Khusus Internal GMS)": vendor waybill / vendor name / ops note. Superadmin & Admin only. */
+  internalNotes?: string;
   tanggalDibuat: string; // ISO date
   jamDibuat: string;
   status: ShipmentStatus;
@@ -89,6 +96,17 @@ export interface Shipment {
   asuransi: boolean;
   koliAsuransi: string | null;
   nilaiAsuransi: number | null;
+  /** List only: keterangan / internal note of the latest tracking log (for the CSV export). */
+  lastKeterangan?: string;
+  /** DO Balik: the original Surat Jalan / DO must be returned after delivery. */
+  requiresDoBalik?: boolean;
+  /** null when not required; "pending" until ops confirm the document is back. */
+  doBalikStatus?: "pending" | "returned" | null;
+  doBalikReturnedAt?: string | null;
+  /** LTL only: cargo needs wooden packing (enables the PACKING_* stages). */
+  packingKayu?: boolean;
+  /** LTL only: route passes a transit hub (enables the TRANSIT_HUB stage). */
+  hasTransit?: boolean;
   fotoBarang?: string;
   fotoSuratJalan?: string;
   truck: TruckInfo;
@@ -190,6 +208,8 @@ export type RecoveryStatus = "PENDING" | "APPROVED" | "REJECTED";
 export interface ShipmentFormData {
   /** Optional "Referensi" (customer order id). The API refuses a second AWB for the same one. */
   reference?: string;
+  /** Optional internal note (Superadmin/Admin only; ignored by the API for other roles). */
+  internalNotes?: string;
   pengirim: PersonInfo;
   penerima: PersonInfo;
   alamatAsal: string;
@@ -223,11 +243,18 @@ export interface ShipmentFormData {
   asuransi?: boolean;
   koliAsuransi?: string;
   nilaiAsuransi?: number;
+  /** DO Balik (Delivery Order Kembali). */
+  requiresDoBalik?: boolean;
+  /** LTL only: wooden packing / transit hub on the route. */
+  packingKayu?: boolean;
+  hasTransit?: boolean;
 }
 
 export interface TrackingUpdateFormData {
   awb: string;
   type: TimelineEventType;
+  /** LTL only: the pipeline stage picked; `type` is then its coarse legacy status. */
+  ltlStage?: string;
   lokasi: string;
   titikId?: string;
   tanggal: string;
@@ -239,9 +266,13 @@ export interface TrackingUpdateFormData {
    * required) when type is "Selesai / Terkirim"; can differ from the
    * shipment's named penerima (e.g. a colleague receiving on their behalf). */
   namaPenerima?: string;
+  /** Optional internal note for this log (Superadmin/Admin only). */
+  internalNotes?: string;
 }
 
 export interface UpdateShipmentInfoData {
+  /** Sent only by Superadmin/Admin; an empty string clears the note. */
+  internalNotes?: string;
   pengirim: PersonInfo;
   penerima: PersonInfo;
   alamatAsal: string;
@@ -260,6 +291,11 @@ export interface UpdateShipmentInfoData {
   asuransi?: boolean;
   koliAsuransi?: string;
   nilaiAsuransi?: number;
+  /** DO Balik: omit to leave untouched. */
+  requiresDoBalik?: boolean;
+  /** LTL only: omit to leave untouched. */
+  packingKayu?: boolean;
+  hasTransit?: boolean;
   /** Armada (admin only) - omit to leave untouched. */
   armadaType?: ArmadaType;
   truckId?: string;

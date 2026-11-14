@@ -14,6 +14,7 @@ import { resolveFileUrls, type FileRef } from "../utils/resolveFiles";
 import { sendAdminDeliveryEmail } from "../utils/sendEmail";
 import { adminResiUrl } from "../utils/urls";
 import { useAuth } from "./AuthContext";
+import { DoBalikAlertModal } from "../components/DoBalikBadge";
 
 /** `layanan` is the service actually stored; `layananFallback` is true when
  * the requested one wasn't an active Master Layanan entry and the API
@@ -28,6 +29,7 @@ export interface CreatedShipment {
 interface RawShipmentSummary {
   awb: string;
   reference?: string | null;
+  internalNotes?: string | null;
   tanggalDibuat: string;
   jamDibuat: string;
   status: ShipmentStatus;
@@ -44,6 +46,11 @@ interface RawShipmentSummary {
   asuransi?: boolean;
   koliAsuransi?: string | null;
   nilaiAsuransi?: number | null;
+  requiresDoBalik?: boolean;
+  doBalikStatus?: "pending" | "returned" | null;
+  doBalikReturnedAt?: string | null;
+  packingKayu?: boolean;
+  hasTransit?: boolean;
   truckId: string | null;
   armadaType?: "internal" | "sewa";
   vehiclePlate?: string | null;
@@ -74,7 +81,7 @@ interface RawShipmentSummary {
   holdPolicy?: Shipment["holdPolicy"];
   cancellation?: Shipment["cancellation"] | null;
   pod: { tanggal: string; jam: string; namaPenerima: string } | null;
-  lastUpdate: { tanggal: string; jam: string } | null;
+  lastUpdate: { tanggal: string; jam: string; keterangan?: string | null } | null;
 }
 
 export interface ClaimSeen {
@@ -108,6 +115,8 @@ interface RawTimelineRow {
   truck_sebelumnya_nomor_unit: string | null;
   input_by_name: string | null;
   input_at: string;
+  internal_notes?: string | null;
+  ltl_stage?: string | null;
 }
 
 interface RawPodRow {
@@ -122,6 +131,7 @@ function toShipment(row: RawShipmentSummary): Shipment {
   return {
     awb: row.awb,
     reference: row.reference ?? undefined,
+    internalNotes: row.internalNotes?.trim() || undefined,
     tanggalDibuat: row.tanggalDibuat,
     jamDibuat: row.jamDibuat,
     status: row.status,
@@ -138,6 +148,11 @@ function toShipment(row: RawShipmentSummary): Shipment {
     asuransi: row.asuransi ?? false,
     koliAsuransi: row.koliAsuransi ?? null,
     nilaiAsuransi: row.nilaiAsuransi ?? null,
+    requiresDoBalik: row.requiresDoBalik ?? false,
+    doBalikStatus: row.doBalikStatus ?? null,
+    doBalikReturnedAt: row.doBalikReturnedAt ?? null,
+    packingKayu: row.packingKayu ?? false,
+    hasTransit: row.hasTransit ?? false,
     truck:
       row.armadaType === "sewa"
         ? { nomorUnit: row.vehiclePlate ?? "-", jenis: "Vendor", driver: row.driverName ?? undefined }
@@ -151,6 +166,7 @@ function toShipment(row: RawShipmentSummary): Shipment {
     vehiclePlate: row.vehiclePlate ?? undefined,
     driverName: row.driverName ?? undefined,
     driverId: row.driverId ?? undefined,
+    lastKeterangan: row.lastUpdate?.keterangan ?? undefined,
     customerId: row.customerId ?? undefined,
     mitraId: row.mitraId ?? undefined,
     mitraNama: row.mitraNama ?? undefined,
@@ -197,7 +213,9 @@ function toTimelineEvent(row: RawTimelineRow, fotoUrls: string[]): TimelineEvent
     truckId: row.truck_id ?? undefined,
     truckSebelumnya: row.truck_sebelumnya_nomor_unit ? { nomorUnit: row.truck_sebelumnya_nomor_unit, jenis: "-" } : undefined,
     inputBy: row.input_by_name ?? undefined,
+    internalNotes: row.internal_notes?.trim() || undefined,
     inputAt: row.input_at,
+    ltlStage: row.ltl_stage ?? undefined,
   };
 }
 
@@ -226,6 +244,8 @@ export interface ShipmentListParams {
   to?: string;
   /** Only stagnant orders: no tracking update for this many days. */
   macet?: number;
+  /** "1" = only DO Balik AWB, "pending" = DO Balik not returned yet. */
+  doBalik?: "1" | "pending";
 }
 
 function listQuery(params: ShipmentListParams, defaultLimit: number): URLSearchParams {
@@ -238,6 +258,7 @@ function listQuery(params: ShipmentListParams, defaultLimit: number): URLSearchP
   if (params.from) search.set("from", params.from);
   if (params.to) search.set("to", params.to);
   if (params.macet) search.set("macet", String(params.macet));
+  if (params.doBalik) search.set("doBalik", params.doBalik);
   return search;
 }
 
@@ -267,6 +288,16 @@ interface ShipmentContextValue {
   createShipment: (data: ShipmentFormData) => Promise<CreatedShipment>;
   markEmailSent: (awb: string) => void;
   addTrackingUpdate: (data: TrackingUpdateFormData) => Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Admin/Superadmin: correct an existing tracking log. The API re-syncs the shipment status. */
+  updateTimelineEvent: (
+    awb: string,
+    eventId: string,
+    data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string; internalNotes?: string },
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Admin/Superadmin: delete a tracking log. The API re-syncs the shipment status. */
+  deleteTimelineEvent: (awb: string, eventId: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Admin: confirm the original DO / Surat Jalan came back (DO Balik -> selesai). */
+  confirmDoBalik: (awb: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   updateShipmentInfo: (awb: string, data: UpdateShipmentInfoData) => Promise<{ ok: true } | { ok: false; error: string }>;
   updateShipmentAlamat: (
     awb: string,
@@ -290,6 +321,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [doBalikAlertAwb, setDoBalikAlertAwb] = useState<string | null>(null);
   const [listMeta, setListMeta] = useState({ total: 0, totalPages: 1, page: 1, limit: 100 });
 
   // Several callers refresh with different filters (the provider on login, a
@@ -374,6 +406,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       kotaTujuan: data.kotaTujuan,
       deskripsiBarang: data.deskripsiBarang,
       reference: data.reference?.trim() || undefined,
+      internalNotes: data.internalNotes?.trim() || undefined,
       layanan: data.layanan,
       beratKg: data.beratKg,
       jumlahKoli: data.jumlahKoli,
@@ -388,6 +421,9 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       asuransi: data.asuransi || undefined,
       koliAsuransi: data.asuransi ? data.koliAsuransi : undefined,
       nilaiAsuransi: data.asuransi ? data.nilaiAsuransi : undefined,
+      packingKayu: data.packingKayu || undefined,
+      hasTransit: data.hasTransit || undefined,
+      requiresDoBalik: data.requiresDoBalik || undefined,
     });
 
     if (data.fotoBarang) {
@@ -426,14 +462,18 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
 
   async function addTrackingUpdate(data: TrackingUpdateFormData) {
     try {
-      const isSelesai = data.type === "Selesai / Terkirim";
-      const res = await api.post<{ eventId: string }>(`/api/shipments/${encodeURIComponent(data.awb)}/timeline`, {
+      // The hand-over (LTL: Terkirim / DELIVERED): POD photos + admin email.
+      const isSelesai = data.type === "Selesai / Terkirim" && data.ltlStage !== "POD_RETURNED";
+      const res = await api.post<{ eventId: string; doBalikAlert?: boolean }>(`/api/shipments/${encodeURIComponent(data.awb)}/timeline`, {
         type: data.type,
+        ltlStage: data.ltlStage,
         lokasi: data.lokasi,
         titikId: data.titikId,
         tanggal: data.tanggal,
         jam: data.jam,
         keterangan: data.keterangan,
+        // Per-AWB note: "" clears it, undefined leaves it alone.
+        internalNotes: data.internalNotes?.trim(),
         truckId: data.truckId,
         namaPenerima: data.namaPenerima,
       });
@@ -448,12 +488,48 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       }
 
       await refresh();
+      // DO Balik: the delivery is saved, so remind ops right away (modal lives in the provider, so it survives page navigation).
+      if (res.doBalikAlert) setDoBalikAlertAwb(data.awb);
       // Fire-and-forget - never let a slow/failed internal email delay or
       // fail the status update itself, which is already saved by this point.
       if (isSelesai) notifyAdminsDelivered(data.awb).catch(() => {});
       return { ok: true as const };
     } catch (err) {
       return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal menyimpan update tracking." };
+    }
+  }
+
+  async function updateTimelineEvent(
+    awb: string,
+    eventId: string,
+    data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string; internalNotes?: string },
+  ) {
+    try {
+      await api.patch(`/api/shipments/${encodeURIComponent(awb)}/timeline/${encodeURIComponent(eventId)}`, data);
+      await refresh();
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal menyimpan perubahan log tracking." };
+    }
+  }
+
+  async function deleteTimelineEvent(awb: string, eventId: string) {
+    try {
+      await api.del(`/api/shipments/${encodeURIComponent(awb)}/timeline/${encodeURIComponent(eventId)}`);
+      await refresh();
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal menghapus log tracking." };
+    }
+  }
+
+  async function confirmDoBalik(awb: string) {
+    try {
+      await api.post(`/api/shipments/${encodeURIComponent(awb)}/do-balik/return`, {});
+      await refresh();
+      return { ok: true as const };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof ApiError ? err.message : "Gagal mengonfirmasi DO Balik." };
     }
   }
 
@@ -470,12 +546,16 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         kotaAsal: data.kotaAsal,
         alamatTujuan: data.alamatTujuan,
         kotaTujuan: data.kotaTujuan,
+        ...(data.internalNotes !== undefined ? { internalNotes: data.internalNotes.trim() } : {}),
         ...(data.layanan ? { layanan: data.layanan } : {}),
         ...(data.deskripsiBarang !== undefined ? { deskripsiBarang: data.deskripsiBarang } : {}),
         ...(data.beratKg !== undefined ? { beratKg: data.beratKg } : {}),
         ...(data.jumlahKoli !== undefined ? { jumlahKoli: data.jumlahKoli } : {}),
         ...(data.asuransi !== undefined ? { asuransi: data.asuransi, koliAsuransi: data.koliAsuransi, nilaiAsuransi: data.nilaiAsuransi } : {}),
         ...(data.slaValue !== undefined ? { slaValue: data.slaValue } : {}),
+        ...(data.requiresDoBalik !== undefined ? { requiresDoBalik: data.requiresDoBalik } : {}),
+        ...(data.packingKayu !== undefined ? { packingKayu: data.packingKayu } : {}),
+        ...(data.hasTransit !== undefined ? { hasTransit: data.hasTransit } : {}),
         ...(data.armadaType
           ? {
               armadaType: data.armadaType,
@@ -583,6 +663,9 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         createShipment,
         markEmailSent,
         addTrackingUpdate,
+        updateTimelineEvent,
+        deleteTimelineEvent,
+        confirmDoBalik,
         updateShipmentInfo,
         updateShipmentAlamat,
         requestRecovery,
@@ -595,6 +678,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      {doBalikAlertAwb && <DoBalikAlertModal awb={doBalikAlertAwb} onClose={() => setDoBalikAlertAwb(null)} />}
     </ShipmentContext.Provider>
   );
 }

@@ -1,7 +1,7 @@
-import { adminPath } from "../../utils/urls";
+import { adminPath, driverPath } from "../../utils/urls";
 import { AlertTriangle, Loader2, Mail } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
-import { useLocation, useNavigate, type Location } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
 import { useAuth } from "../../store/AuthContext";
 import { PasswordInput } from "../../components/PasswordInput";
@@ -10,9 +10,8 @@ import { ContactAdminButton } from "../../components/ContactAdminButton";
 const MAX_WRONG_PASSWORD = 3;
 
 export default function Login() {
-  const { login, logout, profile } = useAuth();
+  const { login, logout, isAuthenticated, isLoading, profile } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,7 +38,6 @@ export default function Login() {
   // Unknown email: there is no account to reset, so no "Lupa Password?".
   const emailNotRegistered = error === "Email tidak terdaftar.";
 
-  const from = (location.state as { from?: Location } | null)?.from?.pathname ?? adminPath("/");
 
   // login() resolves before AuthContext's profile state has actually
   // flushed, so the role isn't readable synchronously right after - react
@@ -51,10 +49,23 @@ export default function Login() {
       logout();
       setError("Akun Driver menggunakan Portal Driver, bukan di sini. Buka driver.gms-logistics.id untuk login.");
     } else {
-      navigate(from, { replace: true });
+      // After a successful login always land on the Dashboard (the token is already stored by login()).
+      navigate(adminPath("/"), { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, awaitingRoleCheck]);
+
+  // Already signed in: the login page is not for them. Wait for the session check first so the form never flashes.
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-blue-900" />
+      </div>
+    );
+  }
+  if (isAuthenticated && !awaitingRoleCheck) {
+    return <Navigate to={profile?.role === "Driver" ? driverPath("/") : adminPath("/")} replace />;
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

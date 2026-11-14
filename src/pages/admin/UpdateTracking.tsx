@@ -20,6 +20,8 @@ import { SearchableSelect } from "../../components/SearchableSelect";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../store/AuthContext";
+import { QuickSearchAwb } from "../../components/QuickSearchAwb";
+import { useToast } from "../../components/Toast";
 import { useLayanan } from "../../store/LayananContext";
 import { useFleet } from "../../store/FleetContext";
 import { useShipments } from "../../store/ShipmentContext";
@@ -27,18 +29,25 @@ import type { Shipment, TimelineEventType, TrackingUpdateFormData, UpdateShipmen
 import { checkPhotoSize, compressImage } from "../../utils/compressImage";
 import { formatTanggalJam, formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
 import { addBusinessDays } from "../../utils/sla";
-import { getAllowedNextEvents } from "../../utils/status";
+import { choiceDefaults, getTrackingChoices, isHandoverChoice, isLtlShipment, isTrackingLocked, type TrackingChoice } from "../../utils/trackingChoices";
 import { useLocationSuggest } from "../../utils/useLocationSuggest";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
 
+/** Keyed by AWB so "Cari resi lain" always opens a clean form (no leftover status, location, photos or notes from the previous AWB). */
 export default function UpdateTracking() {
+  const { awb } = useParams<{ awb: string }>();
+  return <UpdateTrackingForm key={awb} />;
+}
+
+function UpdateTrackingForm() {
   const { awb } = useParams<{ awb: string }>();
   const { getByAwb, addTrackingUpdate, updateShipmentInfo, updatePodPhoto } = useShipments();
   const { activeNames: activeLayanan, refresh: refreshLayanan } = useLayanan();
   const { trucksWithDriver } = useFleet();
   const { profile } = useAuth();
+  const toast = useToast();
   const isMitra = profile?.role === "Mitra";
   // Editing shipment data (incl. the addresses) needs shipments.update_info on
   // the API, which only Superadmin/Admin have. Everyone else (e.g. Mitra) gets
@@ -46,33 +55,33 @@ export default function UpdateTracking() {
   const canEditInfo = profile?.role === "Superadmin" || profile?.role === "Admin";
   const navigate = useNavigate();
 
+  // Statuses selectable for a shipment (LTL: the 9 pipeline statuses, from the current one onward).
+  const trackingOptionsFor = (s: Shipment) =>
+    getTrackingChoices(s, (c) => {
+      if (isMitra && c.type === "Transfer Unit") return false;
+      // POD Kembali (dokumen asli kembali ke GMS) is an admin step.
+      if (isMitra && c.ltlStage === "POD_RETURNED") return false;
+      return true;
+    });
+
   const [shipment, setShipment] = useState<Shipment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const initializedFor = useRef<string | null>(null);
 
-  const [type, setType] = useState<TimelineEventType>("Transit");
+  const [choiceValue, setChoiceValue] = useState<string>("Transit");
   const [lokasi, setLokasi] = useState("");
   const [tanggal, setTanggal] = useState(todayISO());
   const [jam, setJam] = useState(nowHHMM());
   const [keterangan, setKeterangan] = useState("");
+  const [internalNotes, setInternalNotes] = useState("");
+  // "Keterangan Internal" is private to GMS ops (Superadmin/Admin); other roles never see the field.
+  const canWriteInternal = profile?.role === "Superadmin" || profile?.role === "Admin";
   const [namaPenerima, setNamaPenerima] = useState("");
-
-  // Switching status pre-fills Keterangan with the status name, and - for the first departure
-  // (Dalam Persiapan -> Berangkat) - Lokasi with the shipment's Kota Asal (the unit is still there).
-  // Both stay normal editable inputs; a value the user typed is only replaced when it is still
-  // empty or still the previous auto-filled text.
-  function changeType(next: TimelineEventType, s: Shipment, prev?: TimelineEventType) {
-    setType(next);
-    setKeterangan((k) => (k.trim() === "" || k === prev ? next : k));
-    const autoCity = (t?: TimelineEventType) => (t === "Berangkat" && s.status === "Dalam Persiapan" ? s.kotaAsal : undefined);
-    setLokasi((l) => (l.trim() === "" || l === autoCity(prev) ? autoCity(next) ?? "" : l));
-  }
   const [foto, setFoto] = useState<string[]>([]);
   const [fotoBarangDiterima, setFotoBarangDiterima] = useState<string | null>(null);
   const [fotoSuratJalan, setFotoSuratJalan] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [truckId, setTruckId] = useState("");
-  const [submitted, setSubmitted] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -120,9 +129,13 @@ export default function UpdateTracking() {
       setIsLoading(false);
       if (s && initializedFor.current !== s.awb) {
         initializedFor.current = s.awb;
-        const allowedOptions = getAllowedNextEvents(s.status).filter((o) => !isMitra || o !== "Transfer Unit");
-        changeType(allowedOptions[0] ?? "Transit", s);
+        const first = trackingOptionsFor(s)[0] ?? { value: "Transit", label: "Transit", type: "Transit" as TimelineEventType };
+        const d = choiceDefaults(first, s, s.penerima.nama);
+        setChoiceValue(first.value);
+        setLokasi(d.lokasi);
+        setKeterangan(d.keterangan);
         setNamaPenerima(s.penerima.nama);
+        setInternalNotes(s.internalNotes ?? "");
         setTruckId(s.truckId ?? "");
         setEditPengirim(s.pengirim);
         setEditPenerima(s.penerima);
@@ -164,8 +177,13 @@ export default function UpdateTracking() {
     );
   }
 
-  const allowedOptions = getAllowedNextEvents(shipment.status).filter((o) => !isMitra || o !== "Transfer Unit");
-  const locked = shipment.status === "Selesai / Terkirim";
+  const allowedOptions = trackingOptionsFor(shipment);
+  const choice: TrackingChoice = allowedOptions.find((o) => o.value === choiceValue) ?? allowedOptions[0] ?? { value: "Transit", label: "Transit", type: "Transit" };
+  const type = choice.type;
+  // delivered = hand-over done (shipment data is final); locked = no tracking status left to log.
+  // A delivered LTL shipment is not locked until its final step, POD Kembali, is logged.
+  const delivered = shipment.status === "Selesai / Terkirim";
+  const locked = delivered && isTrackingLocked(shipment, !isMitra);
   const POD_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   const deliveredEvent = [...shipment.timeline].reverse().find((e) => e.type === "Selesai / Terkirim");
   const deliveredAtMs = deliveredEvent?.inputAt ? new Date(deliveredEvent.inputAt).getTime() : null;
@@ -206,7 +224,7 @@ export default function UpdateTracking() {
     description: t.driver ? `Driver: ${t.driver.nama}` : undefined,
   }));
   const selectedTruck = trucksWithDriver.find((t) => t.id === truckId);
-  const isSelesai = type === "Selesai / Terkirim";
+  const isSelesai = isHandoverChoice(choice);
   const resolvedLokasi = isSelesai ? shipment.kotaTujuan : lokasi;
   async function handleSaveInfo(e: FormEvent) {
     e.preventDefault();
@@ -293,10 +311,13 @@ export default function UpdateTracking() {
     const data: TrackingUpdateFormData = {
       awb: shipment!.awb,
       type,
+      ltlStage: choice.ltlStage,
       lokasi: resolvedLokasi,
       tanggal,
       jam,
       keterangan,
+      // One internal note per AWB: sent only when changed ("" clears it).
+      internalNotes: canWriteInternal && internalNotes.trim() !== (shipment!.internalNotes ?? "").trim() ? internalNotes.trim() : undefined,
       // Order matters here: addTrackingUpdate takes foto[0] as bukti barang
       // diterima and foto[1] (falling back to foto[0]) as bukti surat
       // jalan - keep these two labeled uploads in that exact order.
@@ -314,8 +335,9 @@ export default function UpdateTracking() {
     const result = await addTrackingUpdate(data);
     setSubmitting(false);
     if (result.ok) {
-      setSubmitted(true);
-      setTimeout(() => navigate(`/tracking/${shipment!.awb}`), 1100);
+      toast("Update tracking berhasil disimpan.");
+      // Straight to this AWB's Tracking view; its "Cari resi lain" bar is focused, ready for the next AWB.
+      navigate(adminPath(`/tracking/${shipment!.awb}`), { state: { focusSearch: true } });
     } else {
       setFormError(result.error);
     }
@@ -323,12 +345,15 @@ export default function UpdateTracking() {
 
   return (
     <AdminLayout>
-      <button
-        onClick={() => navigate(-1)}
-        className="mb-4 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900"
-      >
-        <ArrowLeft size={15} /> Kembali
-      </button>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900"
+        >
+          <ArrowLeft size={15} /> Kembali
+        </button>
+        <QuickSearchAwb to={(a) => adminPath(`/update-tracking/${a}`)} className="w-full sm:w-80" />
+      </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -343,7 +368,7 @@ export default function UpdateTracking() {
           Pengiriman ini sedang di-Hold, jadi belum bisa diproses atau diberi update tracking. Pembuat order dapat memilih Lepas Hold dari halaman detail resi.
         </div>
       )}
-      {!locked && (
+      {!delivered && (
         <div className="mt-6 rounded-xl border border-slate-200 bg-white shadow-sm">
           {canEditInfo ? (
             <button
@@ -598,7 +623,7 @@ export default function UpdateTracking() {
         </div>
       )}
 
-      {locked ? (
+      {delivered && (
         <>
           <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center">
             <CheckCircle2 className="mx-auto mb-2 text-emerald-600" size={28} />
@@ -701,31 +726,36 @@ export default function UpdateTracking() {
             </div>
           )}
         </>
-      ) : submitted ? (
-        <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center">
-          <CheckCircle2 className="mx-auto mb-2 text-emerald-600" size={28} />
-          <p className="font-semibold text-emerald-800">Update tracking berhasil disimpan</p>
-          <p className="mt-1 text-sm text-emerald-700">Mengarahkan ke halaman tracking publik...</p>
-        </div>
-      ) : (
+      )}
+      {/* LTL: a delivered shipment keeps the form open for its final step, POD Kembali. */}
+      {!locked && (
         <form onSubmit={handleSubmit} className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">Status</span>
               <select
                 className={inputClass}
-                value={type}
-                onChange={(e) => changeType(e.target.value as TimelineEventType, shipment, type)}
+                value={choice.value}
+                onChange={(e) => {
+                  const next = allowedOptions.find((o) => o.value === e.target.value);
+                  if (!next) return;
+                  setChoiceValue(next.value);
+                  // Auto-fill Lokasi and Keterangan for the chosen status (LTL: stage template with {origin}/{destination}); both stay editable.
+                  const d = choiceDefaults(next, shipment, namaPenerima || shipment.penerima.nama);
+                  setLokasi(d.lokasi);
+                  setKeterangan(d.keterangan);
+                }}
               >
                 {allowedOptions.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
                   </option>
                 ))}
               </select>
               <span className="mt-1.5 block text-[11px] text-slate-400">
-                Hanya status lanjutan dari status saat ini ({shipment.status}) yang bisa dipilih -
-                pipeline tidak bisa dibuat mundur.
+                {choice.ltlStage || isLtlShipment(shipment)
+                  ? "Status LTL boleh dilewati tetapi tidak bisa dibuat mundur. Dalam Perjalanan bisa dicatat berulang untuk tiap titik transit."
+                  : `Hanya status lanjutan dari status saat ini (${shipment.status}) yang bisa dipilih - pipeline tidak bisa dibuat mundur.`}
               </span>
             </label>
             {isSelesai ? (
@@ -771,16 +801,44 @@ export default function UpdateTracking() {
               />
             </label>
             <label className="block sm:col-span-2">
-              <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan</span>
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan (opsional)</span>
+              {choiceDefaults(choice, shipment, namaPenerima || shipment.penerima.nama).presets.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {choiceDefaults(choice, shipment, namaPenerima || shipment.penerima.nama).presets.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setKeterangan(p)}
+                      className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:border-blue-400 hover:text-blue-700"
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              )}
               <textarea
-                required
                 rows={3}
                 className={inputClass}
-                placeholder="Keterangan status perjalanan"
+                placeholder="Kosongkan jika tidak ada catatan khusus"
                 value={keterangan}
                 onChange={(e) => setKeterangan(e.target.value)}
               />
             </label>
+
+            {canWriteInternal && (
+              <label className="block sm:col-span-2">
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan Internal (Khusus Internal GMS)</span>
+                <input
+                  maxLength={500}
+                  className={inputClass}
+                  placeholder="Contoh: Resi Vendor JNE-09123812 / Subkon PT Maju"
+                  value={internalNotes}
+                  onChange={(e) => setInternalNotes(e.target.value)}
+                  autoComplete="off"
+                />
+                <span className="mt-1.5 block text-[11px] text-slate-400">Satu catatan per AWB (contoh: No. Resi Vendor / Nama Vendor); mengubahnya memperbarui catatan AWB ini. Tidak ditampilkan ke customer.</span>
+              </label>
+            )}
 
             {isSelesai && (
               <label className="block sm:col-span-2">

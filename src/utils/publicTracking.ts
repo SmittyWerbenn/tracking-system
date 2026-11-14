@@ -24,11 +24,15 @@ interface RawPublicShipment {
   truckJenis: string | null;
   truckDriverNama: string | null;
   estimasiTiba: string | null;
+  asuransi?: boolean;
+  packingKayu?: boolean;
+  hasTransit?: boolean;
 }
 
 interface RawPublicTimelineRow {
   id: string;
   type: TimelineEventType;
+  ltl_stage?: string | null;
   lokasi: string;
   tanggal: string;
   jam: string;
@@ -76,6 +80,7 @@ export async function fetchPublicShipment(awb: string): Promise<PublicShipmentRe
       tanggal: row.tanggal,
       jam: row.jam,
       keterangan: row.keterangan,
+      ltlStage: row.ltl_stage ?? undefined,
       foto: urlMap.get(`timeline_photo:${row.id}`),
       truck: row.truck_nomor_unit ? { nomorUnit: row.truck_nomor_unit, jenis: "-", driver: row.truck_driver_nama ?? undefined } : undefined,
     }));
@@ -96,9 +101,12 @@ export async function fetchPublicShipment(awb: string): Promise<PublicShipmentRe
       layanan: res.shipment.layanan,
       beratKg: res.shipment.beratKg,
       jumlahKoli: res.shipment.jumlahKoli,
-      asuransi: false,
+      // Only the yes/no flags are public (never the insured value or koli numbers).
+      asuransi: res.shipment.asuransi ?? false,
       koliAsuransi: null,
       nilaiAsuransi: null,
+      packingKayu: res.shipment.packingKayu ?? false,
+      hasTransit: res.shipment.hasTransit ?? false,
       truck: {
         nomorUnit: res.shipment.truckNomorUnit ?? "-",
         jenis: res.shipment.truckJenis ?? "-",

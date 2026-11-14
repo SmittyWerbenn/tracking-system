@@ -34,6 +34,8 @@ import {
   type DriverShipmentDetail as DriverShipmentDetailData,
 } from "../../utils/driverApi";
 import { formatJam, formatTanggalPanjang, nowHHMM, todayISO, isoToWib } from "../../utils/format";
+import { newestFirst } from "../../utils/timelineOrder";
+import { currentLtlIndex, getLtlStage, isLtlLayanan, nextLtlStages, renderLtlDescription } from "../../utils/ltlPipeline";
 import { getAllowedNextEvents } from "../../utils/status";
 
 function formatCoord(n: number): string {
@@ -65,7 +67,8 @@ export default function DriverShipmentDetail() {
   const [positionError, setPositionError] = useState<string | null>(null);
   const [positionSaved, setPositionSaved] = useState(false);
 
-  const [statusType, setStatusType] = useState<TimelineEventType | "">("");
+  // Value of the chosen dropdown entry: an event type, or (LTL) one of the 8 pipeline status codes.
+  const [statusType, setStatusType] = useState<string>("");
   const [statusLokasi, setStatusLokasi] = useState("");
   const [statusKeterangan, setStatusKeterangan] = useState("");
   const [statusNamaPenerima, setStatusNamaPenerima] = useState("");
@@ -196,10 +199,35 @@ export default function DriverShipmentDetail() {
     });
   }
 
+  // Statuses this driver may log next. LTL: the pipeline statuses from the current one onward (POD Kembali is an admin step), plus Kendala.
+  // Other layanan: the plain event types. Transfer Unit / Re-route / Penarikan stay admin-only.
+  const statusChoices: { value: string; label: string; type: TimelineEventType; ltlStage?: string; lokasi?: string; keterangan?: string }[] = (() => {
+    if (!data || data.shipment.status === SELESAI_STATUS) return [];
+    const s = data.shipment;
+    if (!isLtlLayanan(s.layanan)) {
+      return getAllowedNextEvents(s.status as ShipmentStatus)
+        .filter((t) => t !== "Transfer Unit" && t !== "Re-route" && t !== "Penarikan")
+        .map((t) => ({ value: t, label: t, type: t }));
+    }
+    const current = currentLtlIndex(data.timeline.map((e) => ({ type: e.type, ltlStage: e.ltl_stage })), s.status);
+    return [
+      ...nextLtlStages(current).filter((st) => st.code !== "POD_RETURNED").map((st) => ({
+        value: st.code as string,
+        label: st.label,
+        type: st.type as TimelineEventType,
+        ltlStage: st.code as string,
+        lokasi: st.city === "origin" ? s.kotaAsal : s.kotaTujuan,
+        keterangan: renderLtlDescription(st, s.kotaAsal, s.kotaTujuan, {}),
+      })),
+      { value: "Kendala", label: "Kendala", type: "Kendala" as TimelineEventType },
+    ];
+  })();
+
   async function handleStatusSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!awb || !statusType) return;
-    const isSelesai = statusType === SELESAI_STATUS;
+    const selected = statusChoices.find((c) => c.value === statusType);
+    if (!awb || !selected) return;
+    const isSelesai = selected.type === SELESAI_STATUS;
     if (!isSelesai && !statusLokasi.trim()) {
       setStatusError("Lokasi wajib diisi.");
       return;
@@ -221,7 +249,8 @@ export default function DriverShipmentDetail() {
     setStatusError(null);
     const result = await addTrackingUpdate({
       awb,
-      type: statusType,
+      type: selected.type,
+      ltlStage: selected.ltlStage,
       lokasi: statusLokasi.trim(),
       tanggal: todayISO(),
       jam: nowHHMM(),
@@ -281,10 +310,7 @@ export default function DriverShipmentDetail() {
   const mapsQuery = encodeURIComponent(`${shipment.alamatTujuan}, ${shipment.kotaTujuan}`);
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
   const isLocked = shipment.status === SELESAI_STATUS;
-  const allowedNext = isLocked
-    ? []
-    : getAllowedNextEvents(shipment.status as ShipmentStatus).filter((t) => t !== "Transfer Unit" && t !== "Re-route" && t !== "Penarikan");
-  const isSelesaiSelected = statusType === SELESAI_STATUS;
+  const isSelesaiSelected = statusChoices.find((c) => c.value === statusType)?.type === SELESAI_STATUS;
   const isKendalaSelected = statusType === "Kendala";
 
   return (
@@ -393,12 +419,12 @@ export default function DriverShipmentDetail() {
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Riwayat Perjalanan</h2>
             <ol className="flex flex-col gap-3">
-              {[...timeline].reverse().map((e) => (
+              {newestFirst(timeline).map((e) => (
                 <li key={e.id} className="border-l-2 border-slate-200 pl-3">
                   <p className="text-xs text-slate-400">
                     {formatTanggalPanjang(e.tanggal)} &middot; {formatJam(e.jam)}
                   </p>
-                  <p className="text-sm font-semibold text-slate-900">{e.type}</p>
+                  <p className="text-sm font-semibold text-slate-900">{getLtlStage(e.ltl_stage)?.label ?? e.type}</p>
                   <p className="text-xs text-slate-500">{e.lokasi}</p>
                   {e.keterangan && <p className="mt-0.5 text-xs text-slate-500">{e.keterangan}</p>}
                 </li>
@@ -424,15 +450,18 @@ export default function DriverShipmentDetail() {
                     required
                     value={statusType}
                     onChange={(e) => {
-                      setStatusType(e.target.value as TimelineEventType);
-                      setStatusKeterangan("");
+                      setStatusType(e.target.value);
+                      // LTL: auto-fill Lokasi and Catatan from the status template; both stay editable.
+                      const next = statusChoices.find((c) => c.value === e.target.value);
+                      setStatusKeterangan(next?.keterangan ?? "");
+                      if (next?.lokasi) setStatusLokasi(next.lokasi);
                     }}
                     className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   >
                     <option value="">Pilih status...</option>
-                    {allowedNext.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
+                    {statusChoices.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
                       </option>
                     ))}
                   </select>

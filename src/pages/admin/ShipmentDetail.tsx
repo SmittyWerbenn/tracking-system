@@ -14,6 +14,8 @@ import {
   User,
   XCircle,
 } from "lucide-react";
+import { DoBalikBadge } from "../../components/DoBalikBadge";
+import { DoBalikPanel } from "../../components/DoBalikPanel";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -232,8 +234,9 @@ export default function ShipmentDetail() {
             Detail Resi / AWB
           </p>
           <h1 className="mt-0.5 font-mono text-2xl font-bold text-slate-900">{shipment.awb}</h1>
-          <div className="mt-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <StatusBadge status={shipment.status} />
+            <DoBalikBadge shipment={shipment} />
           </div>
         </div>
         <div className="flex flex-wrap gap-2 no-print">
@@ -266,6 +269,7 @@ export default function ShipmentDetail() {
           <CancelOrderActions shipment={shipment} onDone={reload} variant="full" />
         </div>
       </div>
+      <DoBalikPanel shipment={shipment} canConfirm={profile?.role === "Superadmin" || profile?.role === "Admin"} onDone={reload} />
       {profile?.role !== "Mitra" && <HoldInfo shipment={shipment} />}
       {profile?.role !== "Mitra" && <CancellationInfo shipment={shipment} />}
 
@@ -313,6 +317,7 @@ export default function ShipmentDetail() {
                   <p className="font-mono text-sm font-medium text-slate-800">{shipment.reference}</p>
                 </div>
               )}
+              {/* Keterangan Internal sengaja tidak ditampilkan di halaman resi (halaman ini yang dicetak / di-PDF-kan). */}
               {shipment.customerId && (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Client ID</p>
@@ -347,6 +352,19 @@ export default function ShipmentDetail() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Asuransi</p>
                 <p className="text-sm font-medium text-slate-800">
                   {shipment.asuransi ? "Ya" : "Tidak"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">DO Balik</p>
+                <p className="text-sm font-medium text-slate-800">
+                  {shipment.requiresDoBalik ? (
+                    <span className="inline-flex items-center gap-2">
+                      {shipment.doBalikStatus === "returned" ? "YA (Sudah Kembali)" : "YA (Wajib Kembali)"}
+                      <DoBalikBadge shipment={shipment} />
+                    </span>
+                  ) : (
+                    "Tidak"
+                  )}
                 </p>
               </div>
               {shipment.asuransi && (

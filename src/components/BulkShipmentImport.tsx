@@ -1,4 +1,5 @@
 import { adminPath } from "../utils/urls";
+import { ClientIdInput, ClientPreview, type ClientOption } from "../components/ClientIdField";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -30,6 +31,7 @@ interface ImportResultRow {
 import { downloadCsv, readTableFromFile } from "../utils/csv";
 import {
   downloadBulkShipmentTemplate,
+  parseYaTidak,
   normalizeLayanan,
   tableToBulkRows,
   type BulkRowInput,
@@ -71,6 +73,8 @@ function emptyRow(): BulkRow {
     asuransi: "",
     koliAsuransi: "",
     nilaiAsuransi: "",
+    doBalik: "",
+    keteranganInternal: "",
   };
 }
 
@@ -100,6 +104,7 @@ const normRef = (r: string) => r.trim().replace(/\s+/g, " ").toLowerCase();
 function rowErrors(row: BulkRow, duplicateRows?: number[]): string[] {
   const errs: string[] = [];
   if (row.referensi.trim().length > 100) errs.push("Referensi maksimal 100 karakter");
+  if (row.keteranganInternal.trim().length > 500) errs.push("Keterangan Internal maksimal 500 karakter");
   if (duplicateRows && duplicateRows.length > 1) {
     errs.push(`Referensi ${row.referensi.trim()} ditemukan lebih dari satu kali (baris ${duplicateRows.join(", ")})`);
   }
@@ -133,8 +138,12 @@ function rowErrors(row: BulkRow, duplicateRows?: number[]): string[] {
     const nilai = Number(row.nilaiAsuransi);
     if (!row.nilaiAsuransi.trim() || !Number.isFinite(nilai) || nilai <= 0) errs.push("Nilai asuransi wajib diisi > 0 jika Asuransi = Ya");
   }
+  // DO Balik: optional, empty = Tidak.
+  if (parseYaTidak(row.doBalik) === null) errs.push("DO Balik harus diisi 'Ya' atau 'Tidak'");
   return errs;
 }
+
+const isYes = (v: string) => parseYaTidak(v) === true;
 
 const cellInputClass =
   "w-full min-w-[140px] rounded-md border border-slate-300 px-2 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-100";
@@ -165,14 +174,14 @@ export function BulkShipmentImport() {
   // Bulk import applies one Client ID to the whole batch, rather than
   // a per-row column - keeps the import table/template unchanged.
   const [customerId, setCustomerId] = useState(isCustAdmin ? profile?.customerId ?? "" : "");
-  const [customerIds, setCustomerIds] = useState<string[]>([]);
+  const [clients, setClients] = useState<ClientOption[]>([]);
 
   useEffect(() => {
     if (isCustAdmin) return;
     api
-      .get<{ items: string[] }>("/api/customer-ids")
-      .then((res) => setCustomerIds(res.items))
-      .catch(() => setCustomerIds([]));
+      .get<{ items: string[]; clients?: ClientOption[] }>("/api/customer-ids")
+      .then((res) => setClients(res.clients ?? res.items.map((customerId) => ({ customerId, nama: null }))))
+      .catch(() => setClients([]));
   }, [isCustAdmin]);
 
   const truckOptions = trucksWithDriver.filter((t) => t.status !== "Inactive");
@@ -280,6 +289,8 @@ export function BulkShipmentImport() {
       try {
         const { awb } = await createShipment({
           reference: row.referensi.trim() || undefined,
+          // Internal note is ops-only; a Client account never sends one.
+          internalNotes: !isCustAdmin ? row.keteranganInternal.trim() || undefined : undefined,
           pengirim: { nama: row.pengirimNama, telepon: row.pengirimTelepon, email: row.pengirimEmail },
           penerima: { nama: row.penerimaNama, telepon: row.penerimaTelepon, email: row.penerimaEmail },
           alamatAsal: row.alamatAsal,
@@ -293,6 +304,7 @@ export function BulkShipmentImport() {
           truckId: truck?.id ?? "",
           slaValue: row.slaValue.trim() ? Number(row.slaValue) : undefined,
           customerId: customerId.trim(),
+          requiresDoBalik: isYes(row.doBalik) || undefined,
           asuransi: row.asuransi.trim().toLowerCase() === "ya" || row.asuransi.trim().toLowerCase() === "y" || undefined,
           koliAsuransi: (row.asuransi.trim().toLowerCase() === "ya" || row.asuransi.trim().toLowerCase() === "y") ? row.koliAsuransi.trim() || undefined : undefined,
           nilaiAsuransi: (row.asuransi.trim().toLowerCase() === "ya" || row.asuransi.trim().toLowerCase() === "y") ? (row.nilaiAsuransi.trim() ? Number(row.nilaiAsuransi) : undefined) : undefined,
@@ -370,28 +382,20 @@ export function BulkShipmentImport() {
             />
           </div>
         </div>
-        <label className="mt-4 block max-w-xs">
-          <span className="mb-1.5 block text-xs font-medium text-slate-600">
-            Client ID (berlaku untuk semua baris)
-          </span>
-          <input
-            required
-            disabled={isCustAdmin}
-            list="bulk-customer-id-suggestions"
-            className={`w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 ${
-              isCustAdmin ? "bg-slate-50 text-slate-500" : ""
-            }`}
-            placeholder="Contoh: IDTMDI001"
-            value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
-            autoComplete="off"
-          />
-          <datalist id="bulk-customer-id-suggestions">
-            {customerIds.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
-        </label>
+        {/* Both columns are label + 38px box, so the Client ID input and the client-name preview line up top and bottom. */}
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-12 md:gap-4">
+          <label className="block md:col-span-4">
+            <span className="mb-1.5 block text-xs font-medium text-slate-600">Client ID (berlaku untuk semua baris)</span>
+            <ClientIdInput id="bulk-customer-id-suggestions" value={customerId} onChange={setCustomerId} clients={clients} disabled={isCustAdmin} />
+          </label>
+          {/* Confirms which company the typed / chosen Client ID is, before any AWB is issued. */}
+          {!isCustAdmin && (
+            <div className="md:col-span-8">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Client Terpilih</span>
+              <ClientPreview value={customerId} clients={clients} />
+            </div>
+          )}
+        </div>
         {importError && (
           <div className="mt-3 flex items-start gap-2 rounded-lg bg-red-50 px-3.5 py-2.5 text-xs text-red-700">
             <AlertTriangle size={14} className="mt-0.5 shrink-0" />
@@ -445,6 +449,8 @@ export function BulkShipmentImport() {
               <th className="border-l border-slate-200 px-2.5 py-2.5">Asuransi (Ya/Tidak)</th>
               <th className="px-2.5 py-2.5">Koli Diasuransi</th>
               <th className="px-2.5 py-2.5">Nilai Asuransi (Rp)</th>
+              <th className="border-l border-slate-200 px-2.5 py-2.5">DO Balik (Ya/Tidak)</th>
+              {!isCustAdmin && <th className="border-l border-slate-200 px-2.5 py-2.5">Keterangan Internal (Opsional)</th>}
               <th className="px-2.5 py-2.5"></th>
             </tr>
           </thead>
@@ -681,6 +687,27 @@ export function BulkShipmentImport() {
                     disabled={row.asuransi.trim().toLowerCase() !== "ya" && row.asuransi.trim().toLowerCase() !== "y"}
                   />
                 </td>
+                <td className="border-l border-slate-100 px-2.5 py-2">
+                  <input
+                    className={`${cellInputClass} min-w-[70px]`}
+                    value={row.doBalik}
+                    onChange={(e) => updateRow(row.id, "doBalik", e.target.value)}
+                    placeholder="Tidak"
+                    list="asuransi-options"
+                  />
+                </td>
+                {!isCustAdmin && (
+                  <td className="px-2.5 py-2">
+                    <input
+                      type="text"
+                      maxLength={500}
+                      className={`${cellInputClass} min-w-[180px]`}
+                      value={row.keteranganInternal}
+                      onChange={(e) => updateRow(row.id, "keteranganInternal", e.target.value)}
+                      placeholder="Resi Vendor / Subkon"
+                    />
+                  </td>
+                )}
                 <td className="px-2.5 py-2">
                   <button
                     type="button"

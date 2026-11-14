@@ -109,6 +109,8 @@ function UpdateTrackingForm() {
   const [editKoliAsuransi, setEditKoliAsuransi] = useState("");
   const [editNilaiAsuransi, setEditNilaiAsuransi] = useState<number | undefined>(undefined);
   const [editDoBalik, setEditDoBalik] = useState(false);
+  const [extraSaved, setExtraSaved] = useState(false);
+  const [extraError, setExtraError] = useState<string | null>(null);
   const [editSaved, setEditSaved] = useState(false);
   const [editFormError, setEditFormError] = useState<string | null>(null);
 
@@ -236,21 +238,46 @@ function UpdateTrackingForm() {
   const selectedTruck = trucksWithDriver.find((t) => t.id === truckId);
   const isSelesai = isHandoverChoice(choice);
   const resolvedLokasi = isSelesai ? shipment.kotaTujuan : lokasi;
+  // Asuransi & DO Balik live in the status form (below Informasi Truck) and save on their own: PATCH with the
+  // shipment's current saved data. Turning Asuransi off clears koli + nilai; DO Balik on/off syncs do_balik_status (server-side).
+  async function handleSaveExtras() {
+    setExtraSaved(false);
+    if (editAsuransi && !editKoliAsuransi.trim()) {
+      setExtraError("Nomor koli yang diasuransikan wajib diisi.");
+      return;
+    }
+    if (editAsuransi && (!editNilaiAsuransi || editNilaiAsuransi <= 0)) {
+      setExtraError("Nilai barang yang diasuransikan wajib diisi dan lebih dari 0.");
+      return;
+    }
+    setExtraError(null);
+    const s = shipment!;
+    const result = await updateShipmentInfo(s.awb, {
+      pengirim: s.pengirim,
+      penerima: s.penerima,
+      alamatAsal: s.alamatAsal,
+      kotaAsal: s.kotaAsal,
+      alamatTujuan: s.alamatTujuan,
+      kotaTujuan: s.kotaTujuan,
+      asuransi: editAsuransi,
+      koliAsuransi: editAsuransi ? editKoliAsuransi.trim() : "",
+      nilaiAsuransi: editAsuransi ? editNilaiAsuransi : undefined,
+      requiresDoBalik: editDoBalik,
+    });
+    if (result.ok) {
+      getByAwb(s.awb).then((fresh) => fresh && setShipment(fresh));
+      setExtraSaved(true);
+      setTimeout(() => setExtraSaved(false), 2500);
+    } else {
+      setExtraError(result.error);
+    }
+  }
+
   async function handleSaveInfo(e: FormEvent) {
     e.preventDefault();
     if (!editKotaAsal || !editKotaTujuan) {
       setEditFormError("Pilih kota asal dan kota tujuan terlebih dahulu.");
       return;
-    }
-    if (editAsuransi) {
-      if (!editKoliAsuransi.trim()) {
-        setEditFormError("Nomor koli yang diasuransikan wajib diisi.");
-        return;
-      }
-      if (!editNilaiAsuransi || editNilaiAsuransi <= 0) {
-        setEditFormError("Nilai barang yang diasuransikan wajib diisi dan lebih dari 0.");
-        return;
-      }
     }
     setEditFormError(null);
     const data: UpdateShipmentInfoData = {
@@ -262,15 +289,11 @@ function UpdateTrackingForm() {
       kotaTujuan: editKotaTujuan,
       layanan: editLayanan,
       slaValue: editSlaValue ?? null,
-      // Turning Asuransi off clears koli + nilai server-side; DO Balik on/off syncs do_balik_status server-side.
-      asuransi: editAsuransi,
-      koliAsuransi: editAsuransi ? editKoliAsuransi.trim() : "",
-      nilaiAsuransi: editAsuransi ? editNilaiAsuransi : undefined,
-      requiresDoBalik: editDoBalik,
       ...editArmada,
     };
     const result = await updateShipmentInfo(shipment!.awb, data);
     if (result.ok) {
+      getByAwb(shipment!.awb).then((fresh) => fresh && setShipment(fresh));
       setEditSaved(true);
       setTimeout(() => setEditSaved(false), 2500);
     } else {
@@ -615,72 +638,6 @@ function UpdateTrackingForm() {
                         ? `Estimasi Tiba: ${formatTanggalPanjang(addBusinessDays(shipment.tanggalDibuat, editSlaValue))}`
                         : "Kosongkan untuk menghapus ETA/Estimasi Tiba."}
                     </p>
-                  </label>
-                </div>
-              </div>
-
-              <div className="mt-5 grid grid-cols-1 gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2">
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <label className="flex cursor-pointer items-start gap-2.5">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600"
-                      checked={editAsuransi}
-                      onChange={(e) => {
-                        setEditAsuransi(e.target.checked);
-                        if (!e.target.checked) {
-                          setEditKoliAsuransi("");
-                          setEditNilaiAsuransi(undefined);
-                        }
-                      }}
-                    />
-                    <span className="text-sm text-slate-700">
-                      <span className="font-medium">Asuransi Pengiriman: {editAsuransi ? "Ya" : "Tidak"}</span>
-                      <span className="block text-xs text-slate-500">Centang jika barang ini diasuransikan.</span>
-                    </span>
-                  </label>
-                  {editAsuransi && (
-                    <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
-                      <label className="block">
-                        <span className="mb-1.5 block text-xs font-medium text-slate-600">Koli Diasuransikan</span>
-                        <input
-                          className={inputClass}
-                          placeholder="Contoh: 62949, 62951"
-                          value={editKoliAsuransi}
-                          onChange={(e) => setEditKoliAsuransi(e.target.value)}
-                        />
-                      </label>
-                      <label className="block">
-                        <span className="mb-1.5 block text-xs font-medium text-slate-600">Nilai Asuransi (Rp)</span>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          className={inputClass}
-                          placeholder="Contoh: 1,000,000"
-                          value={editNilaiAsuransi ? Number(editNilaiAsuransi).toLocaleString("en-US") : ""}
-                          onChange={(e) => {
-                            const digits = e.target.value.replace(/\D/g, "");
-                            setEditNilaiAsuransi(digits ? Number(digits) : undefined);
-                          }}
-                        />
-                      </label>
-                    </div>
-                  )}
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <label className="flex cursor-pointer items-start gap-2.5">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600"
-                      checked={editDoBalik}
-                      onChange={(e) => setEditDoBalik(e.target.checked)}
-                    />
-                    <span className="text-sm text-slate-700">
-                      <span className="font-medium">DO Balik / POD Balik (Wajib Kembali): {editDoBalik ? "Ya" : "Tidak"}</span>
-                      <span className="block text-xs text-slate-500">
-                        Aktifkan jika dokumen Surat Jalan / POD asli wajib dikembalikan setelah barang diterima.
-                      </span>
-                    </span>
                   </label>
                 </div>
               </div>
@@ -1058,6 +1015,91 @@ function UpdateTrackingForm() {
                   </div>
                 )}
               </>
+            )}
+            {canEditInfo && !isMitra && !infoClosed && (
+              <div className="sm:col-span-2 border-t border-slate-100 pt-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Asuransi &amp; DO Balik</p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <label className="flex cursor-pointer items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600"
+                      checked={editAsuransi}
+                      onChange={(e) => {
+                        setEditAsuransi(e.target.checked);
+                        if (!e.target.checked) {
+                          setEditKoliAsuransi("");
+                          setEditNilaiAsuransi(undefined);
+                        }
+                      }}
+                    />
+                    <span className="text-sm text-slate-700">
+                      <span className="font-medium">Asuransi Pengiriman: {editAsuransi ? "Ya" : "Tidak"}</span>
+                      <span className="block text-xs text-slate-500">Centang jika barang ini diasuransikan.</span>
+                    </span>
+                  </label>
+                  {editAsuransi && (
+                    <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
+                      <label className="block">
+                        <span className="mb-1.5 block text-xs font-medium text-slate-600">Koli Diasuransikan</span>
+                        <input
+                          className={inputClass}
+                          placeholder="Contoh: 62949, 62951"
+                          value={editKoliAsuransi}
+                          onChange={(e) => setEditKoliAsuransi(e.target.value)}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-xs font-medium text-slate-600">Nilai Asuransi (Rp)</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          className={inputClass}
+                          placeholder="Contoh: 1,000,000"
+                          value={editNilaiAsuransi ? Number(editNilaiAsuransi).toLocaleString("en-US") : ""}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, "");
+                            setEditNilaiAsuransi(digits ? Number(digits) : undefined);
+                          }}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <label className="flex cursor-pointer items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600"
+                      checked={editDoBalik}
+                      onChange={(e) => setEditDoBalik(e.target.checked)}
+                    />
+                    <span className="text-sm text-slate-700">
+                      <span className="font-medium">DO Balik / POD Balik (Wajib Kembali): {editDoBalik ? "Ya" : "Tidak"}</span>
+                      <span className="block text-xs text-slate-500">
+                        Aktifkan jika dokumen Surat Jalan / POD asli wajib dikembalikan setelah barang diterima.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+                              </div>
+                {extraError && <p className="mt-3 text-sm font-medium text-red-600">{extraError}</p>}
+                {extraSaved && (
+                  <p className="mt-3 flex items-center gap-2 text-sm font-medium text-emerald-700">
+                    <CheckCircle2 size={16} /> Asuransi &amp; DO Balik disimpan.
+                  </p>
+                )}
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleSaveExtras}
+                    className="inline-flex items-center gap-2 rounded-lg border border-blue-900 px-4 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-50"
+                  >
+                    <Save size={15} /> Simpan Asuransi &amp; DO Balik
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 

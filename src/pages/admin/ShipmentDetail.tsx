@@ -605,7 +605,8 @@ export default function ShipmentDetail() {
                 <p className="text-xs text-slate-400">Jam Dibuat</p>
                 <p className="font-medium text-slate-700">{shipment.jamDibuat} WIB</p>
               </div>
-              <div>
+              {/* Status notifikasi email = info internal sistem: tampil di layar, tidak ikut tercetak / PDF. */}
+              <div className="print:hidden">
                 <p className="text-xs text-slate-400">Status Email</p>
                 <p className="font-medium text-slate-700">
                   {shipment.emailTerkirim ? "Terkirim" : "Belum dikirim"}

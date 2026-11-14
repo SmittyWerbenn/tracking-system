@@ -737,6 +737,45 @@ export async function purgeCancelledShipment(env: Env, awb: string, reason: stri
   return { id: awb, ok: true, row };
 }
 
+/** A shipment is "closed" once it was handed over (Selesai / Terkirim, incl. LTL POD Kembali): its record is final and can no longer be force-deleted. */
+export const FORCE_DELETE_CLOSED_STATUS = "Selesai / Terkirim";
+
+/** Superadmin "Hapus Permanen" from Detail AWB: permanently delete ANY shipment that is not closed yet (active, on hold or cancelled)
+ * with everything that hangs off it - tracking logs, POD, photos (DB rows + object storage), claims, holds, notifications, feedback.
+ * One DB transaction (batch); storage objects are removed after it commits. The caller has already checked the role. */
+export async function forceDeleteShipment(env: Env, awb: string, actor: AuthedUser, ip?: string): Promise<{ ok: true; row: EntityRow } | { ok: false; code: "not_found" | "closed" | "db"; message: string }> {
+  const def = ENTITIES.shipment;
+  const row = await def.load(env, awb);
+  if (!row) return { ok: false, code: "not_found", message: "Data pengiriman tidak ditemukan." };
+  const status = String(row.snapshot.status ?? "");
+  if (status === FORCE_DELETE_CLOSED_STATUS) {
+    return { ok: false, code: "closed", message: "Pengiriman yang sudah Selesai / Terkirim (closed) tidak dapat dihapus permanen." };
+  }
+  const keys = await collectShipmentObjectKeys(env, awb);
+  try {
+    await env.DB.batch([
+      ...(await def.purgeStatements(env, row)),
+      env.DB.prepare(`DELETE FROM recycle_bin WHERE entity_type = 'shipment' AND entity_id = ?`).bind(awb),
+    ]);
+  } catch (e) {
+    return { ok: false, code: "db", message: `Gagal menghapus permanen: ${e instanceof Error ? e.message : "kesalahan database"}` };
+  }
+  await deleteObjectsQuietly(env, keys);
+  await writeAuditLog(
+    env,
+    actor,
+    {
+      action: "FORCE_DELETE_SHIPMENT",
+      actionLabel: "HAPUS PERMANEN DATA PENGIRIMAN",
+      module: "Pengiriman",
+      awb,
+      description: `Pengiriman ${awb} (${row.sublabel}) dihapus permanen oleh Superadmin beserta riwayat tracking dan ${keys.length} file bukti.`,
+    },
+    ip,
+  );
+  return { ok: true, row };
+}
+
 /** Bulk variant of purgeCancelledShipment (the "Hapus Semua Dibatalkan" button). */
 export async function purgeCancelledShipments(
   env: Env,

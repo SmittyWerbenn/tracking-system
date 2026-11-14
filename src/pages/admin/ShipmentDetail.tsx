@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { DoBalikBadge } from "../../components/DoBalikBadge";
 import { DoBalikPanel } from "../../components/DoBalikPanel";
+import { ForceDeleteShipmentButton } from "../../components/ForceDeleteShipmentButton";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -267,6 +268,7 @@ export default function ShipmentDetail() {
           </Link>
           <HoldOrderActions shipment={shipment} onDone={reload} variant="full" />
           <CancelOrderActions shipment={shipment} onDone={reload} variant="full" />
+          <ForceDeleteShipmentButton shipment={shipment} onDeleted={() => navigate(adminPath("/pengiriman"), { replace: true })} />
         </div>
       </div>
       <DoBalikPanel shipment={shipment} canConfirm={profile?.role === "Superadmin" || profile?.role === "Admin"} onDone={reload} />

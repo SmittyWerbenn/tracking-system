@@ -14,6 +14,7 @@ import {
   softDelete,
   restoreItem,
   purgeCancelledShipment,
+  forceDeleteShipment,
   purgeCancelledShipments,
   type RecycleEntity,
   type BinRow,
@@ -141,6 +142,22 @@ export function registerRecycleRoutes(router: Router) {
     if (ids.length > MAX_BULK) throw Errors.badRequest(`Maksimal ${MAX_BULK} pengiriman per proses.`);
     const summary = await purgeCancelledShipments(ctx.env, ids, reason, { id: actor.id, nama: actor.nama });
     return ok(summary);
+  });
+
+  // "Hapus Permanen" on Detail AWB. Superadmin ONLY (role checked explicitly, on top of recycle.manage) and only while the
+  // shipment is not closed. `confirm` must repeat the AWB - the server-side half of the "type the AWB to confirm" modal.
+  router.delete("/api/shipments/:awb/force-delete", async (ctx: Ctx, params) => {
+    const actor = requirePermission(ctx, "recycle.manage");
+    if (actor.role !== "Superadmin") throw Errors.forbidden("Hanya Superadmin yang dapat menghapus permanen data pengiriman.");
+    const confirm = new URL(ctx.request.url).searchParams.get("confirm") ?? "";
+    if (confirm.trim().toUpperCase() !== params.awb.toUpperCase()) throw Errors.badRequest("Konfirmasi nomor AWB tidak sesuai.");
+    const r = await forceDeleteShipment(ctx.env, params.awb, actor, ctx.request.headers.get("CF-Connecting-IP") ?? undefined);
+    if (!r.ok) {
+      if (r.code === "not_found") throw Errors.notFound(r.message);
+      if (r.code === "closed") throw Errors.forbidden(r.message);
+      throw Errors.unprocessable(r.message);
+    }
+    return ok({ deleted: true, awb: params.awb });
   });
 
   router.get("/api/recycle", async (ctx: Ctx) => {

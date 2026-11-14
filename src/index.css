@@ -94,6 +94,12 @@ body {
     display: none !important;
   }
 
+  /* "Keterangan Internal" (resi vendor/subkon, catatan ops) is confidential:
+   * it must never reach a printed resi or a "Save as PDF", on any page. */
+  [data-internal-note] {
+    display: none !important;
+  }
+
   html,
   body {
     background: #fff !important;

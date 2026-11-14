@@ -105,6 +105,10 @@ function UpdateTrackingForm() {
   const [editSlaValue, setEditSlaValue] = useState<number | undefined>(undefined);
   const [editLayanan, setEditLayanan] = useState("");
   const [editArmada, setEditArmada] = useState<ArmadaValue>({ armadaType: "internal", truckId: "", vehiclePlate: "", driverName: "" });
+  const [editAsuransi, setEditAsuransi] = useState(false);
+  const [editKoliAsuransi, setEditKoliAsuransi] = useState("");
+  const [editNilaiAsuransi, setEditNilaiAsuransi] = useState<number | undefined>(undefined);
+  const [editDoBalik, setEditDoBalik] = useState(false);
   const [editSaved, setEditSaved] = useState(false);
   const [editFormError, setEditFormError] = useState<string | null>(null);
 
@@ -144,6 +148,10 @@ function UpdateTrackingForm() {
         setEditKotaTujuan(s.kotaTujuan);
         setEditAlamatTujuan(s.alamatTujuan);
         setEditSlaValue(s.slaValue);
+        setEditAsuransi(s.asuransi);
+        setEditKoliAsuransi(s.koliAsuransi ?? "");
+        setEditNilaiAsuransi(s.nilaiAsuransi ?? undefined);
+        setEditDoBalik(!!s.requiresDoBalik);
         setEditLayanan(s.layanan);
         setEditArmada({ armadaType: s.armadaType, truckId: s.truckId ?? "", vehiclePlate: s.armadaType === "sewa" ? s.vehiclePlate ?? "" : "", driverName: s.driverName ?? "" });
       }
@@ -184,6 +192,8 @@ function UpdateTrackingForm() {
   // A delivered LTL shipment is not locked until its final step, POD Kembali, is logged.
   const delivered = shipment.status === "Selesai / Terkirim";
   const locked = delivered && isTrackingLocked(shipment, !isMitra);
+  // Data Pengiriman is read-only once the shipment is closed (delivered or cancelled); the API rejects edits too.
+  const infoClosed = delivered || shipment.status === "Dibatalkan";
   const POD_EDIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   const deliveredEvent = [...shipment.timeline].reverse().find((e) => e.type === "Selesai / Terkirim");
   const deliveredAtMs = deliveredEvent?.inputAt ? new Date(deliveredEvent.inputAt).getTime() : null;
@@ -232,6 +242,16 @@ function UpdateTrackingForm() {
       setEditFormError("Pilih kota asal dan kota tujuan terlebih dahulu.");
       return;
     }
+    if (editAsuransi) {
+      if (!editKoliAsuransi.trim()) {
+        setEditFormError("Nomor koli yang diasuransikan wajib diisi.");
+        return;
+      }
+      if (!editNilaiAsuransi || editNilaiAsuransi <= 0) {
+        setEditFormError("Nilai barang yang diasuransikan wajib diisi dan lebih dari 0.");
+        return;
+      }
+    }
     setEditFormError(null);
     const data: UpdateShipmentInfoData = {
       pengirim: editPengirim,
@@ -242,6 +262,11 @@ function UpdateTrackingForm() {
       kotaTujuan: editKotaTujuan,
       layanan: editLayanan,
       slaValue: editSlaValue ?? null,
+      // Turning Asuransi off clears koli + nilai server-side; DO Balik on/off syncs do_balik_status server-side.
+      asuransi: editAsuransi,
+      koliAsuransi: editAsuransi ? editKoliAsuransi.trim() : "",
+      nilaiAsuransi: editAsuransi ? editNilaiAsuransi : undefined,
+      requiresDoBalik: editDoBalik,
       ...editArmada,
     };
     const result = await updateShipmentInfo(shipment!.awb, data);
@@ -368,7 +393,7 @@ function UpdateTrackingForm() {
           Pengiriman ini sedang di-Hold, jadi belum bisa diproses atau diberi update tracking. Pembuat order dapat memilih Lepas Hold dari halaman detail resi.
         </div>
       )}
-      {!delivered && (
+      {(
         <div className="mt-6 rounded-xl border border-slate-200 bg-white shadow-sm">
           {canEditInfo ? (
             <button
@@ -444,6 +469,12 @@ function UpdateTrackingForm() {
 
           {canEditInfo && editInfoOpen && (
             <form onSubmit={handleSaveInfo} className="border-t border-slate-100 px-5 py-5 sm:px-6">
+              {infoClosed && (
+                <p className="mb-4 rounded-lg bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
+                  Data pengiriman tidak dapat diubah karena status sudah {shipment.status === "Dibatalkan" ? "Dibatalkan" : "Selesai / Terkirim"} (closed).
+                </p>
+              )}
+              <fieldset disabled={infoClosed} className="min-w-0 border-0 p-0">
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
                   <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -588,6 +619,72 @@ function UpdateTrackingForm() {
                 </div>
               </div>
 
+              <div className="mt-5 grid grid-cols-1 gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <label className="flex cursor-pointer items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600"
+                      checked={editAsuransi}
+                      onChange={(e) => {
+                        setEditAsuransi(e.target.checked);
+                        if (!e.target.checked) {
+                          setEditKoliAsuransi("");
+                          setEditNilaiAsuransi(undefined);
+                        }
+                      }}
+                    />
+                    <span className="text-sm text-slate-700">
+                      <span className="font-medium">Asuransi Pengiriman: {editAsuransi ? "Ya" : "Tidak"}</span>
+                      <span className="block text-xs text-slate-500">Centang jika barang ini diasuransikan.</span>
+                    </span>
+                  </label>
+                  {editAsuransi && (
+                    <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
+                      <label className="block">
+                        <span className="mb-1.5 block text-xs font-medium text-slate-600">Koli Diasuransikan</span>
+                        <input
+                          className={inputClass}
+                          placeholder="Contoh: 62949, 62951"
+                          value={editKoliAsuransi}
+                          onChange={(e) => setEditKoliAsuransi(e.target.value)}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-xs font-medium text-slate-600">Nilai Asuransi (Rp)</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          className={inputClass}
+                          placeholder="Contoh: 1,000,000"
+                          value={editNilaiAsuransi ? Number(editNilaiAsuransi).toLocaleString("en-US") : ""}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, "");
+                            setEditNilaiAsuransi(digits ? Number(digits) : undefined);
+                          }}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <label className="flex cursor-pointer items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600"
+                      checked={editDoBalik}
+                      onChange={(e) => setEditDoBalik(e.target.checked)}
+                    />
+                    <span className="text-sm text-slate-700">
+                      <span className="font-medium">DO Balik / POD Balik (Wajib Kembali): {editDoBalik ? "Ya" : "Tidak"}</span>
+                      <span className="block text-xs text-slate-500">
+                        Aktifkan jika dokumen Surat Jalan / POD asli wajib dikembalikan setelah barang diterima.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+
               {!isMitra && shipment && (shipment.status === "Dalam Persiapan" || shipment.status === "Hold" || shipment.armadaType === "sewa") && (
                 <div className="mt-4 grid gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
                   <p className="sm:col-span-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Armada</p>
@@ -610,14 +707,18 @@ function UpdateTrackingForm() {
                 </div>
               )}
 
-              <div className="mt-5 flex justify-end">
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
-                >
-                  <Save size={15} /> Simpan Perubahan
-                </button>
-              </div>
+              </fieldset>
+
+              {!infoClosed && (
+                <div className="mt-5 flex justify-end">
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800"
+                  >
+                    <Save size={15} /> Simpan Perubahan
+                  </button>
+                </div>
+              )}
             </form>
           )}
         </div>

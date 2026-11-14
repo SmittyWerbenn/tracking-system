@@ -685,13 +685,11 @@ export function registerShipmentRoutes(router: Router) {
       values.push(reqNumber(body, "jumlahKoli", { min: 1, max: 100000 }));
     }
     // Insurance: only touched when the "asuransi" key is present.
-    // Asuransi fields are ONLY editable while status is "Dalam Persiapan" or "Hold"
+    // Asuransi fields follow the same lock as the rest of this endpoint (admin: until closed; Client: until picked up).
     // (before the cargo has been picked up). Once the order moves past preparation,
     // insurance data is locked.
     if (has("asuransi")) {
-      if (shipment.status !== "Dalam Persiapan" && shipment.status !== "Hold") {
-        throw Errors.unprocessable("Data asuransi hanya dapat diubah selama status masih Dalam Persiapan.");
-      }
+      // Admin: editable until the shipment is closed (the guard above rejects Selesai/Dibatalkan). Client: only while preparing (guard above).
       const asuransiOn = body.asuransi === true;
       if (asuransiOn) {
         const rawKoli = optString(body, "koliAsuransi");

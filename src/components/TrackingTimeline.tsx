@@ -3,7 +3,7 @@ import { useState } from "react";
 import { actionClass } from "./ActionButton";
 import { useLanguage } from "../store/LanguageContext";
 import type { TimelineEvent } from "../types";
-import { getLtlStage } from "../utils/ltlPipeline";
+import { ltlStageLabel, statusLabel, translateKeterangan, translateLokasi } from "../utils/trackingI18n";
 import { newestFirst } from "../utils/timelineOrder";
 import { formatJam, formatTanggalPanjang } from "../utils/format";
 import { ImageLightbox, PhotoThumb } from "./ImageLightbox";
@@ -19,7 +19,7 @@ interface TrackingTimelineProps {
 const PROTECTED_EVENT_TYPES = new Set(["Barang Diterima", "Selesai / Terkirim", "Dibatalkan"]);
 
 export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [lightbox, setLightbox] = useState<{ src: string; caption: string } | null>(null);
   // Newest date/time on the top row, oldest at the bottom - for every layanan, LTL included.
   // Row 0 is the one and only "TERBARU" log (the same log the shipment's status follows).
@@ -37,7 +37,7 @@ export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineP
           const isLatest = idx === 0;
           // LTL logs show their pipeline status (e.g. "Tiba di Gudang Asal") instead of the coarse status; logs from the
           // old 25-stage pipeline resolve to the status that replaced them.
-          const label = getLtlStage(event.ltlStage)?.label ?? event.type;
+          const label = ltlStageLabel(event.ltlStage, language) ?? statusLabel(event.type, language);
           const isDelivered = event.type === "Selesai / Terkirim";
           const manageable = !PROTECTED_EVENT_TYPES.has(event.type);
           // A Transfer Unit log already moved the shipment to another truck, so it can be corrected but not removed.
@@ -72,7 +72,7 @@ export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineP
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-xs font-medium text-slate-500">
-                    {formatTanggalPanjang(event.tanggal)} · {formatJam(event.jam)}
+                    {formatTanggalPanjang(event.tanggal, language)} · {formatJam(event.jam)}
                   </p>
                   {isLatest && (
                     <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
@@ -117,11 +117,11 @@ export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineP
                 </p>
                 <p className="mt-0.5 flex items-center gap-1 text-sm text-slate-500">
                   <MapPin size={13} className="shrink-0 text-slate-400" />
-                  {event.lokasi}
+                  {translateLokasi(event.lokasi, language)}
                 </p>
 
                 {event.keterangan && (
-                  <p className="mt-1 text-sm leading-relaxed text-slate-500">{event.keterangan}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-500">{translateKeterangan(event.keterangan, language)}</p>
                 )}
 
                 {event.foto && event.foto.length > 0 && (
@@ -130,7 +130,7 @@ export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineP
                       <PhotoThumb
                         key={i}
                         src={src}
-                        alt={`Dokumentasi ${label} ${i + 1}`}
+                        alt={`${language === "en" ? "Photo" : "Dokumentasi"} ${label} ${i + 1}`}
                         className="h-16 w-16 shrink-0 sm:h-20 sm:w-20"
                         onClick={() =>
                           setLightbox({ src, caption: `${label} · ${event.lokasi}` })
@@ -143,7 +143,7 @@ export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineP
                 {event.type === "Transfer Unit" && event.truckSebelumnya && event.truck && (
                   <div className="mt-2.5 rounded-lg bg-blue-50 px-3 py-2.5">
                     <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-blue-800">
-                      Transfer Unit
+                      {statusLabel("Transfer Unit", language)}
                     </p>
                     <div className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
                       <div className="flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 ring-1 ring-slate-200">

@@ -6,7 +6,7 @@ import { formatJam, formatTanggalPanjang } from "../utils/format";
 import { ImageLightbox, PhotoThumb } from "./ImageLightbox";
 
 export function ProofOfDeliveryCard({ pod }: { pod: ProofOfDelivery }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   return (
@@ -26,7 +26,7 @@ export function ProofOfDeliveryCard({ pod }: { pod: ProofOfDelivery }) {
           <div>
             <dt className="text-xs text-slate-500">{t.pod.dateTime}</dt>
             <dd className="font-medium text-slate-800">
-              {formatTanggalPanjang(pod.tanggal)}
+              {formatTanggalPanjang(pod.tanggal, language)}
               <br />
               {formatJam(pod.jam)}
             </dd>

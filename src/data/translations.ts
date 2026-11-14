@@ -123,6 +123,12 @@ interface Translations {
     noTruckAssigned: string;
     journeyHeading: string;
     helpText: string;
+    securityTitle: string;
+    securityDescBefore: string;
+    securityDescAfter: string;
+    processing: string;
+    overdue: string;
+    seoStatus: string;
   };
   cekOngkir: {
     title: string;
@@ -418,6 +424,12 @@ const id: Translations = {
     noTruckAssigned: "Belum ada unit truck ditugaskan pada tahap ini.",
     journeyHeading: "Perjalanan Pengiriman",
     helpText: "Butuh bantuan? Hubungi tim customer service PT Gangsar Mitra Suatama dengan menyertakan nomor AWB",
+    securityTitle: "Verifikasi Keamanan",
+    securityDescBefore: "Untuk melihat status AWB",
+    securityDescAfter: ", masukkan kode pada gambar.",
+    processing: "Memproses...",
+    overdue: "Estimasi telah terlewati",
+    seoStatus: "Status pengiriman AWB {awb}: {status}. Dari {origin} ke {destination}.",
   },
   cekOngkir: {
     title: "Cek Ongkir",
@@ -711,6 +723,12 @@ const en: Translations = {
     noTruckAssigned: "No truck unit has been assigned at this stage yet.",
     journeyHeading: "Delivery Journey",
     helpText: "Need help? Contact PT Gangsar Mitra Suatama's customer service and include this AWB number",
+    securityTitle: "Security Verification",
+    securityDescBefore: "To view the status of AWB",
+    securityDescAfter: ", enter the code shown in the image.",
+    processing: "Processing...",
+    overdue: "Estimate has passed",
+    seoStatus: "Shipment status for AWB {awb}: {status}. From {origin} to {destination}.",
   },
   cekOngkir: {
     title: "Check Shipping Cost",

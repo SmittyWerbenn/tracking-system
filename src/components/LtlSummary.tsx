@@ -1,19 +1,25 @@
+import { useLanguage } from "../store/LanguageContext";
 import type { Shipment } from "../types";
 
 /** LTL header summary: No. Resi, Origin, Destination, Service plus the handling attributes (Packing Kayu, Insurance, DO Balik)
  * at a glance. These are attributes of the shipment, not steps of its tracking pipeline. */
 export function LtlSummary({ shipment, className = "" }: { shipment: Shipment; className?: string }) {
+  const en = useLanguage().language === "en";
   const items: { label: string; value: string; mono?: boolean; tone?: "yes" | "no" }[] = [
-    { label: "No. Resi", value: shipment.awb, mono: true },
+    { label: en ? "AWB No." : "No. Resi", value: shipment.awb, mono: true },
     { label: "Origin", value: shipment.kotaAsal },
     { label: "Destination", value: shipment.kotaTujuan },
     { label: "Service", value: shipment.layanan },
-    { label: "Handling", value: shipment.packingKayu ? "Packing Kayu" : "Standar" },
+    { label: "Handling", value: shipment.packingKayu ? (en ? "Wooden Packing" : "Packing Kayu") : en ? "Standard" : "Standar" },
     { label: "Insurance", value: shipment.asuransi ? "YES" : "NO", tone: shipment.asuransi ? "yes" : "no" },
   ];
   // DO Balik is internal: the public tracking API does not send it, so the badge only shows in the portal.
   if (shipment.requiresDoBalik !== undefined) {
-    const value = !shipment.requiresDoBalik ? "Tidak" : shipment.doBalikStatus === "returned" ? "Ya · Sudah kembali" : "Ya · Belum kembali";
+    const value = !shipment.requiresDoBalik
+      ? en ? "No" : "Tidak"
+      : shipment.doBalikStatus === "returned"
+        ? en ? "Yes · Returned" : "Ya · Sudah kembali"
+        : en ? "Yes · Pending" : "Ya · Belum kembali";
     items.push({ label: "DO Balik", value, tone: shipment.requiresDoBalik ? "yes" : "no" });
   }
   return (

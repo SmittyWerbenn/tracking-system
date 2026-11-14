@@ -17,9 +17,10 @@ import { fetchPublicShipment, HumanCheckRequiredError } from "../../utils/public
 import { Captcha } from "../../components/Captcha";
 import { useTrackingGate } from "../../utils/useTrackingGate";
 import { useSeo } from "../../utils/seo";
+import { statusLabel } from "../../utils/trackingI18n";
 
 export default function TrackingResult() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { awb } = useParams<{ awb: string }>();
   const navigate = useNavigate();
 
@@ -79,7 +80,11 @@ export default function TrackingResult() {
       ? `Tracking ${shipment.awb} | GMS Logistics`
       : `AWB ${awb} - ${t.trackingResult.notFoundTitle} | GMS Logistics`,
     description: shipment
-      ? `Status pengiriman AWB ${shipment.awb}: ${shipment.status}. Dari ${shipment.kotaAsal} ke ${shipment.kotaTujuan}.`
+      ? t.trackingResult.seoStatus
+          .replace("{awb}", shipment.awb)
+          .replace("{status}", statusLabel(shipment.status, language))
+          .replace("{origin}", shipment.kotaAsal)
+          .replace("{destination}", shipment.kotaTujuan)
       : t.trackingResult.notFoundDesc,
     path: `/tracking/${awb ?? ""}`,
     robots: "noindex,follow",
@@ -124,9 +129,9 @@ export default function TrackingResult() {
       <PublicLayout>
         <div className="mx-auto flex max-w-sm flex-col items-center py-10 text-center">
           <ShieldCheck size={40} className="text-gms-gold" />
-          <h1 className="mt-4 text-xl font-semibold text-slate-800">Verifikasi Keamanan</h1>
+          <h1 className="mt-4 text-xl font-semibold text-slate-800">{t.trackingResult.securityTitle}</h1>
           <p className="mt-1 text-base sm:text-lg text-slate-500">
-            Untuk melihat status AWB <span className="font-mono font-medium text-slate-700">{awb}</span>, masukkan kode pada gambar.
+            {t.trackingResult.securityDescBefore} <span className="font-mono font-medium text-slate-700">{awb}</span>{t.trackingResult.securityDescAfter}
           </p>
           <form onSubmit={handleVerify} className="mt-5 w-full text-left">
             <Captcha ref={gate.captchaRef} idPrefix="res" compact value={gate.code} onChange={gate.setCode} error={gate.error} />
@@ -135,7 +140,7 @@ export default function TrackingResult() {
               disabled={checking}
               className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gms-corp px-6 text-base sm:text-lg font-bold text-white hover:bg-gms-deep disabled:opacity-60"
             >
-              <Search size={15} /> {checking ? "Memproses..." : t.trackingSearch.submitButton}
+              <Search size={15} /> {checking ? t.trackingResult.processing : t.trackingSearch.submitButton}
             </button>
           </form>
         </div>
@@ -232,12 +237,12 @@ export default function TrackingResult() {
               {isDelivered
                 ? t.trackingResult.delivered
                 : shipment.estimasiTiba
-                  ? formatTanggalPanjang(shipment.estimasiTiba)
+                  ? formatTanggalPanjang(shipment.estimasiTiba, language)
                   : t.trackingResult.notAvailable}
             </span>
             {isOverdue && (
               <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                ⚠ Estimasi telah terlewati
+                ⚠ {t.trackingResult.overdue}
               </span>
             )}
           </div>

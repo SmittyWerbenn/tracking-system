@@ -2,6 +2,7 @@ import { AlertTriangle, Check, ClipboardCheck, MapPin, Navigation, PackageCheck,
 import { useLanguage } from "../store/LanguageContext";
 import type { ShipmentStatus } from "../types";
 import { LTL_DELIVERED_INDEX, LTL_STAGES } from "../utils/ltlPipeline";
+import { ltlStageLabel } from "../utils/trackingI18n";
 
 const STEP_ICONS = [ClipboardCheck, PackageOpen, PackageCheck, Truck, Navigation, Check];
 
@@ -41,11 +42,11 @@ function getLtlProgress(status: ShipmentStatus, ltlIndex: number): { index: numb
 const LTL_ICONS = [ClipboardCheck, PackageOpen, Warehouse, Truck, Navigation, PackageCheck, MapPin, Check, FileCheck];
 
 export function StatusStepper({ status, hasPickup = false, ltlIndex }: { status: ShipmentStatus; hasPickup?: boolean; ltlIndex?: number }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const isLtl = ltlIndex !== undefined;
   const { index: current, hasKendala } = isLtl ? getLtlProgress(status, ltlIndex) : getProgress(status, hasPickup);
   const STEPS = isLtl
-    ? LTL_STAGES.map((st, i) => ({ label: st.label, icon: LTL_ICONS[i] }))
+    ? LTL_STAGES.map((st, i) => ({ label: ltlStageLabel(st.code, language) ?? st.label, icon: LTL_ICONS[i] }))
     : [
     { label: t.stepper.orderCreated, icon: STEP_ICONS[0] },
     { label: t.stepper.pickedUp, icon: STEP_ICONS[1] },

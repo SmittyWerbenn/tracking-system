@@ -1,3 +1,4 @@
+import { localizeDays } from "../../utils/trackingI18n";
 import { ArrowLeft, Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { PublicLayout } from "../../components/layout/PublicLayout";
@@ -8,7 +9,7 @@ import { useDocumentTitle } from "../../utils/useDocumentTitle";
 const CHANNEL_ICONS = [Phone, MessageCircle, Mail];
 
 export default function Contact() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   useDocumentTitle(t.contact.title);
   const navigate = useNavigate();
   const { helpPhoneDisplay, helpWhatsAppNumber, contactPhone, contactEmail, headOffice, contactHours } =
@@ -69,7 +70,7 @@ export default function Contact() {
             <Clock size={18} className="mt-0.5 shrink-0 text-slate-400" />
             <div>
               <p className="text-xs font-medium text-slate-400">{t.contact.hoursLabel}</p>
-              <p className="text-sm text-slate-700">{contactHours}</p>
+              <p className="text-sm text-slate-700">{localizeDays(contactHours, language)}</p>
             </div>
           </div>
         </div>

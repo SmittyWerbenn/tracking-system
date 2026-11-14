@@ -10,6 +10,15 @@ interface LanguageContextValue {
   t: Translations;
 }
 
+// A link such as /tracking/AWB123?lang=en opens in that language and remembers it, like the navbar toggle.
+// Done before the provider reads storage, so the first render is already in the requested language.
+try {
+  const fromUrl = new URLSearchParams(window.location.search).get("lang");
+  if (fromUrl === "en" || fromUrl === "id") localStorage.setItem(STORAGE_KEY, JSON.stringify(fromUrl));
+} catch {
+  // storage unavailable (private mode): the toggle still works for this visit
+}
+
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {

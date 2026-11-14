@@ -7,6 +7,7 @@ import { Captcha, type CaptchaHandle } from "../Captcha";
 import { api } from "../../utils/apiClient";
 import { CAPTCHA_MESSAGES, captchaFailureOf } from "../../utils/captchaApi";
 import { useLanguage } from "../../store/LanguageContext";
+import { localizeDays } from "../../utils/trackingI18n";
 import { Container, SectionHeader } from "./SectionHeader";
 import { Reveal, useL } from "./utils";
 
@@ -204,6 +205,7 @@ export function ContactForm({ prefillMessage }: { prefillMessage: string }) {
 
 export function ContactSection({ prefillMessage }: { prefillMessage: string }) {
   const l = useL();
+  const { language } = useLanguage();
   const { helpPhoneDisplay, helpWhatsAppNumber, contactPhone, contactEmail, contactHours, headOffice } = useHelpContact();
   const items = [
     { icon: Mail, label: C.contact.email, value: contactEmail, href: `mailto:${contactEmail}` },
@@ -212,7 +214,7 @@ export function ContactSection({ prefillMessage }: { prefillMessage: string }) {
       ? [{ icon: MessageCircle, label: C.contact.whatsapp, value: helpPhoneDisplay, href: `https://wa.me/${helpWhatsAppNumber}` }]
       : []),
     { icon: MapPin, label: C.contact.address, value: headOffice },
-    { icon: Clock, label: C.contact.hours, value: contactHours },
+    { icon: Clock, label: C.contact.hours, value: localizeDays(contactHours, language) },
   ];
   return (
     <section id="kontak" className="scroll-mt-16 bg-gms-sky py-20 sm:py-24">

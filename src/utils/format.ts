@@ -13,18 +13,21 @@ const BULAN = [
   "Desember",
 ];
 
-/** tanggal: "2026-09-11" -> "11 September 2026" */
-export function formatTanggalPanjang(tanggal: string): string {
+const MONTHS_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const monthNames = (lang: "id" | "en") => (lang === "en" ? MONTHS_EN : BULAN);
+
+/** tanggal: "2026-09-11" -> "11 September 2026" (month name in `lang`; Indonesian by default) */
+export function formatTanggalPanjang(tanggal: string, lang: "id" | "en" = "id"): string {
   const [y, m, d] = tanggal.split("-").map(Number);
   if (!y || !m || !d) return tanggal;
-  return `${d} ${BULAN[m - 1]} ${y}`;
+  return `${d} ${monthNames(lang)[m - 1]} ${y}`;
 }
 
 /** tanggal: "2026-09-11" -> "11 Sep 2026" */
-export function formatTanggalPendek(tanggal: string): string {
+export function formatTanggalPendek(tanggal: string, lang: "id" | "en" = "id"): string {
   const [y, m, d] = tanggal.split("-").map(Number);
   if (!y || !m || !d) return tanggal;
-  return `${d} ${BULAN[m - 1].slice(0, 3)} ${y}`;
+  return `${d} ${monthNames(lang)[m - 1].slice(0, 3)} ${y}`;
 }
 
 export function formatJam(jam: string): string {

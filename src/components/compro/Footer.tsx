@@ -6,9 +6,12 @@ import { SOCIAL_LINKS } from "../../data/compro/config";
 import { toTelHref, useHelpContact } from "../../store/HelpContactContext";
 import { Container } from "./SectionHeader";
 import { useL } from "./utils";
+import { useLanguage } from "../../store/LanguageContext";
+import { localizeDays } from "../../utils/trackingI18n";
 
 export function Footer() {
   const l = useL();
+  const { language } = useLanguage();
   const navigate = useNavigate();
   const onHome = useLocation().pathname === "/";
   const { helpPhoneDisplay, helpWhatsAppNumber, contactPhone, contactEmail, contactHours, headOffice } =
@@ -78,7 +81,7 @@ export function Footer() {
               )}
               <li className="flex gap-2"><Mail size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><a href={`mailto:${contactEmail}`} className="break-all hover:text-gms-light">{contactEmail}</a></li>
               <li className="flex gap-2"><MapPin size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><span>{headOffice}</span></li>
-              <li className="flex gap-2"><Clock size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><span>{contactHours}</span></li>
+              <li className="flex gap-2"><Clock size={15} className="mt-0.5 shrink-0 text-gms-gold" aria-hidden /><span>{localizeDays(contactHours, language)}</span></li>
             </ul>
           </div>
         </div>

@@ -317,16 +317,7 @@ export default function ShipmentDetail() {
                   <p className="font-mono text-sm font-medium text-slate-800">{shipment.reference}</p>
                 </div>
               )}
-              {/* Rahasia operasional GMS: tampil di layar, tidak pernah ikut tercetak / masuk PDF resi. */}
-              {shipment.internalNotes?.trim() && (
-                <div className="no-print max-w-full print:hidden" data-internal-note>
-                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Keterangan Internal
-                    <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-amber-700">Internal</span>
-                  </p>
-                  <p className="break-words text-sm font-medium text-slate-800">{shipment.internalNotes}</p>
-                </div>
-              )}
+              {/* Keterangan Internal sengaja tidak ditampilkan di halaman resi (halaman ini yang dicetak / di-PDF-kan). */}
               {shipment.customerId && (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Client ID</p>

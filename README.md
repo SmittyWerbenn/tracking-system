@@ -939,6 +939,17 @@ npm run build
 
 Menjalankan `tsc -b && vite build`. Output ke folder `dist/` (static assets siap deploy ke GitHub Pages). Build akan **gagal** jika ada TypeScript error, termasuk *unused import/variable* (`noUnusedLocals`/`noUnusedParameters: true` di `tsconfig.app.json`).
 
+### Ringkasan Script (root `package.json`)
+
+| Script | Perintah | Fungsi |
+|---|---|---|
+| `npm run dev` | `vite` | Dev server frontend |
+| `npm run build` | `tsc -b && vite build` | Type-check + build produksi ke `dist/` |
+| `npm run lint` | `oxlint` | Linting |
+| `npm run preview` | `vite preview` | Preview hasil build |
+
+> Panduan pengguna (per-role, Bahasa Indonesia) tersedia di [`docs/user-guide/README.md`](docs/user-guide/README.md).
+
 Worker tidak memiliki proses "build" terpisah — `wrangler deploy` langsung meng-compile & mem-publish TypeScript source.
 
 ---

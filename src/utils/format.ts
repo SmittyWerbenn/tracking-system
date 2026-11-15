@@ -110,3 +110,22 @@ export function stripKeteranganMeta(deskripsiBarang: string): string {
   );
   return stripped.trim() || deskripsiBarang;
 }
+
+/** Makes free text safe as (part of) a file name on Windows / Android / macOS:
+ * drops the reserved characters / \ : * ? " < > | and control characters,
+ * collapses whitespace, and trims the trailing dots/spaces Windows rejects. */
+export function sanitizeFilename(text: string): string {
+  return text
+    // eslint-disable-next-line no-control-regex
+    .replace(/[/\\:*?"<>|\u0000-\u001f]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[. ]+$/, "");
+}
+
+/** Default file name (without extension) of a printed / downloaded resi:
+ * "TATA0001 - Palembang Auto Service _ Gms Logistics". */
+export function resiFilename(awb: string, namaPenerima: string): string {
+  const penerima = sanitizeFilename(namaPenerima);
+  return `${sanitizeFilename(awb)}${penerima ? ` - ${penerima}` : ""} _ Gms Logistics`;
+}

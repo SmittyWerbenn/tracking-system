@@ -30,7 +30,7 @@ import { useMitras } from "../../store/MitraContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment } from "../../types";
 import { api } from "../../utils/apiClient";
-import { formatJam, formatTanggalJam, formatTanggalPanjang, isoToWib, formatTimestampWib } from "../../utils/format";
+import { formatJam, formatTanggalJam, formatTanggalPanjang, isoToWib, formatTimestampWib, resiFilename } from "../../utils/format";
 import { adminPath, trackingUrl as publicTrackingUrl } from "../../utils/urls";
 import { CancelOrderActions, CancellationInfo } from "../../components/CancelOrderActions";
 import { HoldInfo, HoldOrderActions } from "../../components/HoldOrderActions";
@@ -98,6 +98,30 @@ export default function ShipmentDetail() {
   // layout is taller than the printable A4 area, scale it down to fit.
   // Information is never hidden - only shrunk.
   useEffect(() => fitAwbToOnePage(), []);
+
+  // The print / "Save as PDF" dialog suggests document.title as the file name:
+  // "{AWB} - {Nama Penerima} _ Gms Logistics" while printing (Cetak Resi,
+  // Download Resi and Ctrl+P alike), the normal tab title again afterwards.
+  const printTitle = shipment ? resiFilename(shipment.awb, shipment.penerima.nama) : null;
+  useEffect(() => {
+    if (!printTitle) return;
+    let previousTitle: string | null = null;
+    const before = () => {
+      if (previousTitle === null) previousTitle = document.title === printTitle ? null : document.title;
+      document.title = printTitle;
+    };
+    const after = () => {
+      if (previousTitle !== null) document.title = previousTitle;
+      previousTitle = null;
+    };
+    window.addEventListener("beforeprint", before);
+    window.addEventListener("afterprint", after);
+    return () => {
+      window.removeEventListener("beforeprint", before);
+      window.removeEventListener("afterprint", after);
+      after();
+    };
+  }, [printTitle]);
 
   useEffect(() => {
   let cancelled = false;
@@ -206,21 +230,8 @@ export default function ShipmentDetail() {
   const isFinalStatus = shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan";
   const isHold = shipment.status === "Hold";
 
+  // The file name comes from document.title, set by the beforeprint effect above.
   function printResi() {
-    // The browser's print/"Save as PDF" dialog suggests document.title as the
-    // filename - set it just for the print action so downloads are named
-    // consistently, then restore the normal tab title afterwards. The
-    // listener must be attached before print() since print() blocks until
-    // the dialog closes, and "afterprint" can fire as soon as it does.
-    const previousTitle = document.title;
-    window.addEventListener(
-      "afterprint",
-      () => {
-        document.title = previousTitle;
-      },
-      { once: true },
-    );
-    document.title = "Sistem Tracking & Resi Digital - Gmslogistics";
     window.print();
   }
 

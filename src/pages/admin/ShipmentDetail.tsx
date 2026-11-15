@@ -195,7 +195,12 @@ export default function ShipmentDetail() {
   }
 
   const trackingUrl = publicTrackingUrl(shipment.awb);
-  const canEditAlamat = (profile?.role === "Client" || profile?.role === "Superadmin" || profile?.role === "Admin") && (shipment.status === "Dalam Persiapan" || shipment.status === "Hold");
+  // Mirrors PATCH /api/shipments/:awb: Admin/Superadmin may correct the data until the
+  // shipment is closed (Selesai / Terkirim, Dibatalkan); a Client only while still preparing.
+  const isAdminRole = profile?.role === "Superadmin" || profile?.role === "Admin";
+  const canEditAlamat = isAdminRole
+    ? shipment.status !== "Selesai / Terkirim" && shipment.status !== "Dibatalkan"
+    : profile?.role === "Client" && (shipment.status === "Dalam Persiapan" || shipment.status === "Hold");
   // Final statuses are locked server-side (assign-mitra rejects them) - the
   // Mitra card must not offer an action the API will refuse.
   const isFinalStatus = shipment.status === "Selesai / Terkirim" || shipment.status === "Dibatalkan";
@@ -279,7 +284,7 @@ export default function ShipmentDetail() {
         <div className="space-y-6 lg:col-span-2 print:col-span-2 print:space-y-4">
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 print:shadow-none">
             {canEditAlamat && (
-              <div className="mb-4 flex justify-end no-print">
+              <div className="mb-4 flex justify-end no-print print:hidden">
                 <button
                   type="button"
                   onClick={() => setEditOpen(true)}

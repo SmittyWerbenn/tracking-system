@@ -2,6 +2,7 @@ import { AlertTriangle, Loader2, Pencil, X } from "lucide-react";
 import { LtlHandlingFields } from "./LtlHandlingFields";
 import { isLtlLayanan } from "../utils/ltlPipeline";
 import { useEffect, useState } from "react";
+import { useAuth } from "../store/AuthContext";
 import { useLayanan } from "../store/LayananContext";
 import { useShipments } from "../store/ShipmentContext";
 import type { Shipment } from "../types";
@@ -10,11 +11,13 @@ import { useLocationSuggest } from "../utils/useLocationSuggest";
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
 
-/** Client self-service: edit EVERY customer-facing field of an order while it is
- * still "Dalam Persiapan". The API enforces ownership and status; internal
- * fields (SLA/ETA, truck, mitra) are not part of this form. */
+/** Edit the customer-facing fields of an order from Detail Resi. Admin/Superadmin:
+ * until the shipment is closed; Client: only while still "Dalam Persiapan". The API
+ * enforces ownership and status; internal fields (SLA/ETA, truck, mitra) are not here. */
 export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Shipment; onClose: () => void; onSaved?: () => void }) {
   const { updateShipmentInfo } = useShipments();
+  const { profile } = useAuth();
+  const isAdminRole = profile?.role === "Superadmin" || profile?.role === "Admin";
   const { activeNames: layananOptions, refresh: refreshLayanan } = useLayanan();
 
   const [f, setF] = useState({
@@ -40,8 +43,8 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
   const [error, setError] = useState<string | null>(null);
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
 
-  // Insurance fields are locked when the order has moved past preparation.
-  const insuranceLocked = shipment.status !== "Dalam Persiapan" && shipment.status !== "Hold";
+  // A Client's insurance fields lock once the order moves past preparation; admins keep them until closed.
+  const insuranceLocked = !isAdminRole && shipment.status !== "Dalam Persiapan" && shipment.status !== "Hold";
 
   const [requiresDoBalik, setRequiresDoBalik] = useState(!!shipment.requiresDoBalik);
   // LTL handling flags: decide which optional LTL tracking stages apply.
@@ -133,7 +136,10 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
           </button>
         </div>
         <p className="mb-4 text-xs text-slate-500">
-          AWB <span className="font-mono font-semibold">{shipment.awb}</span> · data hanya dapat diubah selama status masih Dalam Persiapan.
+          AWB <span className="font-mono font-semibold">{shipment.awb}</span> ·{" "}
+          {isAdminRole
+            ? "data dapat diubah selama pengiriman belum Selesai / Terkirim atau Dibatalkan."
+            : "data hanya dapat diubah selama status masih Dalam Persiapan."}
         </p>
 
         <datalist id="edit-kota-asal-suggestions">
@@ -159,8 +165,8 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
           <div className="sm:col-span-2">{field("Email Penerima", "penerimaEmail", { type: "email" })}</div>
 
           <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400 sm:col-span-2">Rute</p>
-          {field("Kota Asal", "kotaAsal", { list: "edit-kota-asal-suggestions" })}
-          {field("Kota Tujuan", "kotaTujuan", { list: "edit-kota-tujuan-suggestions" })}
+          {field("Kota Asal", "kotaAsal", { list: "edit-kota-asal-suggestions", placeholder: "Pilih / ketik kota, contoh: Wenang, Manado" })}
+          {field("Kota Tujuan", "kotaTujuan", { list: "edit-kota-tujuan-suggestions", placeholder: "Pilih / ketik kota, contoh: Wenang, Manado" })}
           {field("Alamat Asal", "alamatAsal", { rows: 2 })}
           {field("Alamat Tujuan", "alamatTujuan", { rows: 2 })}
 

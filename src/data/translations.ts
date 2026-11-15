@@ -792,7 +792,7 @@ const en: Translations = {
     orderCreated: "Order Placed",
     pickedUp: "Picked Up",
     departed: "Departed",
-    inTransit: "In Transit",
+    inTransit: "On the Way",
     outForDelivery: "Out for Delivery",
     delivered: "Delivered",
     kendalaWarning: "There's an issue at the current delivery stage. See details in the journey history below.",

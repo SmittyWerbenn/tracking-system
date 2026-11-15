@@ -30,7 +30,6 @@ import { checkPhotoSize, compressImage } from "../../utils/compressImage";
 import { formatTanggalJam, formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
 import { addBusinessDays } from "../../utils/sla";
 import { choiceDefaults, getTrackingChoices, isHandoverChoice, isLtlShipment, isTrackingLocked, type TrackingChoice } from "../../utils/trackingChoices";
-import { useLocationSuggest } from "../../utils/useLocationSuggest";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
@@ -89,16 +88,6 @@ function UpdateTrackingForm() {
   const [editPengirim, setEditPengirim] = useState({ nama: "", telepon: "", email: "" });
   const [editPenerima, setEditPenerima] = useState({ nama: "", telepon: "", email: "" });
   const [editKotaAsal, setEditKotaAsal] = useState("");
-  // City pickers search the master data server-side as the user types.
-  const [kotaAsalQuery, setKotaAsalQuery] = useState("");
-  const [kotaTujuanQuery, setKotaTujuanQuery] = useState("");
-  const toKotaOption = (k: { nama: string; provinsi?: string | null; jenis?: string | null }) => ({
-    value: k.nama,
-    label: k.nama,
-    description: [k.jenis, k.provinsi].filter(Boolean).join(" - "),
-  });
-  const kotaAsalOptions = useLocationSuggest("kota", kotaAsalQuery).map(toKotaOption);
-  const kotaTujuanOptions = useLocationSuggest("kota", kotaTujuanQuery).map(toKotaOption);
   const [editAlamatAsal, setEditAlamatAsal] = useState("");
   const [editKotaTujuan, setEditKotaTujuan] = useState("");
   const [editAlamatTujuan, setEditAlamatTujuan] = useState("");
@@ -275,8 +264,8 @@ function UpdateTrackingForm() {
 
   async function handleSaveInfo(e: FormEvent) {
     e.preventDefault();
-    if (!editKotaAsal || !editKotaTujuan) {
-      setEditFormError("Pilih kota asal dan kota tujuan terlebih dahulu.");
+    if (!editKotaAsal.trim() || !editKotaTujuan.trim()) {
+      setEditFormError("Isi kota asal dan kota tujuan terlebih dahulu.");
       return;
     }
     setEditFormError(null);
@@ -284,9 +273,9 @@ function UpdateTrackingForm() {
       pengirim: editPengirim,
       penerima: editPenerima,
       alamatAsal: editAlamatAsal,
-      kotaAsal: editKotaAsal,
+      kotaAsal: editKotaAsal.trim(),
       alamatTujuan: editAlamatTujuan,
-      kotaTujuan: editKotaTujuan,
+      kotaTujuan: editKotaTujuan.trim(),
       layanan: editLayanan,
       slaValue: editSlaValue ?? null,
       ...editArmada,
@@ -566,24 +555,28 @@ function UpdateTrackingForm() {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <label className="block">
                     <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota Asal</span>
-                    <SearchableSelect
-                      options={kotaAsalOptions}
-                      onSearch={setKotaAsalQuery}
+                    <LocationTextInput
+                      id="edit-info-kota-asal"
+                      required
+                      maxLength={150}
+                      className={inputClass}
                       value={editKotaAsal}
                       onChange={setEditKotaAsal}
-                      placeholder="Pilih kota asal"
-                      emptyLabel="Kota tidak ditemukan."
+                      kind="kota"
+                      placeholder="Pilih / ketik kota, contoh: Wenang, Manado"
                     />
                   </label>
                   <label className="block">
                     <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota Tujuan</span>
-                    <SearchableSelect
-                      options={kotaTujuanOptions}
-                      onSearch={setKotaTujuanQuery}
+                    <LocationTextInput
+                      id="edit-info-kota-tujuan"
+                      required
+                      maxLength={150}
+                      className={inputClass}
                       value={editKotaTujuan}
                       onChange={setEditKotaTujuan}
-                      placeholder="Pilih kota tujuan"
-                      emptyLabel="Kota tidak ditemukan."
+                      kind="kota"
+                      placeholder="Pilih / ketik kota, contoh: Wenang, Manado"
                     />
                   </label>
                   <label className="block">

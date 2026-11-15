@@ -8,6 +8,7 @@ interface LocationTextInputProps {
   kind?: "kota" | "area";
   placeholder?: string;
   required?: boolean;
+  maxLength?: number;
   className: string;
 }
 
@@ -21,6 +22,7 @@ export function LocationTextInput({
   kind = "area",
   placeholder,
   required,
+  maxLength,
   className,
 }: LocationTextInputProps) {
   const listId = `${id}-suggestions`;
@@ -30,6 +32,8 @@ export function LocationTextInput({
       <input
         list={listId}
         required={required}
+        maxLength={maxLength}
+        autoComplete="off"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
@@ -37,7 +41,7 @@ export function LocationTextInput({
       />
       <datalist id={listId}>
         {suggestions.map((s) => (
-          <option key={s.nama} value={s.nama} />
+          <option key={s.nama} value={s.nama} label={[s.jenis, s.provinsi].filter(Boolean).join(" - ") || undefined} />
         ))}
       </datalist>
     </>

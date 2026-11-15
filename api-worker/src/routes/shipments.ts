@@ -317,9 +317,9 @@ export function registerShipmentRoutes(router: Router) {
     const penerimaTelepon = reqString(body, "penerimaTelepon", { max: 30 });
     const penerimaEmail = reqEmail(body, "penerimaEmail");
     const alamatAsal = reqString(body, "alamatAsal", { max: 300 });
-    const kotaAsal = reqString(body, "kotaAsal", { max: 80 });
+    const kotaAsal = reqString(body, "kotaAsal", { max: 150 });
     const alamatTujuan = reqString(body, "alamatTujuan", { max: 300 });
-    const kotaTujuan = reqString(body, "kotaTujuan", { max: 80 });
+    const kotaTujuan = reqString(body, "kotaTujuan", { max: 150 });
     const deskripsiBarang = optString(body, "deskripsiBarang") ?? "";
     // Validated against Master Layanan (active entries only); anything
     // unknown/inactive/missing falls back to LTL instead of failing the order.
@@ -650,9 +650,9 @@ export function registerShipmentRoutes(router: Router) {
     const penerimaTelepon = reqString(body, "penerimaTelepon", { max: 30 });
     const penerimaEmail = reqEmail(body, "penerimaEmail");
     const alamatAsal = reqString(body, "alamatAsal", { max: 300 });
-    const kotaAsal = reqString(body, "kotaAsal", { max: 80 });
+    const kotaAsal = reqString(body, "kotaAsal", { max: 150 });
     const alamatTujuan = reqString(body, "alamatTujuan", { max: 300 });
-    const kotaTujuan = reqString(body, "kotaTujuan", { max: 80 });
+    const kotaTujuan = reqString(body, "kotaTujuan", { max: 150 });
     // SLA is optional in this payload (older callers won't send it) - only
     // touch sla/eta when the field is actually present in the request.
     const slaProvided = !isClient && Object.prototype.hasOwnProperty.call(body, "slaValue");
@@ -841,9 +841,9 @@ export function registerShipmentRoutes(router: Router) {
 
     const body = await parseJsonBody(ctx.request);
     const alamatAsal = reqString(body, "alamatAsal", { max: 300 });
-    const kotaAsal = reqString(body, "kotaAsal", { max: 80 });
+    const kotaAsal = reqString(body, "kotaAsal", { max: 150 });
     const alamatTujuan = reqString(body, "alamatTujuan", { max: 300 });
-    const kotaTujuan = reqString(body, "kotaTujuan", { max: 80 });
+    const kotaTujuan = reqString(body, "kotaTujuan", { max: 150 });
 
     await ctx.env.DB.prepare(
       `UPDATE shipments SET alamat_asal = ?, kota_asal = ?, alamat_tujuan = ?, kota_tujuan = ?, updated_at = ?, updated_by = ? WHERE awb = ?`,

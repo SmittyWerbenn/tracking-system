@@ -236,7 +236,9 @@ export default function ShipmentList() {
       : "";
     setExporting(true);
     try {
-      exportShipmentsCsv(await fetchAllShipments(filterParams), `data-pengiriman${slug}-${todayISO()}.csv`);
+      // Ringkas = the file handed to clients: no Keterangan Internal. Detail = internal archive.
+      const detail = viewMode === "detail";
+      exportShipmentsCsv(await fetchAllShipments(filterParams), `data-pengiriman${slug}${detail ? "-detail" : ""}-${todayISO()}.csv`, { includeInternalNotes: detail });
     } finally {
       setExporting(false);
     }

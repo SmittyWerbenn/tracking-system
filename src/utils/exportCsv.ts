@@ -64,10 +64,19 @@ const COLUMNS = [
   "Last Update",
 ] as const;
 
+const INTERNAL_COLUMN = COLUMNS.indexOf("Keterangan Internal");
+
 /** Builds a CSV string from the given shipments (already filtered by the
- * caller) and triggers a real browser download. */
-export function exportShipmentsCsv(shipments: Shipment[], filename = "data-pengiriman.csv") {
-  const rows = shipments.map((s) => [
+ * caller) and triggers a real browser download. `includeInternalNotes` is
+ * false for the client-facing "Ringkas" export: the Keterangan Internal
+ * column (vendor/subcon AWB, internal remarks) is then left out entirely. */
+export function exportShipmentsCsv(
+  shipments: Shipment[],
+  filename = "data-pengiriman.csv",
+  { includeInternalNotes = false }: { includeInternalNotes?: boolean } = {},
+) {
+  const keep = <T,>(cells: readonly T[]): T[] => (includeInternalNotes ? [...cells] : cells.filter((_, i) => i !== INTERNAL_COLUMN));
+  const rows = shipments.map((s) => keep([
     s.reference ?? "-",
     s.awb,
     s.customerId ?? "-",
@@ -93,9 +102,9 @@ export function exportShipmentsCsv(shipments: Shipment[], filename = "data-pengi
     s.truck.nomorUnit,
     s.truck.driver ?? "-",
     lastUpdateText(s),
-  ]);
+  ]));
 
-  const lines = [COLUMNS.join(","), ...rows.map((row) => row.map((v) => csvEscape(String(v))).join(","))];
+  const lines = [keep(COLUMNS).join(","), ...rows.map((row) => row.map((v) => csvEscape(String(v))).join(","))];
   // Prefix a UTF-8 BOM so Excel opens the file with correct encoding.
   const csvContent = "﻿" + lines.join("\r\n");
 

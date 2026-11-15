@@ -862,6 +862,24 @@ export function registerShipmentRoutes(router: Router) {
     return ok({ updated: true });
   });
 
+  // Records that the resi/tracking email went out. The email itself is sent by
+  // the separate gms-email-api worker straight from the browser, so without
+  // this call nothing would ever persist email_terkirim ("Status Email").
+  router.post("/api/shipments/:awb/email-sent", async (ctx: Ctx, params) => {
+    const actor = requirePermission(ctx, "shipments.create");
+    const row = await ctx.env.DB.prepare(`SELECT customer_id FROM shipments WHERE awb = ? AND deleted_at IS NULL`)
+      .bind(params.awb)
+      .first<{ customer_id: string | null }>();
+    if (!row) throw Errors.notFound("AWB tidak ditemukan.");
+    if (actor.role === "Client" && row.customer_id !== actor.customerId) throw Errors.notFound("AWB tidak ditemukan.");
+    const nowIso = new Date().toISOString();
+    await ctx.env.DB.prepare(`UPDATE shipments SET email_terkirim = 1, email_terkirim_at = ? WHERE awb = ?`)
+      .bind(nowIso, params.awb)
+      .run();
+    await writeAuditLog(ctx.env, actor, { action: "SEND_EMAIL", actionLabel: "SEND EMAIL", module: "Shipment", awb: params.awb, description: "Email notifikasi resi terkirim." });
+    return ok({ emailTerkirim: true, emailTerkirimAt: nowIso });
+  });
+
   // Admin confirms the original DO / Surat Jalan is back: DO Balik flag turns to "selesai".
   router.post("/api/shipments/:awb/do-balik/return", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "shipments.update_info");

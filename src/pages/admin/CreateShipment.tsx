@@ -253,11 +253,14 @@ export default function CreateShipment() {
 
     const targets: Array<"penerima" | "pengirim"> = ["penerima", "pengirim"];
     const results = await Promise.all(targets.map((role) => sendTrackingEmail(created, trackingUrl, role)));
+
+    // The receipt email counts as sent once the penerima copy went out, even
+    // if the pengirim copy failed - the status must match what was delivered.
+    if (results[0].ok) await markEmailSent(created.awb);
     setEmailSending(false);
 
     const failed = results.find((r) => !r.ok);
     if (!failed) {
-      markEmailSent(created.awb);
       setEmailSent(true);
     } else {
       setEmailError(failed.error ?? "Gagal mengirim email.");

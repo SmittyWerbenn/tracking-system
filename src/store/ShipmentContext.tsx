@@ -286,7 +286,8 @@ interface ShipmentContextValue {
   refresh: (params?: ShipmentListParams) => Promise<void>;
   getByAwb: (awb: string) => Promise<Shipment | null>;
   createShipment: (data: ShipmentFormData) => Promise<CreatedShipment>;
-  markEmailSent: (awb: string) => void;
+  /** Persists "email terkirim" on the order. Resolves to the saved timestamp, or null if saving failed. */
+  markEmailSent: (awb: string) => Promise<string | null>;
   addTrackingUpdate: (data: TrackingUpdateFormData) => Promise<{ ok: true } | { ok: false; error: string }>;
   /** Admin/Superadmin: correct an existing tracking log. The API re-syncs the shipment status. */
   updateTimelineEvent: (
@@ -437,8 +438,19 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
     return res;
   }
 
-  function markEmailSent(awb: string) {
-    setShipments((prev) => prev.map((s) => (s.awb === awb ? { ...s, emailTerkirim: true, emailTerkirimAt: new Date().toISOString() } : s)));
+  // The email is sent by a separate worker, so the API has to be told it went
+  // out - otherwise "Status Email" stays "Belum dikirim" after the next fetch.
+  async function markEmailSent(awb: string): Promise<string | null> {
+    let sentAt = new Date().toISOString();
+    let saved = true;
+    try {
+      const res = await api.post<{ emailTerkirimAt: string }>(`/api/shipments/${encodeURIComponent(awb)}/email-sent`, {});
+      sentAt = res.emailTerkirimAt ?? sentAt;
+    } catch {
+      saved = false;
+    }
+    setShipments((prev) => prev.map((s) => (s.awb === awb ? { ...s, emailTerkirim: true, emailTerkirimAt: sentAt } : s)));
+    return saved ? sentAt : null;
   }
 
   // Notifies every active Admin/Superadmin by email once a shipment reaches

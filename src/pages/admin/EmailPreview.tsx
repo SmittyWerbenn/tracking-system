@@ -40,13 +40,14 @@ export default function EmailPreview() {
     setSending(true);
     setError(null);
     const result = await sendTrackingEmail(current, trackingUrlFor(current), "penerima");
-    setSending(false);
     if (result.ok) {
-      markEmailSent(current.awb);
+      const sentAt = await markEmailSent(current.awb);
+      setShipment((prev) => (prev ? { ...prev, emailTerkirim: true, emailTerkirimAt: sentAt ?? new Date().toISOString() } : prev));
       setSent(true);
     } else {
       setError(result.error ?? "Gagal mengirim email.");
     }
+    setSending(false);
   }
 
   async function handleSendToPengirim(current: NonNullable<typeof shipment>) {

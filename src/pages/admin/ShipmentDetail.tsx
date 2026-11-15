@@ -30,7 +30,7 @@ import { useMitras } from "../../store/MitraContext";
 import { useShipments } from "../../store/ShipmentContext";
 import type { Shipment } from "../../types";
 import { api } from "../../utils/apiClient";
-import { formatJam, formatTanggalJam, formatTanggalPanjang, isoToWib } from "../../utils/format";
+import { formatJam, formatTanggalJam, formatTanggalPanjang, isoToWib, formatTimestampWib } from "../../utils/format";
 import { adminPath, trackingUrl as publicTrackingUrl } from "../../utils/urls";
 import { CancelOrderActions, CancellationInfo } from "../../components/CancelOrderActions";
 import { HoldInfo, HoldOrderActions } from "../../components/HoldOrderActions";
@@ -610,9 +610,12 @@ export default function ShipmentDetail() {
               {/* Status notifikasi email = info internal sistem: tampil di layar, tidak ikut tercetak / PDF. */}
               <div className="print:hidden">
                 <p className="text-xs text-slate-400">Status Email</p>
-                <p className="font-medium text-slate-700">
+                <p className={`font-medium ${shipment.emailTerkirim ? "text-emerald-700" : "text-slate-700"}`}>
                   {shipment.emailTerkirim ? "Terkirim" : "Belum dikirim"}
                 </p>
+                {shipment.emailTerkirim && shipment.emailTerkirimAt && (
+                  <p className="text-xs text-slate-400">{formatTimestampWib(shipment.emailTerkirimAt)}</p>
+                )}
               </div>
             </div>
           </div>

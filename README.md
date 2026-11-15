@@ -6,6 +6,41 @@ Aplikasi web untuk menerbitkan resi (AWB/Air Waybill) digital, mencatat perjalan
 
 ---
 
+## Quick Start
+
+**Tech stack:** Vite + React 19 + TypeScript + Tailwind (frontend, `src/`); Cloudflare Workers (`api-worker/`) dengan database Cloudflare D1 (migrasi SQL di `api-worker/migrations/`).
+
+```bash
+# Frontend
+npm install
+npm run dev        # dev server Vite
+npm run build      # tsc -b && vite build -> dist/
+npm run preview    # preview hasil build
+npm run lint       # oxlint
+
+# Backend (api-worker/)
+cd api-worker
+npm install
+npm run migrate:local   # terapkan migrasi D1 lokal
+npm run dev             # wrangler dev
+npm run deploy          # deploy ke Cloudflare
+npm run migrate:remote  # migrasi D1 remote
+```
+
+**Struktur direktori ringkas:**
+
+| Path | Isi |
+|------|-----|
+| `src/` | Frontend React (halaman publik, portal admin, portal driver) |
+| `api-worker/` | Backend Cloudflare Worker (`src/`), migrasi D1 (`migrations/`), `wrangler.toml` |
+| `docs/` | Dokumentasi (mis. `docs/user-guide/`) |
+| `public/`, `assets/` | Aset statis |
+| `cloudflare-worker/`, `edge-worker/`, `server/` | Worker/server pendukung (lihat Bagian 5) |
+
+Detail lengkap ada di bagian-bagian berikut.
+
+---
+
 ## Daftar Isi
 
 1. [Overview](#1-overview)

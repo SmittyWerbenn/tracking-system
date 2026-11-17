@@ -238,7 +238,12 @@ export default function ShipmentList() {
     try {
       // Ringkas = the file handed to clients: no Keterangan Internal. Detail = internal archive.
       const detail = viewMode === "detail";
-      exportShipmentsCsv(await fetchAllShipments(filterParams), `data-pengiriman${slug}${detail ? "-detail" : ""}-${todayISO()}.csv`, { includeInternalNotes: detail });
+      const all = await fetchAllShipments(filterParams);
+      // Prefix filename with Client code when the export covers exactly one client.
+      const ids = new Set(all.map((x) => x.customerId ?? ""));
+      const rawCode = clientFilter && clientFilter !== NO_CLIENT ? clientFilter : ids.size === 1 ? [...ids][0] : "";
+      const code = rawCode.replace(/[^A-Za-z0-9_-]/g, "_");
+      exportShipmentsCsv(all, `${code ? `${code}_` : ""}data-pengiriman${slug}${detail ? "-detail" : ""}-${todayISO()}.csv`, { includeInternalNotes: detail });
     } finally {
       setExporting(false);
     }

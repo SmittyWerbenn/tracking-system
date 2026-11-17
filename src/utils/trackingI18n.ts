@@ -53,7 +53,8 @@ const KETERANGAN_TEMPLATES: [string, string][] = [
   ["Pesanan {a} → {b} diproses", "Order {a} → {b} is being processed"],
   ["Cargo diambil dari shipper", "Cargo picked up from shipper"],
   ["Armada linehaul berangkat dari {a}", "Linehaul fleet departed from {a}"],
-  ["Cargo menuju area {a}", "Cargo is on the way to {a} area"],
+  ["Cargo menuju area hub tujuan", "Cargo is on the way to destination hub area"],
+  ["Cargo menuju area {a}", "Cargo is on the way to {a} area"], // older logs
   ["Menunggu proses bongkar & sortir", "Awaiting unloading & sorting process"],
   ["Sedang menuju ke alamat penerima", "Out for delivery to recipient address"],
   ["Menunggu serah terima & POD", "Awaiting handover & POD"],

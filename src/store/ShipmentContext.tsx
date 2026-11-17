@@ -81,7 +81,7 @@ interface RawShipmentSummary {
   holdPolicy?: Shipment["holdPolicy"];
   cancellation?: Shipment["cancellation"] | null;
   pod: { tanggal: string; jam: string; namaPenerima: string } | null;
-  lastUpdate: { tanggal: string; jam: string; keterangan?: string | null } | null;
+  lastUpdate: { tanggal: string; jam: string; keterangan?: string | null; ltlStage?: string | null } | null;
 }
 
 export interface ClaimSeen {
@@ -171,7 +171,7 @@ function toShipment(row: RawShipmentSummary): Shipment {
     mitraId: row.mitraId ?? undefined,
     mitraNama: row.mitraNama ?? undefined,
     timeline: row.lastUpdate
-      ? [{ id: "last", type: row.status as TimelineEventType, lokasi: "", tanggal: row.lastUpdate.tanggal, jam: row.lastUpdate.jam, keterangan: "" }]
+      ? [{ id: "last", type: row.status as TimelineEventType, lokasi: "", tanggal: row.lastUpdate.tanggal, jam: row.lastUpdate.jam, keterangan: "", ltlStage: row.lastUpdate.ltlStage ?? undefined }]
       : [],
     pod: row.pod
       ? { tanggal: row.pod.tanggal, jam: row.pod.jam, namaPenerima: row.pod.namaPenerima, lokasi: "", fotoSuratJalan: "" }
@@ -293,7 +293,7 @@ interface ShipmentContextValue {
   updateTimelineEvent: (
     awb: string,
     eventId: string,
-    data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string; internalNotes?: string },
+    data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string; internalNotes?: string; namaPenerima?: string },
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
   /** Admin/Superadmin: delete a tracking log. The API re-syncs the shipment status. */
   deleteTimelineEvent: (awb: string, eventId: string) => Promise<{ ok: true } | { ok: false; error: string }>;
@@ -514,7 +514,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
   async function updateTimelineEvent(
     awb: string,
     eventId: string,
-    data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string; internalNotes?: string },
+    data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string; internalNotes?: string; namaPenerima?: string },
   ) {
     try {
       await api.patch(`/api/shipments/${encodeURIComponent(awb)}/timeline/${encodeURIComponent(eventId)}`, data);

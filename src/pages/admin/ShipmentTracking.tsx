@@ -88,9 +88,12 @@ export default function ShipmentTracking() {
 
   const isDelivered = shipment.status === "Selesai / Terkirim";
   // Tracking logs can be corrected by Admin/Superadmin until the shipment is final or on hold (the API enforces the same).
+  // Terkirim stays correctable until Closed (POD Kembali logged).
+  const isClosed = shipment.timeline.some((e) => e.ltlStage === "POD_RETURNED");
   const canManageLog =
     (profile?.role === "Superadmin" || profile?.role === "Admin") &&
-    !["Selesai / Terkirim", "Dibatalkan", "Hold"].includes(shipment.status);
+    !["Dibatalkan", "Hold"].includes(shipment.status) &&
+    !isClosed;
   const isOverdue = !isDelivered && !!shipment.estimasiTiba && shipment.estimasiTiba < todayISO();
 
   return (
@@ -131,7 +134,7 @@ export default function ShipmentTracking() {
               <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Nomor Resi</p>
               <p className="font-mono text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{shipment.awb}</p>
             </div>
-            <StatusBadge status={shipment.status} />
+            <StatusBadge status={shipment.status} timeline={shipment.timeline} />
           </div>
           <div className="flex items-center gap-1.5 text-xs text-slate-500">
             <CalendarClock size={14} className={isOverdue ? "text-amber-500" : "text-slate-400"} />
@@ -201,6 +204,7 @@ export default function ShipmentTracking() {
       {editing && (
         <EditTimelineEventModal
           event={editing}
+          namaPenerima={shipment.pod?.namaPenerima}
           onClose={() => setEditing(null)}
           onSave={async (data) => {
             const res = await updateTimelineEvent(shipment.awb, editing.id, data);

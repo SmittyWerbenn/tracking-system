@@ -9,7 +9,8 @@ import { deleteObjectsQuietly } from "../recycle";
 import { TIMELINE_EVENT_TYPES, compareTimeline, eventTypeToShipmentStatus, pipelineRank, timelineOrderSql, type TimelineEventType } from "../status";
 
 /** Events that record a system milestone and may never be edited or removed here. */
-const PROTECTED_TYPES = new Set<string>(["Barang Diterima", "Selesai / Terkirim", "Dibatalkan"]);
+const PROTECTED_TYPES = new Set<string>(["Barang Diterima", "Dibatalkan"]);
+const DELIVERED = "Selesai / Terkirim";
 /** Types an admin may switch an event to (Selesai needs POD, Transfer Unit needs a truck, Barang Diterima is the initial event). */
 const SELECTABLE_TYPES = TIMELINE_EVENT_TYPES.filter((t) => !PROTECTED_TYPES.has(t) && t !== "Transfer Unit");
 
@@ -31,13 +32,20 @@ async function loadShipment(ctx: Ctx, awb: string) {
     .bind(awb)
     .first<{ awb: string; status: string; tanggal_dibuat: string; sla_value: number | null; estimasi_tiba: string | null }>();
   if (!s) throw Errors.notFound("AWB tidak ditemukan.");
-  if (s.status === "Selesai / Terkirim" || s.status === "Dibatalkan") {
-    throw Errors.unprocessable("Pengiriman ini sudah Selesai/Terkirim atau Dibatalkan, dan terkunci.");
+  if (s.status === "Dibatalkan") {
+    throw Errors.unprocessable("Pengiriman ini sudah Dibatalkan, dan terkunci.");
   }
   if (s.status === "Hold") {
     throw Errors.unprocessable("Pengiriman ini sedang di-Hold. Lepas Hold terlebih dahulu.");
   }
   return s;
+}
+
+/** A shipment is closed once its final step, POD Kembali, is logged; until then even "Terkirim" can still be corrected. */
+function assertNotClosed(events: EventRow[]) {
+  if (events.some((e) => e.ltl_stage === "POD_RETURNED")) {
+    throw Errors.unprocessable("Pengiriman ini sudah Closed (POD Kembali), dan terkunci.");
+  }
 }
 
 /** Chronological (oldest first) by the event's own date/time, so the last row is the newest log. */
@@ -86,6 +94,7 @@ export function registerTrackingHistoryRoutes(router: Router) {
     const events = await loadEvents(ctx, params.awb);
     const idx = events.findIndex((e) => e.id === params.eventId);
     if (idx < 0) throw Errors.notFound("Log tracking tidak ditemukan.");
+    assertNotClosed(events);
     const ev = events[idx];
     if (PROTECTED_TYPES.has(ev.type)) {
       throw Errors.unprocessable(`Log "${ev.type}" tidak dapat diubah.`);
@@ -99,6 +108,7 @@ export function registerTrackingHistoryRoutes(router: Router) {
     const requestedType = optString(body, "type") ?? ev.type;
     if (requestedType !== ev.type) {
       if (ev.ltl_stage) throw Errors.unprocessable("Status tahap LTL tidak dapat diganti; hapus log ini lalu catat tahap yang benar.");
+      if (ev.type === DELIVERED) throw Errors.unprocessable("Status Terkirim tidak dapat diganti; hapus log ini lalu catat status yang benar.");
       if (ev.type === "Transfer Unit") throw Errors.unprocessable("Status Transfer Unit tidak dapat diganti ke status lain.");
       if (!(SELECTABLE_TYPES as string[]).includes(requestedType)) {
         throw Errors.unprocessable(`Status "${requestedType}" tidak dapat dipilih.`);
@@ -126,6 +136,16 @@ export function registerTrackingHistoryRoutes(router: Router) {
       .bind(requestedType, lokasi, lokasi, tanggal, jam, keterangan, internalNotes, ev.id, params.awb)
       .run();
 
+    // Editing the hand-over log keeps the Proof of Delivery card (shipment_pod) in step with it.
+    if (ev.type === DELIVERED) {
+      const nama = optString(body, "namaPenerima");
+      await ctx.env.DB.prepare(
+        `UPDATE shipment_pod SET tanggal = ?, jam = ?, lokasi = ?, nama_penerima = COALESCE(?, nama_penerima), catatan = ?, updated_at = ? WHERE awb = ?`,
+      )
+        .bind(tanggal, jam, lokasi, nama && nama.trim() ? nama.trim() : null, keterangan, new Date().toISOString(), params.awb)
+        .run();
+    }
+
     const synced = await syncShipment(ctx, shipment, actor.id);
     const changes: string[] = [];
     if (requestedType !== ev.type) changes.push(`status ${ev.type} -> ${requestedType}`);
@@ -148,6 +168,7 @@ export function registerTrackingHistoryRoutes(router: Router) {
     const events = await loadEvents(ctx, params.awb);
     const ev = events.find((e) => e.id === params.eventId);
     if (!ev) throw Errors.notFound("Log tracking tidak ditemukan.");
+    assertNotClosed(events);
     if (ev.type === "Barang Diterima") {
       throw Errors.unprocessable("Log awal pembuatan resi (Order Dibuat) tidak dapat dihapus.");
     }
@@ -164,6 +185,18 @@ export function registerTrackingHistoryRoutes(router: Router) {
       ctx.env.DB.prepare(`DELETE FROM shipment_timeline_events WHERE id = ? AND awb = ?`).bind(ev.id, params.awb),
     ]);
     await deleteObjectsQuietly(ctx.env, (files.results ?? []).map((f) => f.object_key));
+
+    // Removing the only hand-over log (a mistaken "Terkirim") also clears the Proof of Delivery card and its photos.
+    if (ev.type === DELIVERED && !events.some((e) => e.id !== ev.id && e.type === DELIVERED)) {
+      const podFiles = await ctx.env.DB.prepare(`SELECT object_key FROM files WHERE entity_type IN ('pod_barang','pod_surat_jalan') AND entity_id = ?`)
+        .bind(params.awb)
+        .all<{ object_key: string }>();
+      await ctx.env.DB.batch([
+        ctx.env.DB.prepare(`DELETE FROM files WHERE entity_type IN ('pod_barang','pod_surat_jalan') AND entity_id = ?`).bind(params.awb),
+        ctx.env.DB.prepare(`DELETE FROM shipment_pod WHERE awb = ?`).bind(params.awb),
+      ]);
+      await deleteObjectsQuietly(ctx.env, (podFiles.results ?? []).map((f) => f.object_key));
+    }
 
     const synced = await syncShipment(ctx, shipment, actor.id);
     await writeAuditLog(ctx.env, actor, {

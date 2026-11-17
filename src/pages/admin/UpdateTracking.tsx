@@ -397,7 +397,7 @@ function UpdateTrackingForm() {
           <h1 className="text-2xl font-semibold text-slate-900">Update Tracking</h1>
           <p className="mt-1 font-mono text-sm text-slate-500">{shipment.awb}</p>
         </div>
-        <StatusBadge status={shipment.status} />
+        <StatusBadge status={shipment.status} timeline={shipment.timeline} />
       </div>
 
       {shipment.status === "Hold" && (

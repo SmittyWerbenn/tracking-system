@@ -15,11 +15,15 @@ const EDITABLE_TYPES = TIMELINE_EVENT_OPTIONS.filter(
 
 interface EditProps {
   event: TimelineEvent;
-  onSave: (data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string }) => Promise<string | null>;
+  onSave: (data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string; namaPenerima?: string }) => Promise<string | null>;
+  /** Current recipient name from the POD card (shown for the Terkirim log only). */
+  namaPenerima?: string;
   onClose: () => void;
 }
 
-export function EditTimelineEventModal({ event, onSave, onClose }: EditProps) {
+export function EditTimelineEventModal({ event, onSave, namaPenerima: initialPenerima, onClose }: EditProps) {
+  const isHandover = event.type === "Selesai / Terkirim" && event.ltlStage !== "POD_RETURNED";
+  const [penerima, setPenerima] = useState(initialPenerima ?? "");
   const [type, setType] = useState<TimelineEventType>(event.type);
   const [lokasi, setLokasi] = useState(event.lokasi);
   const [tanggal, setTanggal] = useState(event.tanggal);
@@ -28,7 +32,7 @@ export function EditTimelineEventModal({ event, onSave, onClose }: EditProps) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Transfer Unit moved the truck; an LTL stage log keeps its stage (delete + re-log to change it).
-  const typeLocked = event.type === "Transfer Unit" || !!event.ltlStage;
+  const typeLocked = event.type === "Transfer Unit" || event.type === "Selesai / Terkirim" || !!event.ltlStage;
   const ltlLabel = getLtlStage(event.ltlStage)?.label;
 
   async function submit(e: FormEvent) {
@@ -40,7 +44,7 @@ export function EditTimelineEventModal({ event, onSave, onClose }: EditProps) {
     }
     setPending(true);
     setError(null);
-    const err = await onSave({ type, lokasi: lokasi.trim(), tanggal, jam, keterangan: keterangan.trim() });
+    const err = await onSave({ type, lokasi: lokasi.trim(), tanggal, jam, keterangan: keterangan.trim(), ...(isHandover ? { namaPenerima: penerima.trim() } : {}) });
     if (err) {
       setError(err);
       setPending(false);
@@ -61,7 +65,7 @@ export function EditTimelineEventModal({ event, onSave, onClose }: EditProps) {
                 </option>
               ))}
             </select>
-            {typeLocked && <span className="mt-1.5 block text-[11px] text-slate-400">Status Transfer Unit tidak dapat diganti.</span>}
+            {typeLocked && <span className="mt-1.5 block text-[11px] text-slate-400">Status log ini tidak dapat diganti (hapus lalu catat ulang bila salah).</span>}
           </label>
           <label className="block sm:col-span-2">
             <span className="mb-1.5 block text-xs font-medium text-slate-600">Kota / Lokasi</span>
@@ -75,6 +79,12 @@ export function EditTimelineEventModal({ event, onSave, onClose }: EditProps) {
             <span className="mb-1.5 block text-xs font-medium text-slate-600">Jam</span>
             <input required type="time" className={inputClass} value={jam} onChange={(e) => setJam(e.target.value)} />
           </label>
+          {isHandover && (
+            <label className="block sm:col-span-2">
+              <span className="mb-1.5 block text-xs font-medium text-slate-600">Nama Penerima</span>
+              <input type="text" maxLength={150} className={inputClass} value={penerima} onChange={(e) => setPenerima(e.target.value)} />
+            </label>
+          )}
           <label className="block sm:col-span-2">
             <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan (opsional)</span>
             <textarea rows={3} maxLength={500} className={inputClass} value={keterangan} onChange={(e) => setKeterangan(e.target.value)} />

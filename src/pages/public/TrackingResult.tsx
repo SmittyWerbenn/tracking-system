@@ -228,7 +228,7 @@ export default function TrackingResult() {
                 {shipment.awb}
               </p>
             </div>
-            <StatusBadge status={shipment.status} />
+            <StatusBadge status={shipment.status} timeline={shipment.timeline} />
           </div>
           <div className="flex items-center gap-1.5 text-sm sm:text-base text-slate-500">
             <CalendarClock size={14} className={isOverdue ? "text-amber-500" : "text-slate-400"} />

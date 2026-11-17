@@ -567,7 +567,7 @@ export default function ShipmentList() {
                     </>
                   )}
                   <td className="whitespace-nowrap px-4 py-3">
-                    <StatusBadge status={s.status} size="sm" />
+                    <StatusBadge status={s.status} size="sm" timeline={s.timeline} />
                     {s.cancellation && s.status !== "Dibatalkan" && (s.cancellation.status === "PENDING" || s.cancellation.status === "REJECTED") && (
                       <p className={`mt-1 text-[11px] font-medium ${s.cancellation.status === "PENDING" ? "text-amber-700" : "text-rose-600"}`}>
                         Pembatalan: {s.cancellation.status === "PENDING" ? "Menunggu Konfirmasi Client" : "Ditolak Client"}

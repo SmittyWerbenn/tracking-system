@@ -105,7 +105,7 @@ function shipmentSummary(row: Record<string, unknown>) {
       ? { tanggal: row.pod_tanggal, jam: row.pod_jam, namaPenerima: row.pod_nama_penerima }
       : null,
     lastUpdate: row.last_tanggal
-      ? { tanggal: row.last_tanggal, jam: row.last_jam, keterangan: row.last_keterangan ?? null }
+      ? { tanggal: row.last_tanggal, jam: row.last_jam, keterangan: row.last_keterangan ?? null, ltlStage: row.last_ltl_stage ?? null }
       : null,
     recovery: row.recovery_status
       ? { status: row.recovery_status, requestedAt: row.recovery_requested_at, rejectionReason: row.recovery_rejection_reason ?? null }
@@ -254,7 +254,7 @@ export function registerShipmentRoutes(router: Router) {
               cd.nama as claim_driver_nama, cd.telepon as claim_driver_telepon,
               m.nama as mitra_nama,
               p.tanggal as pod_tanggal, p.jam as pod_jam, p.nama_penerima as pod_nama_penerima,
-              le.tanggal as last_tanggal, le.jam as last_jam, le.keterangan as last_keterangan,
+              le.tanggal as last_tanggal, le.jam as last_jam, le.keterangan as last_keterangan, le.ltl_stage as last_ltl_stage,
               rr.status as recovery_status, rr.requested_at as recovery_requested_at, rr.rejection_reason as recovery_rejection_reason,
               ${pickupEvidenceSql("s.awb")} AS has_pickup,
               cr.id as cr_id, cr.status as cr_status, cr.reason as cr_reason, cr.requested_by_name as cr_requested_by_name,

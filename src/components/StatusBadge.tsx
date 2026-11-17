@@ -1,15 +1,18 @@
 import type { ShipmentStatus, TimelineEventType } from "../types";
 import { useLanguage } from "../store/LanguageContext";
 import { getStatusStyle } from "../utils/status";
-import { statusLabel } from "../utils/trackingI18n";
+import { ltlStageLabel, statusLabel } from "../utils/trackingI18n";
 
 interface StatusBadgeProps {
   status: ShipmentStatus | TimelineEventType;
   /** "lg" = the headline status under the AWB number on Detail Resi (screen and print). */
   size?: "sm" | "md" | "lg";
+  /** Pass the shipment's timeline so the badge shows the newest log's LTL stage (e.g. "Di-Pickup") - the same label as the
+   * "TERBARU" row and the stepper - instead of the coarse stored status ("Dalam Persiapan"). */
+  timeline?: ReadonlyArray<{ ltlStage?: string | null }>;
 }
 
-export function StatusBadge({ status, size = "md" }: StatusBadgeProps) {
+export function StatusBadge({ status, size = "md", timeline }: StatusBadgeProps) {
   const { language } = useLanguage();
   const style = getStatusStyle(status);
   const sizeClasses =
@@ -22,7 +25,7 @@ export function StatusBadge({ status, size = "md" }: StatusBadgeProps) {
       className={`inline-flex items-center rounded-full ring-1 ring-inset ${style.bg} ${style.text} ${style.ring} ${sizeClasses}`}
     >
       <span className={`${dotClasses} shrink-0 rounded-full ${style.dot}`} />
-      {statusLabel(status, language)}
+      {(timeline && ltlStageLabel(timeline[timeline.length - 1]?.ltlStage, language)) || statusLabel(status, language)}
     </span>
   );
 }

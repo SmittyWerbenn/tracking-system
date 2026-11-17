@@ -16,7 +16,7 @@ interface TrackingTimelineProps {
 }
 
 /** System milestones (initial "Order Dibuat", delivery, cancellation) are never editable or deletable. */
-const PROTECTED_EVENT_TYPES = new Set(["Barang Diterima", "Selesai / Terkirim", "Dibatalkan"]);
+const PROTECTED_EVENT_TYPES = new Set(["Barang Diterima", "Dibatalkan"]);
 
 export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineProps) {
   const { t, language } = useLanguage();
@@ -39,6 +39,7 @@ export function TrackingTimeline({ events, onEdit, onDelete }: TrackingTimelineP
           // old 25-stage pipeline resolve to the status that replaced them.
           const label = ltlStageLabel(event.ltlStage, language) ?? statusLabel(event.type, language);
           const isDelivered = event.type === "Selesai / Terkirim";
+          // POD Kembali is the closing step: once logged the shipment is Closed and the API locks every log (the parent then passes no onEdit/onDelete).
           const manageable = !PROTECTED_EVENT_TYPES.has(event.type);
           // A Transfer Unit log already moved the shipment to another truck, so it can be corrected but not removed.
           const canDelete = manageable && event.type !== "Transfer Unit";

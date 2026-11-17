@@ -252,7 +252,7 @@ export default function ShipmentDetail() {
           </p>
           <h1 className="mt-0.5 font-mono text-2xl font-bold text-slate-900">{shipment.awb}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <StatusBadge status={shipment.status} size="lg" />
+            <StatusBadge status={shipment.status} size="lg" timeline={shipment.timeline} />
           </div>
         </div>
         <div className="flex flex-wrap gap-2 no-print">

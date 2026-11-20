@@ -860,7 +860,7 @@ function UpdateTrackingForm() {
               {choice.type === "Dalam Perjalanan" && (
                 <TransitPresetChips shipment={shipment} onPick={(k, l) => { setKeterangan(k); if (lokasiIsSuggestion(lokasi, shipment)) setLokasi(l); }} />
               )}
-              {choiceDefaults(choice, shipment, namaPenerima || shipment.penerima.nama).presets.length > 0 && (
+              {choice.ltlStage !== "DOORING_SCHEDULED" && choiceDefaults(choice, shipment, namaPenerima || shipment.penerima.nama).presets.length > 0 && (
                 <div className="mb-2 flex flex-wrap gap-1.5">
                   {choiceDefaults(choice, shipment, namaPenerima || shipment.penerima.nama).presets.map((p) => (
                     <button

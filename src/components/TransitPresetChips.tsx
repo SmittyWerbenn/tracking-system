@@ -13,10 +13,10 @@ export function TransitPresetChips({ shipment, onPick }: Props) {
   const interIsland = isInterIslandDestination(shipment.kotaTujuan);
   return (
     <div className="mb-2">
-      <p className="mb-1.5 flex items-center gap-1 text-[11px] font-medium text-slate-500">
-        <Ship size={12} /> Template keterangan perjalanan{interIsland ? " (rute antar-pulau)" : ""}
+      <p className="mb-1.5 flex items-center gap-1 text-sm font-semibold text-slate-600">
+        <Ship size={16} /> Template keterangan perjalanan{interIsland ? " (rute antar-pulau)" : ""}
       </p>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-2">
         {TRANSIT_PRESETS.map((p) => {
           const r = renderTransitPreset(p, shipment);
           return (
@@ -24,7 +24,7 @@ export function TransitPresetChips({ shipment, onPick }: Props) {
               key={p.id}
               type="button"
               onClick={() => onPick(r.keterangan, r.lokasi)}
-              className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-left text-[11px] font-medium text-slate-600 hover:border-blue-400 hover:text-blue-700"
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-left text-sm font-medium leading-snug text-slate-700 hover:border-blue-400 hover:text-blue-700"
             >
               {r.keterangan}
             </button>

@@ -416,15 +416,15 @@ export function BulkShipmentImport() {
               <th colSpan={3} className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">
                 Penerima
               </th>
-              <th colSpan={8} className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">
+              <th colSpan={9} className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">
                 Detail Pengiriman
               </th>
               <th className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">Target Pengiriman</th>
               <th colSpan={3} className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">
                 Asuransi
               </th>
-              <th colSpan={2} className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">
-                DO &amp; Packing
+              <th className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">
+                DO Balik
               </th>
               <th className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">Armada</th>
               <th></th>
@@ -446,12 +446,12 @@ export function BulkShipmentImport() {
               <th className="px-2.5 py-2.5">Berat Final (Kg)</th>
               <th className="px-2.5 py-2.5">Jumlah Koli</th>
               <th className="px-2.5 py-2.5">Deskripsi Barang</th>
+              <th className="px-2.5 py-2.5">Koli Request Packing Kayu (Opsional)</th>
               <th className="border-l border-slate-200 px-2.5 py-2.5">Hari (Opsional)</th>
               <th className="border-l border-slate-200 px-2.5 py-2.5">Asuransi (Ya/Tidak)</th>
               <th className="px-2.5 py-2.5">Koli Diasuransi</th>
               <th className="px-2.5 py-2.5">Nilai Asuransi (Rp)</th>
               <th className="border-l border-slate-200 px-2.5 py-2.5">DO Balik (Ya/Tidak)</th>
-              <th className="border-l border-slate-200 px-2.5 py-2.5">Koli Request Packing Kayu (Opsional)</th>
               <th className="border-l border-slate-200 px-2.5 py-2.5">Truck (Opsional)</th>
               <th className="px-2.5 py-2.5"></th>
             </tr>
@@ -625,6 +625,16 @@ export function BulkShipmentImport() {
                     placeholder="Isi paket"
                   />
                 </td>
+                <td className="px-2.5 py-2">
+                  <input
+                    type="text"
+                    maxLength={255}
+                    className={`${cellInputClass} min-w-[150px]`}
+                    value={row.koliPackingKayu}
+                    onChange={(e) => updateRow(row.id, "koliPackingKayu", e.target.value)}
+                    placeholder="63242,63243"
+                  />
+                </td>
                 <td className="border-l border-slate-100 px-2.5 py-2">
                   <input
                     type="number"
@@ -676,16 +686,6 @@ export function BulkShipmentImport() {
                     onChange={(e) => updateRow(row.id, "doBalik", e.target.value)}
                     placeholder="Tidak"
                     list="asuransi-options"
-                  />
-                </td>
-                <td className="border-l border-slate-100 px-2.5 py-2">
-                  <input
-                    type="text"
-                    maxLength={255}
-                    className={`${cellInputClass} min-w-[150px]`}
-                    value={row.koliPackingKayu}
-                    onChange={(e) => updateRow(row.id, "koliPackingKayu", e.target.value)}
-                    placeholder="63242,63243"
                   />
                 </td>
                 <td className="border-l border-slate-100 px-2.5 py-2">

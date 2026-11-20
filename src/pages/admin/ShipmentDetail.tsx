@@ -385,7 +385,7 @@ export default function ShipmentDetail() {
                 </p>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Koli Request Packing Kayu</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Koli Packing Kayu</p>
                 <p className="text-sm font-medium text-slate-800">{shipment.woodenPackingColli || "-"}</p>
               </div>
               {shipment.asuransi && (

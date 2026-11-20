@@ -32,6 +32,7 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
     kotaTujuan: shipment.kotaTujuan,
     alamatTujuan: shipment.alamatTujuan,
     deskripsiBarang: shipment.deskripsiBarang,
+    woodenPackingColli: shipment.woodenPackingColli ?? "",
     beratKg: String(shipment.beratKg),
     jumlahKoli: String(shipment.jumlahKoli),
     layanan: shipment.layanan as string,
@@ -88,6 +89,7 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
       alamatTujuan: f.alamatTujuan.trim(),
       kotaTujuan: f.kotaTujuan.trim(),
       deskripsiBarang: f.deskripsiBarang.trim(),
+      woodenPackingColli: f.woodenPackingColli.trim(),
       beratKg: berat,
       jumlahKoli: Math.floor(koli),
       layanan: f.layanan,
@@ -172,6 +174,7 @@ export function EditShipmentModal({ shipment, onClose, onSaved }: { shipment: Sh
 
           <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400 sm:col-span-2">Barang</p>
           <div className="sm:col-span-2">{field("Deskripsi Barang", "deskripsiBarang", { rows: 2 })}</div>
+          <div className="sm:col-span-2">{field("Koli Request Packing Kayu (Opsional)", "woodenPackingColli", { placeholder: "Contoh: 63244" })}</div>
           {field("Berat Final (Kg)", "beratKg", { type: "number" })}
           {field("Jumlah Koli", "jumlahKoli", { type: "number" })}
           <label className="block sm:col-span-2">

@@ -19,12 +19,12 @@ export const BULK_TEMPLATE_HEADERS = [
   "Berat Final (Kg)",
   "Jumlah Koli",
   "Deskripsi Barang",
+  "Koli Request Packing Kayu (Opsional)",
   "Target Pengiriman Hari (Opsional)",
   "Asuransi (Ya/Tidak)",
   "Koli Diasuransi",
   "Nilai Asuransi (Rp)",
   "DO Balik (Ya/Tidak)",
-  "Koli Request Packing Kayu (Opsional)",
   "Nomor Polisi Truck (Opsional)",
 ] as const;
 
@@ -52,7 +52,7 @@ export interface BulkRowInput {
   nilaiAsuransi: string;
   /** "Ya" / "Tidak"; empty = Tidak. */
   doBalik: string;
-  /** Koli numbers requested for wooden packing, free text (e.g. "63242,63243"); empty = none. */
+  /** Koli numbers requested for wooden packing, free text (e.g. "63244"); empty = none. */
   koliPackingKayu: string;
 }
 
@@ -72,12 +72,12 @@ const FIELD_ORDER: (keyof BulkRowInput)[] = [
   "beratKg",
   "jumlahKoli",
   "deskripsiBarang",
+  "koliPackingKayu",
   "slaValue",
   "asuransi",
   "koliAsuransi",
   "nilaiAsuransi",
   "doBalik",
-  "koliPackingKayu",
   "nomorPolisiTruck",
 ];
 
@@ -190,7 +190,7 @@ const TEMPLATE_SAMPLE: BulkRowInput = {
   koliAsuransi: "",
   nilaiAsuransi: "",
   doBalik: "Tidak",
-  koliPackingKayu: "63242,63243",
+  koliPackingKayu: "63244",
 };
 
 /** The template's sample row, one value per header in BULK_TEMPLATE_HEADERS order. */

@@ -4,6 +4,7 @@ import type { Shipment, TimelineEvent, TimelineEventType } from "../types";
 import { getLtlStage } from "../utils/ltlPipeline";
 import { TIMELINE_EVENT_OPTIONS } from "../utils/status";
 import { TransitPresetChips } from "./TransitPresetChips";
+import { DooringPresetChips } from "./DooringPresetChips";
 import { lokasiIsSuggestion } from "../utils/transitPresets";
 import { LocationTextInput } from "./LocationTextInput";
 
@@ -91,6 +92,7 @@ export function EditTimelineEventModal({ event, onSave, namaPenerima: initialPen
           )}
           <label className="block sm:col-span-2">
             <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan (opsional)</span>
+            {event.ltlStage === "DOORING_SCHEDULED" && <DooringPresetChips onPick={setKeterangan} />}
             {type === "Dalam Perjalanan" && route && (
               <TransitPresetChips shipment={route} onPick={(k, l) => { setKeterangan(k); if (lokasiIsSuggestion(lokasi, route)) setLokasi(l); }} />
             )}

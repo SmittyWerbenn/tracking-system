@@ -30,6 +30,7 @@ import { checkPhotoSize, compressImage } from "../../utils/compressImage";
 import { formatTanggalJam, formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
 import { addBusinessDays } from "../../utils/sla";
 import { TransitPresetChips } from "../../components/TransitPresetChips";
+import { DooringPresetChips } from "../../components/DooringPresetChips";
 import { lokasiIsSuggestion } from "../../utils/transitPresets";
 import { choiceDefaults, getTrackingChoices, isHandoverChoice, isLtlShipment, isTrackingLocked, type TrackingChoice } from "../../utils/trackingChoices";
 
@@ -855,6 +856,7 @@ function UpdateTrackingForm() {
             </label>
             <label className="block sm:col-span-2">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan (opsional)</span>
+              {choice.ltlStage === "DOORING_SCHEDULED" && <DooringPresetChips onPick={setKeterangan} />}
               {choice.type === "Dalam Perjalanan" && (
                 <TransitPresetChips shipment={shipment} onPick={(k, l) => { setKeterangan(k); if (lokasiIsSuggestion(lokasi, shipment)) setLokasi(l); }} />
               )}

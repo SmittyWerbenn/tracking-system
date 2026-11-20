@@ -5,6 +5,7 @@ import { useShipments } from "../store/ShipmentContext";
 import type { Shipment } from "../types";
 import { nowHHMM, todayISO } from "../utils/format";
 import { TransitPresetChips } from "./TransitPresetChips";
+import { DooringPresetChips } from "./DooringPresetChips";
 import { lokasiIsSuggestion } from "../utils/transitPresets";
 import { choiceDefaults, getTrackingChoices, isHandoverChoice, type TrackingChoice } from "../utils/trackingChoices";
 import { LocationTextInput } from "./LocationTextInput";
@@ -142,6 +143,7 @@ export function QuickUpdatePanel({ shipment, onSaved }: Props) {
 
         <label className="block sm:col-span-2">
           <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan / Catatan (opsional)</span>
+          {choice.ltlStage === "DOORING_SCHEDULED" && <DooringPresetChips onPick={setKeterangan} />}
           {type === "Dalam Perjalanan" && (
             <TransitPresetChips shipment={shipment} onPick={(k, l) => { setKeterangan(k); if (lokasiIsSuggestion(lokasi, shipment)) setLokasi(l); }} />
           )}

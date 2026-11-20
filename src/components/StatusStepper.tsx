@@ -4,7 +4,7 @@ import type { ShipmentStatus } from "../types";
 import { LTL_DELIVERED_INDEX, LTL_STAGES } from "../utils/ltlPipeline";
 import { ltlStageLabel } from "../utils/trackingI18n";
 
-/** Pipeline position of Dooring Dijadwalkan (hidden from the 9-milestone stepper). */
+/** Pipeline position of Proses Dooring (hidden from the 9-milestone stepper). */
 const DOORING_INDEX = LTL_STAGES.findIndex((st) => st.code === "DOORING_SCHEDULED");
 
 const STEP_ICONS = [ClipboardCheck, PackageOpen, PackageCheck, Truck, Navigation, Check];
@@ -38,7 +38,7 @@ function getProgress(status: ShipmentStatus, hasPickup: boolean): { index: numbe
 /** LTL: one step per pipeline status (9, ending at POD Kembali). `ltlIndex` is the status of the newest log - the top row of the timeline -
  * so the stepper and the history always point at the same status (-1 = nothing yet). */
 function getLtlProgress(status: ShipmentStatus, ltlIndex: number): { index: number; hasKendala: boolean } {
-  // Dooring Dijadwalkan is a pipeline status but not a milestone of its own: it keeps the Tiba di Gudang Tujuan milestone active.
+  // Proses Dooring is a pipeline status but not a milestone of its own: it keeps the Tiba di Gudang Tujuan milestone active.
   const i = Math.max(0, ltlIndex);
   const idx = i > DOORING_INDEX ? i - 1 : i === DOORING_INDEX ? DOORING_INDEX - 1 : i;
   return { index: idx, hasKendala: status === "Kendala" };

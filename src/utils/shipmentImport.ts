@@ -186,9 +186,9 @@ const TEMPLATE_SAMPLE: BulkRowInput = {
   deskripsiBarang: "Contoh isi paket, 1 dus (10kg)",
   nomorPolisiTruck: "",
   slaValue: "3",
-  asuransi: "Tidak",
-  koliAsuransi: "",
-  nilaiAsuransi: "",
+  asuransi: "Ya",
+  koliAsuransi: "63244",
+  nilaiAsuransi: "1669920",
   doBalik: "Tidak",
   koliPackingKayu: "63244",
 };

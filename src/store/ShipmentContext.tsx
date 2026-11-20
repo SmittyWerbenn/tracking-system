@@ -50,6 +50,7 @@ interface RawShipmentSummary {
   doBalikStatus?: "pending" | "returned" | null;
   doBalikReturnedAt?: string | null;
   packingKayu?: boolean;
+  woodenPackingColli?: string | null;
   hasTransit?: boolean;
   truckId: string | null;
   armadaType?: "internal" | "sewa";
@@ -152,6 +153,7 @@ function toShipment(row: RawShipmentSummary): Shipment {
     doBalikStatus: row.doBalikStatus ?? null,
     doBalikReturnedAt: row.doBalikReturnedAt ?? null,
     packingKayu: row.packingKayu ?? false,
+    woodenPackingColli: row.woodenPackingColli ?? null,
     hasTransit: row.hasTransit ?? false,
     truck:
       row.armadaType === "sewa"
@@ -423,6 +425,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
       koliAsuransi: data.asuransi ? data.koliAsuransi : undefined,
       nilaiAsuransi: data.asuransi ? data.nilaiAsuransi : undefined,
       packingKayu: data.packingKayu || undefined,
+      woodenPackingColli: data.woodenPackingColli?.trim() || undefined,
       hasTransit: data.hasTransit || undefined,
       requiresDoBalik: data.requiresDoBalik || undefined,
     });
@@ -567,6 +570,7 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
         ...(data.slaValue !== undefined ? { slaValue: data.slaValue } : {}),
         ...(data.requiresDoBalik !== undefined ? { requiresDoBalik: data.requiresDoBalik } : {}),
         ...(data.packingKayu !== undefined ? { packingKayu: data.packingKayu } : {}),
+        ...(data.woodenPackingColli !== undefined ? { woodenPackingColli: data.woodenPackingColli?.trim() || null } : {}),
         ...(data.hasTransit !== undefined ? { hasTransit: data.hasTransit } : {}),
         ...(data.armadaType
           ? {

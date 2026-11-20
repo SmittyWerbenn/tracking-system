@@ -74,7 +74,7 @@ function emptyRow(): BulkRow {
     koliAsuransi: "",
     nilaiAsuransi: "",
     doBalik: "",
-    keteranganInternal: "",
+    koliPackingKayu: "",
   };
 }
 
@@ -104,7 +104,7 @@ const normRef = (r: string) => r.trim().replace(/\s+/g, " ").toLowerCase();
 function rowErrors(row: BulkRow, duplicateRows?: number[]): string[] {
   const errs: string[] = [];
   if (row.referensi.trim().length > 100) errs.push("Referensi maksimal 100 karakter");
-  if (row.keteranganInternal.trim().length > 500) errs.push("Keterangan Internal maksimal 500 karakter");
+  if (row.koliPackingKayu.trim().length > 255) errs.push("Koli Request Packing Kayu maksimal 255 karakter");
   if (duplicateRows && duplicateRows.length > 1) {
     errs.push(`Referensi ${row.referensi.trim()} ditemukan lebih dari satu kali (baris ${duplicateRows.join(", ")})`);
   }
@@ -289,8 +289,7 @@ export function BulkShipmentImport() {
       try {
         const { awb } = await createShipment({
           reference: row.referensi.trim() || undefined,
-          // Internal note is ops-only; a Client account never sends one.
-          internalNotes: !isCustAdmin ? row.keteranganInternal.trim() || undefined : undefined,
+          woodenPackingColli: row.koliPackingKayu.trim() || undefined,
           pengirim: { nama: row.pengirimNama, telepon: row.pengirimTelepon, email: row.pengirimEmail },
           penerima: { nama: row.penerimaNama, telepon: row.penerimaTelepon, email: row.penerimaEmail },
           alamatAsal: row.alamatAsal,
@@ -420,11 +419,14 @@ export function BulkShipmentImport() {
               <th colSpan={8} className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">
                 Detail Pengiriman
               </th>
-              <th className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">Armada</th>
               <th className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">Target Pengiriman</th>
               <th colSpan={3} className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">
                 Asuransi
               </th>
+              <th colSpan={2} className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">
+                DO &amp; Packing
+              </th>
+              <th className="border-l border-slate-200 px-2.5 py-1.5 text-blue-800">Armada</th>
               <th></th>
             </tr>
             <tr className="border-b border-slate-200 bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -444,13 +446,13 @@ export function BulkShipmentImport() {
               <th className="px-2.5 py-2.5">Berat Final (Kg)</th>
               <th className="px-2.5 py-2.5">Jumlah Koli</th>
               <th className="px-2.5 py-2.5">Deskripsi Barang</th>
-              <th className="border-l border-slate-200 px-2.5 py-2.5">Truck (Opsional)</th>
               <th className="border-l border-slate-200 px-2.5 py-2.5">Hari (Opsional)</th>
               <th className="border-l border-slate-200 px-2.5 py-2.5">Asuransi (Ya/Tidak)</th>
               <th className="px-2.5 py-2.5">Koli Diasuransi</th>
               <th className="px-2.5 py-2.5">Nilai Asuransi (Rp)</th>
               <th className="border-l border-slate-200 px-2.5 py-2.5">DO Balik (Ya/Tidak)</th>
-              {!isCustAdmin && <th className="border-l border-slate-200 px-2.5 py-2.5">Keterangan Internal (Opsional)</th>}
+              <th className="border-l border-slate-200 px-2.5 py-2.5">Koli Request Packing Kayu (Opsional)</th>
+              <th className="border-l border-slate-200 px-2.5 py-2.5">Truck (Opsional)</th>
               <th className="px-2.5 py-2.5"></th>
             </tr>
           </thead>
@@ -624,26 +626,6 @@ export function BulkShipmentImport() {
                   />
                 </td>
                 <td className="border-l border-slate-100 px-2.5 py-2">
-                  <select
-                    className={cellInputClass}
-                    value={
-                      truckOptions.find(
-                        (t) =>
-                          t.nomorUnit.replace(/\s+/g, "").toLowerCase() ===
-                          row.nomorPolisiTruck.replace(/\s+/g, "").toLowerCase(),
-                      )?.nomorUnit ?? ""
-                    }
-                    onChange={(e) => updateRow(row.id, "nomorPolisiTruck", e.target.value)}
-                  >
-                    <option value="">Belum ditentukan</option>
-                    {truckOptions.map((t) => (
-                      <option key={t.id} value={t.nomorUnit}>
-                        {t.nomorUnit}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="border-l border-slate-100 px-2.5 py-2">
                   <input
                     type="number"
                     min={1}
@@ -696,18 +678,36 @@ export function BulkShipmentImport() {
                     list="asuransi-options"
                   />
                 </td>
-                {!isCustAdmin && (
-                  <td className="px-2.5 py-2">
-                    <input
-                      type="text"
-                      maxLength={500}
-                      className={`${cellInputClass} min-w-[180px]`}
-                      value={row.keteranganInternal}
-                      onChange={(e) => updateRow(row.id, "keteranganInternal", e.target.value)}
-                      placeholder="Resi Vendor / Subkon"
-                    />
-                  </td>
-                )}
+                <td className="border-l border-slate-100 px-2.5 py-2">
+                  <input
+                    type="text"
+                    maxLength={255}
+                    className={`${cellInputClass} min-w-[150px]`}
+                    value={row.koliPackingKayu}
+                    onChange={(e) => updateRow(row.id, "koliPackingKayu", e.target.value)}
+                    placeholder="63242,63243"
+                  />
+                </td>
+                <td className="border-l border-slate-100 px-2.5 py-2">
+                  <select
+                    className={cellInputClass}
+                    value={
+                      truckOptions.find(
+                        (t) =>
+                          t.nomorUnit.replace(/\s+/g, "").toLowerCase() ===
+                          row.nomorPolisiTruck.replace(/\s+/g, "").toLowerCase(),
+                      )?.nomorUnit ?? ""
+                    }
+                    onChange={(e) => updateRow(row.id, "nomorPolisiTruck", e.target.value)}
+                  >
+                    <option value="">Belum ditentukan</option>
+                    {truckOptions.map((t) => (
+                      <option key={t.id} value={t.nomorUnit}>
+                        {t.nomorUnit}
+                      </option>
+                    ))}
+                  </select>
+                </td>
                 <td className="px-2.5 py-2">
                   <button
                     type="button"

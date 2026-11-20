@@ -76,6 +76,7 @@ function shipmentSummary(row: Record<string, unknown>) {
     doBalikStatus: row.requires_do_balik ? (row.do_balik_status === "returned" ? "returned" : "pending") : null,
     doBalikReturnedAt: row.do_balik_returned_at ?? null,
     packingKayu: !!row.packing_kayu,
+    woodenPackingColli: row.wooden_packing_colli ?? null,
     hasTransit: !!row.has_transit,
     truckId: row.truck_id,
     armadaType: row.armada_type === "sewa" ? "sewa" : "internal",
@@ -386,6 +387,9 @@ export function registerShipmentRoutes(router: Router) {
       throw Errors.badRequest('Field "requiresDoBalik" (DO Balik) harus bernilai true atau false.');
     }
     const requiresDoBalik = body.requiresDoBalik === true;
+    const woodenPackingColliRaw = optString(body, "woodenPackingColli");
+    const woodenPackingColli = woodenPackingColliRaw ? woodenPackingColliRaw.trim() || null : null;
+    if (woodenPackingColli && woodenPackingColli.length > 255) throw Errors.badRequest("Koli Request Packing Kayu maksimal 255 karakter.");
 
     // LTL only: wooden packing / transit hub are shipment attributes (header badges, default wording), not tracking steps.
     const ltl = isLtlLayanan(layanan);
@@ -449,8 +453,8 @@ export function registerShipmentRoutes(router: Router) {
               sla_value, sla_unit, estimasi_tiba, customer_id, mitra_id,
               email_terkirim, created_at, updated_at, created_by, updated_by, created_by_role, created_by_name, reference,
               asuransi, koli_asuransi, nilai_asuransi,
-              armada_type, vehicle_plate, driver_name, driver_id, internal_notes, packing_kayu, has_transit, requires_do_balik, do_balik_status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              armada_type, vehicle_plate, driver_name, driver_id, internal_notes, packing_kayu, has_transit, requires_do_balik, do_balik_status, wooden_packing_colli
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           ).bind(
             awb, tanggalDibuat, jamDibuat, holdAtCreate ? "Hold" : "Dalam Persiapan",
             pengirimNama, pengirimTelepon, pengirimEmail,
@@ -461,7 +465,7 @@ export function registerShipmentRoutes(router: Router) {
             nowIso, nowIso, actor.id, actor.id, actor.role, actor.nama, reference,
             asuransi ? 1 : 0, koliAsuransi, nilaiAsuransi,
             armada.armadaType, armada.vehiclePlate, armada.driverName, armada.driverId, internalNotes,
-            packingKayu ? 1 : 0, hasTransit ? 1 : 0, requiresDoBalik ? 1 : 0, requiresDoBalik ? "pending" : null,
+            packingKayu ? 1 : 0, hasTransit ? 1 : 0, requiresDoBalik ? 1 : 0, requiresDoBalik ? "pending" : null, woodenPackingColli,
           ),
           ctx.env.DB.prepare(
             `INSERT INTO shipment_timeline_events (id, awb, seq, type, lokasi, tanggal, jam, keterangan, truck_id, input_by_user_id, input_by_name, input_at, created_at, ltl_stage)
@@ -753,6 +757,13 @@ export function registerShipmentRoutes(router: Router) {
         values.push(valid);
         layananChange = { from: shipment.layanan, to: valid };
       }
+    }
+    // Koli Request Packing Kayu: free text, optional; empty clears it.
+    if (has("woodenPackingColli")) {
+      const v = typeof body.woodenPackingColli === "string" ? body.woodenPackingColli.trim() : "";
+      if (v.length > 255) throw Errors.badRequest("Koli Request Packing Kayu maksimal 255 karakter.");
+      sets.push("wooden_packing_colli=?");
+      values.push(v || null);
     }
     // DO Balik flag: only touched when sent. Turning it off clears the tracking; turning it on (re)starts it as pending.
     if (has("requiresDoBalik")) {

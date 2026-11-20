@@ -19,13 +19,13 @@ export const BULK_TEMPLATE_HEADERS = [
   "Berat Final (Kg)",
   "Jumlah Koli",
   "Deskripsi Barang",
-  "Nomor Polisi Truck (Opsional)",
   "Target Pengiriman Hari (Opsional)",
   "Asuransi (Ya/Tidak)",
   "Koli Diasuransi",
   "Nilai Asuransi (Rp)",
   "DO Balik (Ya/Tidak)",
-  "Keterangan Internal (Opsional)",
+  "Koli Request Packing Kayu (Opsional)",
+  "Nomor Polisi Truck (Opsional)",
 ] as const;
 
 export interface BulkRowInput {
@@ -52,8 +52,8 @@ export interface BulkRowInput {
   nilaiAsuransi: string;
   /** "Ya" / "Tidak"; empty = Tidak. */
   doBalik: string;
-  /** Internal GMS note (e.g. vendor waybill). Only sent for Superadmin/Admin imports. */
-  keteranganInternal: string;
+  /** Koli numbers requested for wooden packing, free text (e.g. "63242,63243"); empty = none. */
+  koliPackingKayu: string;
 }
 
 const FIELD_ORDER: (keyof BulkRowInput)[] = [
@@ -72,13 +72,13 @@ const FIELD_ORDER: (keyof BulkRowInput)[] = [
   "beratKg",
   "jumlahKoli",
   "deskripsiBarang",
-  "nomorPolisiTruck",
   "slaValue",
   "asuransi",
   "koliAsuransi",
   "nilaiAsuransi",
   "doBalik",
-  "keteranganInternal",
+  "koliPackingKayu",
+  "nomorPolisiTruck",
 ];
 
 const HEADER_LOOKUP = new Map(BULK_TEMPLATE_HEADERS.map((h, i) => [normalizeHeader(h), FIELD_ORDER[i]]));
@@ -150,7 +150,7 @@ export function tableToBulkRows(table: unknown[][]): {
       koliAsuransi: record.koliAsuransi ?? "",
       nilaiAsuransi: record.nilaiAsuransi ?? "",
       doBalik: record.doBalik ?? "",
-      keteranganInternal: record.keteranganInternal ?? "",
+      koliPackingKayu: record.koliPackingKayu ?? "",
     });
   }
 
@@ -190,7 +190,7 @@ const TEMPLATE_SAMPLE: BulkRowInput = {
   koliAsuransi: "",
   nilaiAsuransi: "",
   doBalik: "Tidak",
-  keteranganInternal: "Resi Vendor JNE-09123812 / Subkon PT Maju",
+  koliPackingKayu: "63242,63243",
 };
 
 /** The template's sample row, one value per header in BULK_TEMPLATE_HEADERS order. */

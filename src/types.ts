@@ -104,6 +104,8 @@ export interface Shipment {
   doBalikStatus?: "pending" | "returned" | null;
   doBalikReturnedAt?: string | null;
   /** LTL only: cargo needs wooden packing (enables the PACKING_* stages). */
+  /** Koli numbers requested for wooden packing (free text, e.g. "63242,63243"). */
+  woodenPackingColli?: string | null;
   packingKayu?: boolean;
   /** LTL only: route passes a transit hub (enables the TRANSIT_HUB stage). */
   hasTransit?: boolean;
@@ -246,6 +248,8 @@ export interface ShipmentFormData {
   /** DO Balik (Delivery Order Kembali). */
   requiresDoBalik?: boolean;
   /** LTL only: wooden packing / transit hub on the route. */
+  /** Koli numbers requested for wooden packing (free text, e.g. "63242,63243"). */
+  woodenPackingColli?: string | null;
   packingKayu?: boolean;
   hasTransit?: boolean;
 }
@@ -294,6 +298,8 @@ export interface UpdateShipmentInfoData {
   /** DO Balik: omit to leave untouched. */
   requiresDoBalik?: boolean;
   /** LTL only: omit to leave untouched. */
+  /** Koli numbers requested for wooden packing (free text, e.g. "63242,63243"). */
+  woodenPackingColli?: string | null;
   packingKayu?: boolean;
   hasTransit?: boolean;
   /** Armada (admin only) - omit to leave untouched. */

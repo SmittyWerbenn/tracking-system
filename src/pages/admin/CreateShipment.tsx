@@ -647,6 +647,16 @@ export default function CreateShipment() {
               </label>
             </div>
           </Field>
+          <Field label="Koli Request Packing Kayu (Opsional)" full>
+            <input
+              type="text"
+              maxLength={255}
+              className={inputClass}
+              value={form.woodenPackingColli ?? ""}
+              onChange={(e) => update("woodenPackingColli", e.target.value)}
+              placeholder="63242,63243"
+            />
+          </Field>
           <Field label="Foto Barang" full>
             <div className="flex items-center gap-3">
               <PhotoPickerBox onChange={handlePhotoChange} />

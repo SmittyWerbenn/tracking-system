@@ -1,8 +1,10 @@
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import type { TimelineEvent, TimelineEventType } from "../types";
+import type { Shipment, TimelineEvent, TimelineEventType } from "../types";
 import { getLtlStage } from "../utils/ltlPipeline";
 import { TIMELINE_EVENT_OPTIONS } from "../utils/status";
+import { TransitPresetChips } from "./TransitPresetChips";
+import { lokasiIsSuggestion } from "../utils/transitPresets";
 import { LocationTextInput } from "./LocationTextInput";
 
 const inputClass =
@@ -18,10 +20,12 @@ interface EditProps {
   onSave: (data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string; namaPenerima?: string }) => Promise<string | null>;
   /** Current recipient name from the POD card (shown for the Terkirim log only). */
   namaPenerima?: string;
+  /** Route + ETA of the shipment, for the "Dalam Perjalanan" templates. */
+  route?: Pick<Shipment, "kotaAsal" | "kotaTujuan" | "estimasiTiba">;
   onClose: () => void;
 }
 
-export function EditTimelineEventModal({ event, onSave, namaPenerima: initialPenerima, onClose }: EditProps) {
+export function EditTimelineEventModal({ event, onSave, namaPenerima: initialPenerima, route, onClose }: EditProps) {
   const isHandover = event.type === "Selesai / Terkirim" && event.ltlStage !== "POD_RETURNED";
   const [penerima, setPenerima] = useState(initialPenerima ?? "");
   const [type, setType] = useState<TimelineEventType>(event.type);
@@ -87,6 +91,9 @@ export function EditTimelineEventModal({ event, onSave, namaPenerima: initialPen
           )}
           <label className="block sm:col-span-2">
             <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan (opsional)</span>
+            {type === "Dalam Perjalanan" && route && (
+              <TransitPresetChips shipment={route} onPick={(k, l) => { setKeterangan(k); if (lokasiIsSuggestion(lokasi, route)) setLokasi(l); }} />
+            )}
             <textarea rows={3} maxLength={500} className={inputClass} value={keterangan} onChange={(e) => setKeterangan(e.target.value)} />
           </label>
         </div>

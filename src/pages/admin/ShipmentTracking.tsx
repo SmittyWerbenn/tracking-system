@@ -205,6 +205,7 @@ export default function ShipmentTracking() {
         <EditTimelineEventModal
           event={editing}
           namaPenerima={shipment.pod?.namaPenerima}
+          route={shipment}
           onClose={() => setEditing(null)}
           onSave={async (data) => {
             const res = await updateTimelineEvent(shipment.awb, editing.id, data);

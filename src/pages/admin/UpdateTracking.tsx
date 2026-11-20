@@ -29,6 +29,8 @@ import type { Shipment, TimelineEventType, TrackingUpdateFormData, UpdateShipmen
 import { checkPhotoSize, compressImage } from "../../utils/compressImage";
 import { formatTanggalJam, formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
 import { addBusinessDays } from "../../utils/sla";
+import { TransitPresetChips } from "../../components/TransitPresetChips";
+import { lokasiIsSuggestion } from "../../utils/transitPresets";
 import { choiceDefaults, getTrackingChoices, isHandoverChoice, isLtlShipment, isTrackingLocked, type TrackingChoice } from "../../utils/trackingChoices";
 
 const inputClass =
@@ -853,6 +855,9 @@ function UpdateTrackingForm() {
             </label>
             <label className="block sm:col-span-2">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">Keterangan (opsional)</span>
+              {choice.type === "Dalam Perjalanan" && (
+                <TransitPresetChips shipment={shipment} onPick={(k, l) => { setKeterangan(k); if (lokasiIsSuggestion(lokasi, shipment)) setLokasi(l); }} />
+              )}
               {choiceDefaults(choice, shipment, namaPenerima || shipment.penerima.nama).presets.length > 0 && (
                 <div className="mb-2 flex flex-wrap gap-1.5">
                   {choiceDefaults(choice, shipment, namaPenerima || shipment.penerima.nama).presets.map((p) => (

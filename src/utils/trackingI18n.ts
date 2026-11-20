@@ -54,6 +54,17 @@ const KETERANGAN_TEMPLATES: [string, string][] = [
   ["Cargo diambil dari shipper", "Cargo picked up from shipper"],
   ["Armada linehaul berangkat dari {a}", "Linehaul fleet departed from {a}"],
   ["Cargo menuju area hub tujuan", "Cargo is on the way to destination hub area"],
+  // Sea / ferry legs of inter-island shipments (transitPresets.ts) + older wordings already logged
+  ["Cargo tiba di pelabuhan muat, menunggu jadwal keberangkatan kapal", "Cargo arrived at port of loading, awaiting vessel departure schedule"],
+  ["Proses muat cargo ke dalam kapal (loading)", "Cargo loading onto vessel in progress"],
+  ["Kapal telah berangkat menuju pelabuhan tujuan", "Vessel has departed toward port of destination"],
+  ["Cargo dalam perjalanan laut menuju pelabuhan tujuan", "Cargo is in sea transit toward port of destination"],
+  ["Kapal sandar di pelabuhan tujuan, proses bongkar & sortir muatan", "Vessel berthed at destination port, cargo unloading & sorting in progress"],
+  ["Cargo keluar dari pelabuhan, menuju hub kota tujuan", "Cargo departed from port, heading to destination city hub"],
+  ["Estimasi tiba di {a} pada {b}", "Estimated arrival in {a} on {b}"],
+  ["Menunggu jadwal keberangkatan kapal", "Awaiting vessel departure schedule"],
+  ["Proses muat ke kapal", "Loading onto vessel in progress"],
+  ["Proses bongkar di kapal dan sortir", "Unloading from vessel and sorting in progress"],
   ["Cargo menuju area {a}", "Cargo is on the way to {a} area"], // older logs
   ["Menunggu proses bongkar & sortir", "Awaiting unloading & sorting process"],
   ["Sedang menuju ke alamat penerima", "Out for delivery to recipient address"],
@@ -83,6 +94,13 @@ const TEMPLATE_RULES = KETERANGAN_TEMPLATES.map(([idText, enText]) => ({
 /** "Cek fisik[, packing kayu][, asuransi] & konsolidasi selesai" - the origin-hub text varies with the shipment's attributes. */
 const ORIGIN_HUB_RE = /^Cek fisik(, packing kayu)?(, asuransi)? & konsolidasi selesai(\.?)$/i;
 
+const MONTHS_EN: Record<string, string> = { januari: "January", februari: "February", maret: "March", april: "April", mei: "May", juni: "June", juli: "July", agustus: "August", september: "September", oktober: "October", november: "November", desember: "December" };
+
+/** "25 Agustus 2026" -> "25 August 2026"; anything else (a typed date, "[Tanggal]") passes through with month names swapped. */
+function dateEn(text: string): string {
+  return text.replace(/[A-Za-z]+/g, (w) => MONTHS_EN[w.toLowerCase()] ?? w);
+}
+
 /** A tracking log's Keterangan in the active language. System default texts are translated;
  * anything else (a manual note) is returned exactly as written. */
 export function translateKeterangan(text: string, lang: Language): string {
@@ -94,7 +112,7 @@ export function translateKeterangan(text: string, lang: Language): string {
     const m = re.exec(trimmed);
     if (!m) continue;
     const dot = m[m.length - 1];
-    return enText.replace("{a}", m[1] ?? "").replace("{b}", m.length > 3 ? m[2] ?? "" : "") + dot;
+    return enText.replace("{a}", m[1] ?? "").replace("{b}", m.length > 3 ? dateEn(m[2] ?? "") : "") + dot;
   }
   // A note that is just a status name (e.g. "Dalam Perjalanan").
   const ltl = LTL_STAGES.find((s) => s.label.toLowerCase() === trimmed.toLowerCase());

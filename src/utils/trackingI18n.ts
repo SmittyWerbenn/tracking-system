@@ -30,6 +30,7 @@ const LTL_EN: Record<LtlStageCode, string> = {
   DEPARTED: "Departed",
   IN_TRANSIT: "On the Way",
   ARRIVED_DESTINATION_HUB: "Arrived at Destination Hub",
+  DOORING_SCHEDULED: "Dooring Scheduled",
   OUT_FOR_DELIVERY: "Out for Delivery",
   DELIVERED: "Delivered",
   POD_RETURNED: "POD Returned",
@@ -53,6 +54,8 @@ const KETERANGAN_TEMPLATES: [string, string][] = [
   ["Pesanan {a} → {b} diproses", "Order {a} → {b} is being processed"],
   ["Cargo diambil dari shipper", "Cargo picked up from shipper"],
   ["Armada linehaul berangkat dari {a}", "Linehaul fleet departed from {a}"],
+  ["Pengantaran (dooring) ke alamat penerima telah dijadwalkan", "Dooring delivery to recipient address has been scheduled"],
+  ["Dooring dijadwalkan menuju alamat penerima", "Dooring delivery to recipient address has been scheduled"],
   ["Cargo menuju area hub tujuan", "Cargo is on the way to destination hub area"],
   // Sea / ferry legs of inter-island shipments (transitPresets.ts) + older wordings already logged
   ["Cargo tiba di pelabuhan muat, menunggu jadwal keberangkatan kapal", "Cargo arrived at port of loading, awaiting vessel departure schedule"],

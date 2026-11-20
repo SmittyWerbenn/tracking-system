@@ -4,6 +4,9 @@ import type { ShipmentStatus } from "../types";
 import { LTL_DELIVERED_INDEX, LTL_STAGES } from "../utils/ltlPipeline";
 import { ltlStageLabel } from "../utils/trackingI18n";
 
+/** Pipeline position of Dooring Dijadwalkan (hidden from the 9-milestone stepper). */
+const DOORING_INDEX = LTL_STAGES.findIndex((st) => st.code === "DOORING_SCHEDULED");
+
 const STEP_ICONS = [ClipboardCheck, PackageOpen, PackageCheck, Truck, Navigation, Check];
 
 /** `index` is the step currently in progress (all earlier steps are done). Steps:
@@ -35,7 +38,10 @@ function getProgress(status: ShipmentStatus, hasPickup: boolean): { index: numbe
 /** LTL: one step per pipeline status (9, ending at POD Kembali). `ltlIndex` is the status of the newest log - the top row of the timeline -
  * so the stepper and the history always point at the same status (-1 = nothing yet). */
 function getLtlProgress(status: ShipmentStatus, ltlIndex: number): { index: number; hasKendala: boolean } {
-  return { index: Math.max(0, ltlIndex), hasKendala: status === "Kendala" };
+  // Dooring Dijadwalkan is a pipeline status but not a milestone of its own: it keeps the Tiba di Gudang Tujuan milestone active.
+  const i = Math.max(0, ltlIndex);
+  const idx = i > DOORING_INDEX ? i - 1 : i === DOORING_INDEX ? DOORING_INDEX - 1 : i;
+  return { index: idx, hasKendala: status === "Kendala" };
 }
 
 /** Order Dibuat, Di-Pickup, Tiba di Gudang Asal, Berangkat, Dalam Perjalanan, Tiba di Gudang Tujuan, Sedang Diantar, Terkirim, POD Kembali. */
@@ -46,7 +52,7 @@ export function StatusStepper({ status, hasPickup = false, ltlIndex }: { status:
   const isLtl = ltlIndex !== undefined;
   const { index: current, hasKendala } = isLtl ? getLtlProgress(status, ltlIndex) : getProgress(status, hasPickup);
   const STEPS = isLtl
-    ? LTL_STAGES.map((st, i) => ({ label: ltlStageLabel(st.code, language) ?? st.label, icon: LTL_ICONS[i] }))
+    ? LTL_STAGES.filter((st) => st.code !== "DOORING_SCHEDULED").map((st, i) => ({ label: ltlStageLabel(st.code, language) ?? st.label, icon: LTL_ICONS[i] }))
     : [
     { label: t.stepper.orderCreated, icon: STEP_ICONS[0] },
     { label: t.stepper.pickedUp, icon: STEP_ICONS[1] },
@@ -74,7 +80,7 @@ export function StatusStepper({ status, hasPickup = false, ltlIndex }: { status:
           // it" - treat it as done (emerald + check) rather than the
           // in-progress blue used for earlier current steps.
           // LTL: Terkirim is complete the moment it is reached too; only POD Kembali is still ahead.
-          const isDelivered = i === current && (isLast || (isLtl && i === LTL_DELIVERED_INDEX)) && !hasKendala;
+          const isDelivered = i === current && (isLast || (isLtl && i === LTL_DELIVERED_INDEX - 1)) && !hasKendala;
           const done = i < current || isDelivered;
           const isCurrent = i === current && !isDelivered;
           const Icon = step.icon;

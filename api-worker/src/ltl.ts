@@ -1,4 +1,4 @@
-// LTL (Less Than Truckload) tracking pipeline: 9 ordered statuses. Pure module with no
+// LTL (Less Than Truckload) tracking pipeline: 10 ordered statuses. Pure module with no
 // imports - the file is mirrored byte-for-byte at src/utils/ltlPipeline.ts (same
 // pattern as status.ts) so the API (source of truth) and the UI never disagree.
 //
@@ -13,7 +13,7 @@
 
 export type LtlStageCode =
   | "ORDER_RECEIVED" | "PICKED_UP" | "ARRIVED_ORIGIN_HUB" | "DEPARTED"
-  | "IN_TRANSIT" | "ARRIVED_DESTINATION_HUB" | "OUT_FOR_DELIVERY" | "DELIVERED" | "POD_RETURNED";
+  | "IN_TRANSIT" | "ARRIVED_DESTINATION_HUB" | "DOORING_SCHEDULED" | "OUT_FOR_DELIVERY" | "DELIVERED" | "POD_RETURNED";
 
 /** Legacy event types an LTL status can map to. */
 type LegacyType = "Di pickup" | "Berangkat" | "Dalam Perjalanan" | "Tiba di Tujuan" | "Selesai / Terkirim";
@@ -39,6 +39,7 @@ export const LTL_STAGES: readonly LtlStageDef[] = [
   { code: "DEPARTED", label: "Berangkat", description: "Armada linehaul berangkat dari {origin}", type: "Berangkat", city: "origin" },
   { code: "IN_TRANSIT", label: "Dalam Perjalanan", description: "Cargo menuju area hub tujuan", type: "Dalam Perjalanan", city: "transit", repeatable: true },
   { code: "ARRIVED_DESTINATION_HUB", label: "Tiba di Gudang Tujuan", description: "Menunggu proses bongkar & sortir", type: "Tiba di Tujuan", city: "destination" },
+  { code: "DOORING_SCHEDULED", label: "Dooring Dijadwalkan", description: "Pengantaran (dooring) ke alamat penerima telah dijadwalkan", type: "Tiba di Tujuan", city: "destination" },
   { code: "OUT_FOR_DELIVERY", label: "Sedang Diantar", description: "Sedang menuju ke alamat penerima", type: "Tiba di Tujuan", city: "destination" },
   { code: "DELIVERED", label: "Terkirim", description: "Menunggu serah terima & POD", type: "Selesai / Terkirim", city: "destination" },
   // Final step, after the hand-over: the original POD / Surat Jalan is back at GMS (closes DO Balik). No POD photos, no consignee name.
@@ -46,8 +47,8 @@ export const LTL_STAGES: readonly LtlStageDef[] = [
 ];
 
 /** The hand-over to the consignee; everything up to it is the delivery itself, POD_RETURNED is the paperwork after it. */
-export const LTL_DELIVERED_INDEX = 7;
-export const LTL_FINAL_INDEX = 8;
+export const LTL_DELIVERED_INDEX = 8;
+export const LTL_FINAL_INDEX = 9;
 
 export const LTL_STAGE_CODES: readonly LtlStageCode[] = LTL_STAGES.map((s) => s.code);
 
@@ -98,7 +99,7 @@ export function getLtlStage(code: string | null | undefined): LtlStageDef | unde
   return current ? LTL_STAGES.find((s) => s.code === current) : undefined;
 }
 
-/** Position (0-8) of a stored code in the pipeline; -1 when it is not an LTL status. */
+/** Position (0-9) of a stored code in the pipeline; -1 when it is not an LTL status. */
 export function ltlStageIndex(code: string | null | undefined): number {
   const current = normalizeLtlStage(code);
   return current ? LTL_STAGE_CODES.indexOf(current) : -1;
@@ -135,7 +136,7 @@ export function ltlIndexOfEvent(e: { ltlStage?: string | null; type?: string | n
   return byStage >= 0 ? byStage : ltlStageIndex(TYPE_FLOOR[e.type ?? ""]);
 }
 
-/** Index (0-8) of the shipment's current status. `events` must be chronological (oldest first, as the API sends them):
+/** Index (0-9) of the shipment's current status. `events` must be chronological (oldest first, as the API sends them):
  * the newest log that carries a pipeline position decides - the same log that sits on the top "TERBARU" row
  * (exceptions such as Kendala are stepped over). With no such log it falls back to the coarse status.
  * A delivered shipment is at Terkirim, or at POD Kembali once that was logged (whatever the dates on the logs). */

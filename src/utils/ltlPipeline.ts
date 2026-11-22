@@ -41,7 +41,7 @@ export const LTL_STAGES: readonly LtlStageDef[] = [
   { code: "ARRIVED_DESTINATION_HUB", label: "Tiba di Gudang Tujuan", description: "Menunggu proses bongkar & sortir", type: "Tiba di Tujuan", city: "destination" },
   { code: "DOORING_SCHEDULED", label: "Proses Dooring", description: "Pengantaran (dooring) ke alamat penerima telah dijadwalkan", type: "Tiba di Tujuan", city: "destination" },
   { code: "OUT_FOR_DELIVERY", label: "Sedang Diantar", description: "Sedang menuju ke alamat penerima", type: "Tiba di Tujuan", city: "destination" },
-  { code: "DELIVERED", label: "Terkirim", description: "Menunggu serah terima & POD", type: "Selesai / Terkirim", city: "destination" },
+  { code: "DELIVERED", label: "Terkirim", description: "Barang diterima dengan baik dan lengkap", type: "Selesai / Terkirim", city: "destination" },
   // Final step, after the hand-over: the original POD / Surat Jalan is back at GMS (closes DO Balik). No POD photos, no consignee name.
   { code: "POD_RETURNED", label: "POD Kembali", description: "Dokumen POD / Surat Jalan asli telah kembali dan diterima", type: "Selesai / Terkirim", city: "origin" },
 ];

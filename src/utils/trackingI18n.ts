@@ -71,6 +71,8 @@ const KETERANGAN_TEMPLATES: [string, string][] = [
   ["Cargo menuju area {a}", "Cargo is on the way to {a} area"], // older logs
   ["Menunggu proses bongkar & sortir", "Awaiting unloading & sorting process"],
   ["Sedang menuju ke alamat penerima", "Out for delivery to recipient address"],
+  ["Barang diterima dengan baik dan lengkap", "Goods received in good and complete condition"],
+  ["Barang diterima dengan lengkap", "Goods received in complete condition"], // older logs
   ["Menunggu serah terima & POD", "Awaiting handover & POD"],
   ["Dokumen POD / Surat Jalan asli telah kembali dan diterima", "Original POD / Delivery Order document has been returned and received"],
   // Non-LTL quick-select defaults (trackingPresets.ts) and older system texts

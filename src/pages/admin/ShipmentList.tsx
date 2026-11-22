@@ -1,7 +1,7 @@
 import { actionClass } from "../../components/ActionButton";
 import { DoBalikBadge } from "../../components/DoBalikBadge";
 import { adminPath } from "../../utils/urls";
-import { AlertTriangle, CheckCircle2, Download, Eye, FileEdit, LayoutList, ListTree, Loader2, MapPin, PackageSearch, Pencil, Printer, RefreshCw, RotateCcw, Search, X, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Download, Eye, FileEdit, LayoutList, ListTree, Loader2, MapPin, PackageSearch, Pencil, Printer, RefreshCw, RotateCcw, Search, X, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AdminLayout } from "../../components/layout/AdminLayout";
@@ -312,7 +312,7 @@ export default function ShipmentList() {
                   <p className="font-mono text-sm font-bold text-slate-900">
                     {c.awb}{" "}
                     <span className="font-sans text-xs font-normal text-slate-500">
-                      {c.kotaAsal} → {c.kotaTujuan}
+                      {c.kotaAsal} <ArrowRight size={12} className="inline -mt-0.5 text-slate-400" aria-hidden /> {c.kotaTujuan}
                     </span>
                   </p>
                   <p className="text-xs text-slate-500">
@@ -550,8 +550,12 @@ export default function ShipmentList() {
                       <td className="px-4 py-3 text-slate-600">{s.penerima.nama}</td>
                     </>
                   )}
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">
-                    {s.kotaAsal} → {s.kotaTujuan}
+                  <td className="min-w-[220px] px-4 py-3 text-slate-600">
+                    <span className="inline-flex items-start gap-1.5">
+                      <span className="shrink-0">{s.kotaAsal}</span>
+                      <ArrowRight size={14} className="mt-0.5 shrink-0 text-slate-400" aria-hidden />
+                      <span>{s.kotaTujuan}</span>
+                    </span>
                   </td>
                   {viewMode === "detail" && (
                     <>

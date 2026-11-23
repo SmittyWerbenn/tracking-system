@@ -10,7 +10,7 @@ import type {
   UpdateShipmentInfoData,
 } from "../types";
 import { api, ApiError, uploadFile } from "../utils/apiClient";
-import { resolveFileEntries, resolveFileUrls, type FileRef } from "../utils/resolveFiles";
+import { resolveFileEntries, type FileRef } from "../utils/resolveFiles";
 import { sendAdminDeliveryEmail } from "../utils/sendEmail";
 import { adminResiUrl } from "../utils/urls";
 import { useAuth } from "./AuthContext";

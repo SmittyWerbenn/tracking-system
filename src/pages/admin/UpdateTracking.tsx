@@ -29,6 +29,7 @@ import type { Shipment, TimelineEventType, TrackingUpdateFormData, UpdateShipmen
 import { checkPhotoSize, compressImage } from "../../utils/compressImage";
 import { formatTanggalJam, formatTanggalPanjang, nowHHMM, todayISO } from "../../utils/format";
 import { etaFromPickup, firstPickupDate } from "../../utils/sla";
+import { getHolidaySet } from "../../utils/holidays";
 import { TransitPresetChips } from "../../components/TransitPresetChips";
 import { DooringPresetChips } from "../../components/DooringPresetChips";
 import { lokasiIsSuggestion } from "../../utils/transitPresets";
@@ -631,7 +632,7 @@ function UpdateTrackingForm() {
                     />
                     <p className="mt-1.5 text-[11px] text-slate-400">
                       {editSlaValue && editSlaValue > 0
-                        ? `Estimasi Tiba: ${formatTanggalPanjang(etaFromPickup(firstPickupDate(shipment.timeline ?? []), shipment.tanggalDibuat, editSlaValue))}`
+                        ? `Estimasi Tiba: ${formatTanggalPanjang(etaFromPickup(firstPickupDate(shipment.timeline ?? []), shipment.tanggalDibuat, editSlaValue, getHolidaySet()))}`
                         : "Kosongkan untuk menghapus ETA/Estimasi Tiba."}
                     </p>
                   </label>

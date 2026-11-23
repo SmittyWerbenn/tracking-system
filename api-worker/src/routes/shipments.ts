@@ -11,6 +11,7 @@ import { generateClientAwb, isDuplicateAwbError } from "../awb";
 import { wibNow } from "../wib";
 import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, timelineOrderSql, type TimelineEventType } from "../status";
 import { addDeliveryDaysExcludeSunday, etaFromPickup, firstPickupDate } from "../sla";
+import { loadHolidays } from "../holidays";
 import { cancelPolicy, creatorRoleOf, pickupEvidenceSql } from "../cancellation";
 import { holdPolicy } from "../hold";
 import { resolveArmada } from "../armada";
@@ -437,7 +438,7 @@ export function registerShipmentRoutes(router: Router) {
     // ETA is always derived from SLA + the shipment's own start date - never
     // entered directly, and never fabricated when no SLA was given.
     const slaUnit = slaValue !== undefined ? "hari_kerja" : null;
-    const estimasiTiba = slaValue !== undefined ? addDeliveryDaysExcludeSunday(tanggalDibuat, slaValue) : null;
+    const estimasiTiba = slaValue !== undefined ? addDeliveryDaysExcludeSunday(tanggalDibuat, slaValue, await loadHolidays(ctx.env.DB)) : null;
 
     // The AWB number comes from the Client ID resolved on the server (never
     // from the request body for a Client account). Shipment + first timeline
@@ -748,7 +749,7 @@ export function registerShipmentRoutes(router: Router) {
           .bind(params.awb)
           .all<{ type: string; tanggal: string; ltl_stage: string | null }>();
         const pickup = firstPickupDate((pickupRows.results ?? []).map((e) => ({ type: e.type, tanggal: e.tanggal, ltlStage: e.ltl_stage })));
-        newEta = etaFromPickup(pickup, shipment.tanggal_dibuat, slaValue);
+        newEta = etaFromPickup(pickup, shipment.tanggal_dibuat, slaValue, await loadHolidays(ctx.env.DB));
       } else newEta = null;
       sets.push("sla_value=?", "sla_unit=?", "estimasi_tiba=?");
       values.push(slaValue ?? null, slaValue !== undefined ? "hari_kerja" : null, newEta);
@@ -1110,7 +1111,7 @@ export function registerShipmentRoutes(router: Router) {
           .bind(params.awb)
           .all<{ type: string; tanggal: string; ltl_stage: string | null }>();
         const pickup = firstPickupDate((rows.results ?? []).map((e) => ({ type: e.type, tanggal: e.tanggal, ltlStage: e.ltl_stage })));
-        const newEta = etaFromPickup(pickup, String(shipment.tanggal_dibuat), slaValue);
+        const newEta = etaFromPickup(pickup, String(shipment.tanggal_dibuat), slaValue, await loadHolidays(ctx.env.DB));
         if (newEta !== shipment.estimasi_tiba) {
           await ctx.env.DB.prepare(`UPDATE shipments SET estimasi_tiba = ?, updated_at = ?, updated_by = ? WHERE awb = ?`)
             .bind(newEta, nowIso, actor.id, params.awb)

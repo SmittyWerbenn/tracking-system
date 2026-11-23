@@ -26,21 +26,28 @@ export function addCalendarDays(startDateIso: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-/** Adds N delivery days to a "YYYY-MM-DD" date, counting Monday-Saturday only: every Sunday passed is skipped (UTC-anchored, timezone-immune).
- * Fri 20 Nov + 3 -> Sat 21 (1), Sun 22 skipped, Mon 23 (2), Tue 24 (3) = 24 Nov. */
-export function addDeliveryDaysExcludeSunday(startDateIso: string, days: number): string {
+/** Set of active holiday dates ("YYYY-MM-DD", Tanggal Merah / cuti bersama) that are skipped like Sundays. */
+export type HolidaySet = ReadonlySet<string>;
+
+function isNonDeliveryDay(date: Date, holidays?: HolidaySet): boolean {
+  return date.getUTCDay() === 0 || (holidays !== undefined && holidays.has(date.toISOString().slice(0, 10)));
+}
+
+/** Adds N delivery days to a "YYYY-MM-DD" date, skipping every Sunday AND every holiday (UTC-anchored, timezone-immune).
+ * Fri 20 Nov + 3, Mon 23 Nov a holiday -> Sat 21 (1), Sun 22 + Mon 23 skipped, Tue 24 (2), Wed 25 (3) = 25 Nov. */
+export function addDeliveryDaysExcludeSunday(startDateIso: string, days: number, holidays?: HolidaySet): string {
   const [y, m, d] = startDateIso.split("-").map(Number);
   const date = new Date(Date.UTC(y, m - 1, d));
   let added = 0;
   while (added < days) {
     date.setUTCDate(date.getUTCDate() + 1);
-    if (date.getUTCDay() !== 0) added++;
+    if (!isNonDeliveryDay(date, holidays)) added++;
   }
   return date.toISOString().slice(0, 10);
 }
 
-/** Delivery days from start to end ("YYYY-MM-DD"), excluding Sundays; min 1. Inverse of addDeliveryDaysExcludeSunday. */
-export function countDeliveryDaysExcludingSunday(startDateIso: string, endDateIso: string): number {
+/** Delivery days from start to end ("YYYY-MM-DD"), excluding Sundays and holidays; min 1. Inverse of addDeliveryDaysExcludeSunday. */
+export function countDeliveryDaysExcludingSunday(startDateIso: string, endDateIso: string, holidays?: HolidaySet): number {
   const [y1, m1, d1] = startDateIso.slice(0, 10).split("-").map(Number);
   const [y2, m2, d2] = endDateIso.slice(0, 10).split("-").map(Number);
   const cursor = new Date(Date.UTC(y1, m1 - 1, d1));
@@ -48,7 +55,7 @@ export function countDeliveryDaysExcludingSunday(startDateIso: string, endDateIs
   let days = 0;
   while (cursor.getTime() < end) {
     cursor.setUTCDate(cursor.getUTCDate() + 1);
-    if (cursor.getUTCDay() !== 0) days++;
+    if (!isNonDeliveryDay(cursor, holidays)) days++;
   }
   return Math.max(1, days);
 }
@@ -61,8 +68,12 @@ export function firstPickupDate(events: ReadonlyArray<{ type: string; tanggal: s
   return hit ? hit.tanggal : null;
 }
 
-/** Estimasi Tiba = Di-Pickup date + target days (Sundays skipped). Before pickup it is provisional: creation date + target days. */
-export function etaFromPickup(pickupDate: string | null, createdDate: string, slaValue: number): string {
-  return addDeliveryDaysExcludeSunday(pickupDate ?? createdDate, slaValue);
+/** Estimasi Tiba = Di-Pickup date + target days (Sundays + holidays skipped). Before pickup it is provisional: creation date + target days. */
+export function etaFromPickup(pickupDate: string | null, createdDate: string, slaValue: number, holidays?: HolidaySet): string {
+  return addDeliveryDaysExcludeSunday(pickupDate ?? createdDate, slaValue, holidays);
 }
+
+/** Named aliases: ETA / KPI day counting that skips Sundays and active national holidays. */
+export const calculateEtaBusinessDays = addDeliveryDaysExcludeSunday;
+export const countBusinessDeliveryDays = countDeliveryDaysExcludingSunday;
 

@@ -5,6 +5,7 @@ import { parseJsonBody, reqString, optString } from "../validate";
 import { requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
 import { etaFromPickup, firstPickupDate } from "../sla";
+import { loadHolidays } from "../holidays";
 import { deleteObjectsQuietly } from "../recycle";
 import { TIMELINE_EVENT_TYPES, compareTimeline, eventTypeToShipmentStatus, pipelineRank, timelineOrderSql, type TimelineEventType } from "../status";
 
@@ -85,7 +86,7 @@ async function syncShipment(
   // ETA runs from the first Di-Pickup log; with none left it falls back to the creation date (provisional).
   let eta = s.estimasi_tiba;
   if (s.sla_value != null) {
-    eta = etaFromPickup(firstPickupDate(events.map((e) => ({ type: e.type, tanggal: e.tanggal, ltlStage: e.ltl_stage }))), s.tanggal_dibuat, s.sla_value);
+    eta = etaFromPickup(firstPickupDate(events.map((e) => ({ type: e.type, tanggal: e.tanggal, ltlStage: e.ltl_stage }))), s.tanggal_dibuat, s.sla_value, await loadHolidays(ctx.env.DB));
   }
 
   if (status !== s.status || eta !== s.estimasi_tiba) {

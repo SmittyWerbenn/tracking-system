@@ -10,6 +10,7 @@ import { registerLocationRoutes } from "./routes/locations";
 import { registerTruckRoutes } from "./routes/trucks";
 import { registerShipmentRoutes } from "./routes/shipments";
 import { registerTrackingHistoryRoutes } from "./routes/trackingHistory";
+import { registerHolidayRoutes } from "./routes/holidays";
 import { registerFeedbackRoutes } from "./routes/feedback";
 import { registerNotificationRoutes } from "./routes/notifications";
 import { registerAuditLogRoutes } from "./routes/auditlog";
@@ -58,6 +59,7 @@ registerHoldRoutes(router);
 registerRatePublishRoutes(router);
 registerClientLogoRoutes(router);
 registerDailyReportRoutes(router);
+registerHolidayRoutes(router);
 
 router.get("/api/health", async () => ok({ status: "ok", time: new Date().toISOString() }));
 

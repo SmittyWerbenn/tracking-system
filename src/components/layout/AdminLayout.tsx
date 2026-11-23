@@ -1,6 +1,7 @@
 import { adminPath } from "../../utils/urls";
 import {
   Building2,
+  CalendarOff,
   ChevronRight,
   Handshake,
   Headset,
@@ -23,7 +24,8 @@ import {
   X,
   Image as ImageIcon,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { refreshHolidays } from "../../utils/holidays";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import logoIcon from "../../assets/icon-mark.png";
 import { useAuth } from "../../store/AuthContext";
@@ -108,6 +110,7 @@ function getNavGroups(role: UserRole): { title: string; items: NavItem[] }[] {
         { to: adminPath("/pengaturan/tracking"), label: "Tracking", icon: Settings, end: true, roles: ADMIN_ONLY_ROLES },
         { to: adminPath("/pengaturan/informasi-cs"), label: "Informasi CS", icon: Headset, end: true, roles: ADMIN_ONLY_ROLES },
         { to: adminPath("/pengaturan/info-bantuan"), label: "Informasi Bantuan", icon: LifeBuoy, end: true, roles: ADMIN_ONLY_ROLES },
+        { to: adminPath("/pengaturan/hari-libur"), label: "Hari Libur", icon: CalendarOff, end: true, roles: ADMIN_ONLY_ROLES },
         // Client logo management on the Company Profile - Superadmin only.
         { to: adminPath("/company-profile"), label: "Client Company Profile", icon: ImageIcon, end: true, roles: ["Superadmin"] },
       ],
@@ -149,6 +152,12 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const avatarUrl = useFileUrl(profile?.fotoFileId);
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const signedIn = !!profile;
+
+  // Hari libur dipakai preview Estimasi Tiba & KPI Percentage di CSV (hitungan sinkron di klien).
+  useEffect(() => {
+    if (signedIn) refreshHolidays().catch(() => {});
+  }, [signedIn]);
 
   if (!profile) return null;
 

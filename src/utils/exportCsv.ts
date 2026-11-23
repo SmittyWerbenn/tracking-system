@@ -3,6 +3,7 @@ import { downloadCsv } from "./csv";
 import type { DriverShipmentSummary } from "./driverApi";
 import { stripKeteranganMeta } from "./format";
 import { addDeliveryDaysExcludeSunday, countDeliveryDaysExcludingSunday } from "./sla";
+import { getHolidaySet } from "./holidays";
 
 /** Quotes cells containing commas, quotes or line breaks (so lists like "62949,62951" stay in one cell).
  * Line breaks are flattened to a space first so every shipment stays on a single spreadsheet row. */
@@ -82,7 +83,7 @@ function deliveredDateOf(s: Shipment): string | undefined {
 /** Estimasi Tiba = first Di-Pickup date + Target Hari (Mon-Sat, Sundays skipped). Derived here so rows saved before that rule stay consistent with KPI. */
 function effectiveEta(s: Shipment): string | undefined {
   const pickup = pickupDateOf(s);
-  if (pickup && s.slaValue != null) return addDeliveryDaysExcludeSunday(pickup.slice(0, 10), s.slaValue);
+  if (pickup && s.slaValue != null) return addDeliveryDaysExcludeSunday(pickup.slice(0, 10), s.slaValue, getHolidaySet());
   return s.estimasiTiba ? s.estimasiTiba.slice(0, 10) : undefined;
 }
 
@@ -93,7 +94,7 @@ export function kpiPercentageText(s: Shipment): string {
   const pickup = pickupDateOf(s) ?? (delivered ? s.tanggalDibuat : undefined);
   if (!pickup) return "-";
   if (!delivered) return "In Progress";
-  const actual = countDeliveryDaysExcludingSunday(pickup, delivered);
+  const actual = countDeliveryDaysExcludingSunday(pickup, delivered, getHolidaySet());
   const target = Math.max(1, s.slaValue ?? 1);
   if (s.slaValue == null || actual <= target) return "100%";
   return `${Math.round((target / actual) * 100)}%`;

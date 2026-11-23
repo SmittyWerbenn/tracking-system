@@ -33,6 +33,7 @@ import Login from "./pages/admin/Login";
 import MitraList from "./pages/admin/MitraList";
 import NotificationCenter from "./pages/admin/NotificationCenter";
 import SettingsPage from "./pages/admin/SettingsPage";
+import HolidaysPage from "./pages/admin/HolidaysPage";
 import RatePublish from "./pages/admin/RatePublish";
 import ShipmentDetail from "./pages/admin/ShipmentDetail";
 import ShipmentList from "./pages/admin/ShipmentList";
@@ -171,6 +172,7 @@ export default function App() {
               <Route path={adminPath("/pengaturan/tracking")} element={<RequireAdmin><SettingsPage section="tracking" /></RequireAdmin>} />
               <Route path={adminPath("/pengaturan/informasi-cs")} element={<RequireAdmin><SettingsPage section="cs" /></RequireAdmin>} />
               <Route path={adminPath("/pengaturan/info-bantuan")} element={<RequireAdmin><SettingsPage section="bantuan" /></RequireAdmin>} />
+              <Route path={adminPath("/pengaturan/hari-libur")} element={<RequireAdmin><HolidaysPage /></RequireAdmin>} />
               <Route path={adminPath("/pengaturan/akun")} element={<RequireAuth><AccountSettings /></RequireAuth>} />
             </>
           )}

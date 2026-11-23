@@ -33,6 +33,7 @@ import { checkPhotoSize, compressImage } from "../../utils/compressImage";
 import { formatTanggalPanjang, todayISO } from "../../utils/format";
 import { sendTrackingEmail, type EmailableShipment } from "../../utils/sendEmail";
 import { addDeliveryDaysExcludeSunday } from "../../utils/sla";
+import { getHolidaySet } from "../../utils/holidays";
 import { adminPath, trackingUrl as publicTrackingUrl } from "../../utils/urls";
 
 const emptyForm: ShipmentFormData = {
@@ -500,7 +501,7 @@ export default function CreateShipment() {
             />
             <p className="mt-1.5 text-[11px] text-slate-400">
               {form.slaValue && form.slaValue > 0
-                ? `Estimasi Tiba: ${formatTanggalPanjang(addDeliveryDaysExcludeSunday(todayISO(), form.slaValue))}`
+                ? `Estimasi Tiba: ${formatTanggalPanjang(addDeliveryDaysExcludeSunday(todayISO(), form.slaValue, getHolidaySet()))}`
                 : "Opsional. Jika diisi, sistem menghitung Estimasi Tiba otomatis dan menampilkannya ke customer."}
             </p>
           </Field>

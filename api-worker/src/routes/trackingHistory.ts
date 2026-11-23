@@ -4,7 +4,7 @@ import { ok, Errors } from "../http";
 import { parseJsonBody, reqString, optString } from "../validate";
 import { requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
-import { addBusinessDays } from "../sla";
+import { etaFromPickup, firstPickupDate } from "../sla";
 import { deleteObjectsQuietly } from "../recycle";
 import { TIMELINE_EVENT_TYPES, compareTimeline, eventTypeToShipmentStatus, pipelineRank, timelineOrderSql, type TimelineEventType } from "../status";
 
@@ -74,11 +74,10 @@ async function syncShipment(
   const last = live[live.length - 1];
   const status = last ? eventTypeToShipmentStatus(last.type as TimelineEventType) : "Dalam Persiapan";
 
-  // ETA runs from the first departure; with no departure left it falls back to the creation date.
+  // ETA runs from the first Di-Pickup log; with none left it falls back to the creation date (provisional).
   let eta = s.estimasi_tiba;
   if (s.sla_value != null) {
-    const departure = events.find((e) => e.type === "Berangkat");
-    eta = addBusinessDays(departure ? departure.tanggal : s.tanggal_dibuat, s.sla_value);
+    eta = etaFromPickup(firstPickupDate(events.map((e) => ({ type: e.type, tanggal: e.tanggal, ltlStage: e.ltl_stage }))), s.tanggal_dibuat, s.sla_value);
   }
 
   if (status !== s.status || eta !== s.estimasi_tiba) {

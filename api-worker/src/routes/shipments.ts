@@ -10,7 +10,7 @@ import { parsePagination, pageMeta, likeTerm, orderBy } from "../pagination";
 import { generateClientAwb, isDuplicateAwbError } from "../awb";
 import { wibNow } from "../wib";
 import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, timelineOrderSql, type TimelineEventType } from "../status";
-import { addBusinessDays } from "../sla";
+import { addCalendarDays, etaFromPickup, firstPickupDate } from "../sla";
 import { cancelPolicy, creatorRoleOf, pickupEvidenceSql } from "../cancellation";
 import { holdPolicy } from "../hold";
 import { resolveArmada } from "../armada";
@@ -431,7 +431,7 @@ export function registerShipmentRoutes(router: Router) {
     // ETA is always derived from SLA + the shipment's own start date - never
     // entered directly, and never fabricated when no SLA was given.
     const slaUnit = slaValue !== undefined ? "hari_kerja" : null;
-    const estimasiTiba = slaValue !== undefined ? addBusinessDays(tanggalDibuat, slaValue) : null;
+    const estimasiTiba = slaValue !== undefined ? addCalendarDays(tanggalDibuat, slaValue) : null;
 
     // The AWB number comes from the Client ID resolved on the server (never
     // from the request body for a Client account). Shipment + first timeline
@@ -735,7 +735,15 @@ export function registerShipmentRoutes(router: Router) {
     }
     let newEta: string | null = shipment.estimasi_tiba;
     if (slaProvided) {
-      newEta = slaValue !== undefined ? addBusinessDays(shipment.tanggal_dibuat, slaValue) : null;
+      if (slaValue !== undefined) {
+        const pickupRows = await ctx.env.DB.prepare(
+          `SELECT type, tanggal, ltl_stage FROM shipment_timeline_events WHERE awb = ? ORDER BY ${timelineOrderSql("ASC")}`,
+        )
+          .bind(params.awb)
+          .all<{ type: string; tanggal: string; ltl_stage: string | null }>();
+        const pickup = firstPickupDate((pickupRows.results ?? []).map((e) => ({ type: e.type, tanggal: e.tanggal, ltlStage: e.ltl_stage })));
+        newEta = etaFromPickup(pickup, shipment.tanggal_dibuat, slaValue);
+      } else newEta = null;
       sets.push("sla_value=?", "sla_unit=?", "estimasi_tiba=?");
       values.push(slaValue ?? null, slaValue !== undefined ? "hari_kerja" : null, newEta);
     }
@@ -1083,35 +1091,32 @@ export function registerShipmentRoutes(router: Router) {
       .bind(newStatus, truckId ?? null, truckId ?? null, truckId ?? null, timelineTruck?.nomor_unit ?? null, truckId ?? null, timelineTruck?.driver_id ?? null, truckId ?? null, nowIso, actor.id, params.awb)
       .run();
 
-    // --- ETA recalculation on Berangkat ---
-    // When the shipment first departs, ETA is recalculated from the actual
-    // departure date (the timeline event's "tanggal") instead of the order
-    // creation date. This applies to both normal orders and those that came
-    // through Hold → UNHOLD → Berangkat. A second Berangkat event is
-    // impossible (pipeline rank prevents backward transitions), so this runs
-    // exactly once.
-    if (type === "Berangkat") {
+    // --- ETA recalculation on Di-Pickup ---
+    // Estimasi Tiba = first Di-Pickup date + SLA days. Recomputed from the earliest
+    // pickup log (so a backdated or repeated pickup log is handled); before any
+    // pickup the value stays provisional (creation date + SLA).
+    if (type === "Di pickup") {
       const slaValue = shipment.sla_value as number | null;
       if (slaValue != null) {
-        // ETA runs from the first departure by date/time (same rule as an edit/delete re-sync).
-        const departure = await ctx.env.DB.prepare(
-          `SELECT tanggal FROM shipment_timeline_events WHERE awb = ? AND type = 'Berangkat' ORDER BY ${timelineOrderSql("ASC")} LIMIT 1`,
+        const rows = await ctx.env.DB.prepare(
+          `SELECT type, tanggal, ltl_stage FROM shipment_timeline_events WHERE awb = ? ORDER BY ${timelineOrderSql("ASC")}`,
         )
           .bind(params.awb)
-          .first<{ tanggal: string }>();
-        const newEta = addBusinessDays(departure?.tanggal ?? tanggal, slaValue);
-        await ctx.env.DB.prepare(
-          `UPDATE shipments SET estimasi_tiba = ?, updated_at = ?, updated_by = ? WHERE awb = ?`,
-        )
-          .bind(newEta, nowIso, actor.id, params.awb)
-          .run();
-        await writeAuditLog(ctx.env, actor, {
-          action: "UPDATE_ETA",
-          actionLabel: "UPDATE ETA",
-          module: "Shipment",
-          awb: params.awb,
-          description: `Log Berangkat dicatat. ETA diperbarui: ${shipment.estimasi_tiba ?? "-"} -> ${newEta}.`,
-        });
+          .all<{ type: string; tanggal: string; ltl_stage: string | null }>();
+        const pickup = firstPickupDate((rows.results ?? []).map((e) => ({ type: e.type, tanggal: e.tanggal, ltlStage: e.ltl_stage })));
+        const newEta = etaFromPickup(pickup, String(shipment.tanggal_dibuat), slaValue);
+        if (newEta !== shipment.estimasi_tiba) {
+          await ctx.env.DB.prepare(`UPDATE shipments SET estimasi_tiba = ?, updated_at = ?, updated_by = ? WHERE awb = ?`)
+            .bind(newEta, nowIso, actor.id, params.awb)
+            .run();
+          await writeAuditLog(ctx.env, actor, {
+            action: "UPDATE_ETA",
+            actionLabel: "UPDATE ETA",
+            module: "Shipment",
+            awb: params.awb,
+            description: `Log Di-Pickup dicatat. Estimasi Tiba diperbarui: ${shipment.estimasi_tiba ?? "-"} -> ${newEta}.`,
+          });
+        }
       }
     }
 

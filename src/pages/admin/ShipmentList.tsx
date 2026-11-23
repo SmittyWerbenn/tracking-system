@@ -462,7 +462,7 @@ export default function ShipmentList() {
           type="button"
           onClick={handleExport}
           disabled={listMeta.total === 0 || exporting}
-          className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
         >
           {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />} Export CSV
         </button>

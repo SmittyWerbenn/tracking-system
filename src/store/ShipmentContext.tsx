@@ -10,7 +10,7 @@ import type {
   UpdateShipmentInfoData,
 } from "../types";
 import { api, ApiError, uploadFile } from "../utils/apiClient";
-import { resolveFileUrls, type FileRef } from "../utils/resolveFiles";
+import { resolveFileEntries, resolveFileUrls, type FileRef } from "../utils/resolveFiles";
 import { sendAdminDeliveryEmail } from "../utils/sendEmail";
 import { adminResiUrl } from "../utils/urls";
 import { useAuth } from "./AuthContext";
@@ -201,7 +201,7 @@ function toShipment(row: RawShipmentSummary): Shipment {
   };
 }
 
-function toTimelineEvent(row: RawTimelineRow, fotoUrls: string[]): TimelineEvent {
+function toTimelineEvent(row: RawTimelineRow, fotoUrls: string[], fotoIds?: string[]): TimelineEvent {
   return {
     id: row.id,
     type: row.type,
@@ -211,6 +211,7 @@ function toTimelineEvent(row: RawTimelineRow, fotoUrls: string[]): TimelineEvent
     jam: row.jam,
     keterangan: row.keterangan,
     foto: fotoUrls.length > 0 ? fotoUrls : undefined,
+    fotoIds: fotoIds && fotoIds.length === fotoUrls.length && fotoIds.length > 0 ? fotoIds : undefined,
     truck: row.truck_nomor_unit ? { nomorUnit: row.truck_nomor_unit, jenis: "-", driver: row.truck_driver_nama ?? undefined } : undefined,
     truckId: row.truck_id ?? undefined,
     truckSebelumnya: row.truck_sebelumnya_nomor_unit ? { nomorUnit: row.truck_sebelumnya_nomor_unit, jenis: "-" } : undefined,
@@ -295,7 +296,7 @@ interface ShipmentContextValue {
   updateTimelineEvent: (
     awb: string,
     eventId: string,
-    data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string; internalNotes?: string; namaPenerima?: string },
+    data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string; internalNotes?: string; namaPenerima?: string; addPhotos?: string[]; removePhotoIds?: string[] },
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
   /** Admin/Superadmin: delete a tracking log. The API re-syncs the shipment status. */
   deleteTimelineEvent: (awb: string, eventId: string) => Promise<{ ok: true } | { ok: false; error: string }>;
@@ -364,13 +365,21 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
   async function getByAwb(awb: string): Promise<Shipment | null> {
     try {
       const res = await api.get<ShipmentDetailResponse>(`/api/shipments/${encodeURIComponent(awb)}`);
-      const urlMap = await resolveFileUrls(res.files);
+      const entries = await resolveFileEntries(res.files);
+      const urlMap = new Map<string, string[]>();
+      for (const r of entries) urlMap.set(r.key, [...(urlMap.get(r.key) ?? []), r.url]);
       const fotoBarangUrls = urlMap.get(`shipment_photo:${res.shipment.awb}`) ?? [];
       const fotoSuratJalanUrls = urlMap.get(`shipment_surat_jalan:${res.shipment.awb}`) ?? [];
       const podBarangUrls = urlMap.get(`pod_barang:${res.shipment.awb}`) ?? [];
       const podSuratJalanUrls = urlMap.get(`pod_surat_jalan:${res.shipment.awb}`) ?? [];
 
-      const timeline = res.timeline.map((row) => toTimelineEvent(row, urlMap.get(`timeline_photo:${row.id}`) ?? []));
+      const timeline = res.timeline.map((row) =>
+        toTimelineEvent(
+          row,
+          urlMap.get(`timeline_photo:${row.id}`) ?? [],
+          entries.filter((r) => r.key === `timeline_photo:${row.id}`).map((r) => r.id),
+        ),
+      );
 
       return {
         ...toShipment(res.shipment),
@@ -517,10 +526,13 @@ export function ShipmentProvider({ children }: { children: ReactNode }) {
   async function updateTimelineEvent(
     awb: string,
     eventId: string,
-    data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string; internalNotes?: string; namaPenerima?: string },
+    data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string; internalNotes?: string; namaPenerima?: string; addPhotos?: string[]; removePhotoIds?: string[] },
   ) {
     try {
-      await api.patch(`/api/shipments/${encodeURIComponent(awb)}/timeline/${encodeURIComponent(eventId)}`, data);
+      const { addPhotos, removePhotoIds, ...fields } = data;
+      await api.patch(`/api/shipments/${encodeURIComponent(awb)}/timeline/${encodeURIComponent(eventId)}`, fields);
+      for (const id of removePhotoIds ?? []) await api.del(`/api/files/${encodeURIComponent(id)}`);
+      for (const dataUrl of addPhotos ?? []) await uploadFile(dataUrl, "timeline_photo", eventId);
       await refresh();
       return { ok: true as const };
     } catch (err) {

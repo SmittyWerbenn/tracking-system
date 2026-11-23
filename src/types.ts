@@ -53,6 +53,8 @@ export interface TimelineEvent {
   jam: string; // HH:mm
   keterangan: string;
   foto?: string[];
+  /** File ids matching `foto` by index (timeline photos only; used to delete a single photo). */
+  fotoIds?: string[];
   truck?: TruckInfo;
   truckId?: string; // links to Truck master data, when chosen from it
   truckSebelumnya?: TruckInfo;

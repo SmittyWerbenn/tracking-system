@@ -41,10 +41,12 @@ async function loadShipment(ctx: Ctx, awb: string) {
   return s;
 }
 
-/** A shipment is closed once its final step, POD Kembali, is logged; until then even "Terkirim" can still be corrected. */
-function assertNotClosed(events: EventRow[]) {
+/** A shipment is closed once its final step, POD Kembali, is logged; until then even "Terkirim" can still be corrected.
+ * Superadmin may still correct a closed shipment's logs (e.g. attach a missing Surat Jalan/POD photo); everyone else is refused. */
+function assertNotClosed(events: EventRow[], role?: string) {
+  if (role === "Superadmin") return;
   if (events.some((e) => e.ltl_stage === "POD_RETURNED")) {
-    throw Errors.unprocessable("Pengiriman ini sudah Closed (POD Kembali), dan terkunci.");
+    throw Errors.forbidden("Pengiriman ini sudah Closed (POD Kembali). Hanya Superadmin yang dapat mengubah log.");
   }
 }
 
@@ -94,7 +96,7 @@ export function registerTrackingHistoryRoutes(router: Router) {
     const events = await loadEvents(ctx, params.awb);
     const idx = events.findIndex((e) => e.id === params.eventId);
     if (idx < 0) throw Errors.notFound("Log tracking tidak ditemukan.");
-    assertNotClosed(events);
+    assertNotClosed(events, actor.role);
     const ev = events[idx];
     if (PROTECTED_TYPES.has(ev.type)) {
       throw Errors.unprocessable(`Log "${ev.type}" tidak dapat diubah.`);

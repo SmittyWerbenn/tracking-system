@@ -76,21 +76,21 @@ function dayNum(iso: string): number {
 /** KPI Performance: lead time (calendar days, min 1) from the first Di-Pickup log to delivery, versus the SLA target / Estimasi Tiba. */
 export function kpiPerformanceText(s: Shipment, today: string = new Date().toISOString().slice(0, 10)): string {
   const events = s.timeline ?? [];
-  const pickup = events.find((e) => e.ltlStage === "PICKED_UP" || (e.type === "Di pickup" && !e.ltlStage));
-  if (!pickup) return "-";
+  const pickupDate = events.find((e) => e.ltlStage === "PICKED_UP" || (e.type === "Di pickup" && !e.ltlStage))?.tanggal ?? s.pickupAt;
+  if (!pickupDate) return "-";
   const target = s.slaValue ?? null;
   const eta = s.estimasiTiba ? s.estimasiTiba.slice(0, 10) : null;
-  const delivered = events.find((e) => e.ltlStage === "DELIVERED")?.tanggal ?? (s.status === "Selesai / Terkirim" ? s.pod?.tanggal ?? events.find((e) => e.type === "Selesai / Terkirim")?.tanggal : undefined);
+  const delivered = s.deliveredAt ?? events.find((e) => e.ltlStage === "DELIVERED")?.tanggal ?? (s.status === "Selesai / Terkirim" ? s.pod?.tanggal ?? events.find((e) => e.type === "Selesai / Terkirim")?.tanggal : undefined);
   const targetTxt = target != null ? ` / Target ${target} Hari` : "";
   if (delivered) {
-    const lead = Math.max(1, dayNum(delivered) - dayNum(pickup.tanggal));
+    const lead = Math.max(1, dayNum(delivered) - dayNum(pickupDate));
     if (!eta) return `Selesai (${lead} Hari${targetTxt})`;
     const diff = dayNum(delivered) - dayNum(eta);
     if (diff <= 0) return diff === 0 ? `On Time (${lead} Hari${targetTxt})` : `On Time (+${-diff} Hari lebih cepat)`;
     return `Late - Terlambat ${diff} Hari (${lead} Hari${targetTxt})`;
   }
   if (eta && dayNum(today) > dayNum(eta)) return "Overdue - Lewat Estimasi";
-  const day = Math.max(1, dayNum(today) - dayNum(pickup.tanggal) + 1);
+  const day = Math.max(1, dayNum(today) - dayNum(pickupDate) + 1);
   return `In Progress (Hari ke-${day}${targetTxt})`;
 }
 

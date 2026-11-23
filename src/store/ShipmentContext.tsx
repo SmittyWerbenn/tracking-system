@@ -28,6 +28,8 @@ export interface CreatedShipment {
 
 interface RawShipmentSummary {
   awb: string;
+  pickupAt?: string | null;
+  deliveredAt?: string | null;
   reference?: string | null;
   internalNotes?: string | null;
   tanggalDibuat: string;
@@ -169,6 +171,8 @@ function toShipment(row: RawShipmentSummary): Shipment {
     driverName: row.driverName ?? undefined,
     driverId: row.driverId ?? undefined,
     lastKeterangan: row.lastUpdate?.keterangan ?? undefined,
+    pickupAt: row.pickupAt ?? undefined,
+    deliveredAt: row.deliveredAt ?? undefined,
     customerId: row.customerId ?? undefined,
     mitraId: row.mitraId ?? undefined,
     mitraNama: row.mitraNama ?? undefined,

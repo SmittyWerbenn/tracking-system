@@ -105,6 +105,8 @@ function shipmentSummary(row: Record<string, unknown>) {
     pod: row.pod_tanggal
       ? { tanggal: row.pod_tanggal, jam: row.pod_jam, namaPenerima: row.pod_nama_penerima }
       : null,
+    pickupAt: row.first_pickup_tanggal ?? null,
+    deliveredAt: row.delivered_tanggal ?? null,
     lastUpdate: row.last_tanggal
       ? { tanggal: row.last_tanggal, jam: row.last_jam, keterangan: row.last_keterangan ?? null, ltlStage: row.last_ltl_stage ?? null }
       : null,
@@ -258,6 +260,8 @@ export function registerShipmentRoutes(router: Router) {
               le.tanggal as last_tanggal, le.jam as last_jam, le.keterangan as last_keterangan, le.ltl_stage as last_ltl_stage,
               rr.status as recovery_status, rr.requested_at as recovery_requested_at, rr.rejection_reason as recovery_rejection_reason,
               ${pickupEvidenceSql("s.awb")} AS has_pickup,
+              (SELECT e.tanggal FROM shipment_timeline_events e WHERE e.awb = s.awb AND (e.ltl_stage = 'PICKED_UP' OR (e.type = 'Di pickup' AND e.ltl_stage IS NULL)) ORDER BY ${timelineOrderSql("ASC", "e")} LIMIT 1) AS first_pickup_tanggal,
+              (SELECT e.tanggal FROM shipment_timeline_events e WHERE e.awb = s.awb AND (e.ltl_stage = 'DELIVERED' OR e.type = 'Selesai / Terkirim') ORDER BY (e.ltl_stage = 'DELIVERED') DESC, ${timelineOrderSql("ASC", "e")} LIMIT 1) AS delivered_tanggal,
               cr.id as cr_id, cr.status as cr_status, cr.reason as cr_reason, cr.requested_by_name as cr_requested_by_name,
               cr.requested_by_role as cr_requested_by_role, cr.requested_at as cr_requested_at, cr.decided_by_name as cr_decided_by_name,
               cr.decided_by_role as cr_decided_by_role, cr.decided_at as cr_decided_at, cr.decision_reason as cr_decision_reason,

@@ -89,7 +89,7 @@ export function kpiPerformanceText(s: Shipment, today: string = new Date().toISO
     if (diff <= 0) return diff === 0 ? `On Time (${lead} Hari${targetTxt})` : `On Time (+${-diff} Hari lebih cepat)`;
     return `Late - Terlambat ${diff} Hari (${lead} Hari${targetTxt})`;
   }
-  if (eta && dayNum(today) > dayNum(eta)) return "Overdue - Lewat Estimasi";
+  if (eta && dayNum(today) > dayNum(eta)) return `Overdue - Lewat ${dayNum(today) - dayNum(eta)} Hari${target != null ? ` (Target ${target} Hari)` : ""}`;
   const day = Math.max(1, dayNum(today) - dayNum(pickupDate) + 1);
   return `In Progress (Hari ke-${day}${targetTxt})`;
 }

@@ -50,6 +50,14 @@ function assertNotClosed(events: EventRow[], role?: string) {
   }
 }
 
+/** Deleting a log on a closed shipment (e.g. a mistaken POD Kembali) is Superadmin-only; the status then re-syncs to the last remaining log. */
+function assertCanDeleteWhenClosed(events: EventRow[], role?: string) {
+  if (role === "Superadmin") return;
+  if (events.some((e) => e.ltl_stage === "POD_RETURNED")) {
+    throw Errors.forbidden("Pengiriman ini sudah Closed (POD Kembali). Hanya Superadmin yang dapat menghapus log.");
+  }
+}
+
 /** Chronological (oldest first) by the event's own date/time, so the last row is the newest log. */
 async function loadEvents(ctx: Ctx, awb: string): Promise<EventRow[]> {
   const r = await ctx.env.DB.prepare(
@@ -169,7 +177,7 @@ export function registerTrackingHistoryRoutes(router: Router) {
     const events = await loadEvents(ctx, params.awb);
     const ev = events.find((e) => e.id === params.eventId);
     if (!ev) throw Errors.notFound("Log tracking tidak ditemukan.");
-    assertNotClosed(events);
+    assertCanDeleteWhenClosed(events, actor.role);
     if (ev.type === "Barang Diterima") {
       throw Errors.unprocessable("Log awal pembuatan resi (Order Dibuat) tidak dapat dihapus.");
     }
@@ -205,7 +213,7 @@ export function registerTrackingHistoryRoutes(router: Router) {
       actionLabel: "DELETE TRACKING EVENT",
       module: "Shipment",
       awb: params.awb,
-      description: `Log tracking #${ev.seq} (${ev.type}, ${ev.lokasi}, ${ev.tanggal} ${ev.jam}) dihapus. Status pengiriman: ${shipment.status} -> ${synced.status}.`,
+      description: `Log tracking #${ev.seq} (${ev.type}, ${ev.lokasi}, ${ev.tanggal} ${ev.jam}) dihapus${events.some((e) => e.ltl_stage === "POD_RETURNED") ? " (override Superadmin pada pengiriman Closed)" : ""}. Status pengiriman: ${shipment.status} -> ${synced.status}.`,
     });
     return ok({ deleted: true, status: synced.status, estimasiTiba: synced.estimasiTiba });
   });

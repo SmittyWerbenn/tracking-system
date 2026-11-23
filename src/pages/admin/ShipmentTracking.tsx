@@ -96,7 +96,8 @@ export default function ShipmentTracking() {
     canOverrideClosed &&
     !["Dibatalkan", "Hold"].includes(shipment.status) &&
     (!isClosed || canOverrideClosed);
-  const canDeleteLog = canManageLog && !isClosed;
+  // Deleting a log on a Closed shipment (e.g. a mistaken POD Kembali) is Superadmin-only.
+  const canDeleteLog = canManageLog && (!isClosed || profile?.role === "Superadmin");
   const isOverdue = !isDelivered && !!shipment.estimasiTiba && shipment.estimasiTiba < todayISO();
 
   return (

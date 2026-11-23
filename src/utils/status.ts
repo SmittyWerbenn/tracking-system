@@ -1,3 +1,4 @@
+import { normalizeLtlStage, type LtlStageCode } from "./ltlPipeline";
 import type { ArmadaStatus, ShipmentStatus, TimelineEventType } from "../types";
 
 export interface StatusStyle {
@@ -33,22 +34,22 @@ const STYLES: Record<string, StatusStyle> = {
     ring: "ring-blue-200",
   },
   "Kendala": {
-    bg: "bg-red-100",
-    text: "text-red-700",
-    dot: "bg-red-500",
-    ring: "ring-red-200",
+    bg: "bg-rose-100",
+    text: "text-rose-700",
+    dot: "bg-rose-600",
+    ring: "ring-rose-200",
   },
   "Re-route": {
-    bg: "bg-cyan-100",
-    text: "text-cyan-700",
-    dot: "bg-cyan-500",
-    ring: "ring-cyan-200",
+    bg: "bg-rose-100",
+    text: "text-rose-700",
+    dot: "bg-rose-600",
+    ring: "ring-rose-200",
   },
   "Penarikan": {
-    bg: "bg-orange-100",
-    text: "text-orange-700",
-    dot: "bg-orange-500",
-    ring: "ring-orange-200",
+    bg: "bg-red-100",
+    text: "text-red-800",
+    dot: "bg-red-600",
+    ring: "ring-red-200",
   },
   "Transfer Unit": {
     bg: "bg-violet-100",
@@ -87,15 +88,46 @@ const STYLES: Record<string, StatusStyle> = {
     ring: "ring-orange-600",
   },
   "Dibatalkan": {
-    bg: "bg-rose-100",
-    text: "text-rose-700",
-    dot: "bg-rose-500",
-    ring: "ring-rose-200",
+    bg: "bg-red-100",
+    text: "text-red-800",
+    dot: "bg-red-600",
+    ring: "ring-red-200",
   },
 };
 
 export function getStatusStyle(status: ShipmentStatus | TimelineEventType): StatusStyle {
   return STYLES[status] ?? STYLES["Dalam Persiapan"];
+}
+
+/** One distinct colour per LTL status, so the STATUS column reads at a glance (the stored coarse status only has ~5 colours). */
+const LTL_STYLES: Record<LtlStageCode, StatusStyle> = {
+  ORDER_RECEIVED: { bg: "bg-slate-100", text: "text-slate-700", dot: "bg-slate-500", ring: "ring-slate-200" },
+  PICKED_UP: { bg: "bg-violet-100", text: "text-violet-700", dot: "bg-violet-600", ring: "ring-violet-200" },
+  ARRIVED_ORIGIN_HUB: { bg: "bg-indigo-100", text: "text-indigo-700", dot: "bg-indigo-600", ring: "ring-indigo-200" },
+  DEPARTED: { bg: "bg-sky-100", text: "text-sky-700", dot: "bg-sky-600", ring: "ring-sky-200" },
+  IN_TRANSIT: { bg: "bg-blue-100", text: "text-blue-700", dot: "bg-blue-600", ring: "ring-blue-200" },
+  ARRIVED_DESTINATION_HUB: { bg: "bg-cyan-100", text: "text-cyan-800", dot: "bg-cyan-600", ring: "ring-cyan-200" },
+  DOORING_SCHEDULED: { bg: "bg-amber-100", text: "text-amber-800", dot: "bg-amber-500", ring: "ring-amber-200" },
+  OUT_FOR_DELIVERY: { bg: "bg-orange-100", text: "text-orange-800", dot: "bg-orange-600", ring: "ring-orange-200" },
+  DELIVERED: { bg: "bg-emerald-100", text: "text-emerald-800", dot: "bg-emerald-600", ring: "ring-emerald-200" },
+  // Final / Closed: solid teal so it stands apart from Terkirim.
+  POD_RETURNED: { bg: "bg-teal-600", text: "text-white", dot: "bg-white", ring: "ring-teal-700" },
+};
+
+/** Statuses that override the stage colour: problems, holds and cancellations must stay visible whatever the newest log says. */
+const STATUS_OVERRIDES = new Set<string>(["Kendala", "Re-route", "Penarikan", "Hold", "Dibatalkan"]);
+
+/**
+ * Badge colours for a shipment: the newest log's LTL status when known (e.g. Proses Dooring = amber, Sedang Diantar = orange),
+ * unless the shipment is in a problem/hold/cancelled state, which keeps its own colour.
+ */
+export function getShipmentBadgeStyle(
+  status: ShipmentStatus | TimelineEventType,
+  latestLtlStage?: string | null,
+): StatusStyle {
+  const stage = normalizeLtlStage(latestLtlStage);
+  if (stage && !STATUS_OVERRIDES.has(status)) return LTL_STYLES[stage];
+  return getStatusStyle(status);
 }
 
 export const SHIPMENT_STATUS_OPTIONS: ShipmentStatus[] = [

@@ -1,6 +1,6 @@
 import type { ShipmentStatus, TimelineEventType } from "../types";
 import { useLanguage } from "../store/LanguageContext";
-import { getStatusStyle } from "../utils/status";
+import { getShipmentBadgeStyle } from "../utils/status";
 import { ltlStageLabel, statusLabel } from "../utils/trackingI18n";
 
 interface StatusBadgeProps {
@@ -14,7 +14,7 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, size = "md", timeline }: StatusBadgeProps) {
   const { language } = useLanguage();
-  const style = getStatusStyle(status);
+  const style = getShipmentBadgeStyle(status, timeline?.[timeline.length - 1]?.ltlStage);
   const sizeClasses =
     size === "sm" ? "text-xs px-2 py-0.5 gap-1 font-medium"
     : size === "lg" ? "text-base px-4 py-1.5 gap-2 font-bold whitespace-nowrap"

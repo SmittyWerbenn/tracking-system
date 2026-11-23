@@ -10,7 +10,7 @@ import { parsePagination, pageMeta, likeTerm, orderBy } from "../pagination";
 import { generateClientAwb, isDuplicateAwbError } from "../awb";
 import { wibNow } from "../wib";
 import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, timelineOrderSql, type TimelineEventType } from "../status";
-import { addCalendarDays, etaFromPickup, firstPickupDate } from "../sla";
+import { addDeliveryDaysExcludeSunday, etaFromPickup, firstPickupDate } from "../sla";
 import { cancelPolicy, creatorRoleOf, pickupEvidenceSql } from "../cancellation";
 import { holdPolicy } from "../hold";
 import { resolveArmada } from "../armada";
@@ -437,7 +437,7 @@ export function registerShipmentRoutes(router: Router) {
     // ETA is always derived from SLA + the shipment's own start date - never
     // entered directly, and never fabricated when no SLA was given.
     const slaUnit = slaValue !== undefined ? "hari_kerja" : null;
-    const estimasiTiba = slaValue !== undefined ? addCalendarDays(tanggalDibuat, slaValue) : null;
+    const estimasiTiba = slaValue !== undefined ? addDeliveryDaysExcludeSunday(tanggalDibuat, slaValue) : null;
 
     // The AWB number comes from the Client ID resolved on the server (never
     // from the request body for a Client account). Shipment + first timeline

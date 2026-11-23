@@ -2,6 +2,7 @@ import type { Shipment } from "../types";
 import { downloadCsv } from "./csv";
 import type { DriverShipmentSummary } from "./driverApi";
 import { stripKeteranganMeta } from "./format";
+import { addDeliveryDaysExcludeSunday, countDeliveryDaysExcludingSunday } from "./sla";
 
 /** Quotes cells containing commas, quotes or line breaks (so lists like "62949,62951" stay in one cell).
  * Line breaks are flattened to a space first so every shipment stays on a single spreadsheet row. */
@@ -68,12 +69,6 @@ const COLUMNS = [
 
 const INTERNAL_COLUMN = COLUMNS.indexOf("Keterangan Internal");
 
-const DAY_MS = 86_400_000;
-function dayNum(iso: string): number {
-  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
-  return Math.round(Date.UTC(y, m - 1, d) / DAY_MS);
-}
-
 function pickupDateOf(s: Shipment): string | undefined {
   const events = s.timeline ?? [];
   return events.find((e) => e.ltlStage === "PICKED_UP" || (e.type === "Di pickup" && !e.ltlStage))?.tanggal ?? s.pickupAt;
@@ -84,21 +79,21 @@ function deliveredDateOf(s: Shipment): string | undefined {
   return s.deliveredAt ?? events.find((e) => e.ltlStage === "DELIVERED")?.tanggal ?? (s.status === "Selesai / Terkirim" ? s.pod?.tanggal ?? events.find((e) => e.type === "Selesai / Terkirim")?.tanggal : undefined);
 }
 
-/** Estimasi Tiba = first Di-Pickup date + Target Hari (calendar days). Derived here so rows saved before that rule stay consistent with KPI. */
+/** Estimasi Tiba = first Di-Pickup date + Target Hari (Mon-Sat, Sundays skipped). Derived here so rows saved before that rule stay consistent with KPI. */
 function effectiveEta(s: Shipment): string | undefined {
   const pickup = pickupDateOf(s);
-  if (pickup && s.slaValue != null) return new Date((dayNum(pickup) + s.slaValue) * DAY_MS).toISOString().slice(0, 10);
+  if (pickup && s.slaValue != null) return addDeliveryDaysExcludeSunday(pickup.slice(0, 10), s.slaValue);
   return s.estimasiTiba ? s.estimasiTiba.slice(0, 10) : undefined;
 }
 
-/** KPI Percentage: first Di-Pickup to Terkirim (calendar days) vs Target Hari. Delivered: 100% when on time or early, else round(target/actual*100)%.
+/** KPI Percentage: first Di-Pickup to Terkirim (Sundays excluded) vs Target Hari. Delivered: 100% when on time or early, else round(target/actual*100)%.
  * Picked up but not delivered: "In Progress". Not picked up: "-". Order date is only a fallback for delivered legacy rows with no Di-Pickup log. */
 export function kpiPercentageText(s: Shipment): string {
   const delivered = deliveredDateOf(s);
   const pickup = pickupDateOf(s) ?? (delivered ? s.tanggalDibuat : undefined);
   if (!pickup) return "-";
   if (!delivered) return "In Progress";
-  const actual = Math.max(1, dayNum(delivered) - dayNum(pickup));
+  const actual = countDeliveryDaysExcludingSunday(pickup, delivered);
   const target = Math.max(1, s.slaValue ?? 1);
   if (s.slaValue == null || actual <= target) return "100%";
   return `${Math.round((target / actual) * 100)}%`;

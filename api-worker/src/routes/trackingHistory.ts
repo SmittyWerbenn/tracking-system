@@ -42,11 +42,11 @@ async function loadShipment(ctx: Ctx, awb: string) {
 }
 
 /** A shipment is closed once its final step, POD Kembali, is logged; until then even "Terkirim" can still be corrected.
- * Superadmin may still correct a closed shipment's logs (e.g. attach a missing Surat Jalan/POD photo); everyone else is refused. */
+ * Superadmin and Admin (GMS-Admin) may still correct a closed shipment's logs (e.g. attach a missing Surat Jalan/POD photo); everyone else is refused. */
 function assertNotClosed(events: EventRow[], role?: string) {
-  if (role === "Superadmin") return;
+  if (role === "Superadmin" || role === "Admin") return;
   if (events.some((e) => e.ltl_stage === "POD_RETURNED")) {
-    throw Errors.forbidden("Pengiriman ini sudah Closed (POD Kembali). Hanya Superadmin yang dapat mengubah log.");
+    throw Errors.forbidden("Pengiriman ini sudah Closed (POD Kembali). Hanya Superadmin dan Admin yang dapat mengubah log.");
   }
 }
 

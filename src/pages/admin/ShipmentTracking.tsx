@@ -90,12 +90,12 @@ export default function ShipmentTracking() {
   // Tracking logs can be corrected by Admin/Superadmin until the shipment is final or on hold (the API enforces the same).
   // Terkirim stays correctable until Closed (POD Kembali logged).
   const isClosed = shipment.timeline.some((e) => e.ltlStage === "POD_RETURNED");
-  // Superadmin may still edit logs (e.g. attach a Surat Jalan/POD photo) after Closed; Admin stays locked.
-  const isSuperadmin = profile?.role === "Superadmin";
+  // Superadmin and Admin (GMS-Admin) may still edit logs (e.g. attach a Surat Jalan/POD photo) after Closed.
+  const canOverrideClosed = profile?.role === "Superadmin" || profile?.role === "Admin";
   const canManageLog =
-    (isSuperadmin || profile?.role === "Admin") &&
+    canOverrideClosed &&
     !["Dibatalkan", "Hold"].includes(shipment.status) &&
-    (!isClosed || isSuperadmin);
+    (!isClosed || canOverrideClosed);
   const canDeleteLog = canManageLog && !isClosed;
   const isOverdue = !isDelivered && !!shipment.estimasiTiba && shipment.estimasiTiba < todayISO();
 
@@ -209,7 +209,7 @@ export default function ShipmentTracking() {
           event={editing}
           namaPenerima={shipment.pod?.namaPenerima}
           route={shipment}
-          allowPhotos={isSuperadmin}
+          allowPhotos={canOverrideClosed}
           onClose={() => setEditing(null)}
           onSave={async (data) => {
             const res = await updateTimelineEvent(shipment.awb, editing.id, data);

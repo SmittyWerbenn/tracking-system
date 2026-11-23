@@ -21,7 +21,7 @@ const EDITABLE_TYPES = TIMELINE_EVENT_OPTIONS.filter(
 interface EditProps {
   event: TimelineEvent;
   onSave: (data: { type: TimelineEventType; lokasi: string; tanggal: string; jam: string; keterangan: string; namaPenerima?: string; addPhotos?: string[]; removePhotoIds?: string[] }) => Promise<string | null>;
-  /** Show the photo section (Superadmin): add/replace/delete the log's photos. */
+  /** Show the photo section (Superadmin + Admin): add/replace/delete the log's photos. */
   allowPhotos?: boolean;
   /** Current recipient name from the POD card (shown for the Terkirim log only). */
   namaPenerima?: string;

@@ -46,7 +46,7 @@ interface EventRow {
  *   - DO Balik          <- an active "POD Kembali" log means returned; none left means pending again
  *                          (non-LTL has no POD Kembali step: its manual confirmation is kept, but only while Terkirim stands)
  *   - Proof of Delivery <- follows the newest "Terkirim" log; none left clears shipment_pod and its photos
- *   - Estimasi Tiba     <- first Di-Pickup log + SLA days (Sundays and holidays skipped); none left falls back to the creation date
+ *   - Estimasi Tiba     <- first Di-Pickup log + SLA days (Sundays and holidays skipped); none left (or no target) = null, shown as "Menunggu Pickup"; the order date is never used
  * Idempotent: running it on an already-consistent shipment writes nothing.
  */
 export async function recalculateFromHistories(env: Env, awb: string, actorId: string | null): Promise<SyncResult | null> {
@@ -84,14 +84,11 @@ export async function recalculateFromHistories(env: Env, awb: string, actorId: s
   }
 
   // 2. Estimasi Tiba
-  let eta = s.estimasi_tiba;
-  if (s.sla_value != null) {
-    eta = etaFromPickup(firstPickupDate(events.map((e) => ({ type: e.type, tanggal: e.tanggal, ltlStage: e.ltl_stage }))), s.tanggal_dibuat, s.sla_value, await loadHolidays(db));
-    if (eta !== s.estimasi_tiba) {
-      sets.push("estimasi_tiba = ?");
-      binds.push(eta);
-      changes.push(`estimasi tiba ${s.estimasi_tiba ?? "-"} -> ${eta}`);
-    }
+  const eta = etaFromPickup(firstPickupDate(events.map((e) => ({ type: e.type, tanggal: e.tanggal, ltlStage: e.ltl_stage }))), s.sla_value, await loadHolidays(db));
+  if (eta !== (s.estimasi_tiba ? s.estimasi_tiba.slice(0, 10) : null)) {
+    sets.push("estimasi_tiba = ?");
+    binds.push(eta);
+    changes.push(`estimasi tiba ${s.estimasi_tiba ?? "-"} -> ${eta ?? "Menunggu Pickup"}`);
   }
 
   // 3. DO Balik

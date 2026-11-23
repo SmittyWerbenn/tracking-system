@@ -79,9 +79,11 @@ export function firstPickupDate(events: ReadonlyArray<{ type: string; tanggal: s
   return hit ? hit.tanggal : null;
 }
 
-/** Estimasi Tiba = Di-Pickup date + target days (Sundays + holidays skipped). Before pickup it is provisional: creation date + target days. */
-export function etaFromPickup(pickupDate: string | null, createdDate: string, slaValue: number, holidays?: HolidaySet): string {
-  return addDeliveryDaysExcludeSunday(pickupDate ?? createdDate, slaValue, holidays);
+/** Estimasi Tiba = first Di-Pickup date + target days (Sundays + holidays skipped). Never uses the order date:
+ * before pickup (or without a target) there is no ETA yet -> null ("Menunggu Pickup"). */
+export function etaFromPickup(pickupDate: string | null, slaValue: number | null | undefined, holidays?: HolidaySet): string | null {
+  if (!pickupDate || slaValue == null) return null;
+  return addDeliveryDaysExcludeSunday(pickupDate.slice(0, 10), slaValue, holidays);
 }
 
 /** Named aliases: ETA / KPI day counting that skips Sundays and active national holidays. */

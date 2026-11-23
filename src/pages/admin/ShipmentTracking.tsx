@@ -148,7 +148,7 @@ export default function ShipmentTracking() {
                 ? "Terkirim"
                 : shipment.estimasiTiba
                   ? formatTanggalPanjang(shipment.estimasiTiba)
-                  : "Belum tersedia"}
+                  : "Menunggu Pickup"}
             </span>
             {isOverdue && (
               <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">

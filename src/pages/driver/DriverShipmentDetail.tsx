@@ -337,7 +337,7 @@ export default function DriverShipmentDetail() {
               <CalendarClock size={13} className="shrink-0 text-slate-400" />
               Estimasi Tiba:{" "}
               <span className="font-semibold text-slate-700">
-                {shipment.estimasiTiba ? formatTanggalPanjang(shipment.estimasiTiba) : "Belum tersedia"}
+                {shipment.estimasiTiba ? formatTanggalPanjang(shipment.estimasiTiba) : "Menunggu Pickup"}
               </span>
             </p>
 

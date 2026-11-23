@@ -10,7 +10,7 @@ import { parsePagination, pageMeta, likeTerm, orderBy } from "../pagination";
 import { generateClientAwb, isDuplicateAwbError } from "../awb";
 import { wibNow } from "../wib";
 import { TIMELINE_EVENT_TYPES, eventTypeToShipmentStatus, isForwardTransition, timelineOrderSql, type TimelineEventType } from "../status";
-import { addDeliveryDaysExcludeSunday, etaFromPickup, firstPickupDate } from "../sla";
+import { etaFromPickup, firstPickupDate } from "../sla";
 import { loadHolidays } from "../holidays";
 import { cancelPolicy, creatorRoleOf, pickupEvidenceSql } from "../cancellation";
 import { holdPolicy } from "../hold";
@@ -435,10 +435,10 @@ export function registerShipmentRoutes(router: Router) {
     const now = new Date();
     const nowIso = now.toISOString();
     const { tanggal: tanggalDibuat, jam: jamDibuat } = wibNow(now);
-    // ETA is always derived from SLA + the shipment's own start date - never
-    // entered directly, and never fabricated when no SLA was given.
+    // ETA is derived only from the first Di-Pickup log + SLA (see etaFromPickup). A new order has no
+    // pickup yet, so it starts with no ETA ("Menunggu Pickup"); the order date is never used.
     const slaUnit = slaValue !== undefined ? "hari_kerja" : null;
-    const estimasiTiba = slaValue !== undefined ? addDeliveryDaysExcludeSunday(tanggalDibuat, slaValue, await loadHolidays(ctx.env.DB)) : null;
+    const estimasiTiba: string | null = null;
 
     // The AWB number comes from the Client ID resolved on the server (never
     // from the request body for a Client account). Shipment + first timeline
@@ -749,7 +749,7 @@ export function registerShipmentRoutes(router: Router) {
           .bind(params.awb)
           .all<{ type: string; tanggal: string; ltl_stage: string | null }>();
         const pickup = firstPickupDate((pickupRows.results ?? []).map((e) => ({ type: e.type, tanggal: e.tanggal, ltlStage: e.ltl_stage })));
-        newEta = etaFromPickup(pickup, shipment.tanggal_dibuat, slaValue, await loadHolidays(ctx.env.DB));
+        newEta = etaFromPickup(pickup, slaValue, await loadHolidays(ctx.env.DB));
       } else newEta = null;
       sets.push("sla_value=?", "sla_unit=?", "estimasi_tiba=?");
       values.push(slaValue ?? null, slaValue !== undefined ? "hari_kerja" : null, newEta);
@@ -1100,8 +1100,7 @@ export function registerShipmentRoutes(router: Router) {
 
     // --- ETA recalculation on Di-Pickup ---
     // Estimasi Tiba = first Di-Pickup date + SLA days. Recomputed from the earliest
-    // pickup log (so a backdated or repeated pickup log is handled); before any
-    // pickup the value stays provisional (creation date + SLA).
+    // pickup log (so a backdated or repeated pickup log is handled). Before any pickup there is no ETA.
     if (type === "Di pickup") {
       const slaValue = shipment.sla_value as number | null;
       if (slaValue != null) {
@@ -1111,7 +1110,7 @@ export function registerShipmentRoutes(router: Router) {
           .bind(params.awb)
           .all<{ type: string; tanggal: string; ltl_stage: string | null }>();
         const pickup = firstPickupDate((rows.results ?? []).map((e) => ({ type: e.type, tanggal: e.tanggal, ltlStage: e.ltl_stage })));
-        const newEta = etaFromPickup(pickup, String(shipment.tanggal_dibuat), slaValue, await loadHolidays(ctx.env.DB));
+        const newEta = etaFromPickup(pickup, slaValue, await loadHolidays(ctx.env.DB));
         if (newEta !== shipment.estimasi_tiba) {
           await ctx.env.DB.prepare(`UPDATE shipments SET estimasi_tiba = ?, updated_at = ?, updated_by = ? WHERE awb = ?`)
             .bind(newEta, nowIso, actor.id, params.awb)
@@ -1121,7 +1120,7 @@ export function registerShipmentRoutes(router: Router) {
             actionLabel: "UPDATE ETA",
             module: "Shipment",
             awb: params.awb,
-            description: `Log Di-Pickup dicatat. Estimasi Tiba diperbarui: ${shipment.estimasi_tiba ?? "-"} -> ${newEta}.`,
+            description: `Log Di-Pickup dicatat. Estimasi Tiba diperbarui: ${shipment.estimasi_tiba ?? "-"} -> ${newEta ?? "Menunggu Pickup"}.`,
           });
         }
       }

@@ -637,7 +637,7 @@ function OpenShipmentCard({
       </p>
       <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
         <CalendarClock size={12} className="shrink-0 text-slate-400" />
-        Estimasi Tiba: <span className="font-medium text-slate-700">{item.estimasiTiba ? formatTanggalPanjang(item.estimasiTiba) : "Belum tersedia"}</span>
+        Estimasi Tiba: <span className="font-medium text-slate-700">{item.estimasiTiba ? formatTanggalPanjang(item.estimasiTiba) : "Menunggu Pickup"}</span>
       </p>
 
       {item.claimStatus === "pending" && item.isMine ? (
@@ -708,7 +708,7 @@ function ShipmentGrid({ shipments }: { shipments: DriverShipmentSummary[] }) {
             <CalendarClock size={12} className="shrink-0 text-slate-400" />
             Estimasi Tiba:{" "}
             <span className="font-medium text-slate-700">
-              {s.estimasiTiba ? formatTanggalPanjang(s.estimasiTiba) : "Belum tersedia"}
+              {s.estimasiTiba ? formatTanggalPanjang(s.estimasiTiba) : "Menunggu Pickup"}
             </span>
           </p>
         </Link>

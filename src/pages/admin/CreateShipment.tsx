@@ -501,7 +501,7 @@ export default function CreateShipment() {
             />
             <p className="mt-1.5 text-[11px] text-slate-400">
               {form.slaValue && form.slaValue > 0
-                ? `Estimasi Tiba: ${formatTanggalPanjang(addDeliveryDaysExcludeSunday(todayISO(), form.slaValue, getHolidaySet()))}`
+                ? "Estimasi Tiba: Menunggu Pickup. Dihitung otomatis dari tanggal Di-Pickup + Target (Minggu & tanggal merah dilewati)."
                 : "Opsional. Jika diisi, sistem menghitung Estimasi Tiba otomatis dan menampilkannya ke customer."}
             </p>
           </Field>

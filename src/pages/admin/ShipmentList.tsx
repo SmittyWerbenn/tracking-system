@@ -564,7 +564,7 @@ export default function ShipmentList() {
                       <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.beratKg}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-slate-600">{s.jumlahKoli}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-slate-600">
-                        {s.estimasiTiba ? formatTanggalPendek(s.estimasiTiba) : "-"}
+                        {s.estimasiTiba ? formatTanggalPendek(s.estimasiTiba) : "Menunggu Pickup"}
                       </td>
                       <td className="px-4 py-3 text-slate-600">{s.pod?.namaPenerima ?? "-"}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">

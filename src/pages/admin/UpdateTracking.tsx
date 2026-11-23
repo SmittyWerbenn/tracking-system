@@ -632,7 +632,7 @@ function UpdateTrackingForm() {
                     />
                     <p className="mt-1.5 text-[11px] text-slate-400">
                       {editSlaValue && editSlaValue > 0
-                        ? `Estimasi Tiba: ${formatTanggalPanjang(etaFromPickup(firstPickupDate(shipment.timeline ?? []), shipment.tanggalDibuat, editSlaValue, getHolidaySet()))}`
+                        ? (() => { const e = etaFromPickup(firstPickupDate(shipment.timeline ?? []), editSlaValue, getHolidaySet()); return e ? `Estimasi Tiba: ${formatTanggalPanjang(e)}` : "Estimasi Tiba: Menunggu Pickup (dihitung dari tanggal Di-Pickup)."; })()
                         : "Kosongkan untuk menghapus ETA/Estimasi Tiba."}
                     </p>
                   </label>

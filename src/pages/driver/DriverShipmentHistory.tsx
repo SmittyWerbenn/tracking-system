@@ -204,7 +204,7 @@ export default function DriverShipmentHistory() {
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-slate-600 print:whitespace-normal print:px-1.5 print:py-1">
-                      {s.estimasiTiba ? formatTanggalPanjang(s.estimasiTiba) : "Belum tersedia"}
+                      {s.estimasiTiba ? formatTanggalPanjang(s.estimasiTiba) : "Menunggu Pickup"}
                     </td>
                   </tr>
                 ))}

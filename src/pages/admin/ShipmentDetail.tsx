@@ -362,7 +362,7 @@ export default function ShipmentDetail() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Estimasi Tiba</p>
                 <p className="text-sm font-medium text-slate-800">
-                  {shipment.estimasiTiba ? formatTanggalPanjang(shipment.estimasiTiba) : "Belum tersedia"}
+                  {shipment.estimasiTiba ? formatTanggalPanjang(shipment.estimasiTiba) : "Menunggu Pickup"}
                 </p>
               </div>
               <div>

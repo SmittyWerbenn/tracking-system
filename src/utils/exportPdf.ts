@@ -56,7 +56,7 @@ export function exportDriverShipmentsPdf(
       s.kotaAsal,
       s.kotaTujuan,
       s.status,
-      s.estimasiTiba ? formatTanggalPanjang(s.estimasiTiba) : "Belum tersedia",
+      s.estimasiTiba ? formatTanggalPanjang(s.estimasiTiba) : "Menunggu Pickup",
     ]),
     styles: { fontSize: 9, cellPadding: 2.5 },
     headStyles: { fillColor: [23, 37, 84], textColor: 255, fontStyle: "bold" },

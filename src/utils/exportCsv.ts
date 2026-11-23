@@ -2,7 +2,7 @@ import type { Shipment } from "../types";
 import { downloadCsv } from "./csv";
 import type { DriverShipmentSummary } from "./driverApi";
 import { stripKeteranganMeta } from "./format";
-import { addDeliveryDaysExcludeSunday, countDeliveryDaysExcludingSunday } from "./sla";
+import { countDeliveryDaysExcludingSunday, etaFromPickup } from "./sla";
 import { getHolidaySet } from "./holidays";
 
 /** Quotes cells containing commas, quotes or line breaks (so lists like "62949,62951" stay in one cell).
@@ -80,11 +80,11 @@ function deliveredDateOf(s: Shipment): string | undefined {
   return s.deliveredAt ?? events.find((e) => e.ltlStage === "DELIVERED")?.tanggal ?? (s.status === "Selesai / Terkirim" ? s.pod?.tanggal ?? events.find((e) => e.type === "Selesai / Terkirim")?.tanggal : undefined);
 }
 
-/** Estimasi Tiba = first Di-Pickup date + Target Hari (Mon-Sat, Sundays skipped). Derived here so rows saved before that rule stay consistent with KPI. */
+/** Estimasi Tiba = first Di-Pickup date + Target Hari (Mon-Sat, Sundays + holidays skipped). Derived here so rows saved before that rule stay consistent with KPI.
+ * Before pickup there is no ETA (never the order date): undefined -> "Menunggu Pickup". */
 function effectiveEta(s: Shipment): string | undefined {
   const pickup = pickupDateOf(s);
-  if (pickup && s.slaValue != null) return addDeliveryDaysExcludeSunday(pickup.slice(0, 10), s.slaValue, getHolidaySet());
-  return s.estimasiTiba ? s.estimasiTiba.slice(0, 10) : undefined;
+  return etaFromPickup(pickup ?? null, s.slaValue, getHolidaySet()) ?? undefined;
 }
 
 /** KPI Percentage: first Di-Pickup to Terkirim (Sundays excluded) vs Target Hari. Delivered: 100% when on time or early, else round(target/actual*100)%.
@@ -133,7 +133,7 @@ export function exportShipmentsCsv(
     s.asuransi ? (s.koliAsuransi ?? "-") : "-",
     s.asuransi ? (s.nilaiAsuransi ?? "-") : "-",
     !s.requiresDoBalik ? "Tidak" : s.doBalikStatus === "returned" ? "Ya (Sudah Kembali)" : "Ya (Belum Kembali)",
-    (() => { const e = effectiveEta(s); return e ? formatTanggalDDMMYYYY(e) : "-"; })(),
+    (() => { const e = effectiveEta(s); return e ? formatTanggalDDMMYYYY(e) : pickupDateOf(s) ? "-" : "Menunggu Pickup"; })(),
     s.pod?.namaPenerima ?? "-",
     receivedAtText(s),
     stripKeteranganMeta(s.deskripsiBarang),
@@ -188,7 +188,7 @@ export function exportDriverShipmentsCsv(shipments: DriverShipmentSummary[], fil
     s.layanan,
     String(s.beratKg),
     String(s.jumlahKoli),
-    s.estimasiTiba ? formatTanggalDDMMYYYY(s.estimasiTiba) : "-",
+    s.estimasiTiba ? formatTanggalDDMMYYYY(s.estimasiTiba) : "Menunggu Pickup",
     s.truckNomorUnit ?? "-",
   ]);
   downloadCsv(filename, DRIVER_COLUMNS, rows);

@@ -59,7 +59,7 @@ const COLUMNS = [
   "Keterangan Tracking Terbaru",
   "Keterangan Internal",
   "Status",
-  "KPI Performance",
+  "KPI Percentage",
   "Truck",
   "Driver",
   "Last Update",
@@ -90,24 +90,17 @@ function effectiveEta(s: Shipment): string | undefined {
   return s.estimasiTiba ? s.estimasiTiba.slice(0, 10) : undefined;
 }
 
-/** KPI Performance: one reference date (first Di-Pickup, or the order date as fallback for delivered legacy rows) to delivery, versus the Target Hari. */
-export function kpiPerformanceText(s: Shipment, today: string = new Date().toISOString().slice(0, 10)): string {
+/** KPI Percentage: first Di-Pickup to Terkirim (calendar days) vs Target Hari. Delivered: 100% when on time or early, else round(target/actual*100)%.
+ * Picked up but not delivered: "In Progress". Not picked up: "-". Order date is only a fallback for delivered legacy rows with no Di-Pickup log. */
+export function kpiPercentageText(s: Shipment): string {
   const delivered = deliveredDateOf(s);
   const pickup = pickupDateOf(s) ?? (delivered ? s.tanggalDibuat : undefined);
   if (!pickup) return "-";
-  const target = s.slaValue ?? null;
-  if (delivered) {
-    const actual = Math.max(1, dayNum(delivered) - dayNum(pickup));
-    if (target == null) return `Selesai (${actual} Hari)`;
-    const diff = actual - target;
-    if (diff < 0) return `On Time - Lebih Cepat ${-diff} Hari (${actual}/${target} Hari)`;
-    if (diff === 0) return `On Time - Sesuai Target (${actual}/${target} Hari)`;
-    return `Late - Terlambat ${diff} Hari (${actual}/${target} Hari)`;
-  }
-  const running = Math.max(0, dayNum(today) - dayNum(pickup));
-  if (target == null) return `In Progress - Hari ke-${running}`;
-  if (running > target) return `In Progress - Lewat Estimasi ${running - target} Hari`;
-  return `In Progress - Hari ke-${running} dari ${target} Hari`;
+  if (!delivered) return "In Progress";
+  const actual = Math.max(1, dayNum(delivered) - dayNum(pickup));
+  const target = Math.max(1, s.slaValue ?? 1);
+  if (s.slaValue == null || actual <= target) return "100%";
+  return `${Math.round((target / actual) * 100)}%`;
 }
 
 /** Builds a CSV string from the given shipments (already filtered by the
@@ -143,7 +136,7 @@ export function exportShipmentsCsv(
     s.lastKeterangan?.trim() || "-",
     internalNotesText(s),
     s.status,
-    kpiPerformanceText(s),
+    kpiPercentageText(s),
     s.truck.nomorUnit,
     s.truck.driver ?? "-",
     lastUpdateText(s),

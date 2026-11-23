@@ -60,6 +60,7 @@ const COLUMNS = [
   "Keterangan Internal",
   "Status",
   "KPI Percentage",
+  "Status Kendala",
   "Truck",
   "Driver",
   "Last Update",
@@ -103,6 +104,13 @@ export function kpiPercentageText(s: Shipment): string {
   return `${Math.round((target / actual) * 100)}%`;
 }
 
+/** Status Kendala: every Kendala tracking log, oldest first, as "[dd-mm-yyyy] keterangan" joined by "; ". Empty when none. */
+function kendalaText(s: Shipment): string {
+  return (s.kendala ?? [])
+    .map((k) => `[${formatTanggalDDMMYYYY(k.tanggal)}] ${k.keterangan?.trim() || k.lokasi?.trim() || "Kendala"}`)
+    .join("; ");
+}
+
 /** Builds a CSV string from the given shipments (already filtered by the
  * caller) and triggers a real browser download. `includeInternalNotes` is
  * false for the client-facing "Ringkas" export: the Keterangan Internal
@@ -137,6 +145,7 @@ export function exportShipmentsCsv(
     internalNotesText(s),
     s.status,
     kpiPercentageText(s),
+    kendalaText(s),
     s.truck.nomorUnit,
     s.truck.driver ?? "-",
     lastUpdateText(s),

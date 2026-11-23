@@ -103,6 +103,8 @@ export interface Shipment {
   /** First Di-Pickup / Terkirim log dates, supplied by the list API (no full timeline there). */
   pickupAt?: string;
   deliveredAt?: string;
+  /** List only: every tracking log with status Kendala, oldest first (for the CSV export). */
+  kendala?: { tanggal: string; lokasi?: string | null; keterangan?: string | null }[];
   /** DO Balik: the original Surat Jalan / DO must be returned after delivery. */
   requiresDoBalik?: boolean;
   /** null when not required; "pending" until ops confirm the document is back. */

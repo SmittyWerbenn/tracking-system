@@ -4,10 +4,9 @@ import { ok, Errors } from "../http";
 import { parseJsonBody, reqString, optString } from "../validate";
 import { requirePermission } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
-import { etaFromPickup, firstPickupDate } from "../sla";
-import { loadHolidays } from "../holidays";
+import { recalculateFromHistories, reconcileAllShipments } from "../shipmentStateSync";
 import { deleteObjectsQuietly } from "../recycle";
-import { TIMELINE_EVENT_TYPES, compareTimeline, eventTypeToShipmentStatus, pipelineRank, timelineOrderSql, type TimelineEventType } from "../status";
+import { TIMELINE_EVENT_TYPES, compareTimeline, pipelineRank, timelineOrderSql } from "../status";
 
 /** Events that record a system milestone and may never be edited or removed here. */
 const PROTECTED_TYPES = new Set<string>(["Barang Diterima", "Dibatalkan"]);
@@ -69,35 +68,27 @@ async function loadEvents(ctx: Ctx, awb: string): Promise<EventRow[]> {
   return r.results ?? [];
 }
 
-/** Re-derives the shipment's current status (and ETA) from what is left in its timeline: the log with the
- * newest date/time (the top "TERBARU" row) decides it, so an edit, backdate or delete can never leave the
- * header badge / stepper disagreeing with the history. */
-async function syncShipment(
-  ctx: Ctx,
-  s: { awb: string; status: string; tanggal_dibuat: string; sla_value: number | null; estimasi_tiba: string | null },
-  actorId: string,
-): Promise<{ status: string; estimasiTiba: string | null }> {
-  const events = await loadEvents(ctx, s.awb);
-  // A restored order still carries its old "Dibatalkan" log; it never decides the status of a live shipment.
-  const live = events.filter((e) => e.type !== "Dibatalkan");
-  const last = live[live.length - 1];
-  const status = last ? eventTypeToShipmentStatus(last.type as TimelineEventType) : "Dalam Persiapan";
-
-  // ETA runs from the first Di-Pickup log; with none left it falls back to the creation date (provisional).
-  let eta = s.estimasi_tiba;
-  if (s.sla_value != null) {
-    eta = etaFromPickup(firstPickupDate(events.map((e) => ({ type: e.type, tanggal: e.tanggal, ltlStage: e.ltl_stage }))), s.tanggal_dibuat, s.sla_value, await loadHolidays(ctx.env.DB));
-  }
-
-  if (status !== s.status || eta !== s.estimasi_tiba) {
-    await ctx.env.DB.prepare(`UPDATE shipments SET status = ?, estimasi_tiba = ?, updated_at = ?, updated_by = ? WHERE awb = ?`)
-      .bind(status, eta, new Date().toISOString(), actorId, s.awb)
-      .run();
-  }
-  return { status, estimasiTiba: eta };
+/** Every add / edit / delete of a log funnels through ShipmentStateSyncService so status, DO Balik, POD and ETA never drift apart. */
+async function syncShipment(ctx: Ctx, s: { awb: string; status: string; estimasi_tiba: string | null }, actorId: string) {
+  const r = await recalculateFromHistories(ctx.env, s.awb, actorId);
+  return { status: r?.status ?? s.status, estimasiTiba: r?.estimasiTiba ?? s.estimasi_tiba, doBalikStatus: r?.doBalikStatus ?? null, changes: r?.changes ?? [] };
 }
 
 export function registerTrackingHistoryRoutes(router: Router) {
+  /** One-time / maintenance: re-derive status, DO Balik, POD and ETA of every live shipment from its tracking log. */
+  router.post("/api/admin/reconcile-shipments", async (ctx: Ctx) => {
+    const actor = requirePermission(ctx, "tracking.manage");
+    if (actor.role !== "Superadmin") throw Errors.forbidden("Hanya Superadmin yang dapat menjalankan rekonsiliasi data.");
+    const fixed = await reconcileAllShipments(ctx.env, actor.id);
+    await writeAuditLog(ctx.env, actor, {
+      action: "RECONCILE_SHIPMENTS",
+      actionLabel: "RECONCILE SHIPMENTS",
+      module: "Shipment",
+      description: `Rekonsiliasi data pengiriman dari log tracking: ${fixed.length} resi diperbaiki${fixed.length ? ` (${fixed.map((f) => f.awb).join(", ")})` : ""}.`,
+    });
+    return ok({ fixed: fixed.length, items: fixed });
+  });
+
   router.patch("/api/shipments/:awb/timeline/:eventId", async (ctx: Ctx, params) => {
     const actor = requirePermission(ctx, "tracking.manage");
     const shipment = await loadShipment(ctx, params.awb);
@@ -167,9 +158,9 @@ export function registerTrackingHistoryRoutes(router: Router) {
       actionLabel: "EDIT TRACKING EVENT",
       module: "Shipment",
       awb: params.awb,
-      description: `Log tracking #${ev.seq} (${ev.type}) diubah: ${changes.join("; ") || "tanpa perubahan"}. Status pengiriman: ${synced.status}.`,
+      description: `Log tracking #${ev.seq} (${ev.type}) diubah: ${changes.join("; ") || "tanpa perubahan"}. Status pengiriman: ${synced.status}.${synced.changes.length ? ` Sinkron otomatis: ${synced.changes.join("; ")}.` : ""}`,
     });
-    return ok({ updated: true, status: synced.status, estimasiTiba: synced.estimasiTiba });
+    return ok({ updated: true, status: synced.status, estimasiTiba: synced.estimasiTiba, doBalikStatus: synced.doBalikStatus });
   });
 
   router.delete("/api/shipments/:awb/timeline/:eventId", async (ctx: Ctx, params) => {
@@ -196,26 +187,14 @@ export function registerTrackingHistoryRoutes(router: Router) {
     ]);
     await deleteObjectsQuietly(ctx.env, (files.results ?? []).map((f) => f.object_key));
 
-    // Removing the only hand-over log (a mistaken "Terkirim") also clears the Proof of Delivery card and its photos.
-    if (ev.type === DELIVERED && !events.some((e) => e.id !== ev.id && e.type === DELIVERED)) {
-      const podFiles = await ctx.env.DB.prepare(`SELECT object_key FROM files WHERE entity_type IN ('pod_barang','pod_surat_jalan') AND entity_id = ?`)
-        .bind(params.awb)
-        .all<{ object_key: string }>();
-      await ctx.env.DB.batch([
-        ctx.env.DB.prepare(`DELETE FROM files WHERE entity_type IN ('pod_barang','pod_surat_jalan') AND entity_id = ?`).bind(params.awb),
-        ctx.env.DB.prepare(`DELETE FROM shipment_pod WHERE awb = ?`).bind(params.awb),
-      ]);
-      await deleteObjectsQuietly(ctx.env, (podFiles.results ?? []).map((f) => f.object_key));
-    }
-
     const synced = await syncShipment(ctx, shipment, actor.id);
     await writeAuditLog(ctx.env, actor, {
       action: "DELETE_TRACKING_EVENT",
       actionLabel: "DELETE TRACKING EVENT",
       module: "Shipment",
       awb: params.awb,
-      description: `Log tracking #${ev.seq} (${ev.type}, ${ev.lokasi}, ${ev.tanggal} ${ev.jam}) dihapus${events.some((e) => e.ltl_stage === "POD_RETURNED") ? " (override Superadmin pada pengiriman Closed)" : ""}. Status pengiriman: ${shipment.status} -> ${synced.status}.`,
+      description: `Log tracking #${ev.seq} (${ev.type}, ${ev.lokasi}, ${ev.tanggal} ${ev.jam}) dihapus${events.some((e) => e.ltl_stage === "POD_RETURNED") ? " (override Superadmin pada pengiriman Closed)" : ""}. Status pengiriman: ${shipment.status} -> ${synced.status}.${synced.changes.length ? ` Sinkron otomatis: ${synced.changes.join("; ")}.` : ""}`,
     });
-    return ok({ deleted: true, status: synced.status, estimasiTiba: synced.estimasiTiba });
+    return ok({ deleted: true, status: synced.status, estimasiTiba: synced.estimasiTiba, doBalikStatus: synced.doBalikStatus });
   });
 }

@@ -14,7 +14,7 @@ import { fetchAllShipments, useShipments, type PendingClaim } from "../../store/
 import { Pagination } from "../../components/Pagination";
 import { usePageSize } from "../../utils/usePagedList";
 import { api } from "../../utils/apiClient";
-import type { ShipmentStatus } from "../../types";
+import type { Shipment, ShipmentStatus } from "../../types";
 import { exportShipmentsCsv } from "../../utils/exportCsv";
 import { formatTanggalJam, formatTanggalPendek, stripKeteranganMeta, todayISO, isoToWib } from "../../utils/format";
 import { SHIPMENT_STATUS_OPTIONS } from "../../utils/status";
@@ -30,6 +30,10 @@ function isShipmentStatus(value: string): value is ShipmentStatus {
 /** Fully server-side list: search (debounced), status, Client ID, date range
  * and "macet" are all sent to the API, which filters -> sorts -> LIMIT/OFFSETs
  * so only the visible page is ever loaded. */
+function pickupOf(s: Shipment): string | undefined {
+  return (s.timeline ?? []).find((e) => e.ltlStage === "PICKED_UP" || (e.type === "Di pickup" && !e.ltlStage))?.tanggal?.slice(0, 10) ?? s.pickupAt?.slice(0, 10);
+}
+
 export default function ShipmentList() {
   const { shipments, isLoading, listMeta, refresh, fetchPendingClaims, confirmClaim, rejectClaim, requestRecovery } =
     useShipments();
@@ -501,7 +505,7 @@ export default function ShipmentList() {
             <thead className="sticky top-0 z-10 border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3 font-medium max-md:sticky max-md:left-0 max-md:z-20 max-md:bg-slate-50">AWB</th>
-                <th className="px-4 py-3 font-medium">Tanggal</th>
+                <th className="px-4 py-3 font-medium">Tanggal Order</th>
                 {viewMode === "detail" && (
                   <>
                     <th className="px-4 py-3 font-medium">Pengirim</th>
@@ -543,6 +547,9 @@ export default function ShipmentList() {
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-slate-600">
                     {formatTanggalPendek(s.tanggalDibuat)}
+                    <div className="text-xs text-slate-400">
+                      Di-Pickup: {pickupOf(s) ? formatTanggalPendek(pickupOf(s)!) : "-"}
+                    </div>
                   </td>
                   {viewMode === "detail" && (
                     <>

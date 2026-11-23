@@ -73,25 +73,41 @@ function dayNum(iso: string): number {
   return Math.round(Date.UTC(y, m - 1, d) / DAY_MS);
 }
 
-/** KPI Performance: lead time (calendar days, min 1) from the first Di-Pickup log to delivery, versus the SLA target / Estimasi Tiba. */
-export function kpiPerformanceText(s: Shipment, today: string = new Date().toISOString().slice(0, 10)): string {
+function pickupDateOf(s: Shipment): string | undefined {
   const events = s.timeline ?? [];
-  const pickupDate = events.find((e) => e.ltlStage === "PICKED_UP" || (e.type === "Di pickup" && !e.ltlStage))?.tanggal ?? s.pickupAt;
-  if (!pickupDate) return "-";
+  return events.find((e) => e.ltlStage === "PICKED_UP" || (e.type === "Di pickup" && !e.ltlStage))?.tanggal ?? s.pickupAt;
+}
+
+function deliveredDateOf(s: Shipment): string | undefined {
+  const events = s.timeline ?? [];
+  return s.deliveredAt ?? events.find((e) => e.ltlStage === "DELIVERED")?.tanggal ?? (s.status === "Selesai / Terkirim" ? s.pod?.tanggal ?? events.find((e) => e.type === "Selesai / Terkirim")?.tanggal : undefined);
+}
+
+/** Estimasi Tiba = first Di-Pickup date + Target Hari (calendar days). Derived here so rows saved before that rule stay consistent with KPI. */
+function effectiveEta(s: Shipment): string | undefined {
+  const pickup = pickupDateOf(s);
+  if (pickup && s.slaValue != null) return new Date((dayNum(pickup) + s.slaValue) * DAY_MS).toISOString().slice(0, 10);
+  return s.estimasiTiba ? s.estimasiTiba.slice(0, 10) : undefined;
+}
+
+/** KPI Performance: one reference date (first Di-Pickup, or the order date as fallback for delivered legacy rows) to delivery, versus the Target Hari. */
+export function kpiPerformanceText(s: Shipment, today: string = new Date().toISOString().slice(0, 10)): string {
+  const delivered = deliveredDateOf(s);
+  const pickup = pickupDateOf(s) ?? (delivered ? s.tanggalDibuat : undefined);
+  if (!pickup) return "-";
   const target = s.slaValue ?? null;
-  const eta = s.estimasiTiba ? s.estimasiTiba.slice(0, 10) : null;
-  const delivered = s.deliveredAt ?? events.find((e) => e.ltlStage === "DELIVERED")?.tanggal ?? (s.status === "Selesai / Terkirim" ? s.pod?.tanggal ?? events.find((e) => e.type === "Selesai / Terkirim")?.tanggal : undefined);
-  const targetTxt = target != null ? ` / Target ${target} Hari` : "";
   if (delivered) {
-    const lead = Math.max(1, dayNum(delivered) - dayNum(pickupDate));
-    if (!eta) return `Selesai (${lead} Hari${targetTxt})`;
-    const diff = dayNum(delivered) - dayNum(eta);
-    if (diff <= 0) return diff === 0 ? `On Time (${lead} Hari${targetTxt})` : `On Time (+${-diff} Hari lebih cepat)`;
-    return `Late - Terlambat ${diff} Hari (${lead} Hari${targetTxt})`;
+    const actual = Math.max(1, dayNum(delivered) - dayNum(pickup));
+    if (target == null) return `Selesai (${actual} Hari)`;
+    const diff = actual - target;
+    if (diff < 0) return `On Time - Lebih Cepat ${-diff} Hari (${actual}/${target} Hari)`;
+    if (diff === 0) return `On Time - Sesuai Target (${actual}/${target} Hari)`;
+    return `Late - Terlambat ${diff} Hari (${actual}/${target} Hari)`;
   }
-  if (eta && dayNum(today) > dayNum(eta)) return `Overdue - Lewat ${dayNum(today) - dayNum(eta)} Hari${target != null ? ` (Target ${target} Hari)` : ""}`;
-  const day = Math.max(1, dayNum(today) - dayNum(pickupDate) + 1);
-  return `In Progress (Hari ke-${day}${targetTxt})`;
+  const running = Math.max(0, dayNum(today) - dayNum(pickup));
+  if (target == null) return `In Progress - Hari ke-${running}`;
+  if (running > target) return `In Progress - Lewat Estimasi ${running - target} Hari`;
+  return `In Progress - Hari ke-${running} dari ${target} Hari`;
 }
 
 /** Builds a CSV string from the given shipments (already filtered by the
@@ -120,7 +136,7 @@ export function exportShipmentsCsv(
     s.asuransi ? (s.koliAsuransi ?? "-") : "-",
     s.asuransi ? (s.nilaiAsuransi ?? "-") : "-",
     !s.requiresDoBalik ? "Tidak" : s.doBalikStatus === "returned" ? "Ya (Sudah Kembali)" : "Ya (Belum Kembali)",
-    s.estimasiTiba ? formatTanggalDDMMYYYY(s.estimasiTiba) : "-",
+    (() => { const e = effectiveEta(s); return e ? formatTanggalDDMMYYYY(e) : "-"; })(),
     s.pod?.namaPenerima ?? "-",
     receivedAtText(s),
     stripKeteranganMeta(s.deskripsiBarang),

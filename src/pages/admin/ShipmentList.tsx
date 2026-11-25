@@ -23,6 +23,9 @@ import { HoldOrderActions } from "../../components/HoldOrderActions";
 
 const NO_CLIENT = "__none__";
 
+/** Quick filter: every shipment that is still running (backend excludes Selesai / POD Kembali / Closed / Dibatalkan). */
+const ON_PROCESS = "on_process";
+
 function isShipmentStatus(value: string): value is ShipmentStatus {
   return (SHIPMENT_STATUS_OPTIONS as string[]).includes(value);
 }
@@ -116,7 +119,8 @@ export default function ShipmentList() {
   }
 
   const statusParam = searchParams.get("status") ?? "";
-  const statusFilter: ShipmentStatus | "Semua" = isShipmentStatus(statusParam) ? statusParam : "Semua";
+  const statusFilter: ShipmentStatus | typeof ON_PROCESS | "Semua" =
+    statusParam === ON_PROCESS ? ON_PROCESS : isShipmentStatus(statusParam) ? statusParam : "Semua";
   const macetOnly = searchParams.get("macet") === "1";
   // DO Balik filter: "1" = only DO Balik AWB, "pending" = DO Balik not returned yet.
   const doBalikParam = searchParams.get("dobalik");
@@ -188,7 +192,7 @@ export default function ShipmentList() {
     }
   }
 
-  function handleStatusFilterChange(value: ShipmentStatus | "Semua") {
+  function handleStatusFilterChange(value: ShipmentStatus | typeof ON_PROCESS | "Semua") {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (value === "Semua") {
@@ -385,10 +389,11 @@ export default function ShipmentList() {
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => handleStatusFilterChange(e.target.value as ShipmentStatus | "Semua")}
+          onChange={(e) => handleStatusFilterChange(e.target.value as ShipmentStatus | typeof ON_PROCESS | "Semua")}
           className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-auto"
         >
           <option value="Semua">Semua Status</option>
+          <option value={ON_PROCESS}>Sedang On Proses (Aktif)</option>
           {SHIPMENT_STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>
               {s}

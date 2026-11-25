@@ -178,6 +178,14 @@ function withCancelPolicy(summary: ReturnType<typeof shipmentSummary>, row: Reco
   };
 }
 
+/** Pseudo status filter for GET /api/shipments: everything that is not final (delivered / POD returned / closed / cancelled). */
+const ON_PROCESS_STATUS = "on_process";
+const ON_PROCESS_EXCLUDED_STATUSES = [
+  "DELIVERED", "TERKIRIM", "Selesai / Terkirim",
+  "POD_RETURNED", "POD Kembali",
+  "CLOSED", "CANCELLED", "DIBATALKAN", "Dibatalkan",
+];
+
 export function registerShipmentRoutes(router: Router) {
   router.get("/api/shipments", async (ctx: Ctx) => {
     const actor = requirePermission(ctx, "shipments.view");
@@ -188,7 +196,11 @@ export function registerShipmentRoutes(router: Router) {
 
     const where: string[] = ["s.deleted_at IS NULL"];
     const params: unknown[] = [];
-    if (status) { where.push("s.status = ?"); params.push(status); }
+    if (status === ON_PROCESS_STATUS) {
+      // "Sedang On Proses": every shipment still running - all non-final statuses (incl. future ones).
+      where.push(`s.status NOT IN (${ON_PROCESS_EXCLUDED_STATUSES.map(() => "?").join(", ")})`);
+      params.push(...ON_PROCESS_EXCLUDED_STATUSES);
+    } else if (status) { where.push("s.status = ?"); params.push(status); }
     // Client only ever sees its own customer's shipments - forced
     // server-side, regardless of any status/search filters the client sends.
     if (actor.role === "Client" || (actor.role === "Viewer" && actor.customerId)) {

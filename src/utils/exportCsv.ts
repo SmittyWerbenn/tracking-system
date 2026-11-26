@@ -88,7 +88,7 @@ function effectiveEta(s: Shipment): string | undefined {
   return etaFromPickup(pickup ?? null, s.slaValue, getHolidaySet()) ?? undefined;
 }
 
-/** KPI Percentage: first Di-Pickup to Terkirim (Sundays excluded) vs Target Hari. Delivered: 100% when on time or early, else round(target/actual*100)%.
+/** KPI Percentage: first Di-Pickup to Terkirim (Sundays excluded) vs Target Hari. Delivered: actual round(target/actual*100)% (can exceed 100% when early).
  * Picked up but not delivered: "In Progress". Not picked up: "-". Order date is only a fallback for delivered legacy rows with no Di-Pickup log. */
 export function kpiPercentageText(s: Shipment): string {
   const delivered = deliveredDateOf(s);
@@ -97,8 +97,8 @@ export function kpiPercentageText(s: Shipment): string {
   if (!delivered) return "In Progress";
   const actual = countDeliveryDaysExcludingSunday(pickup, delivered, getHolidaySet());
   const target = Math.max(1, s.slaValue ?? 1);
-  if (s.slaValue == null || actual <= target) return "100%";
-  return `${Math.round((target / actual) * 100)}%`;
+  if (s.slaValue == null) return "100%";
+  return `${Math.round((target / Math.max(1, actual)) * 100)}%`;
 }
 
 /** Status Kendala: every Kendala tracking log, oldest first, as "[dd-mm-yyyy] keterangan" joined by "; ". Empty when none. */

@@ -64,9 +64,9 @@ registerHolidayRoutes(router);
 router.get("/api/health", async () => ok({ status: "ok", time: new Date().toISOString() }));
 
 function corsHeaders(origin: string | null, allowedOrigins: string[]): HeadersInit {
-  const allowOrigin = origin && allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+  const allowed = origin !== null && allowedOrigins.includes(origin);
   return {
-    "Access-Control-Allow-Origin": allowOrigin,
+    ...(allowed ? { "Access-Control-Allow-Origin": origin } : {}),
     "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Request-ID, X-Human-Pass",
     Vary: "Origin",

@@ -84,6 +84,7 @@ export function registerRecoveryRoutes(router: Router) {
 
     const body = await parseJsonBody(ctx.request).catch(() => ({}) as Record<string, unknown>);
     const reason = optString(body, "alasan") ?? null;
+    if (reason && reason.length > 500) throw Errors.badRequest("Alasan maksimal 500 karakter.");
     const id = newId();
     try {
       await ctx.env.DB.prepare(

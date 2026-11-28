@@ -4,7 +4,7 @@ import { ok, Errors } from "../http";
 import { parseJsonBody, reqString, optString, optBool } from "../validate";
 import { newId } from "../crypto";
 import { requirePermission } from "../authMiddleware";
-import { putObject, presignGet, deleteObject } from "../storage";
+import { putObject, presignGet, deleteObject, sniffImageMime } from "../storage";
 import { writeAuditLog } from "../audit";
 import { parsePagination, pageMeta, likeTerm } from "../pagination";
 
@@ -115,9 +115,12 @@ async function storeUploadedLogo(ctx: Ctx, logoId: string, file: File, actorId: 
   if (buffer.byteLength === 0 || buffer.byteLength > LOGO_MAX_BYTES) {
     throw Errors.badRequest(`Ukuran logo maksimal ${LOGO_MAX_BYTES / 1024 / 1024}MB.`);
   }
-  const ext = EXT_BY_MIME[file.type];
+  // Never trust the client-declared MIME: verify the real type from magic bytes.
+  const realMime = sniffImageMime(buffer);
+  if (!realMime) throw Errors.badRequest("Isi file bukan gambar PNG, JPG/JPEG, atau WebP yang valid.");
+  const ext = EXT_BY_MIME[realMime];
   const objectKey = `client_logo/${logoId}/${newId()}.${ext}`;
-  await putObject(ctx.env, objectKey, buffer, file.type);
+  await putObject(ctx.env, objectKey, buffer, realMime);
 
   const fileId = newId();
   try {
@@ -125,7 +128,7 @@ async function storeUploadedLogo(ctx: Ctx, logoId: string, file: File, actorId: 
       `INSERT INTO files (id, object_key, filename, mime_type, size_bytes, uploaded_by, entity_type, entity_id, created_at)
        VALUES (?, ?, ?, ?, ?, ?, 'client_logo', ?, ?)`,
     )
-      .bind(fileId, objectKey, file.name || objectKey, file.type, buffer.byteLength, actorId, logoId, new Date().toISOString())
+      .bind(fileId, objectKey, file.name || objectKey, realMime, buffer.byteLength, actorId, logoId, new Date().toISOString())
       .run();
   } catch (err) {
     // Roll back the object so a DB failure doesn't orphan a blob.

@@ -107,6 +107,7 @@ export function registerPublicRoutes(router: Router) {
   // Searches the DB per keystroke and returns at most `limit` (<= 50) distinct
   // names, instead of shipping the whole master list to the browser.
   router.get("/api/public/locations/suggest", async (ctx: Ctx) => {
+    await rateLimit(ctx.env, `suggest:${clientIp(ctx)}`, 600, 10 * 60 * 1000);
     const url = new URL(ctx.request.url);
     const kind = url.searchParams.get("kind") === "area" ? "area" : "kota";
     const q = (url.searchParams.get("q") ?? "").trim().slice(0, 80);
@@ -132,6 +133,7 @@ export function registerPublicRoutes(router: Router) {
   // Canonical spelling of imported city names (case/space-insensitive), for the
   // bulk shipment import preview. Capped at 500 names per call.
   router.post("/api/public/locations/match-kota", async (ctx: Ctx) => {
+    await rateLimit(ctx.env, `matchkota:${clientIp(ctx)}`, 60, 10 * 60 * 1000);
     const body = (await parseJsonBody(ctx.request)) as { names?: unknown };
     const names = Array.isArray(body.names)
       ? Array.from(new Set(body.names.filter((n): n is string => typeof n === "string").map((n) => n.trim().toLowerCase().replace(/\s+/g, " ")).filter(Boolean))).slice(0, 500)
@@ -146,11 +148,12 @@ export function registerPublicRoutes(router: Router) {
   });
 
   router.post("/api/public/feedback", async (ctx: Ctx) => {
+    await rateLimit(ctx.env, `feedback:${clientIp(ctx)}`, 10, 10 * 60 * 1000);
     const body = await parseJsonBody(ctx.request);
-    const awb = reqString(body, "awb");
+    const awb = reqString(body, "awb", { max: 50 });
     const customerName = reqString(body, "customerName", { max: 100 });
     const rating = reqNumber(body, "rating", { min: 1, max: 5 });
-    const comment = optString(body, "comment");
+    const comment = optString(body, "comment")?.slice(0, 1000);
 
     const shipment = await ctx.env.DB.prepare(`SELECT status FROM shipments WHERE awb = ? AND deleted_at IS NULL`).bind(awb).first<{
       status: string;

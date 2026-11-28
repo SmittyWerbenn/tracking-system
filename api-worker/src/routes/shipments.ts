@@ -1209,6 +1209,27 @@ export function registerShipmentRoutes(router: Router) {
     }>();
     if (!pod) throw Errors.notFound("POD untuk AWB ini belum ada.");
 
+    // Anti-IDOR: a Driver / Mitra may only touch the POD of their own assignment (same rule as POST /timeline).
+    if (actor.role === "Driver" || actor.role === "Mitra") {
+      const sh = await ctx.env.DB.prepare(`SELECT truck_id, mitra_id FROM shipments WHERE awb = ? AND deleted_at IS NULL`)
+        .bind(params.awb)
+        .first<{ truck_id: string | null; mitra_id: string | null }>();
+      if (!sh) throw Errors.notFound("AWB tidak ditemukan.");
+      if (actor.role === "Mitra") {
+        if (sh.mitra_id !== actor.mitraId) throw Errors.forbidden("Pengiriman ini bukan tugas Mitra Anda.");
+      } else {
+        const owns = await ctx.env.DB.prepare(`SELECT 1 FROM trucks t JOIN drivers d ON d.id = t.driver_id WHERE t.id = ? AND d.user_id = ?`)
+          .bind(sh.truck_id, actor.id)
+          .first();
+        if (!owns) throw Errors.forbidden("Pengiriman ini bukan tugas Anda.");
+      }
+      // Closed (POD Kembali): only Superadmin / Admin may still change POD material.
+      const closed = await ctx.env.DB.prepare(`SELECT 1 FROM shipment_timeline_events WHERE awb = ? AND ltl_stage = 'POD_RETURNED' LIMIT 1`)
+        .bind(params.awb)
+        .first();
+      if (closed) throw Errors.forbidden("Pengiriman ini sudah Closed (POD Kembali). Hanya Superadmin dan Admin yang dapat mengubah foto POD.");
+    }
+
     const deliveredAtMs = new Date(pod.delivered_at).getTime();
     if (Date.now() - deliveredAtMs > POD_EDIT_WINDOW_MS) {
       throw Errors.unprocessable("Batas waktu 30 hari untuk mengganti foto POD sudah lewat.");
@@ -1224,7 +1245,12 @@ export function registerShipmentRoutes(router: Router) {
       .run();
 
     if (fotoFileId) {
-      await ctx.env.DB.prepare(`UPDATE files SET entity_id = ? WHERE id = ?`).bind(params.awb, fotoFileId).run();
+      // Only re-point a POD file that this actor uploaded (or that already belongs to this AWB) - never another user's file.
+      await ctx.env.DB.prepare(
+        `UPDATE files SET entity_id = ? WHERE id = ? AND entity_type IN ('pod_barang', 'pod_surat_jalan') AND (uploaded_by = ? OR entity_id = ?)`,
+      )
+        .bind(params.awb, fotoFileId, actor.id, params.awb)
+        .run();
     }
 
     await writeAuditLog(ctx.env, actor, {

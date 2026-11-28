@@ -467,6 +467,7 @@ export function registerUserRoutes(router: Router) {
       throw Errors.forbidden("Admin tidak dapat menaikkan role akun menjadi Admin. Hubungi Superadmin.");
     }
     const password = optString(body, "password");
+    if (password && password.length < 8) throw Errors.badRequest("Password minimal 8 karakter.");
     const aktif = optBool(body, "aktif");
     const fotoFileId = optString(body, "fotoFileId");
     const driverIdProvided = Object.prototype.hasOwnProperty.call(body, "driverId");

@@ -3,6 +3,7 @@ import type { Ctx, Role } from "../types";
 import { ok, Errors, HttpError } from "../http";
 import { parseJsonBody } from "../validate";
 import { requireAuth } from "../authMiddleware";
+import { rateLimit, clientIp } from "../captcha";
 import {
   HELP_TARGET_LABEL,
   helpTargetForRole,
@@ -11,19 +12,6 @@ import {
   lupaPasswordTarget,
   type HelpTarget,
 } from "../help";
-
-const WINDOW_MS = 10 * 60 * 1000;
-const MAX_PER_WINDOW = 30;
-const hits = new Map<string, number[]>();
-
-/** Small in-memory limiter for the public lookup (per client IP). */
-function checkRateLimit(key: string) {
-  const now = Date.now();
-  const recent = (hits.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
-  if (recent.length >= MAX_PER_WINDOW) throw Errors.rateLimited("Terlalu banyak permintaan. Coba lagi dalam beberapa menit.");
-  recent.push(now);
-  hits.set(key, recent);
-}
 
 async function answer(ctx: Ctx, target: HelpTarget) {
   const number = await loadHelpNumber(ctx.env.DB, target);
@@ -35,7 +23,8 @@ export function registerHelpRoutes(router: Router) {
   // destination is chosen from the role of the account behind the typed email.
   // Only the destination number is returned - nothing about the account itself.
   router.post("/api/public/help-whatsapp", async (ctx: Ctx) => {
-    checkRateLimit(ctx.request.headers.get("CF-Connecting-IP") ?? "unknown");
+    // Shared D1 counter (per-isolate memory could be bypassed across isolates).
+    await rateLimit(ctx.env, `help-wa:${clientIp(ctx)}`, 30, 10 * 60 * 1000);
     const body = await parseJsonBody(ctx.request);
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     if (!email) throw Errors.badRequest("Email wajib diisi.");

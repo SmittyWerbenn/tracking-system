@@ -19,3 +19,6 @@ compatibility_flags = ["nodejs_compat"]
 # Origins allowed to call this API (comma-separated), set as a plain var
 # since it's not secret.
 ALLOWED_ORIGINS = "https://gms-logistics.id,https://admin.gms-logistics.id,https://driver.gms-logistics.id,https://smittywerbenn.github.io,https://temp-gms.frel.cloud,http://localhost:5183"
+
+# gms-api base URL, used to validate the caller's session token on /send-email.
+API_BASE_URL = "https://gms-api.indotrans-tracking.workers.dev"

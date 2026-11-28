@@ -12,6 +12,33 @@ export interface Env {
   ALLOWED_ORIGINS: string;
   /** Shared secret for server-to-server report calls from gms-api. */
   REPORT_API_TOKEN: string;
+  /** gms-api base URL; used to validate session tokens on /send-email. */
+  API_BASE_URL: string;
+}
+
+const EMAIL_RE = /^[^\s@<>",;]{1,64}@[^\s@<>",;]{1,255}$/;
+const hasCtl = (v: string) => /[\r\n\u0000-\u001f]/.test(v);
+
+/** Constant-time string compare. */
+function safeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const x = enc.encode(a);
+  const y = enc.encode(b);
+  let diff = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return diff === 0;
+}
+
+/** Valid only if the Bearer token is a live gms-api session. */
+async function isAuthenticated(request: Request, env: Env): Promise<boolean> {
+  const auth = request.headers.get("Authorization") ?? "";
+  if (!/^Bearer\s+\S+$/.test(auth) || !env.API_BASE_URL) return false;
+  try {
+    const res = await fetch(`${env.API_BASE_URL}/api/auth/me`, { headers: { Authorization: auth } });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 interface SendEmailBody {
@@ -40,13 +67,13 @@ interface SendReportBody {
 }
 
 function corsHeaders(origin: string | null, allowedOrigins: string[]): HeadersInit {
-  const allowOrigin = origin && allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
-  return {
-    "Access-Control-Allow-Origin": allowOrigin,
+  const headers: Record<string, string> = {
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     Vary: "Origin",
   };
+  if (origin && allowedOrigins.includes(origin)) headers["Access-Control-Allow-Origin"] = origin;
+  return headers;
 }
 
 function json(body: unknown, status: number, headers: HeadersInit): Response {
@@ -74,6 +101,10 @@ export default {
         return json({ ok: false, error: "Method not allowed" }, 405, cors);
       }
 
+      if (!(await isAuthenticated(request, env))) {
+        return json({ ok: false, error: "Unauthorized" }, 401, cors);
+      }
+
       let data: SendEmailBody;
       try {
         data = (await request.json()) as SendEmailBody;
@@ -83,6 +114,25 @@ export default {
 
       if (!data.to || !data.awb || !data.trackingUrl) {
         return json({ ok: false, error: "Data email tidak lengkap (to/awb/trackingUrl wajib diisi)." }, 400, cors);
+      }
+
+      // Field validation: types, lengths, no header-injection characters.
+      const strFields = [data.to, data.toName, data.awb, data.kotaAsal, data.kotaTujuan, data.status, data.tanggalDibuat, data.trackingUrl, data.pengirimNama];
+      if (strFields.some((v) => v !== undefined && (typeof v !== "string" || v.length > 300))) {
+        return json({ ok: false, error: "Data email tidak valid." }, 400, cors);
+      }
+      if (!EMAIL_RE.test(data.to) || hasCtl(data.to) || hasCtl(data.awb) || (data.toName && hasCtl(data.toName))) {
+        return json({ ok: false, error: "Data email tidak valid." }, 400, cors);
+      }
+      let trackingOrigin = "";
+      try {
+        const u = new URL(data.trackingUrl);
+        if (u.protocol === "https:" || u.protocol === "http:") trackingOrigin = u.origin;
+      } catch {
+        /* invalid */
+      }
+      if (!trackingOrigin || !allowedOrigins.includes(trackingOrigin)) {
+        return json({ ok: false, error: "trackingUrl tidak valid." }, 400, cors);
       }
 
       const recipientRole: EmailRecipientRole =
@@ -124,7 +174,7 @@ export default {
       } catch (err) {
         console.error("[gms-email-api] send failed:", err);
         return json(
-          { ok: false, error: err instanceof Error ? err.message : "Gagal mengirim email melalui SMTP." },
+          { ok: false, error: "Gagal mengirim email melalui SMTP." },
           500,
           cors,
         );
@@ -145,7 +195,7 @@ export default {
         return json({ ok: false, error: "Invalid JSON body" }, 400, cors);
       }
 
-      if (!env.REPORT_API_TOKEN || data.token !== env.REPORT_API_TOKEN) {
+      if (!env.REPORT_API_TOKEN || typeof data.token !== "string" || !safeEqual(data.token, env.REPORT_API_TOKEN)) {
         return json({ ok: false, error: "Unauthorized" }, 403, cors);
       }
       if (!data.to || !data.subject || !data.html || !data.csvContent || !data.csvFilename) {
@@ -183,7 +233,7 @@ export default {
       } catch (err) {
         console.error("[gms-email-api] report send failed:", err);
         return json(
-          { ok: false, error: err instanceof Error ? err.message : "Gagal mengirim email laporan melalui SMTP." },
+          { ok: false, error: "Gagal mengirim email laporan melalui SMTP." },
           500,
           cors,
         );

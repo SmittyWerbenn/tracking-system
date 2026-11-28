@@ -1,4 +1,5 @@
 import type { PersonInfo, Shipment } from "../types";
+import { getToken } from "./apiClient";
 
 /** The subset of a Shipment this module actually needs - lets callers pass
  * a freshly-created shipment before its full server-hydrated record (with
@@ -59,7 +60,10 @@ async function postEmail(payload: PostEmailPayload): Promise<SendEmailResult> {
   try {
     const res = await fetch(emailEndpoint(), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
       body: JSON.stringify(payload),
     });
 

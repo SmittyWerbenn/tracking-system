@@ -13,6 +13,15 @@ const BULAN = [
   "Desember",
 ];
 
+export function escapeHtml(v: unknown): string {
+  return String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function formatTanggal(tanggal: string): string {
   const [y, m, d] = tanggal.split("-").map(Number);
   if (!y || !m || !d) return tanggal;
@@ -42,7 +51,15 @@ export function emailSubject(awb: string, recipientRole: EmailRecipientRole): st
 }
 
 export function buildEmailHtml(data: EmailTemplateData): string {
-  const { toName, awb, kotaAsal, kotaTujuan, status, tanggalDibuat, trackingUrl, senderName, pengirimNama, recipientRole } = data;
+  const { tanggalDibuat, recipientRole } = data;
+  const toName = data.toName === undefined ? undefined : escapeHtml(data.toName);
+  const awb = escapeHtml(data.awb);
+  const kotaAsal = escapeHtml(data.kotaAsal);
+  const kotaTujuan = escapeHtml(data.kotaTujuan);
+  const status = escapeHtml(data.status);
+  const trackingUrl = escapeHtml(data.trackingUrl);
+  const senderName = escapeHtml(data.senderName);
+  const pengirimNama = escapeHtml(data.pengirimNama);
 
   const introText =
     recipientRole === "admin"
@@ -103,7 +120,7 @@ export function buildEmailHtml(data: EmailTemplateData): string {
                       </div>
                       <div style="margin-top:14px;border-top:1px solid #e2e8f0;padding-top:14px;">
                         <div style="font-size:11px;color:#94a3b8;">Tanggal Terbit</div>
-                        <div style="font-size:13px;color:#334155;font-weight:600;">${formatTanggal(tanggalDibuat)}</div>
+                        <div style="font-size:13px;color:#334155;font-weight:600;">${escapeHtml(formatTanggal(tanggalDibuat))}</div>
                       </div>
                     </td>
                   </tr>

@@ -64,7 +64,17 @@ export function parseCsvText(text: string): string[][] {
   return rows.filter((r) => r.some((cell) => cell.trim() !== ""));
 }
 
+/** Neutralizes spreadsheet formula injection: free-text cells starting with = + - @ TAB CR get a leading apostrophe.
+ * Plain numbers (incl. negatives), dates and percentages are left untouched so the CSV format does not change. */
+function safeCell(value: string): string {
+  if (!/^[=+\-@\t\r]/.test(value)) return value;
+  if (/^[-+]?\d+([.,]\d+)?%?$/.test(value)) return value;
+  if (/^-+$/.test(value)) return value;
+  return `'${value}`;
+}
+
 function csvEscape(value: string): string {
+  value = safeCell(value);
   if (/[",\n\r]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
   return value;
 }

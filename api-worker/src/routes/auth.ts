@@ -5,6 +5,7 @@ import { parseJsonBody, reqString, reqEmail, optString } from "../validate";
 import { hashPassword, verifyPassword, randomToken, sha256Hex, newId } from "../crypto";
 import { requireAuth } from "../authMiddleware";
 import { writeAuditLog } from "../audit";
+import { clientIp, rateLimit } from "../captcha";
 
 const MAX_LOGIN_ATTEMPTS_PER_WINDOW = 8;
 const LOGIN_WINDOW_MS = 10 * 60 * 1000;
@@ -27,6 +28,7 @@ export function registerAuthRoutes(router: Router) {
     const password = reqString(body, "password");
     const ip = ctx.request.headers.get("CF-Connecting-IP") ?? "unknown";
     checkRateLimit(`${ip}:${email}`);
+    await rateLimit(ctx.env, `login:${clientIp(ctx)}`, 30, LOGIN_WINDOW_MS, "Terlalu banyak percobaan login. Coba lagi dalam beberapa menit.");
 
     const user = await ctx.env.DB.prepare(
       `SELECT id, nama, email, password_hash, role, aktif, customer_id, mitra_id FROM users WHERE email = ? AND deleted_at IS NULL`,
@@ -172,6 +174,7 @@ export function registerAuthRoutes(router: Router) {
 
   router.post("/api/auth/change-password", async (ctx: Ctx) => {
     const user = requireAuth(ctx);
+    await rateLimit(ctx.env, `chpw:${user.id}`, 10, LOGIN_WINDOW_MS);
     const body = await parseJsonBody(ctx.request);
     const currentPassword = reqString(body, "currentPassword");
     const newPassword = reqString(body, "newPassword", { min: 8 });

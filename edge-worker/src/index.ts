@@ -58,7 +58,13 @@ export default {
       if (resp.status === 404 && !/\.[a-zA-Z0-9]+$/.test(url.pathname)) {
         resp = await fetch(`${UPSTREAM}/`, { method, redirect: "follow" });
       }
-      return resp;
+      const out = new Response(resp.body, resp);
+      out.headers.set("X-Frame-Options", "DENY");
+      out.headers.set("X-Content-Type-Options", "nosniff");
+      out.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+      out.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+      out.headers.set("Content-Security-Policy", "frame-ancestors 'none'; base-uri 'self'; object-src 'none'");
+      return out;
     }
 
     return new Response("Not found", { status: 404 });

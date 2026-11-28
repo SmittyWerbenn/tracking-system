@@ -5,10 +5,19 @@ import { stripKeteranganMeta } from "./format";
 import { countDeliveryDaysExcludingSunday, etaFromPickup } from "./sla";
 import { getHolidaySet } from "./holidays";
 
+/** Neutralizes spreadsheet formula injection: free-text cells starting with = + - @ TAB CR get a leading apostrophe.
+ * Plain numbers (incl. negatives), dates and percentages are left untouched so the CSV format does not change. */
+function safeCell(value: string): string {
+  if (!/^[=+\-@\t\r]/.test(value)) return value;
+  if (/^[-+]?\d+([.,]\d+)?%?$/.test(value)) return value;
+  if (/^-+$/.test(value)) return value;
+  return `'${value}`;
+}
+
 /** Quotes cells containing commas, quotes or line breaks (so lists like "62949,62951" stay in one cell).
  * Line breaks are flattened to a space first so every shipment stays on a single spreadsheet row. */
 function csvEscape(value: string): string {
-  const flat = value.replace(/\r?\n+/g, " ");
+  const flat = safeCell(value).replace(/\r?\n+/g, " ");
   if (/[",\r\n]/.test(flat)) {
     return `"${flat.replace(/"/g, '""')}"`;
   }

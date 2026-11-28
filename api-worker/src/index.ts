@@ -73,6 +73,21 @@ function corsHeaders(origin: string | null, allowedOrigins: string[]): HeadersIn
   };
 }
 
+const SECURITY_HEADERS: Record<string, string> = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+  "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+  "Permissions-Policy": "geolocation=(self), camera=(), microphone=()",
+  "Cache-Control": "no-store",
+};
+
+function withSecurity(headers: Headers): Headers {
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) if (k !== "Cache-Control" || !headers.has(k)) headers.set(k, v);
+  return headers;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const allowedOrigins = env.ALLOWED_ORIGINS.split(",").map((o) => o.trim());
@@ -82,7 +97,7 @@ export default {
     const startedAt = Date.now();
 
     if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: cors });
+      return new Response(null, { status: 204, headers: withSecurity(new Headers(cors)) });
     }
 
     const url = new URL(request.url);
@@ -95,6 +110,7 @@ export default {
       const headers = new Headers(finalResponse.headers);
       for (const [k, v] of Object.entries(cors)) headers.set(k, v as string);
       headers.set("X-Request-ID", requestId);
+      withSecurity(headers);
 
       console.log(
         JSON.stringify({
@@ -112,6 +128,7 @@ export default {
       const resp = errorResponse(err, requestId, cors);
       const headers = new Headers(resp.headers);
       headers.set("X-Request-ID", requestId);
+      withSecurity(headers);
       console.log(
         JSON.stringify({
           requestId,
